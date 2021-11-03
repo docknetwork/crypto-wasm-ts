@@ -1,25 +1,32 @@
 {
   "name": "@docknetwork/crypto-wasm-ts",
   "version": "0.1.0",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p .",
+    "prepare": "husky install",
+    "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write"
+  },
   "license": "Apache-2.0",
   "private": false,
   "dependencies": {
-    "@types/node": "^16.11.6",
-    "@types/jest": "24.0.18",
-    "typescript": "^4.4.4",
     "@docknetwork/crypto-wasm": "file:../crypto-wasm",
-    "@typescript-eslint/eslint-plugin": "^5.0.0",
-    "@typescript-eslint/parser": "^5.0.0",
-    "eslint": "^8.0.0",
+    "@types/jest": "24.0.18",
+    "@types/node": "^16.11.6",
+    "@typescript-eslint/eslint-plugin": "^5.3.0",
+    "@typescript-eslint/parser": "^5.3.0",
+    "eslint": "^8.1.0",
     "eslint-plugin-import": "^2.20.2",
     "jest": "^27.3.0",
-    "ts-jest": "^27.0.7",
-    "husky": "4.2.5",
     "prettier": "2.0.4",
-    "pretty-quick": "2.0.1"
+    "pretty-quick": "2.0.1",
+    "ts-jest": "^27.0.7",
+    "typescript": "^4.4.4"
   },
   "devDependencies": {
+    "eslint-config-prettier": "^8.3.0",
+    "husky": "^7.0.4",
     "ts-node": "^10.4.0"
   }
 }

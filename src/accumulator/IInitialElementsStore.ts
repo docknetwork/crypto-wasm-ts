@@ -3,6 +3,6 @@
  * This persistence layer should not be modified once the accumulator is initialized. It is only read after initialization.
  */
 export interface IInitialElementsStore {
-    add(element: Uint8Array): Promise<void>;
-    has(element: Uint8Array): Promise<boolean>;
+  add(element: Uint8Array): Promise<void>;
+  has(element: Uint8Array): Promise<boolean>;
 }

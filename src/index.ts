@@ -1,3 +1,3 @@
-export * from "./bbs-plus";
-export * from "./accumulator";
-export * from "./composite-proof";
+export * from './bbs-plus';
+export * from './accumulator';
+export * from './composite-proof';
