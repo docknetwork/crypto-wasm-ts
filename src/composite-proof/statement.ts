@@ -1,10 +1,10 @@
-import {AccumulatorParams} from "../../../crypto-wasm/src/js";
+import {AccumulatorParams} from "@docknetwork/crypto-wasm";
 import {
     generateAccumulatorMembershipStatement,
     generatePedersenCommitmentG1Statement,
     generatePoKBBSSignatureStatement,
     generateAccumulatorNonMembershipStatement, generateWitnessEqualityMetaStatement
-} from "../../../crypto-wasm/src/js";
+} from "@docknetwork/crypto-wasm";
 import {SignatureParamsG1} from "../bbs-plus";
 
 export class Statement {

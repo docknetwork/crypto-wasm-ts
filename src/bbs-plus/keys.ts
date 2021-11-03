@@ -1,4 +1,4 @@
-import {generateBBSKeyPairG1, generateBBSKeyPairG2, generateBBSPublicKeyG2, generateBBSPublicKeyG1, isBBSPublicKeyG2Valid, isBBSPublicKeyG1Valid} from "../../../crypto-wasm/src/js";
+import {generateBBSKeyPairG1, generateBBSKeyPairG2, generateBBSPublicKeyG2, generateBBSPublicKeyG1, isBBSPublicKeyG2Valid, isBBSPublicKeyG1Valid} from "@docknetwork/crypto-wasm";
 import {SignatureParamsG1, SignatureParamsG2} from "./params";
 
 export abstract class Keypair {

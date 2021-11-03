@@ -3,14 +3,14 @@
  */
 import {SignatureG1} from "./signature";
 import {SignatureParamsG1} from "./params";
-import {BbsPoKSigProtocol, VerifyResult} from "../../../crypto-wasm/src/js";
+import {BbsPoKSigProtocol, VerifyResult} from "@docknetwork/crypto-wasm";
 import {
     bbsInitializeProofOfKnowledgeOfSignature,
     bbsGenProofOfKnowledgeOfSignature,
     bbsChallengeContributionFromProtocol,
     bbsChallengeContributionFromProof,
     bbsVerifyProofOfKnowledgeOfSignature
-} from "../../../crypto-wasm/src/js";
+} from "@docknetwork/crypto-wasm";
 
 export class PoKSigProtocol {
     value: BbsPoKSigProtocol;

@@ -3,7 +3,7 @@ import {
     generatePoKBBSSignatureWitness,
     generateAccumulatorMembershipWitness,
     generateAccumulatorNonMembershipWitness,
-} from "../../../crypto-wasm/src/js";
+} from "@docknetwork/crypto-wasm";
 import {SignatureG1} from "../bbs-plus";
 import {MembershipWitness, NonMembershipWitness} from "../accumulator";
 

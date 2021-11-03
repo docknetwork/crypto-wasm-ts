@@ -1,11 +1,11 @@
 import {SignatureParamsG1} from "./params";
-import {VerifyResult} from "../../../crypto-wasm/src/js";
+import {VerifyResult} from "@docknetwork/crypto-wasm";
 import {
     bbsBlindSignG1,
     bbsEncodeMessageForSigning,
     bbsSignG1, bbsUnblindSigG1,
     bbsVerifyG1, generateRandomFieldElement,
-} from "../../../crypto-wasm/src/js";
+} from "@docknetwork/crypto-wasm";
 
 export abstract class Signature {
     value: Uint8Array;

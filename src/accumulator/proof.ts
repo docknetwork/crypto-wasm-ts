@@ -1,4 +1,4 @@
-import {AccumulatorParams, VerifyResult} from "../../../crypto-wasm/src/js";
+import {AccumulatorParams, VerifyResult} from "@docknetwork/crypto-wasm";
 import {
     accumulatorChallengeContributionFromNonMembershipProof,
     accumulatorInitializeMembershipProof,
@@ -11,7 +11,7 @@ import {
     accumulatorGenNonMembershipProof,
     accumulatorInitializeNonMembershipProof,
     accumulatorVerifyMembershipProof
-} from "../../../crypto-wasm/src/js";
+} from "@docknetwork/crypto-wasm";
 import {MembershipWitness, NonMembershipWitness} from "./accumulatorWitness";
 
 export class MembershipProofProtocol {

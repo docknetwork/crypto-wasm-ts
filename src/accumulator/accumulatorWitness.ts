@@ -10,7 +10,7 @@ import {
     updateNonMembershipWitnessPostRemove,
     updateNonMembershipWitnessUsingPublicInfoAfterBatchUpdate,
     updateNonMembershipWitnessUsingPublicInfoAfterMultipleBatchUpdates,
-} from "../../../crypto-wasm/src/js";
+} from "@docknetwork/crypto-wasm";
 import {getUint8ArraysFromObject, jsonObjToUint8Array} from "../util";
 
 export abstract class AccumulatorWitness {

@@ -1,9 +1,9 @@
-import {AccumulatorParams, generateRandomFieldElement, initializeWasm, universalAccumulatorComputeD} from "../../lib";
+import {AccumulatorParams, generateRandomFieldElement, initializeWasm, universalAccumulatorComputeD} from "@docknetwork/crypto-wasm";
 import { Accumulator, BlindSignature, BlindSignatureG1, CompositeProof,
     KeypairG2, MembershipWitness, MetaStatement, MetaStatements, NonMembershipWitness, PositiveAccumulator, ProofSpec, Signature,
     SignatureG1, SignatureParamsG1, Statement, Statements, UniversalAccumulator, Witness, WitnessEqualityMetaStatement,
-    Witnesses } from "../../lib/ts";
-import { areUint8ArraysEqual, stringToBytes } from "../utilities";
+    Witnesses } from "../src";
+import { areUint8ArraysEqual, stringToBytes } from "./utils";
 
 const credential12MsgCount = 6;
 const credential3MsgCount = 10;

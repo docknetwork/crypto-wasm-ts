@@ -11,7 +11,7 @@ import {
     bbsSignatureParamsG2FromBytes,
     bbsAdaptSigParamsG1ForMsgCount,
     bbsAdaptSigParamsG2ForMsgCount, bbsCommitMsgsInG1, generateRandomFieldElement
-} from "../../../crypto-wasm/src/js";
+} from "@docknetwork/crypto-wasm";
 
 export abstract class SignatureParams {
     label?: Uint8Array;

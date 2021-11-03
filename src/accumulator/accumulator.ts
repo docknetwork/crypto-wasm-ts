@@ -1,4 +1,4 @@
-import {IKeypair, AccumulatorParams} from "../../../crypto-wasm/src/js";
+import {IKeypair, AccumulatorParams} from "@docknetwork/crypto-wasm";
 import {
     positiveAccumulatorAdd,
     positiveAccumulatorAddBatch,
@@ -37,7 +37,7 @@ import {
     universalAccumulatorCombineMultipleD,
     generateFieldElementFromBytes,
     generateFieldElementFromNumber
-} from "../../../crypto-wasm/src/js";
+} from "@docknetwork/crypto-wasm";
 import {MembershipWitness, NonMembershipWitness} from "./accumulatorWitness";
 import {getUint8ArraysFromObject} from "../util";
 import {IAccumulatorState, IUniversalAccumulatorState} from "./IAccumulatorState";

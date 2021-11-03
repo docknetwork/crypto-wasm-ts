@@ -1,6 +1,6 @@
 import {MetaStatements, Statements} from "./statement";
-import {VerifyResult} from "../../../crypto-wasm/src/js";
-import {generateCompositeProof, generateProofSpec, verifyCompositeProof} from "../../../crypto-wasm/src/js";
+import {VerifyResult} from "@docknetwork/crypto-wasm";
+import {generateCompositeProof, generateProofSpec, verifyCompositeProof} from "@docknetwork/crypto-wasm";
 import {Witnesses} from "./witness";
 
 export class ProofSpec {
