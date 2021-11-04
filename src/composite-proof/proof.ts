@@ -3,6 +3,9 @@ import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { generateCompositeProof, generateProofSpec, verifyCompositeProof } from '@docknetwork/crypto-wasm';
 import { Witnesses } from './witness';
 
+/**
+ * The specification used to construct the proof. This contains all the statements and the meta statements.
+ */
 export class ProofSpec {
   value: Uint8Array;
 
@@ -11,6 +14,9 @@ export class ProofSpec {
   }
 }
 
+/**
+ * A proof of 1 or more statements and meta statements.
+ */
 export class CompositeProof {
   value: Uint8Array;
 

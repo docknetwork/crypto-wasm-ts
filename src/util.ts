@@ -3,6 +3,9 @@
  * @param json
  * @returns
  */
+import exp from 'constants';
+import { generateFieldElementFromBytes } from '@docknetwork/crypto-wasm';
+
 export function jsonObjToUint8Array(json: string): Uint8Array {
   const obj = JSON.parse(json);
   if (obj.value === undefined) {
@@ -27,4 +30,8 @@ export function getUint8ArraysFromObject(obj: Record<string, any>, keys: string[
   });
 
   return values;
+}
+
+export function bytesToChallenge(bytes: Uint8Array): Uint8Array {
+  return generateFieldElementFromBytes(bytes);
 }

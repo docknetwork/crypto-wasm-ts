@@ -82,9 +82,12 @@ async function runCommonTests(keypair: IKeypair, params: AccumulatorParams, accu
     expect(tempAccumulator.verifyMembershipWitness(e6, wits[1], pk, params)).toEqual(true);
 }
 
-describe("Positive accumulator", () => {
-    it("runs", async () => {
+describe("Accumulators type", () => {
+    beforeAll(async () => {
         await initializeWasm();
+    });
+
+    it("Positive accumulator should run", async () => {
         const label = stringToBytes("Accumulator params");
         const params = PositiveAccumulator.generateParams(label);
         const keypair = PositiveAccumulator.generateKeypair(params);
@@ -92,11 +95,8 @@ describe("Positive accumulator", () => {
         const state = new InMemoryState();
         await runCommonTests(keypair, params, accumulator, state);
     });
-});
 
-describe("Universal accumulator", () => {
-    it("runs", async () => {
-        await initializeWasm();
+    it("Universal accumulator", async () => {
         const params1 = UniversalAccumulator.generateParams();
         const keypair1 = UniversalAccumulator.generateKeypair(params1);
         const store = new InMemoryInitialElementsStore();

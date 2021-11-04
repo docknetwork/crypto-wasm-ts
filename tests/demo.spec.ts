@@ -5,16 +5,30 @@ import { Accumulator, BlindSignature, BlindSignatureG1, CompositeProof,
     Witnesses } from "../src";
 import { areUint8ArraysEqual, stringToBytes } from "./utils";
 
-const credential12MsgCount = 6;
-const credential3MsgCount = 10;
+// Test demonstrating the flow where holder (user) gets credentials (message lists and signatures) from multiple issuers (signers)
+// one by one and it proves the knowledge of previously received credentials before getting the next credential (message list and signature).
+// The issuer also adds one of their credential attribute (message) in the accumulator and while proving knowledge of credentials,
+// it also proves accumulator memberships. Also, in each credential, there is a secret message at index 0, which the holder does not
+// reveal to anyone, not even the issuer and in the proof, it proves that the secret message is same in all credentials.
 
-const credential1Messages: any[] = [];
-const credential2Messages: any[] = [];
-const credential3Messages: any[] = [];
+// Credential 1 and 2 have 6 attributes (including secret and user id for accumulator)
+const credential12AttrCount = 6;
+// Credential 3 has 10 attributes (including secret and user id for accumulator)
+const credential3AttrCount = 10;
 
-let credential1MessagesFinal: Uint8Array[];
-let credential2MessagesFinal: Uint8Array[];
-let credential3MessagesFinal: Uint8Array[];
+// Credential 1's attributes excluding secret and user id
+const credential1Attributes: any[] = [];
+// Credential 2's attributes excluding secret and user id
+const credential2Attributes: any[] = [];
+// Credential 3's attributes excluding secret and user id
+const credential3Attributes: any[] = [];
+
+// Credential 1's attributes including secret and user id
+let credential1AttributesFinal: Uint8Array[];
+// Credential 2's attributes including secret and user id
+let credential2AttributesFinal: Uint8Array[];
+// Credential 3's attributes including secret and user id
+let credential3AttributesFinal: Uint8Array[];
 
 let Credential1: SignatureG1;
 let Credential2: SignatureG1;
@@ -23,6 +37,7 @@ let Credential3: SignatureG1;
 // Issuer 1 and 2 use same params
 let Issuer12SigParams: SignatureParamsG1;
 let Issuer3SigParams: SignatureParamsG1;
+// Secret key and public key for issuers
 let Issuer1Sk: Uint8Array;
 let Issuer1Pk: Uint8Array;
 let Issuer2Sk: Uint8Array;
@@ -30,9 +45,12 @@ let Issuer2Pk: Uint8Array;
 let Issuer3Sk: Uint8Array;
 let Issuer3Pk: Uint8Array;
 
+// Accumulator params
 let Accum1Params: AccumulatorParams;
 let Accum2Params: AccumulatorParams;
 let Accum3Params: AccumulatorParams;
+
+// Secret key and public key for accumulator managers
 let Accum1Sk: Uint8Array;
 let Accum1Pk: Uint8Array;
 let Accum2Sk: Uint8Array;
@@ -41,7 +59,10 @@ let Accum3Sk: Uint8Array;
 let Accum3Pk: Uint8Array;
 let Accum1Prk: Uint8Array;
 let Accum2Prk: Uint8Array;
+
+// Proving key for non-membership
 let Accum3NonMemPrk: Uint8Array;
+// Proving key for membership
 let Accum3MemPrk: Uint8Array;
 // Positive accumulator that stores the secret key as well
 let Accum1: PositiveAccumulator;
@@ -62,18 +83,18 @@ function log(msg: any) {
     }
 }
 
-describe("Full demo", () => {
+describe("A demo showing combined use of BBS+ signatures and accumulators using the composite proof system", () => {
    it("runs", async () => {
-       function setupMessages() {
-           // 2 of the messages are reserved for a secret (eg. link secret) and accumulator index
-           for (let i = 2; i < credential12MsgCount; i++) {
-               credential1Messages.push(`credential1's Message${i + 1}`);
+       function setupAttributes() {
+           // 2 of the messages are reserved for a secret (eg. link secret known only to holder) and a user-id that is added to accumulator.
+           for (let i = 2; i < credential12AttrCount; i++) {
+               credential1Attributes.push(`credential1's Message${i + 1}`);
            }
-           for (let i = 2; i < credential12MsgCount; i++) {
-               credential2Messages.push(`credential2's Message${i + 1}`);
+           for (let i = 2; i < credential12AttrCount; i++) {
+               credential2Attributes.push(`credential2's Message${i + 1}`);
            }
-           for (let i = 2; i < credential3MsgCount; i++) {
-               credential3Messages.push(`credential3's Message${i + 1}`);
+           for (let i = 2; i < credential3AttrCount; i++) {
+               credential3Attributes.push(`credential3's Message${i + 1}`);
            }
        }
 
@@ -123,12 +144,12 @@ describe("Full demo", () => {
 
        function setupIssuer12SigParams() {
            const label = stringToBytes("Params for Issuer 1 and 2");
-           Issuer12SigParams = SignatureParamsG1.generate(credential12MsgCount, label);
+           Issuer12SigParams = SignatureParamsG1.generate(credential12AttrCount, label);
            if (!Issuer12SigParams.isValid()) {
                throw new Error('Params is invalid');
            }
-           if (Issuer12SigParams.supportedMessageCount() !== credential12MsgCount) {
-               throw new Error(`supportedMessageCount returns ${Issuer12SigParams.supportedMessageCount()} but should be ${credential12MsgCount}`);
+           if (Issuer12SigParams.supportedMessageCount() !== credential12AttrCount) {
+               throw new Error(`supportedMessageCount returns ${Issuer12SigParams.supportedMessageCount()} but should be ${credential12AttrCount}`);
            }
            log("Issuer 1 and 2's signature params are:");
            log(Issuer12SigParams);
@@ -136,12 +157,12 @@ describe("Full demo", () => {
 
        function setupIssuer3SigParams() {
            const label = stringToBytes("Params for Issuer 3");
-           Issuer3SigParams = SignatureParamsG1.generate(credential3MsgCount, label);
+           Issuer3SigParams = SignatureParamsG1.generate(credential3AttrCount, label);
            if (!Issuer3SigParams.isValid()) {
                throw new Error('Params is invalid');
            }
-           if (Issuer3SigParams.supportedMessageCount() !== credential3MsgCount) {
-               throw new Error(`supportedMessageCount returns ${Issuer3SigParams.supportedMessageCount()} but should be ${credential3MsgCount}`);
+           if (Issuer3SigParams.supportedMessageCount() !== credential3AttrCount) {
+               throw new Error(`supportedMessageCount returns ${Issuer3SigParams.supportedMessageCount()} but should be ${credential3AttrCount}`);
            }
            log("Issuer 3's signature params are:");
            log(Issuer3SigParams);
@@ -192,9 +213,9 @@ describe("Full demo", () => {
            return encodedMessages;
        }
 
-       function addRevocationIdToMessages(messages: Uint8Array[], id: Uint8Array) {
+       function addRevocationIdToAttributes(attributes: Uint8Array[], id: Uint8Array) {
            // Assuming add at 0 index
-           messages.splice(0, 0, id);
+           attributes.splice(0, 0, id);
        }
 
        function msgArrayToMapForBlindSign(messages: Uint8Array[]): Map<number, Uint8Array> {
@@ -210,11 +231,15 @@ describe("Full demo", () => {
            const encodedSecret = Signature.encodeMessageForSigning(secret);
            const blinding = BlindSignature.generateBlinding();
            const indicesToCommit = new Set<number>();
+           // Holder secret is at index 0
            indicesToCommit.add(0);
            const msgsToCommit = new Map();
            msgsToCommit.set(0, encodedSecret);
 
+           // Commit to the secret using params
            const [commitment] = sigParams.commitToMessages(msgsToCommit, false, blinding);
+
+           // Create a statement and witness for proving knowledge opening of the Pedersen commitment
            const bases = sigParams.getParamsForIndices([...indicesToCommit]);
            const statement = Statement.pedersenCommitmentG1(bases, commitment);
            const witness = Witness.pedersenCommitment([
@@ -225,11 +250,16 @@ describe("Full demo", () => {
 
        function blindSigRequestWithSecret(secret: Uint8Array, sigParams: SignatureParamsG1, nonce?: Uint8Array): [BlindSigRequest, Uint8Array] {
            const [statement, witness, commitment, blinding] = blindSigRequestWithSecretStatementAndWitness(secret, sigParams);
+
            const statements = new Statements();
            statements.add(statement);
+
+           // Proof spec with statement and meta-statement
            const proofSpec = new ProofSpec(statements, new MetaStatements());
+
            const witnesses = new Witnesses();
            witnesses.add(witness);
+           // Composite proof for proving knowledge of opening of Pedersen commitment
            const proof = CompositeProof.generate(proofSpec, witnesses, nonce);
            return [{proof, commitment}, blinding]
        }
@@ -239,6 +269,11 @@ describe("Full demo", () => {
            credential: SignatureG1, sigParams: SignatureParamsG1, pk: Uint8Array, revealedMsgs: Map<number, Uint8Array>, unrevealedMsgs: Map<number, Uint8Array>,
            accumParams: AccumulatorParams, accumPk: Uint8Array, prk: Uint8Array, accumulated: Uint8Array, membershipWitness: MembershipWitness, nonce?: Uint8Array
        ): [BlindSigRequest, Uint8Array] {
+           // Create composite proof of 3 statements,
+           // 1) knowledge of a signature,
+           // 2) accumulator membership and
+           // 3) opening of commitment in the blind signature request.
+
            const statement1 = Statement.poKBBSSignature(sigParams, pk, revealedMsgs, false);
            const witness1 = Witness.poKBBSSignature(credential, unrevealedMsgs, false);
 
@@ -254,13 +289,18 @@ describe("Full demo", () => {
            statements.add(statement2);
            statements.add(statement3);
 
+           // Prove equality of holder's secret in `credential` and blind signature request.
            const witnessEq1 = new WitnessEqualityMetaStatement();
+           // Holder secret is at index 0 in statement 0
            witnessEq1.addWitnessRef(0, 0);
+           // Holder secret is at index 1 in statement 1, the opening of commitment of the blind signature respect
            witnessEq1.addWitnessRef(2, 1);
 
+           // Prove equality of holder's user id in `credential` and accumulator membership.
            const witnessEq2 = new WitnessEqualityMetaStatement();
            witnessEq2.addWitnessRef(0, 1);
            witnessEq2.addWitnessRef(1, 0);
+
 
            const ms1 = MetaStatement.witnessEquality(witnessEq1);
            const ms2 = MetaStatement.witnessEquality(witnessEq2);
@@ -268,7 +308,9 @@ describe("Full demo", () => {
            metaStatements.add(ms1);
            metaStatements.add(ms2);
 
+           // Create proof spec with statements and meta statements
            const proofSpec = new ProofSpec(statements, metaStatements);
+
            const witnesses = new Witnesses();
            witnesses.add(witness1);
            witnesses.add(witness2);
@@ -285,6 +327,13 @@ describe("Full demo", () => {
            accumParams2: AccumulatorParams, accumPk2: Uint8Array, prk2: Uint8Array, accumulated2: Uint8Array, membershipWitness2: MembershipWitness,
            nonce?: Uint8Array,
        ): [BlindSigRequest, Uint8Array] {
+           // Create composite proof of 5 statements,
+           // 1) knowledge of a signature in credential,
+           // 2) accumulator membership for credential,
+           // 3) knowledge of a signature in credential1,
+           // 4) accumulator membership for credential1,
+           // 5) opening of commitment in the blind signature request.
+
            const statement1 = Statement.poKBBSSignature(sigParams, pk, revealedMsgs, false);
            const witness1 = Witness.poKBBSSignature(credential, unrevealedMsgs, false);
 
@@ -308,15 +357,18 @@ describe("Full demo", () => {
            statements.add(statement4);
            statements.add(statement5);
 
+           // Prove equality of holder's secret in `credential`, `credential1` and blind signature request.
            const witnessEq1 = new WitnessEqualityMetaStatement();
            witnessEq1.addWitnessRef(0, 0);
            witnessEq1.addWitnessRef(2, 0);
            witnessEq1.addWitnessRef(4, 1);
 
+           // Prove equality of holder's user id in `credential` and accumulator membership.
            const witnessEq2 = new WitnessEqualityMetaStatement();
            witnessEq2.addWitnessRef(0, 1);
            witnessEq2.addWitnessRef(1, 0);
 
+           // Prove equality of holder's user id in `credential1` and accumulator membership.
            const witnessEq3 = new WitnessEqualityMetaStatement();
            witnessEq3.addWitnessRef(2, 1);
            witnessEq3.addWitnessRef(3, 0);
@@ -341,6 +393,7 @@ describe("Full demo", () => {
        function issueBlindSig(blindSigReq: BlindSigRequest, sigParams: SignatureParamsG1, sk: Uint8Array, otherMsgs: Map<number, Uint8Array>, nonce?: Uint8Array) {
            const indicesToCommit = new Set<number>();
            indicesToCommit.add(0);
+           // Verify knowledge of opening of commitment and issue blind signature with that commitment
            const bases = sigParams.getParamsForIndices([...indicesToCommit]);
            const statement = Statement.pedersenCommitmentG1(bases, blindSigReq.commitment);
            const statements = new Statements();
@@ -360,6 +413,11 @@ describe("Full demo", () => {
            accumParams: AccumulatorParams, accumPk: Uint8Array, prk: Uint8Array, accumulated: Uint8Array,
            nonce?: Uint8Array
        ) {
+           // Verify composite proof of 3 statements,
+           // 1) knowledge of a signature,
+           // 2) accumulator membership and
+           // 3) opening of commitment in the blind signature request.
+
            const indicesToCommit = [];
            indicesToCommit.push(0);
            const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
@@ -403,6 +461,13 @@ describe("Full demo", () => {
            accumParams2: AccumulatorParams, accumPk2: Uint8Array, prk2: Uint8Array, accumulated2: Uint8Array,
            nonce?: Uint8Array
        ) {
+           // Verify composite proof of 5 statements,
+           // 1) knowledge of a signature in credential,
+           // 2) accumulator membership for credential,
+           // 3) knowledge of a signature in credential1,
+           // 4) accumulator membership for credential1,
+           // 5) opening of commitment in the blind signature request.
+
            const indicesToCommit = [];
            indicesToCommit.push(0);
            const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
@@ -455,6 +520,14 @@ describe("Full demo", () => {
            accumParams3: AccumulatorParams, accumPk3: Uint8Array, prk3: Uint8Array, accumulated3: Uint8Array, membershipWitness3: MembershipWitness,
            nonce?: Uint8Array
        ) {
+           // Create composite proof of 6 statements,
+           // 1) knowledge of a signature in credential,
+           // 2) accumulator membership for credential,
+           // 3) knowledge of a signature in credential1,
+           // 4) accumulator membership for credential1,
+           // 5) knowledge of a signature in credential2,
+           // 6) accumulator membership for credential2,
+
            const statement1 = Statement.poKBBSSignature(sigParams, pk, revealedMsgs, false);
            const witness1 = Witness.poKBBSSignature(credential, unrevealedMsgs, false);
 
@@ -527,6 +600,14 @@ describe("Full demo", () => {
            accumParams3: AccumulatorParams, accumPk3: Uint8Array, prk3: Uint8Array, accumulated3: Uint8Array,
            nonce?: Uint8Array
        ) {
+           // Verify composite proof of 6 statements,
+           // 1) knowledge of a signature in credential,
+           // 2) accumulator membership for credential,
+           // 3) knowledge of a signature in credential1,
+           // 4) accumulator membership for credential1,
+           // 5) knowledge of a signature in credential2,
+           // 6) accumulator membership for credential2,
+
            const statement1 = Statement.poKBBSSignature(sigParams, pk, revealedMsgs, false);
            const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
            const statement3 = Statement.poKBBSSignature(sigParams2, pk2, revealedMsgs2, false);
@@ -573,12 +654,21 @@ describe("Full demo", () => {
            }
        }
 
+       /**
+        * Unblind the given blind signature, verify it and add the holder's secret to the messages
+        * @param blindedSig
+        * @param blinding
+        * @param holderSecret
+        * @param msgs
+        * @param pk
+        * @param sigParams
+        */
        function unBlindAndVerify(
-           blindedSig: BlindSignatureG1, blinding: Uint8Array, secret: Uint8Array, msgs: Uint8Array[], pk: Uint8Array, sigParams: SignatureParamsG1
+           blindedSig: BlindSignatureG1, blinding: Uint8Array, holderSecret: Uint8Array, msgs: Uint8Array[], pk: Uint8Array, sigParams: SignatureParamsG1
        ): [SignatureG1, Uint8Array[]] {
            const unblinded = blindedSig.unblind(blinding);
            let final = [];
-           final.push(Signature.encodeMessageForSigning(secret));
+           final.push(Signature.encodeMessageForSigning(holderSecret));
            final = final.concat(msgs);
            const res1 = unblinded.verify(final, pk, sigParams, false);
            if (!res1.verified) {
@@ -589,10 +679,9 @@ describe("Full demo", () => {
 
        await initializeWasm();
 
-       // Initialize messages which will be signed
-       setupMessages();
+       // Initialize attributes which will be signed
+       setupAttributes();
 
-       console.log(SignatureParamsG1);
        // Setup Issuers
        setupIssuer12SigParams();
        setupIssuer3SigParams();
@@ -608,38 +697,42 @@ describe("Full demo", () => {
        const holderSecret = stringToBytes("MySecret123");
 
        // Get Credential 1
-       // Holder prepares request for blind signature
+       // Holder prepares request for blind signature hiding `holderSecret` from the Issuer
        const [blindSigReq1, blinding1] = blindSigRequestWithSecret(holderSecret, Issuer12SigParams);
 
-       // Issuer prepares messages for signing including rev id
-       const holderMessages1 = prepareMessagesForBlindSigning(credential1Messages);
+       // Issuer prepares messages for signing including user id
+       const holderAttrs1 = prepareMessagesForBlindSigning(credential1Attributes);
+       // Add user id in messages which will be added to the accumulator
        const revocationId1 = Accumulator.encodeBytesAsAccumulatorMember(stringToBytes("user-id: xyz123"));
-       addRevocationIdToMessages(holderMessages1, revocationId1);
+       addRevocationIdToAttributes(holderAttrs1, revocationId1);
 
        // Issuer issues a blind signature after verifying the knowledge of committed values
-       const blindedCred1 = issueBlindSig(blindSigReq1, Issuer12SigParams, Issuer1Sk, msgArrayToMapForBlindSign(holderMessages1));
+       const blindedCred1 = issueBlindSig(blindSigReq1, Issuer12SigParams, Issuer1Sk, msgArrayToMapForBlindSign(holderAttrs1));
        // Accumulator managers adds rev id to the accumulator
        await Accum1.add(revocationId1);
        const membershipWitness1 = await Accum1.membershipWitness(revocationId1);
 
        // Holder unblinds and verifies signature
-       [Credential1, credential1MessagesFinal] = unBlindAndVerify(blindedCred1, blinding1, holderSecret, holderMessages1, Issuer1Pk, Issuer12SigParams);
-       const memCheck1 = Accum1.verifyMembershipWitness(revocationId1, membershipWitness1, Accum1Pk, Accum1Params);
+       [Credential1, credential1AttributesFinal] = unBlindAndVerify(blindedCred1, blinding1, holderSecret, holderAttrs1, Issuer1Pk, Issuer12SigParams);
+       // Holder checks that attribute at index 1 is in the accumulator
+       const memCheck1 = Accum1.verifyMembershipWitness(credential1AttributesFinal[1], membershipWitness1, Accum1Pk, Accum1Params);
        if (!memCheck1) {
            throw new Error("Membership check failed in accumulator 1")
        }
 
-       // Get Credential 2
-       // Holder reveals 1 attribute at index `credential12MsgCount - 1`
+       // Get Credential 2. For this holder has to prove possession of credential 1, reveal the last attribute and prove
+       // the user-id attribute is in the accumulator `Accum1`
+
+       // Holder reveals 1 attribute at index `credential12AttrCount - 1`
        const revealed1 = new Set<number>();
-       revealed1.add(credential12MsgCount - 1);
+       revealed1.add(credential12AttrCount - 1);
        const revealedMsgs1 = new Map();
        const unrevealedMsgs1 = new Map();
-       for (let i = 0; i < credential12MsgCount; i++) {
+       for (let i = 0; i < credential12AttrCount; i++) {
            if (revealed1.has(i)) {
-               revealedMsgs1.set(i, credential1MessagesFinal[i]);
+               revealedMsgs1.set(i, credential1AttributesFinal[i]);
            } else {
-               unrevealedMsgs1.set(i, credential1MessagesFinal[i]);
+               unrevealedMsgs1.set(i, credential1AttributesFinal[i]);
            }
        }
 
@@ -650,9 +743,9 @@ describe("Full demo", () => {
        );
 
        // Issuer prepares messages for signing including rev id
-       const holderMessages2 = prepareMessagesForBlindSigning(credential2Messages);
+       const holderMessages2 = prepareMessagesForBlindSigning(credential2Attributes);
        const revocationId2 = Accumulator.encodeBytesAsAccumulatorMember(stringToBytes("user-id: abc9090"));
-       addRevocationIdToMessages(holderMessages2, revocationId2);
+       addRevocationIdToAttributes(holderMessages2, revocationId2);
 
        // Issuer gives blind signature after verifying credential and revocation check
        const blindedCred2 = issueBlindSigWithCredVerif(
@@ -664,7 +757,7 @@ describe("Full demo", () => {
        await Accum2.add(revocationId2, Accum2Sk);
        const membershipWitness2 = await Accum2.membershipWitness(revocationId2, Accum2Sk);
 
-       [Credential2, credential2MessagesFinal] = unBlindAndVerify(
+       [Credential2, credential2AttributesFinal] = unBlindAndVerify(
            blindedCred2, blinding2, holderSecret, holderMessages2, Issuer2Pk, Issuer12SigParams
        );
        const memCheck2 = Accum2.verifyMembershipWitness(revocationId2, membershipWitness2, Accum2Pk, Accum2Params);
@@ -672,17 +765,18 @@ describe("Full demo", () => {
            throw new Error("Membership check failed in accumulator 2")
        }
 
-       // Get Credential 3
-       // Holder reveals 1 attribute at index `credential12MsgCount - 1`
+       // Get Credential 3. For this holder has to prove possession of credential 1 and 2, reveal the last attribute of both, and prove
+       // the user-id attribute from both is in the accumulators `Accum1` and `Accum2`
+       // Holder reveals 1 attribute at index `credential12AttrCount - 1`
        const revealed2 = new Set<number>();
-       revealed2.add(credential12MsgCount - 1);
+       revealed2.add(credential12AttrCount - 1);
        const revealedMsgs2 = new Map();
        const unrevealedMsgs2 = new Map();
-       for (let i = 0; i < credential12MsgCount; i++) {
+       for (let i = 0; i < credential12AttrCount; i++) {
            if (revealed2.has(i)) {
-               revealedMsgs2.set(i, credential2MessagesFinal[i]);
+               revealedMsgs2.set(i, credential2AttributesFinal[i]);
            } else {
-               unrevealedMsgs2.set(i, credential2MessagesFinal[i]);
+               unrevealedMsgs2.set(i, credential2AttributesFinal[i]);
            }
        }
 
@@ -696,9 +790,9 @@ describe("Full demo", () => {
        );
 
        // Issuer prepares messages for signing including rev id
-       const holderMessages3 = prepareMessagesForBlindSigning(credential3Messages);
+       const holderMessages3 = prepareMessagesForBlindSigning(credential3Attributes);
        const revocationId3 = Accumulator.encodeBytesAsAccumulatorMember(stringToBytes("user-id: pqr2029"));
-       addRevocationIdToMessages(holderMessages3, revocationId3);
+       addRevocationIdToAttributes(holderMessages3, revocationId3);
 
        // Issuer gives blind signature after verifying credential and revocation check
        const blindedCred3 = issueBlindSigWith2CredVerifs(
@@ -712,7 +806,7 @@ describe("Full demo", () => {
        await Accum3.add(revocationId3, Accum3Sk);
        const membershipWitness3 = await Accum3.membershipWitness(revocationId3, Accum3Sk);
 
-       [Credential3, credential3MessagesFinal] = unBlindAndVerify(
+       [Credential3, credential3AttributesFinal] = unBlindAndVerify(
            blindedCred3, blinding3, holderSecret, holderMessages3, Issuer3Pk, Issuer3SigParams
        );
        const memCheck3 = Accum3.verifyMembershipWitness(revocationId3, membershipWitness3, Accum3Pk);
@@ -721,14 +815,14 @@ describe("Full demo", () => {
        }
 
        const revealed3 = new Set<number>();
-       revealed3.add(credential3MsgCount - 1);
+       revealed3.add(credential3AttrCount - 1);
        const revealedMsgs3 = new Map();
        const unrevealedMsgs3 = new Map();
-       for (let i = 0; i < credential3MsgCount; i++) {
+       for (let i = 0; i < credential3AttrCount; i++) {
            if (revealed3.has(i)) {
-               revealedMsgs3.set(i, credential3MessagesFinal[i]);
+               revealedMsgs3.set(i, credential3AttributesFinal[i]);
            } else {
-               unrevealedMsgs3.set(i, credential3MessagesFinal[i]);
+               unrevealedMsgs3.set(i, credential3AttributesFinal[i]);
            }
        }
 

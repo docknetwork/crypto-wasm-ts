@@ -1,0 +1,176 @@
+import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
+import {
+  BlindSignatureG1,
+  bytesToChallenge,
+  KeypairG2,
+  PoKSigProtocol,
+  Signature,
+  SignatureG1,
+  SignatureParamsG1
+} from '../src';
+import { stringToBytes } from './utils';
+
+
+function getMessages(count: number): Uint8Array[] {
+  const messages: Uint8Array[] = [];
+  for (let i = 0; i < count; i++) {
+    messages.push(stringToBytes(`Message-${i + 1}`));
+  }
+  return messages;
+}
+
+describe("BBS+ signature", () => {
+  beforeAll(async () => {
+    await initializeWasm();
+  });
+
+  it("should sign and verify signature and create and verify proof of knowledge", () => {
+    const messageCount = 10;
+    const messages = getMessages(messageCount);
+    const encodedMessages = messages.map((m) => Signature.encodeMessageForSigning(m));
+
+    const label = stringToBytes("My sig params in g1");
+    const params = SignatureParamsG1.generate(messageCount, label);
+
+    expect(params.isValid()).toEqual(true);
+    expect(params.supportedMessageCount()).toEqual(messageCount);
+
+    const paramBytes = params.toBytes();
+    const deserializedParams = SignatureParamsG1.valueFromBytes(paramBytes);
+    expect(params.value).toEqual(deserializedParams);
+
+    const keypair = KeypairG2.generate(params);
+    const sk = keypair.secretKey;
+    const pk = keypair.publicKey;
+
+    expect(KeypairG2.isPublicKeyValid(pk)).toEqual(true);
+
+    const pk1 = KeypairG2.generatePublicKeyFromSecretKey(sk, params);
+    expect(pk).toEqual(pk1);
+
+    const sig = SignatureG1.generate(messages, sk, params, true);
+    expect(sig.verify(messages, pk, params, true).verified).toEqual(true);
+    // Passing different `encodeMessages` to verify and sign results in error
+    expect(() => sig.verify(messages, pk, params, false)).toThrow();
+
+    // Pre encoded message
+    const sig1 = SignatureG1.generate(encodedMessages, sk, params, false);
+    expect(sig1.verify(encodedMessages, pk, params, false).verified).toEqual(true);
+
+    // No revealed messages and no user supplied blindings
+    let protocol = PoKSigProtocol.initialize(messages, sig, params, true);
+    let challengeContributionP = protocol.challengeContribution(params, true);
+    let challengeProver = bytesToChallenge(challengeContributionP);
+    let proof = protocol.generateProof(challengeProver);
+
+    let challengeContributionV = proof.challengeContribution(params, true);
+    let challengeVerifier = bytesToChallenge(challengeContributionV);
+
+    expect(challengeProver).toEqual(challengeVerifier);
+
+    expect(proof.verify(challengeVerifier, pk, params, true).verified).toEqual(true);
+
+    // 2 revealed messages but no user supplied blindings
+    let revealed: Set<number> = new Set();
+    let revealedMsgs: Map<number, Uint8Array> = new Map();
+    revealed.add(0);
+    revealed.add(2);
+    revealedMsgs.set(0, messages[0]);
+    revealedMsgs.set(2, messages[2]);
+
+    protocol = PoKSigProtocol.initialize(messages, sig, params, true, undefined, revealed);
+    challengeContributionP = protocol.challengeContribution(params, true, revealedMsgs);
+    challengeProver = bytesToChallenge(challengeContributionP);
+    proof = protocol.generateProof(challengeProver);
+
+    challengeContributionV = proof.challengeContribution(params, true, revealedMsgs);
+    challengeVerifier = bytesToChallenge(challengeContributionV);
+
+    expect(challengeProver).toEqual(challengeVerifier);
+
+    expect(proof.verify(challengeVerifier, pk, params, true, revealedMsgs).verified).toEqual(true);
+
+    // 2 revealed messages and 1 user supplied blinding
+    let blindings: Map<number, Uint8Array> = new Map();
+    blindings.set(1, generateRandomFieldElement());
+    protocol = PoKSigProtocol.initialize(messages, sig, params, true, blindings, revealed);
+    challengeContributionP = protocol.challengeContribution(params, true, revealedMsgs);
+    challengeProver = bytesToChallenge(challengeContributionP);
+    proof = protocol.generateProof(challengeProver);
+
+    challengeContributionV = proof.challengeContribution(params, true, revealedMsgs);
+    challengeVerifier = bytesToChallenge(challengeContributionV);
+
+    expect(challengeProver).toEqual(challengeVerifier);
+
+    expect(proof.verify(challengeVerifier, pk, params, true, revealedMsgs).verified).toEqual(true);
+  });
+
+  it("should sign and verify blind signature", () => {
+    const messageCount = 10;
+    const messages = getMessages(messageCount);
+    const label = stringToBytes("My new sig params");
+    const params = SignatureParamsG1.generate(messageCount, label);
+
+    const keypair = KeypairG2.generate(params);
+    const sk = keypair.secretKey;
+    const pk = keypair.publicKey;
+
+    const messagesToHide = new Map();
+    messagesToHide.set(1, messages[1]);
+    messagesToHide.set(2, messages[2]);
+
+    let [blinding, req] = BlindSignatureG1.generateRequest(messagesToHide, params, true);
+
+    // Simulation of signer picking up known messages
+    const knownMessages = new Map();
+    for (let i = 0; i < messageCount; i++) {
+      if (!req.blindedIndices.has(i)) {
+        knownMessages.set(i, messages[i]);
+      }
+    }
+
+    let blindSig = BlindSignatureG1.generate(req.commitment, knownMessages, sk, params, true);
+
+    let sig = blindSig.unblind(blinding);
+    expect(sig.verify(messages, pk, params, true).verified).toEqual(true);
+  })
+
+  it("params should be adaptable", () => {
+    const ten = 10;
+    const messages10 = getMessages(ten);
+    const label = stringToBytes("Some label for params");
+    const params10 = SignatureParamsG1.generate(ten, label);
+    const keypair = KeypairG2.generate(params10);
+    const sk = keypair.secretKey;
+    const pk = keypair.publicKey;
+
+    const sig = SignatureG1.generate(messages10, sk, params10, true);
+    expect(sig.verify(messages10, pk, params10, true).verified).toEqual(true);
+
+    const twelve = 12;
+    const messages12 = getMessages(twelve);
+
+    expect(() => SignatureG1.generate(messages12, sk, params10, true)).toThrow();
+
+    const params12 = params10.adapt(twelve);
+    expect(params12.isValid()).toEqual(true);
+    expect(params12.supportedMessageCount()).toEqual(twelve);
+
+    const sig1 = SignatureG1.generate(messages12, sk, params12, true);
+    expect(sig1.verify(messages12, pk, params12, true).verified).toEqual(true);
+
+    const five = 5;
+    const messages5 = getMessages(five);
+
+    expect(() => SignatureG1.generate(messages5, sk, params10, true)).toThrow();
+    expect(() => SignatureG1.generate(messages5, sk, params12, true)).toThrow();
+
+    const params5 = params12.adapt(five);
+    expect(params5.isValid()).toEqual(true);
+    expect(params5.supportedMessageCount()).toEqual(five);
+
+    const sig2 = SignatureG1.generate(messages5, sk, params5, true);
+    expect(sig2.verify(messages5, pk, params5, true).verified).toEqual(true);
+  })
+});

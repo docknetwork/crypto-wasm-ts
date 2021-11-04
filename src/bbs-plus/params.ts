@@ -15,6 +15,9 @@ import {
   generateRandomFieldElement
 } from '@docknetwork/crypto-wasm';
 
+/**
+ * Signature parameters.
+ */
 export abstract class SignatureParams {
   label?: Uint8Array;
   value: BbsSigParams;
@@ -26,7 +29,7 @@ export abstract class SignatureParams {
 
   // static generateAsBytes(numMessages: number, label?: Uint8Array): Uint8Array;
 
-  abstract paramsToBytes(): Uint8Array;
+  abstract toBytes(): Uint8Array;
   abstract isValid(): boolean;
 
   /**
@@ -37,8 +40,12 @@ export abstract class SignatureParams {
     return this.value.h.length;
   }
 
-  isValidIndex(i: number): boolean {
-    return i >= 0 && i < this.supportedMessageCount();
+  /**
+   * Is message index valid as per the params
+   * @param index
+   */
+  isValidIndex(index: number): boolean {
+    return index >= 0 && index < this.supportedMessageCount();
   }
 
   /**
@@ -77,10 +84,10 @@ export class SignatureParamsG1 extends SignatureParams {
   }
 
   static generateAsBytes(numMessages: number, label?: Uint8Array): Uint8Array {
-    return SignatureParamsG1.generate(numMessages, label).paramsToBytes();
+    return SignatureParamsG1.generate(numMessages, label).toBytes();
   }
 
-  paramsToBytes(): Uint8Array {
+  toBytes(): Uint8Array {
     return bbsSignatureParamsG1ToBytes(this.value);
   }
 
@@ -88,18 +95,29 @@ export class SignatureParamsG1 extends SignatureParams {
     return isSignatureParamsG1Valid(this.value);
   }
 
-  paramsFromBytes(bytes: Uint8Array): BbsSigParams {
+  static valueFromBytes(bytes: Uint8Array): BbsSigParams {
     return bbsSignatureParamsG1FromBytes(bytes);
   }
 
+  /**
+   * Transform current signature params to sign a different number of messages. Needs the `label` field to be present
+   * @param newMsgCount
+   */
   adapt(newMsgCount: number): SignatureParamsG1 {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
+    // Possible optimization: if `newMsgCount` is smaller than current size, then WASM call can be avoided by dropping some `h`
     const newParams = bbsAdaptSigParamsG1ForMsgCount(this.value, this.label, newMsgCount);
     return new SignatureParamsG1(newParams, this.label);
   }
 
+  /**
+   * Commit to given messages and return the pair [blinding, commitment]
+   * @param messageToCommit
+   * @param encodeMessages
+   * @param blinding - If not provided, a random blinding is generated
+   */
   commitToMessages(
     messageToCommit: Map<number, Uint8Array>,
     encodeMessages: boolean,
@@ -118,21 +136,25 @@ export class SignatureParamsG2 extends SignatureParams {
   }
 
   static generateAsBytes(numMessages: number, label?: Uint8Array): Uint8Array {
-    return SignatureParamsG2.generate(numMessages, label).paramsToBytes();
+    return SignatureParamsG2.generate(numMessages, label).toBytes();
   }
 
   isValid(): boolean {
     return isSignatureParamsG2Valid(this.value);
   }
 
-  paramsToBytes(): Uint8Array {
+  toBytes(): Uint8Array {
     return bbsSignatureParamsG2ToBytes(this.value);
   }
 
-  paramsFromBytes(bytes: Uint8Array): BbsSigParams {
+  static valueFromBytes(bytes: Uint8Array): BbsSigParams {
     return bbsSignatureParamsG2FromBytes(bytes);
   }
 
+  /**
+   * Transform current signature params to sign a different number of messages. Needs the `label` field to be present
+   * @param newMsgCount
+   */
   adapt(newMsgCount: number): SignatureParamsG2 {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
