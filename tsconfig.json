@@ -18,5 +18,10 @@
             "node"
           ]
     },
-    "include": ["./src"]
+    "include": ["./src"],
+    "exclude": [
+        "tests",
+        "lib",
+        "node_modules"
+    ]
 }

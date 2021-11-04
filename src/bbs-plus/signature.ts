@@ -112,14 +112,20 @@ export class BlindSignatureG1 extends BlindSignature {
    * @param unblindedMessages - Any messages that the requester wishes to inform the signer about. This is for informational
    * purpose only and has no cryptographic use.
    */
-  static generateRequest(messagesToBlind: Map<number, Uint8Array>, params: SignatureParamsG1, encodeMessages: boolean, blinding?: Uint8Array, unblindedMessages?: Map<number, Uint8Array>): [Uint8Array, BlindSignatureRequest] {
+  static generateRequest(
+    messagesToBlind: Map<number, Uint8Array>,
+    params: SignatureParamsG1,
+    encodeMessages: boolean,
+    blinding?: Uint8Array,
+    unblindedMessages?: Map<number, Uint8Array>
+  ): [Uint8Array, BlindSignatureRequest] {
     const [commitment, b] = params.commitToMessages(messagesToBlind, encodeMessages, blinding);
     const blindedIndices = new Set<number>();
     for (const k of messagesToBlind.keys()) {
       blindedIndices.add(k);
     }
 
-    return [b, {commitment, blindedIndices, unblindedMessages}]
+    return [b, { commitment, blindedIndices, unblindedMessages }];
   }
 }
 

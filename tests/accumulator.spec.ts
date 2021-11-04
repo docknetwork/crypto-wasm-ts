@@ -1,5 +1,11 @@
 import {AccumulatorParams, IKeypair, initializeWasm} from "@docknetwork/crypto-wasm";
-import {IInitialElementsStore, Accumulator, PositiveAccumulator, UniversalAccumulator} from "../src";
+import {
+    IInitialElementsStore,
+    Accumulator,
+    PositiveAccumulator,
+    UniversalAccumulator,
+    MembershipWitness, WitnessUpdatePublicInfo
+} from '../src';
 import {
     InMemoryInitialElementsStore,
     InMemoryState,
@@ -78,6 +84,34 @@ async function runCommonTests(keypair: IKeypair, params: AccumulatorParams, accu
     expect(tempAccumulator.verifyMembershipWitness(e6, await accumulator.membershipWitness(e6, sk, state), pk, params)).toEqual(true);
 
     const wits = await accumulator.membershipWitnessesForBatch([e5, e6], sk, state);
+    expect(tempAccumulator.verifyMembershipWitness(e5, wits[0], pk, params)).toEqual(true);
+    expect(tempAccumulator.verifyMembershipWitness(e6, wits[1], pk, params)).toEqual(true);
+
+    const e7 = Accumulator.encodePositiveNumberAsAccumulatorMember(107);
+    const e8 = Accumulator.encodePositiveNumberAsAccumulatorMember(108);
+
+    await accumulator.addBatch([e7, e8], sk, state, store);
+
+    const accumulatedNew = accumulator.accumulated;
+
+    // Witness update by accumulator manager using secret key
+    const newWits = MembershipWitness.updateMultiplePostBatchUpdates(wits, [e5, e6], [e7, e8], [], accumulated, sk);
+
+    if (accumulator instanceof PositiveAccumulator) {
+        tempAccumulator = PositiveAccumulator.fromAccumulated(accumulatedNew);
+    } else {
+        tempAccumulator = UniversalAccumulator.fromAccumulated(accumulatedNew);
+    }
+    expect(tempAccumulator.verifyMembershipWitness(e5, newWits[0], pk, params)).toEqual(true);
+    expect(tempAccumulator.verifyMembershipWitness(e6, newWits[1], pk, params)).toEqual(true);
+
+    // Witness update info created by accumulator manager
+    const witnessUpdInfo = WitnessUpdatePublicInfo.new(accumulated, [e7, e8], [], sk);
+
+    // Witness can be updated without secret key using public info
+    wits[0].updateUsingPublicInfoPostBatchUpdate(e5, [e7, e8], [], witnessUpdInfo);
+    wits[1].updateUsingPublicInfoPostBatchUpdate(e6, [e7, e8], [], witnessUpdInfo);
+
     expect(tempAccumulator.verifyMembershipWitness(e5, wits[0], pk, params)).toEqual(true);
     expect(tempAccumulator.verifyMembershipWitness(e6, wits[1], pk, params)).toEqual(true);
 }

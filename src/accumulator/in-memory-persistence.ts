@@ -1,6 +1,9 @@
 import { IAccumulatorState, IUniversalAccumulatorState } from './IAccumulatorState';
 import { IInitialElementsStore } from './IInitialElementsStore';
 
+/**
+ * In memory implementation of the state. For testing only
+ */
 export class InMemoryState implements IAccumulatorState {
   state: Set<Uint8Array>;
   constructor() {
