@@ -1,4 +1,3 @@
-import { AccumulatorParams } from '@docknetwork/crypto-wasm';
 import {
   generateAccumulatorMembershipStatement,
   generatePedersenCommitmentG1Statement,
@@ -45,7 +44,7 @@ export class Statement {
    * @param accumulated
    */
   static accumulatorMembership(
-    params: AccumulatorParams,
+    params: Uint8Array,
     publicKey: Uint8Array,
     provingKey: Uint8Array,
     accumulated: Uint8Array
@@ -61,7 +60,7 @@ export class Statement {
    * @param accumulated
    */
   static accumulatorNonMembership(
-    params: AccumulatorParams,
+    params: Uint8Array,
     publicKey: Uint8Array,
     provingKey: Uint8Array,
     accumulated: Uint8Array

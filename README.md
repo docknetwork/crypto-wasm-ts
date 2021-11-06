@@ -63,7 +63,7 @@ const main = async () => {
 
   const messageCount = 10;
   const messages: Uint8Array[] = [];
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < messageCount; i++) {
     messages.push(stringToBytes(`Message-${i + 1}`));
   }
 
@@ -79,8 +79,15 @@ const main = async () => {
   console.log(`Signature verified ? ${JSON.stringify(result)}`);
 
   // 2 revealed messages and 1 user supplied blinding
+  let revealed: Set<number> = new Set();
+  let revealedMsgs: Map<number, Uint8Array> = new Map();
+  revealed.add(0);
+  revealed.add(2);
+  revealedMsgs.set(0, messages[0]);
+  revealedMsgs.set(2, messages[2]);
   const blindings: Map<number, Uint8Array> = new Map();
   blindings.set(1, generateRandomFieldElement());
+  
   const protocol = PoKSigProtocol.initialize(messages, sig, params, true, blindings, revealed);
   const challengeContributionP = protocol.challengeContribution(params, true, revealedMsgs);
   const challengeProver = bytesToChallenge(challengeContributionP);

@@ -1,4 +1,4 @@
-import { IKeypair, AccumulatorParams } from '@docknetwork/crypto-wasm';
+import { IKeypair } from '@docknetwork/crypto-wasm';
 import {
   positiveAccumulatorAdd,
   positiveAccumulatorAddBatch,
@@ -57,7 +57,7 @@ import { IInitialElementsStore } from './IInitialElementsStore';
 export abstract class Accumulator {
   value: Uint8Array | object;
   secretKey: Uint8Array | undefined;
-  params: AccumulatorParams | undefined;
+  params: Uint8Array | undefined;
 
   /**
    * Construct an accumulator object.
@@ -103,7 +103,7 @@ export abstract class Accumulator {
    * @param label - Pass to generate parameters deterministically.
    * @returns
    */
-  static generateParams(label?: Uint8Array): AccumulatorParams {
+  static generateParams(label?: Uint8Array): Uint8Array {
     return generateAccumulatorParams(label);
   }
 
@@ -113,7 +113,7 @@ export abstract class Accumulator {
    * @param params
    * @returns true if key is valid, false otherwise
    */
-  static isParamsValid(params: AccumulatorParams): boolean {
+  static isParamsValid(params: Uint8Array): boolean {
     return isAccumulatorParamsValid(params);
   }
 
@@ -132,7 +132,7 @@ export abstract class Accumulator {
    * @param params
    * @returns
    */
-  static generatePublicKeyFromSecretKey(secretKey: Uint8Array, params: AccumulatorParams): Uint8Array {
+  static generatePublicKeyFromSecretKey(secretKey: Uint8Array, params: Uint8Array): Uint8Array {
     return generateAccumulatorPublicKey(secretKey, params);
   }
 
@@ -152,7 +152,7 @@ export abstract class Accumulator {
    * @param seed - Pass to generate keys deterministically.
    * @returns
    */
-  static generateKeypair(params: AccumulatorParams, seed?: Uint8Array): IKeypair {
+  static generateKeypair(params: Uint8Array, seed?: Uint8Array): IKeypair {
     return generateAccumulatorKeyPair(params, seed);
   }
 
@@ -198,7 +198,7 @@ export abstract class Accumulator {
    * @param params
    * @returns params or throws error if cannot find params
    */
-  protected getParams(params?: AccumulatorParams): AccumulatorParams {
+  protected getParams(params?: Uint8Array): Uint8Array {
     if (params === undefined) {
       if (this.params === undefined) {
         throw new Error('Params needs to be provided');
@@ -303,7 +303,7 @@ export abstract class Accumulator {
     member: Uint8Array,
     witness: MembershipWitness,
     pk: Uint8Array,
-    params?: AccumulatorParams
+    params?: Uint8Array
   ): boolean;
 
   /**
@@ -436,7 +436,7 @@ export class PositiveAccumulator extends Accumulator {
    * @param params
    * @param secretKey - Optional. If provided, its stored to do any future updates.
    */
-  static initialize(params: AccumulatorParams, secretKey?: Uint8Array): PositiveAccumulator {
+  static initialize(params: Uint8Array, secretKey?: Uint8Array): PositiveAccumulator {
     const value = positiveAccumulatorInitialize(params);
     return new PositiveAccumulator({ value, params, sk: secretKey });
   }
@@ -561,7 +561,7 @@ export class PositiveAccumulator extends Accumulator {
     member: Uint8Array,
     witness: MembershipWitness,
     publicKey: Uint8Array,
-    params?: AccumulatorParams
+    params?: Uint8Array
   ): boolean {
     const params_ = this.getParams(params);
     return positiveAccumulatorVerifyMembership(this.value, member, witness.value, publicKey, params_);
@@ -615,7 +615,7 @@ export class UniversalAccumulator extends Accumulator {
    */
   static async initialize(
     maxSize: number,
-    params: AccumulatorParams,
+    params: Uint8Array,
     secretKey: Uint8Array,
     initialElementsStore?: IInitialElementsStore,
     batchSize = 100
@@ -655,7 +655,7 @@ export class UniversalAccumulator extends Accumulator {
   static initializeGivenInitialElementsProduct(
     maxSize: number,
     initialElementsProduct: Uint8Array,
-    params: AccumulatorParams,
+    params: Uint8Array,
     secretKey?: Uint8Array
   ): UniversalAccumulator {
     const value = universalAccumulatorInitialiseGivenFv(initialElementsProduct, params, maxSize);
@@ -791,7 +791,7 @@ export class UniversalAccumulator extends Accumulator {
     nonMember: Uint8Array,
     state: IUniversalAccumulatorState,
     secretKey?: Uint8Array,
-    params?: AccumulatorParams,
+    params?: Uint8Array,
     initialElementsStore?: IInitialElementsStore,
     batchSize = 100
   ): Promise<NonMembershipWitness> {
@@ -831,7 +831,7 @@ export class UniversalAccumulator extends Accumulator {
     nonMember: Uint8Array,
     d: Uint8Array,
     secretKey?: Uint8Array,
-    params?: AccumulatorParams,
+    params?: Uint8Array,
     state?: IUniversalAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ): Promise<NonMembershipWitness> {
@@ -857,7 +857,7 @@ export class UniversalAccumulator extends Accumulator {
     nonMembers: Uint8Array[],
     state: IUniversalAccumulatorState,
     secretKey?: Uint8Array,
-    params?: AccumulatorParams,
+    params?: Uint8Array,
     initialElementsStore?: IInitialElementsStore,
     batchSize = 100
   ): Promise<NonMembershipWitness[]> {
@@ -908,7 +908,7 @@ export class UniversalAccumulator extends Accumulator {
     nonMembers: Uint8Array[],
     d: Uint8Array[],
     secretKey?: Uint8Array,
-    params?: AccumulatorParams,
+    params?: Uint8Array,
     state?: IUniversalAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ): Promise<NonMembershipWitness[]> {
@@ -925,7 +925,7 @@ export class UniversalAccumulator extends Accumulator {
     member: Uint8Array,
     witness: MembershipWitness,
     pk: Uint8Array,
-    params?: AccumulatorParams
+    params?: Uint8Array
   ): boolean {
     const params_ = this.getParams(params);
     return universalAccumulatorVerifyMembership(this.value.V, member, witness.value, pk, params_);
@@ -935,7 +935,7 @@ export class UniversalAccumulator extends Accumulator {
     nonMember: Uint8Array,
     witness: NonMembershipWitness,
     pk: Uint8Array,
-    params?: AccumulatorParams
+    params?: Uint8Array
   ): boolean {
     const params_ = this.getParams(params);
     return universalAccumulatorVerifyNonMembership(this.value.V, nonMember, witness.value, pk, params_);

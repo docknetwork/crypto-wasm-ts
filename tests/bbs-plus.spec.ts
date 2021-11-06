@@ -10,7 +10,6 @@ import {
 } from '../src';
 import { stringToBytes } from './utils';
 
-
 function getMessages(count: number): Uint8Array[] {
   const messages: Uint8Array[] = [];
   for (let i = 0; i < count; i++) {
@@ -19,17 +18,64 @@ function getMessages(count: number): Uint8Array[] {
   return messages;
 }
 
-describe("BBS+ signature", () => {
+describe('BBS+ signature sunny day scenario', () => {
+  it('runs', async () => {
+    // Load the WASM module
+    await initializeWasm();
+
+    const messageCount = 10;
+    const messages: Uint8Array[] = [];
+    for (let i = 0; i < messageCount; i++) {
+      messages.push(stringToBytes(`Message-${i + 1}`));
+    }
+
+    const label = stringToBytes('My sig params in g1');
+    const params = SignatureParamsG1.generate(messageCount, label);
+
+    const keypair = KeypairG2.generate(params);
+    const sk = keypair.secretKey;
+    const pk = keypair.publicKey;
+
+    const sig = SignatureG1.generate(messages, sk, params, true);
+    const result = sig.verify(messages, pk, params, true);
+    console.log(`Signature verified ? ${JSON.stringify(result)}`);
+    expect(result.verified).toEqual(true);
+
+    // 2 revealed messages and 1 user supplied blinding
+    let revealed: Set<number> = new Set();
+    let revealedMsgs: Map<number, Uint8Array> = new Map();
+    revealed.add(0);
+    revealed.add(2);
+    revealedMsgs.set(0, messages[0]);
+    revealedMsgs.set(2, messages[2]);
+    const blindings: Map<number, Uint8Array> = new Map();
+    blindings.set(1, generateRandomFieldElement());
+
+    const protocol = PoKSigProtocol.initialize(messages, sig, params, true, blindings, revealed);
+    const challengeContributionP = protocol.challengeContribution(params, true, revealedMsgs);
+    const challengeProver = bytesToChallenge(challengeContributionP);
+    const proof = protocol.generateProof(challengeProver);
+
+    let challengeContributionV = proof.challengeContribution(params, true, revealedMsgs);
+    let challengeVerifier = bytesToChallenge(challengeContributionV);
+
+    const result1 = proof.verify(challengeVerifier, pk, params, true, revealedMsgs);
+    console.log(`Proof verified ? ${JSON.stringify(result1)}`);
+    expect(result1.verified).toEqual(true);
+  });
+});
+
+describe('BBS+ signature', () => {
   beforeAll(async () => {
     await initializeWasm();
   });
 
-  it("should sign and verify signature and create and verify proof of knowledge", () => {
+  it('should sign and verify signature and create and verify proof of knowledge', () => {
     const messageCount = 10;
     const messages = getMessages(messageCount);
     const encodedMessages = messages.map((m) => Signature.encodeMessageForSigning(m));
 
-    const label = stringToBytes("My sig params in g1");
+    const label = stringToBytes('My sig params in g1');
     const params = SignatureParamsG1.generate(messageCount, label);
 
     expect(params.isValid()).toEqual(true);
@@ -106,10 +152,10 @@ describe("BBS+ signature", () => {
     expect(proof.verify(challengeVerifier, pk, params, true, revealedMsgs).verified).toEqual(true);
   });
 
-  it("should sign and verify blind signature", () => {
+  it('should sign and verify blind signature', () => {
     const messageCount = 10;
     const messages = getMessages(messageCount);
-    const label = stringToBytes("My new sig params");
+    const label = stringToBytes('My new sig params');
     const params = SignatureParamsG1.generate(messageCount, label);
 
     const keypair = KeypairG2.generate(params);
@@ -134,12 +180,12 @@ describe("BBS+ signature", () => {
 
     let sig = blindSig.unblind(blinding);
     expect(sig.verify(messages, pk, params, true).verified).toEqual(true);
-  })
+  });
 
-  it("params should be adaptable", () => {
+  it('params should be adaptable', () => {
     const ten = 10;
     const messages10 = getMessages(ten);
-    const label = stringToBytes("Some label for params");
+    const label = stringToBytes('Some label for params');
     const params10 = SignatureParamsG1.generate(ten, label);
     const keypair = KeypairG2.generate(params10);
     const sk = keypair.secretKey;
@@ -172,5 +218,5 @@ describe("BBS+ signature", () => {
 
     const sig2 = SignatureG1.generate(messages5, sk, params5, true);
     expect(sig2.verify(messages5, pk, params5, true).verified).toEqual(true);
-  })
+  });
 });

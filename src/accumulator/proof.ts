@@ -1,4 +1,4 @@
-import { AccumulatorParams, VerifyResult } from '@docknetwork/crypto-wasm';
+import { VerifyResult } from '@docknetwork/crypto-wasm';
 import {
   accumulatorChallengeContributionFromNonMembershipProof,
   accumulatorInitializeMembershipProof,
@@ -25,7 +25,7 @@ export class MembershipProofProtocol {
     member: Uint8Array,
     witness: MembershipWitness,
     publicKey: Uint8Array,
-    params: AccumulatorParams,
+    params: Uint8Array,
     provingKey: Uint8Array,
     blinding?: Uint8Array
   ): MembershipProofProtocol {
@@ -42,7 +42,7 @@ export class MembershipProofProtocol {
   challengeContribution(
     accumulated: Uint8Array,
     publicKey: Uint8Array,
-    params: AccumulatorParams,
+    params: Uint8Array,
     provingKey: Uint8Array
   ): Uint8Array {
     return accumulatorChallengeContributionFromMembershipProtocol(
@@ -66,7 +66,7 @@ export class NonMembershipProofProtocol {
     nonMember: Uint8Array,
     witness: NonMembershipWitness,
     publicKey: Uint8Array,
-    params: AccumulatorParams,
+    params: Uint8Array,
     provingKey: Uint8Array,
     blinding?: Uint8Array
   ): MembershipProofProtocol {
@@ -90,7 +90,7 @@ export class NonMembershipProofProtocol {
   challengeContribution(
     accumulated: Uint8Array,
     publicKey: Uint8Array,
-    params: AccumulatorParams,
+    params: Uint8Array,
     provingKey: Uint8Array
   ): Uint8Array {
     return accumulatorChallengeContributionFromNonMembershipProtocol(
@@ -114,7 +114,7 @@ export class MembershipProof {
     accumulated: Uint8Array,
     challenge: Uint8Array,
     publicKey: Uint8Array,
-    params: AccumulatorParams,
+    params: Uint8Array,
     provingKey: Uint8Array
   ): VerifyResult {
     return accumulatorVerifyMembershipProof(this.value, accumulated, challenge, publicKey, params, provingKey);
@@ -123,7 +123,7 @@ export class MembershipProof {
   challengeContribution(
     accumulated: Uint8Array,
     publicKey: Uint8Array,
-    params: AccumulatorParams,
+    params: Uint8Array,
     provingKey: Uint8Array
   ): Uint8Array {
     return accumulatorChallengeContributionFromMembershipProof(this.value, accumulated, publicKey, params, provingKey);
@@ -141,7 +141,7 @@ export class NonMembershipProof {
     accumulated: Uint8Array,
     challenge: Uint8Array,
     publicKey: Uint8Array,
-    params: AccumulatorParams,
+    params: Uint8Array,
     provingKey: Uint8Array
   ): VerifyResult {
     return accumulatorVerifyNonMembershipProof(this.value, accumulated, challenge, publicKey, params, provingKey);
@@ -150,7 +150,7 @@ export class NonMembershipProof {
   challengeContribution(
     accumulated: Uint8Array,
     publicKey: Uint8Array,
-    params: AccumulatorParams,
+    params: Uint8Array,
     provingKey: Uint8Array
   ): Uint8Array {
     return accumulatorChallengeContributionFromNonMembershipProof(
