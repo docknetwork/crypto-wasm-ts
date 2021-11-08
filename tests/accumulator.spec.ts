@@ -1,4 +1,4 @@
-import { IKeypair, initializeWasm } from '@docknetwork/crypto-wasm';
+import { generateRandomFieldElement, IKeypair, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   IInitialElementsStore,
   Accumulator,
@@ -13,6 +13,17 @@ import {
   InMemoryUniversalState
 } from '../src/accumulator/in-memory-persistence';
 import { stringToBytes } from './utils';
+
+function getAccum(accumulator: any): PositiveAccumulator | UniversalAccumulator {
+  const accumulated = accumulator.accumulated;
+  let tempAccumulator;
+  if (accumulator instanceof PositiveAccumulator) {
+    tempAccumulator = PositiveAccumulator.fromAccumulated(accumulated);
+  } else {
+    tempAccumulator = UniversalAccumulator.fromAccumulated(accumulated);
+  }
+  return tempAccumulator
+}
 
 async function runCommonTests(
   keypair: IKeypair,
@@ -80,12 +91,7 @@ async function runCommonTests(
   expect(state.state.has(e1)).toEqual(false);
 
   const accumulated = accumulator.accumulated;
-  let tempAccumulator;
-  if (accumulator instanceof PositiveAccumulator) {
-    tempAccumulator = PositiveAccumulator.fromAccumulated(accumulated);
-  } else {
-    tempAccumulator = UniversalAccumulator.fromAccumulated(accumulated);
-  }
+  let tempAccumulator = getAccum(accumulator);
 
   expect(
     tempAccumulator.verifyMembershipWitness(e5, await accumulator.membershipWitness(e5, sk, state), pk, params)
@@ -103,16 +109,10 @@ async function runCommonTests(
 
   await accumulator.addBatch([e7, e8], sk, state, store);
 
-  const accumulatedNew = accumulator.accumulated;
-
-  // Witness update by accumulator manager using secret key
+  // Witness updates by accumulator manager using secret key
   const newWits = MembershipWitness.updateMultiplePostBatchUpdates(wits, [e5, e6], [e7, e8], [], accumulated, sk);
 
-  if (accumulator instanceof PositiveAccumulator) {
-    tempAccumulator = PositiveAccumulator.fromAccumulated(accumulatedNew);
-  } else {
-    tempAccumulator = UniversalAccumulator.fromAccumulated(accumulatedNew);
-  }
+  tempAccumulator = getAccum(accumulator);
   expect(tempAccumulator.verifyMembershipWitness(e5, newWits[0], pk, params)).toEqual(true);
   expect(tempAccumulator.verifyMembershipWitness(e6, newWits[1], pk, params)).toEqual(true);
 
@@ -125,11 +125,92 @@ async function runCommonTests(
 
   expect(tempAccumulator.verifyMembershipWitness(e5, wits[0], pk, params)).toEqual(true);
   expect(tempAccumulator.verifyMembershipWitness(e6, wits[1], pk, params)).toEqual(true);
+
+  const e5Wit = await accumulator.membershipWitness(e5, sk, state);
+  const e6Wit = await accumulator.membershipWitness(e6, sk, state);
+
+  let e5WitTemp = new MembershipWitness(e5Wit.value);
+  let e6WitTemp = new MembershipWitness(e6Wit.value);
+
+  const e9 = Accumulator.encodePositiveNumberAsAccumulatorMember(109);
+  const e10 = Accumulator.encodePositiveNumberAsAccumulatorMember(110);
+  const e11 = Accumulator.encodePositiveNumberAsAccumulatorMember(111);
+  const e12 = Accumulator.encodePositiveNumberAsAccumulatorMember(112);
+  const e13 = Accumulator.encodePositiveNumberAsAccumulatorMember(113);
+  const e14 = Accumulator.encodePositiveNumberAsAccumulatorMember(114);
+  const e15 = Accumulator.encodePositiveNumberAsAccumulatorMember(115);
+
+  const additions = [
+    [e9, e10], [e11, e12], [e13, e14, e15]
+  ];
+  const removals = [
+    [e7, e8], [e9], []
+  ];
+
+  const witUpd1 = WitnessUpdatePublicInfo.new(accumulator.accumulated, additions[0], removals[0], sk);
+  await accumulator.addRemoveBatches(additions[0], removals[0], sk, state);
+
+  tempAccumulator = getAccum(accumulator);
+  e5WitTemp.updateUsingPublicInfoPostBatchUpdate(e5, additions[0], removals[0], witUpd1);
+  e6WitTemp.updateUsingPublicInfoPostBatchUpdate(e6, additions[0], removals[0], witUpd1);
+  expect(tempAccumulator.verifyMembershipWitness(e5, e5WitTemp, pk, params)).toEqual(true);
+  expect(tempAccumulator.verifyMembershipWitness(e6, e6WitTemp, pk, params)).toEqual(true);
+
+  const witUpd2 = WitnessUpdatePublicInfo.new(accumulator.accumulated, additions[1], removals[1], sk);
+  await accumulator.addRemoveBatches(additions[1], removals[1], sk, state);
+
+  tempAccumulator = getAccum(accumulator);
+  e5WitTemp.updateUsingPublicInfoPostBatchUpdate(e5, additions[1], removals[1], witUpd2);
+  e6WitTemp.updateUsingPublicInfoPostBatchUpdate(e6, additions[1], removals[1], witUpd2);
+  expect(tempAccumulator.verifyMembershipWitness(e5, e5WitTemp, pk, params)).toEqual(true);
+  expect(tempAccumulator.verifyMembershipWitness(e6, e6WitTemp, pk, params)).toEqual(true);
+
+  const witUpd3 = WitnessUpdatePublicInfo.new(accumulator.accumulated, additions[2], removals[2], sk);
+  await accumulator.addRemoveBatches(additions[2], removals[2], sk, state);
+
+  tempAccumulator = getAccum(accumulator);
+  e5WitTemp.updateUsingPublicInfoPostBatchUpdate(e5, additions[2], removals[2], witUpd3);
+  e6WitTemp.updateUsingPublicInfoPostBatchUpdate(e6, additions[2], removals[2], witUpd3);
+  expect(tempAccumulator.verifyMembershipWitness(e5, e5WitTemp, pk, params)).toEqual(true);
+  expect(tempAccumulator.verifyMembershipWitness(e6, e6WitTemp, pk, params)).toEqual(true);
+
+  const witUpds = [witUpd1, witUpd2, witUpd3];
+
+  e5Wit.updateUsingPublicInfoPostMultipleBatchUpdates(
+    e5,
+    additions,
+    removals,
+    witUpds
+  );
+  e6Wit.updateUsingPublicInfoPostMultipleBatchUpdates(
+    e6,
+    additions,
+    removals,
+    witUpds
+  );
+
+  tempAccumulator = getAccum(accumulator);
+
+  expect(tempAccumulator.verifyMembershipWitness(e5, e5Wit, pk, params)).toEqual(true);
+  expect(tempAccumulator.verifyMembershipWitness(e6, e6Wit, pk, params)).toEqual(true);
 }
 
 describe('Accumulators type', () => {
   beforeAll(async () => {
     await initializeWasm();
+  });
+
+  it('State update', async () => {
+    const params = PositiveAccumulator.generateParams();
+    const keypair = PositiveAccumulator.generateKeypair(params);
+    const posAccumulator = PositiveAccumulator.initialize(params);
+    const state = new InMemoryState();
+
+    const members1 = [generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement()];
+    await posAccumulator.addBatch(members1, keypair.secret_key, state);
+
+    const members2 = [generateRandomFieldElement(), generateRandomFieldElement()];
+    await posAccumulator.addRemoveBatches(members2, members1, keypair.secret_key, state);
   });
 
   it('Positive accumulator should run', async () => {

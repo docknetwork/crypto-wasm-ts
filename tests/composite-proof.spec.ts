@@ -1,11 +1,12 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from './utils';
 import {
+  Accumulator,
   BlindSignatureG1,
   CompositeProof,
   KeypairG2,
   MetaStatement,
-  MetaStatements,
+  MetaStatements, PositiveAccumulator,
   ProofSpec,
   Signature,
   SignatureG1,
@@ -16,6 +17,7 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../src';
+import { InMemoryState } from '../src/accumulator/in-memory-persistence';
 
 describe('Proving knowledge of 1 BBS+ signature', () => {
   it('works', async () => {
@@ -235,6 +237,92 @@ describe('Proving knowledge of 2 BBS+ signature and certain message equality', (
     const unrevealedMsgs2 = new Map(messages2.map((m, i) => [i, m]));
     const witness2 = Witness.poKBBSSignature(sig2, unrevealedMsgs2, true);
 
+    const witnesses = new Witnesses();
+    witnesses.add(witness1);
+    witnesses.add(witness2);
+
+    const proof = CompositeProof.generate(proofSpec, witnesses);
+
+    expect(proof.verify(proofSpec).verified).toEqual(true);
+  });
+});
+
+describe('Proving knowledge of 1 BBS+ signature and a certain message in the accumulator', () => {
+  it('works', async () => {
+    // Load the WASM module
+    await initializeWasm();
+
+    // Messages to sign
+    const messageCount = 5;
+    const messages: Uint8Array[] = [];
+    for (let i = 0; i < messageCount; i++) {
+      messages.push(stringToBytes(`Message-${i + 1}`));
+    }
+
+    const encodedMessages = [];
+    for (let i = 0; i < messageCount; i++) {
+      if (i === messageCount-1) {
+        encodedMessages.push(Signature.encodeMessageForSigning(messages[i]));
+      } else {
+        encodedMessages.push(Accumulator.encodeBytesAsAccumulatorMember(messages[i]));
+      }
+    }
+
+    const label = stringToBytes('My sig params in g1');
+    const sigParams = SignatureParamsG1.generate(messageCount, label);
+
+    // Signers keys
+    const sigKeypair = KeypairG2.generate(sigParams);
+    const sigSk = sigKeypair.secretKey;
+    const sigPk = sigKeypair.publicKey;
+
+    const accumParams = PositiveAccumulator.generateParams(stringToBytes('Accumulator params'));
+    const accumKeypair = PositiveAccumulator.generateKeypair(accumParams);
+    const accumulator = PositiveAccumulator.initialize(accumParams);
+    const state = new InMemoryState();
+
+    const sig = SignatureG1.generate(encodedMessages, sigSk, sigParams, false);
+    const result = sig.verify(encodedMessages, sigPk, sigParams, false);
+    expect(result.verified).toEqual(true);
+
+    await accumulator.add(encodedMessages[messageCount-1], accumKeypair.secret_key, state);
+    const witness = await accumulator.membershipWitness(encodedMessages[messageCount-1], accumKeypair.secret_key, state)
+
+    // User reveals 1 message at index 1 to verifier
+    const revealedMsgIndices: Set<number> = new Set();
+    revealedMsgIndices.add(1);
+    const revealedMsgs: Map<number, Uint8Array> = new Map();
+    const unrevealedMsgs: Map<number, Uint8Array> = new Map();
+    for (let i = 0; i < messageCount; i++) {
+      if (revealedMsgIndices.has(i)) {
+        revealedMsgs.set(i, encodedMessages[i]);
+      } else {
+        unrevealedMsgs.set(i, encodedMessages[i]);
+      }
+    }
+
+    const provingKey = Accumulator.generateMembershipProvingKey();
+
+    const statement1 = Statement.poKBBSSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement2 = Statement.accumulatorMembership(accumParams, accumKeypair.public_key, provingKey, accumulator.accumulated);
+    const statements = new Statements();
+    statements.add(statement1);
+    statements.add(statement2);
+
+    const witnessEq = new WitnessEqualityMetaStatement();
+    witnessEq.addWitnessRef(0, messageCount-1);
+    witnessEq.addWitnessRef(1, 0);
+    const ms = MetaStatement.witnessEquality(witnessEq);
+
+    const metaStatements = new MetaStatements();
+    metaStatements.add(ms);
+
+    const context = stringToBytes('some context');
+
+    const proofSpec = new ProofSpec(statements, metaStatements, context);
+
+    const witness1 = Witness.poKBBSSignature(sig, unrevealedMsgs, false);
+    const witness2 = Witness.accumulatorMembership(encodedMessages[messageCount-1], witness);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
     witnesses.add(witness2);

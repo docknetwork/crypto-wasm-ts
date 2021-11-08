@@ -160,5 +160,5 @@ See the [test](./tests/accumulator.spec.ts) for more.
 
 ### Composite proofs
 
-The code for composite proof lives [here](./src/composite-proof). See the [test](./tests/demo.spec.ts) for example.
+The code for composite proof lives [here](./src/composite-proof). See the tests [here](./tests/composite-proof.spec.ts) and [here](./tests/demo.spec.ts) for example.
 
