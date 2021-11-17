@@ -19,17 +19,25 @@ import {
 } from '../src';
 import { InMemoryState } from '../src/accumulator/in-memory-persistence';
 
-describe('Proving knowledge of 1 BBS+ signature', () => {
+describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();
 
-    // Messages to sign
-    const messageCount = 5;
+    // Messages to sign; the messages are attributes of a user like SSN (Social Security Number), name, email, etc
     const messages: Uint8Array[] = [];
-    for (let i = 0; i < messageCount; i++) {
-      messages.push(stringToBytes(`Message-${i + 1}`));
-    }
+    // SSN
+    messages.push(stringToBytes('123-456789-0'));
+    // First name
+    messages.push(stringToBytes('John'));
+    // Last name
+    messages.push(stringToBytes('Smith'));
+    // Email
+    messages.push(stringToBytes('john.smith@emample.com'));
+    // City
+    messages.push(stringToBytes('New York'));
+
+    const messageCount = messages.length;
 
     const label = stringToBytes('My sig params in g1');
     const params = SignatureParamsG1.generate(messageCount, label);
@@ -44,7 +52,7 @@ describe('Proving knowledge of 1 BBS+ signature', () => {
     const result = sig.verify(messages, pk, params, true);
     expect(result.verified).toEqual(true);
 
-    // User reveals 2 messages at index 2 and 4 to verifier
+    // User reveals 2 messages at index 2 and 4 to verifier, last name and city
     const revealedMsgIndices: Set<number> = new Set();
     revealedMsgIndices.add(2);
     revealedMsgIndices.add(4);
@@ -58,15 +66,17 @@ describe('Proving knowledge of 1 BBS+ signature', () => {
       }
     }
 
-    const statement1 = Statement.poKBBSSignature(params, pk, revealedMsgs, true);
+    const statement1 = Statement.bbsSignature(params, pk, revealedMsgs, true);
     const statements = new Statements();
     statements.add(statement1);
 
+    // Optional context of the proof
     const context = stringToBytes('some context');
 
+    // Both the prover (user) and verifier should independently construct this `ProofSpec` but only for testing, i am reusing it.
     const proofSpec = new ProofSpec(statements, new MetaStatements(), context);
 
-    const witness1 = Witness.poKBBSSignature(sig, unrevealedMsgs, true);
+    const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, true);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
 
@@ -76,17 +86,13 @@ describe('Proving knowledge of 1 BBS+ signature', () => {
   });
 });
 
-describe('Getting a blind signature', () => {
+describe('Getting a blind signature, i.e. signature where signer is not aware of certain attributes of the user', () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();
 
-    // Messages to sign
+    // No of total (hidden from the signer or otherwise) messages to sign
     const messageCount = 5;
-    const messages: Uint8Array[] = [];
-    for (let i = 0; i < messageCount; i++) {
-      messages.push(stringToBytes(`Message-${i + 1}`));
-    }
 
     const label = stringToBytes('My sig params in g1');
     const params = SignatureParamsG1.generate(messageCount, label);
@@ -96,25 +102,24 @@ describe('Getting a blind signature', () => {
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 
+    // Prepare messages that will be blinded (hidden) and known to signer
+    const blindedMessages = new Map();
+    const knownMessages = new Map();
+
     // User wants to hide messages at indices 0 and 2 from signer
     const blindedIndices: number[] = [];
     blindedIndices.push(0);
+    blindedMessages.set(0, stringToBytes('my-secret'));
     blindedIndices.push(2);
+    blindedMessages.set(2, stringToBytes('my-another-secret'));
 
-    // Prepare message that will be blinded (hidden) and known to signer
-    const messagesToBlind = new Map();
-    const knownMessages = new Map();
-    for (let i = 0; i < messageCount; i++) {
-      if (blindedIndices.indexOf(i) > -1) {
-        messagesToBlind.set(i, messages[i]);
-      } else {
-        knownMessages.set(i, messages[i]);
-      }
-    }
+    knownMessages.set(1, stringToBytes('John Smith'));
+    knownMessages.set(3, stringToBytes('john.smith@emample.com'));
+    knownMessages.set(4, stringToBytes('New York'));
 
     // Blind signature request will contain a Pedersen commitment and it can be given a blinding of choice
     // or it can generate on its own.
-    const [blinding, request] = BlindSignatureG1.generateRequest(messagesToBlind, params, true);
+    const [blinding, request] = BlindSignatureG1.generateRequest(blindedMessages, params, true);
 
     expect(request.blindedIndices).toEqual(new Set(blindedIndices));
 
@@ -130,7 +135,7 @@ describe('Getting a blind signature', () => {
     const elements = [blinding];
     for (const i of blindedIndices) {
       // The messages are encoded before committing
-      elements.push(Signature.encodeMessageForSigning(messages[i]));
+      elements.push(Signature.encodeMessageForSigning(blindedMessages.get(i)));
     }
     const witness1 = Witness.pedersenCommitment(elements);
     const witnesses = new Witnesses();
@@ -145,34 +150,62 @@ describe('Getting a blind signature', () => {
 
     // User unblind the signature
     const sig = blindSig.unblind(blinding);
+
+    // Combine blinded and known messages in an array
+    const messages = Array(blindedMessages.size + knownMessages.size);
+    for (const [i, m] of blindedMessages.entries()) {
+      messages[i] = m;
+    }
+    for (const [i, m] of knownMessages.entries()) {
+      messages[i] = m;
+    }
+
     const result = sig.verify(messages, pk, params, true);
     expect(result.verified).toEqual(true);
   });
 });
 
-describe('Proving knowledge of 2 BBS+ signature and certain message equality', () => {
+describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of a specific attribute', () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();
 
     // There are 2 signers, both have their own keys and they sign different messages
 
-    // 1st Signer's messages
-    const messageCount1 = 5;
+    // The messages represent a user's attributes. Both signatures have some attributes in common and the user wants to
+    // prove that certain attribute, SSN in this case is same in both signatures.
+
+    // Messages to be signed by the first signer
     const messages1: Uint8Array[] = [];
-    for (let i = 0; i < messageCount1; i++) {
-      messages1.push(stringToBytes(`Message-1-${i + 1}`));
-    }
+    // SSN
+    messages1.push(stringToBytes('123-456789-0'));
+    // First name
+    messages1.push(stringToBytes('John'));
+    // Last name
+    messages1.push(stringToBytes('Smith'));
+    // Email
+    messages1.push(stringToBytes('john.smith@emample.com'));
+    // City
+    messages1.push(stringToBytes('New York'));
 
-    // 2nd Signer's messages
-    const messageCount2 = 6;
+    const messageCount1 = messages1.length;
+
+    // Messages to be signed by the 2nd signer
     const messages2: Uint8Array[] = [];
-    for (let i = 0; i < messageCount2; i++) {
-      messages2.push(stringToBytes(`Message-2-${i + 1}`));
-    }
+    // Name
+    messages2.push(stringToBytes('John Smith'));
+    // Email
+    messages2.push(stringToBytes('john.smith@emample.com'));
+    // City
+    messages2.push(stringToBytes('New York'));
+    // Employer
+    messages2.push(stringToBytes('Acme Corp'));
+    // Employee id
+    messages2.push(stringToBytes('5010'));
+    // SSN, this is same as in first signer's messages
+    messages2.push(stringToBytes('123-456789-0'));
 
-    // Make one message in both message lists equal
-    messages1[1] = messages2[2];
+    const messageCount2 = messages2.length;
 
     // 1st Signer's params
     const label1 = stringToBytes('Label-1');
@@ -207,19 +240,19 @@ describe('Proving knowledge of 2 BBS+ signature and certain message equality', (
     // User wants to prove knowledge of 2 signatures and hence 2 statements
 
     // Statement for signature of 1st signer, not revealing any messages to the verifier
-    const statement1 = Statement.poKBBSSignature(params1, pk1, new Map(), true);
+    const statement1 = Statement.bbsSignature(params1, pk1, new Map(), true);
 
     // Statement for signature of 2nd signer, not revealing any messages to the verifier
-    const statement2 = Statement.poKBBSSignature(params2, pk2, new Map(), true);
+    const statement2 = Statement.bbsSignature(params2, pk2, new Map(), true);
 
     const statements = new Statements();
     const sId1 = statements.add(statement1);
     const sId2 = statements.add(statement2);
 
-    // For proving messages1[1] == messages2[2], use specify using MetaStatement
+    // For proving messages1[0] == messages2[5], use specify using MetaStatement
     const witnessEq = new WitnessEqualityMetaStatement();
-    witnessEq.addWitnessRef(sId1, 1);
-    witnessEq.addWitnessRef(sId2, 2);
+    witnessEq.addWitnessRef(sId1, 0);
+    witnessEq.addWitnessRef(sId2, 5);
     const ms = MetaStatement.witnessEquality(witnessEq);
 
     const metaStatements = new MetaStatements();
@@ -231,11 +264,11 @@ describe('Proving knowledge of 2 BBS+ signature and certain message equality', (
 
     // Using the messages and signature from 1st signer
     const unrevealedMsgs1 = new Map(messages1.map((m, i) => [i, m]));
-    const witness1 = Witness.poKBBSSignature(sig1, unrevealedMsgs1, true);
+    const witness1 = Witness.bbsSignature(sig1, unrevealedMsgs1, true);
 
     // Using the messages and signature from 2nd signer
     const unrevealedMsgs2 = new Map(messages2.map((m, i) => [i, m]));
-    const witness2 = Witness.poKBBSSignature(sig2, unrevealedMsgs2, true);
+    const witness2 = Witness.bbsSignature(sig2, unrevealedMsgs2, true);
 
     const witnesses = new Witnesses();
     witnesses.add(witness1);
@@ -253,18 +286,28 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     await initializeWasm();
 
     // Messages to sign
-    const messageCount = 5;
     const messages: Uint8Array[] = [];
-    for (let i = 0; i < messageCount; i++) {
-      messages.push(stringToBytes(`Message-${i + 1}`));
-    }
+    // SSN
+    messages.push(stringToBytes('123-456789-0'));
+    // First name
+    messages.push(stringToBytes('John'));
+    // Last name
+    messages.push(stringToBytes('Smith'));
+    // Email
+    messages.push(stringToBytes('john.smith@emample.com'));
+    // User id, this will be added to the accumulator
+    messages.push(stringToBytes('user:123-xyz-#'));
 
+    const messageCount = messages.length;
+
+    // Encode messages for signing as well as adding to the accumulator
     const encodedMessages = [];
     for (let i = 0; i < messageCount; i++) {
       if (i === messageCount-1) {
-        encodedMessages.push(Signature.encodeMessageForSigning(messages[i]));
-      } else {
+        // Last one, i.e. user id is added to the accumulator so encode accordingly
         encodedMessages.push(Accumulator.encodeBytesAsAccumulatorMember(messages[i]));
+      } else {
+        encodedMessages.push(Signature.encodeMessageForSigning(messages[i]));
       }
     }
 
@@ -303,14 +346,17 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
 
     const provingKey = Accumulator.generateMembershipProvingKey();
 
-    const statement1 = Statement.poKBBSSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.accumulatorMembership(accumParams, accumKeypair.public_key, provingKey, accumulator.accumulated);
     const statements = new Statements();
     statements.add(statement1);
     statements.add(statement2);
 
+    // The last message in the signature is same as the accumulator member
     const witnessEq = new WitnessEqualityMetaStatement();
+    // Witness ref for last message in the signature
     witnessEq.addWitnessRef(0, messageCount-1);
+    // Witness ref for accumulator member
     witnessEq.addWitnessRef(1, 0);
     const ms = MetaStatement.witnessEquality(witnessEq);
 
@@ -321,7 +367,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
 
     const proofSpec = new ProofSpec(statements, metaStatements, context);
 
-    const witness1 = Witness.poKBBSSignature(sig, unrevealedMsgs, false);
+    const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
     const witness2 = Witness.accumulatorMembership(encodedMessages[messageCount-1], witness);
     const witnesses = new Witnesses();
     witnesses.add(witness1);

@@ -25,7 +25,7 @@ export class Witness {
    * @param unrevealedMessages
    * @param encodeMessages
    */
-  static poKBBSSignature(
+  static bbsSignature(
     signature: SignatureG1,
     unrevealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean

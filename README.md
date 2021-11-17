@@ -153,12 +153,16 @@ const positiveAccum = async () => {
   console.log(result2);
 };
 
-posttiveAccum()
+positiveAccum()
 ```
 
 See the [test](./tests/accumulator.spec.ts) for more.
 
 ### Composite proofs
 
-The code for composite proof lives [here](./src/composite-proof). See the tests [here](./tests/composite-proof.spec.ts) and [here](./tests/demo.spec.ts) for example.
+The code for composite proof lives [here](./src/composite-proof). 
 
+See the tests [here](./tests/composite-proof.spec.ts) for various scenarios like multiple BBS+ signatures, requesting blind 
+signature, using accumulator with BBS+ signature.   
+For a more involved demo with multiple BBS+ signatures being used with accumulator and knowledge of signatures being proved 
+before requesting blind signatures, see [here](./tests/demo.spec.ts).

@@ -27,7 +27,7 @@ export class Statement {
    * @param revealedMessages
    * @param encodeMessages
    */
-  static poKBBSSignature(
+  static bbsSignature(
     sigParams: SignatureParamsG1,
     publicKey: Uint8Array,
     revealedMessages: Map<number, Uint8Array>,
