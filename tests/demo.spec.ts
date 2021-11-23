@@ -216,13 +216,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       Accum3Pk = keypair.public_key;
       const maxSize = 100;
 
-      const initialElements = [];
-      for (let i = 0; i < maxSize; i++) {
-        initialElements.push(generateRandomFieldElement());
-      }
-
-      const fV = UniversalAccumulator.initialElementsProduct(initialElements, Accum3Sk);
-      Accum3 = UniversalAccumulator.initializeGivenInitialElementsProduct(maxSize, fV, Accum3Params);
+      Accum3 = await UniversalAccumulator.initialize(maxSize, Accum3Params, Accum3Sk);
       Accum3NonMemPrk = Accumulator.generateNonMembershipProvingKey(stringToBytes('Another public label'));
       Accum3MemPrk = Accumulator.deriveMembershipKeyFromNonMembershipProvingKey(Accum3NonMemPrk);
     }

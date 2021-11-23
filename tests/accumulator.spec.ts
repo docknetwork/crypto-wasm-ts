@@ -1,4 +1,9 @@
-import { generateRandomFieldElement, IKeypair, initializeWasm } from '@docknetwork/crypto-wasm';
+import {
+  generateRandomFieldElement,
+  IKeypair,
+  initializeWasm,
+  universalAccumulatorFixedInitialElements
+} from '@docknetwork/crypto-wasm';
 import {
   IInitialElementsStore,
   Accumulator,
@@ -227,6 +232,12 @@ describe('Accumulators type', () => {
     const keypair1 = UniversalAccumulator.generateKeypair(params1);
     const store = new InMemoryInitialElementsStore();
     const accumulator1 = await UniversalAccumulator.initialize(20, params1, keypair1.secret_key, store);
+
+    const fixed = universalAccumulatorFixedInitialElements();
+    expect(store.store.size).toEqual(20 + fixed.length + 1);
+    for (const i of fixed) {
+      expect(store.store.has(i));
+    }
     const state1 = new InMemoryUniversalState();
     await runCommonTests(keypair1, params1, accumulator1, state1, store);
   });

@@ -37,7 +37,8 @@ import {
   generateRandomFieldElement,
   universalAccumulatorCombineMultipleD,
   generateFieldElementFromBytes,
-  generateFieldElementFromNumber
+  generateFieldElementFromNumber,
+  universalAccumulatorFixedInitialElements
 } from '@docknetwork/crypto-wasm';
 import { MembershipWitness, NonMembershipWitness } from './accumulatorWitness';
 import { getUint8ArraysFromObject } from '../util';
@@ -620,15 +621,26 @@ export class UniversalAccumulator extends Accumulator {
     initialElementsStore?: IInitialElementsStore,
     batchSize = 100
   ): Promise<UniversalAccumulator> {
-    // store a batch of generated elements and take the product once the batch is full
-    let currentBatch = [];
+    const storePresent = initialElementsStore !== undefined;
+
     // store the products of each batch
     const products: Uint8Array[] = [];
+    // The first batch of products is the elements fixed for each curve, in this case it's for BLS12-381
+    const fixed = universalAccumulatorFixedInitialElements();
+    if (storePresent) {
+      for (const i of fixed) {
+        await initialElementsStore.add(i);
+      }
+    }
+    products.push(universalAccumulatorComputeInitialFv(fixed, secretKey));
+
+    // store a batch of generated elements and take the product once the batch is full
+    let currentBatch = [];
     // Accumulate 1 more than the maximum number of allowed members as specified in the paper
     for (let i = 0; i <= maxSize; i++) {
       const e = generateRandomFieldElement();
       currentBatch.push(e);
-      if (initialElementsStore !== undefined) {
+      if (storePresent) {
         await initialElementsStore.add(e);
       }
       if (currentBatch.length == batchSize) {
