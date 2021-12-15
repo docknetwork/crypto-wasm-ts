@@ -218,7 +218,7 @@ describe('Accumulators type', () => {
     await posAccumulator.addRemoveBatches(members2, members1, keypair.secret_key, state);
   });
 
-  it('Positive accumulator should run', async () => {
+  it('Positive accumulator', async () => {
     const label = stringToBytes('Accumulator params');
     const params = PositiveAccumulator.generateParams(label);
     const keypair = PositiveAccumulator.generateKeypair(params);
@@ -228,10 +228,10 @@ describe('Accumulators type', () => {
   });
 
   it('Universal accumulator', async () => {
-    const params1 = UniversalAccumulator.generateParams();
-    const keypair1 = UniversalAccumulator.generateKeypair(params1);
+    const params = UniversalAccumulator.generateParams();
+    const keypair = UniversalAccumulator.generateKeypair(params);
     const store = new InMemoryInitialElementsStore();
-    const accumulator1 = await UniversalAccumulator.initialize(20, params1, keypair1.secret_key, store);
+    const accumulator1 = await UniversalAccumulator.initialize(20, params, keypair.secret_key, store);
 
     const fixed = universalAccumulatorFixedInitialElements();
     expect(store.store.size).toEqual(20 + fixed.length + 1);
@@ -239,6 +239,6 @@ describe('Accumulators type', () => {
       expect(store.store.has(i));
     }
     const state1 = new InMemoryUniversalState();
-    await runCommonTests(keypair1, params1, accumulator1, state1, store);
+    await runCommonTests(keypair, params, accumulator1, state1, store);
   });
 });

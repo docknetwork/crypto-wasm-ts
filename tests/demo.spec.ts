@@ -3,14 +3,14 @@ import {
   Accumulator,
   BlindSignature,
   BlindSignatureG1,
-  CompositeProof,
+  CompositeProofG1,
   KeypairG2,
   MembershipWitness,
   MetaStatement,
   MetaStatements,
   NonMembershipWitness,
   PositiveAccumulator,
-  ProofSpec,
+  ProofSpecG1,
   Signature,
   SignatureG1,
   SignatureParamsG1,
@@ -89,7 +89,7 @@ let Accum2: PositiveAccumulator;
 let Accum3: UniversalAccumulator;
 
 export interface BlindSigRequest {
-  proof: CompositeProof;
+  proof: CompositeProofG1;
   commitment: Uint8Array;
 }
 
@@ -279,12 +279,12 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       statements.add(statement);
 
       // Proof spec with statement and meta-statement
-      const proofSpec = new ProofSpec(statements, new MetaStatements());
+      const proofSpec = new ProofSpecG1(statements, new MetaStatements());
 
       const witnesses = new Witnesses();
       witnesses.add(witness);
       // Composite proof for proving knowledge of opening of Pedersen commitment
-      const proof = CompositeProof.generate(proofSpec, witnesses, nonce);
+      const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
       return [{ proof, commitment }, blinding];
     }
 
@@ -343,13 +343,13 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(ms2);
 
       // Create proof spec with statements and meta statements
-      const proofSpec = new ProofSpec(statements, metaStatements);
+      const proofSpec = new ProofSpecG1(statements, metaStatements);
 
       const witnesses = new Witnesses();
       witnesses.add(witness1);
       witnesses.add(witness2);
       witnesses.add(witness3);
-      const proof = CompositeProof.generate(proofSpec, witnesses, nonce);
+      const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
       return [{ proof, commitment }, blinding];
     }
 
@@ -430,7 +430,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
       metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
-      const proofSpec = new ProofSpec(statements, metaStatements);
+      const proofSpec = new ProofSpecG1(statements, metaStatements);
 
       const witnesses = new Witnesses();
       witnesses.add(witness1);
@@ -438,7 +438,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       witnesses.add(witness3);
       witnesses.add(witness4);
       witnesses.add(witness5);
-      const proof = CompositeProof.generate(proofSpec, witnesses, nonce);
+      const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
       return [{ proof, commitment }, blinding];
     }
 
@@ -457,7 +457,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const statements = new Statements();
       statements.add(statement);
 
-      const proofSpec = new ProofSpec(statements, new MetaStatements());
+      const proofSpec = new ProofSpecG1(statements, new MetaStatements());
       const res = blindSigReq.proof.verify(proofSpec, nonce);
       if (!res.verified) {
         throw new Error(`Failed to verify blind sig request due to ${res.error}`);
@@ -510,7 +510,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(ms1);
       metaStatements.add(ms2);
 
-      const proofSpec = new ProofSpec(statements, metaStatements);
+      const proofSpec = new ProofSpecG1(statements, metaStatements);
 
       const res = blindSigReq.proof.verify(proofSpec, nonce);
       if (!res.verified) {
@@ -581,7 +581,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
       metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
-      const proofSpec = new ProofSpec(statements, metaStatements);
+      const proofSpec = new ProofSpecG1(statements, metaStatements);
 
       const res = blindSigReq.proof.verify(proofSpec, nonce);
       if (!res.verified) {
@@ -680,7 +680,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
       metaStatements.add(MetaStatement.witnessEquality(witnessEq4));
 
-      const proofSpec = new ProofSpec(statements, metaStatements);
+      const proofSpec = new ProofSpecG1(statements, metaStatements);
 
       const witnesses = new Witnesses();
       witnesses.add(witness1);
@@ -690,11 +690,11 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       witnesses.add(witness5);
       witnesses.add(witness6);
 
-      return CompositeProof.generate(proofSpec, witnesses, nonce);
+      return CompositeProofG1.generate(proofSpec, witnesses, nonce);
     }
 
     function verifyProofOf3Creds(
-      proof: CompositeProof,
+      proof: CompositeProofG1,
       sigParams: SignatureParamsG1,
       pk: Uint8Array,
       revealedMsgs: Map<number, Uint8Array>,
@@ -764,7 +764,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
       metaStatements.add(MetaStatement.witnessEquality(witnessEq4));
 
-      const proofSpec = new ProofSpec(statements, metaStatements);
+      const proofSpec = new ProofSpecG1(statements, metaStatements);
 
       const res = proof.verify(proofSpec, nonce);
       if (!res.verified) {

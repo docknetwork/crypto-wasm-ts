@@ -1,5 +1,5 @@
 import { SignatureParamsG1 } from './params';
-import { VerifyResult } from '@docknetwork/crypto-wasm';
+import { generateFieldElementFromNumber, VerifyResult } from '@docknetwork/crypto-wasm';
 import {
   bbsBlindSignG1,
   bbsEncodeMessageForSigning,
@@ -18,6 +18,13 @@ export abstract class Signature {
 
   static encodeMessageForSigning(message: Uint8Array): Uint8Array {
     return bbsEncodeMessageForSigning(message);
+  }
+
+  static encodePositiveNumberMessage(num: number): Uint8Array {
+    if (!Number.isInteger(num) || num < 0) {
+      throw new Error(`Need a positive integer to encode but found ${num} `);
+    }
+    return generateFieldElementFromNumber(num);
   }
 }
 
@@ -120,11 +127,12 @@ export class BlindSignatureG1 extends BlindSignature {
     unblindedMessages?: Map<number, Uint8Array>
   ): [Uint8Array, BlindSignatureRequest] {
     const [commitment, b] = params.commitToMessages(messagesToBlind, encodeMessages, blinding);
-    const blindedIndices = new Set<number>();
+    const blindedIndices: number[] = [];
     for (const k of messagesToBlind.keys()) {
-      blindedIndices.add(k);
+      blindedIndices.push(k);
     }
 
+    blindedIndices.sort();
     return [b, { commitment, blindedIndices, unblindedMessages }];
   }
 }
@@ -138,9 +146,10 @@ interface BlindSignatureRequest {
    */
   commitment: Uint8Array;
   /**
-   * The messages at these indices were committed to in the commitment and are not revealed to the signer
+   * The messages at these indices were committed to in the commitment and are not revealed to the signer. This is expected
+   * to be sorted in ascending order
    */
-  blindedIndices: Set<number>;
+  blindedIndices: number[];
   /**
    * The messages which are known to the signer. Here the key is message index (as per the `SignatureParams`). This is not
    * mandatory as the signer might already know the messages to sign. This is used when the requester wants to inform the

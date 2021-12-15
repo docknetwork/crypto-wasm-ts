@@ -13,7 +13,7 @@ import { SignatureParamsG1 } from '../bbs-plus';
 export class Statement {
   /**
    * Create statement for proving knowledge of opening of Pedersen commitment.
-   * @param bases
+   * @param bases - commitment key (public params)
    * @param commitment
    */
   static pedersenCommitmentG1(bases: Uint8Array[], commitment: Uint8Array): Uint8Array {

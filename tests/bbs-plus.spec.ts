@@ -171,7 +171,7 @@ describe('BBS+ signature', () => {
     // Simulation of signer picking up known messages
     const knownMessages = new Map();
     for (let i = 0; i < messageCount; i++) {
-      if (!req.blindedIndices.has(i)) {
+      if (req.blindedIndices.indexOf(i) === -1) {
         knownMessages.set(i, messages[i]);
       }
     }
