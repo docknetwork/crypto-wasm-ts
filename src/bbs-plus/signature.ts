@@ -42,6 +42,13 @@ export class SignatureG1 extends Signature {
     params: SignatureParamsG1,
     encodeMessages: boolean
   ): SignatureG1 {
+    if (messages.length !== params.supportedMessageCount()) {
+      throw new Error(
+        `Number of messages ${
+          messages.length
+        } is different from ${params.supportedMessageCount()} supported by the signature params`
+      );
+    }
     const sig = bbsSignG1(messages, secretKey, params.value, encodeMessages);
     return new SignatureG1(sig);
   }
@@ -59,6 +66,13 @@ export class SignatureG1 extends Signature {
     params: SignatureParamsG1,
     encodeMessages: boolean
   ): VerifyResult {
+    if (messages.length !== params.supportedMessageCount()) {
+      throw new Error(
+        `Number of messages ${
+          messages.length
+        } is different from ${params.supportedMessageCount()} supported by the signature params`
+      );
+    }
     return bbsVerifyG1(messages, this.value, publicKey, params.value, encodeMessages);
   }
 }
@@ -96,6 +110,13 @@ export class BlindSignatureG1 extends BlindSignature {
     params: SignatureParamsG1,
     encodeMessages: boolean
   ): BlindSignatureG1 {
+    if (knownMessages.size >= params.supportedMessageCount()) {
+      throw new Error(
+        `Number of messages ${
+          knownMessages.size
+        } must be less than ${params.supportedMessageCount()} supported by the signature params`
+      );
+    }
     const sig = bbsBlindSignG1(commitment, knownMessages, secretKey, params.value, encodeMessages);
     return new BlindSignatureG1(sig);
   }

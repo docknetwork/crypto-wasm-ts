@@ -801,7 +801,9 @@ In the [test](tests/composite-proofs/verifier-local-linkability.spec.ts), the cr
 last name and email and during registration, the prover creates commitment to SSN which serves as the registration 
 commitment. See the test for more details.
 
-
+##### Social KYC
+A social KYC (Know Your Customer) credential claims that the subject owns certain social media profile like a twitter profile credential claims that a user owns the twitter profile with certain handle. Here the issuer of the credential must verify the user's control of the profile. One way to achieve that is for the user to post a unique issuer supplied challenge string on his profile, like tweeting it when requesting twitter profile credential. This makes the process 2-step, in step 1 user requests the challenge from issuer and which he tweets and in step 2, he asks the issuer to check the tweet and issue him a credential. An alternate approach is for the user to post a commitment to some random value on his profile and then request a credential from the issuer by supplying a proof of knowledge of the opening (committed random value) of the commitment. The issuer is convinced that no one else could know the opening of the commitment which was posted by the user. Note that the user is proving knowledge of the committed value and not revealing it to the issuer because revealing the value will allow the issuer to request a similar credential from some another issuer of it the revealed value is leaked then someone else can impersonate the user.  
+The [test](tests/composite-proofs/social-kyc.spec.ts) shows a complete example.
 
 The code for composite proof lives [here](./src/composite-proof). See the tests [here](./tests/composite-proofs) for various scenarios.
 For a more involved demo with multiple BBS+ signatures being used with accumulator and knowledge of signatures being proved 

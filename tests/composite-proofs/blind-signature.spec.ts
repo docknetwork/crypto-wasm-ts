@@ -37,11 +37,6 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
     blindedIndices.push(2);
     blindedMessages.set(2, stringToBytes('my-another-secret'));
 
-    // Signer will know these message
-    knownMessages.set(1, stringToBytes('John Smith'));
-    knownMessages.set(3, stringToBytes('john.smith@emample.com'));
-    knownMessages.set(4, stringToBytes('New York'));
-
     // Blind signature request will contain a Pedersen commitment, and it can be given a blinding of choice
     // or it can generate on its own.
     const [blinding, request] = BlindSignatureG1.generateRequest(blindedMessages, params, true);
@@ -71,6 +66,10 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
 
     expect(proof.verify(proofSpec).verified).toEqual(true);
 
+    // Signer will know these message
+    knownMessages.set(1, stringToBytes('John Smith'));
+    knownMessages.set(3, stringToBytes('john.smith@emample.com'));
+    knownMessages.set(4, stringToBytes('New York'));
     // Signer is convinced that user knows the opening to the commitment
     const blindSig = BlindSignatureG1.generate(request.commitment, knownMessages, sk, params, true);
 

@@ -27,6 +27,13 @@ export class PoKSigProtocol {
     blindings?: Map<number, Uint8Array>,
     revealed?: Set<number>
   ): PoKSigProtocol {
+    if (messages.length !== params.supportedMessageCount()) {
+      throw new Error(
+        `Number of messages ${
+          messages.length
+        } is different from ${params.supportedMessageCount()} supported by the signature params`
+      );
+    }
     const b = blindings === undefined ? new Map<number, Uint8Array>() : blindings;
     const r = revealed === undefined ? new Set<number>() : revealed;
     const protocol = bbsInitializeProofOfKnowledgeOfSignature(
