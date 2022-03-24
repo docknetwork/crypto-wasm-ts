@@ -135,10 +135,7 @@ Now each of the above list must be converted to bytearrays, i.e. `Uint8Array` an
 #### Setup
 
 Before messages can be signed, 2 things are needed:
-- **Signature parameters**: Public values, that can be created by anyone but must be known to the signer and verifier to sign and verify 
-  respectively. To create them, the number of messages (attributes) being signed must be known and the size of the parameters increases with 
-  the number. In the above example, number of attributes is 4. These parameters can be generated randomly or deterministically by using a 
-  publicly known label. It is advised to use the latter as it allows for extending/shrinking the same parameters when number of messages change.     
+- **Signature parameters**: Public values, that can be created by anyone but must be known to the signer and verifier to sign and verify respectively. To create them, the number of messages (attributes) being signed must be known and the size of the parameters increases with the number. In the above example, number of attributes is 4. These parameters can be generated randomly or deterministically by using a publicly known label. It is advised to use the latter as it allows for extending/shrinking the same parameters when number of messages change.     
 - **Keypair**: To create and verify BBS+ signature, the signer (issuer in case of a credential) needs to create a secret key to sign, public key to verify. 
 
   2 ways of generating signature parameters
@@ -198,8 +195,9 @@ the `encode` argument as true to encode it using your own encoding function.
   expect(result.verified).toEqual(true);
   ```
 
-Verifying knowledge of signature can be done with or without using the composite proof system but this doc will only describe 
-using the composite proof system. For the other way, see tests [here](./tests/bbs-plus.spec.ts)  
+#### Proof of knowledge of signature
+
+Proving and verifying knowledge of signature can be done with or without using the composite proof system but this doc will only describe using the composite proof system. For the other way, see tests [here](./tests/bbs-plus.spec.ts)
 
 The code for BBS+ signature lives [here](./src/bbs-plus). 
 
@@ -459,6 +457,15 @@ needs to generate on its own.
 ```ts
 expect(proof.verify(proofSpec).verified).toEqual(true);
 ```
+
+##### BBS+ signature over varying number of messages 
+
+The examples shown here have assumed that the number of messages for given signature params is fixed but that might not be always true. 
+An example is where some of the messages in the signature are null (like N/A) in certain signatures. Eg, when the messages are attributes
+in a credential that specifies the educational qualifications and institutes of a person, someone with a high school level education will 
+have N/A for attributes like university name, major, etc. One way to deal with it is to decide some sentinel value like 0 for all the N/A
+attributes and disclose those attributes while creating a proof. Other is to have certain attribute in the credential specify which attribute 
+indices that are N/A and always reveal this attribute. A complete example of the latter is shown in this [test](tests/composite-proofs/variable-number-of-messages.spec.ts).
 
 ##### Multiple BBS+ signatures
 
@@ -783,8 +790,8 @@ expect(result.verified).toEqual(true);
 
 ##### Verifier-local or opt-in linkability
 
-Proving knowledge of BBS+ signatures is unlinkable meaning the verifier cannot link to 2 proofs presented from the same 
-credential. But this might not always be desirable for the verifier and the prover might agree to being linked for any 
+Proving knowledge of BBS+ signatures is unlinkable meaning the verifier cannot link to 2 proofs presented from the same
+credential (signature). But this might not always be desirable for the verifier and the prover might agree to being linked for any 
 proofs that he creates for that particular verifier without revealing any attribute of the credential.  
 
 A verifier wants to attach a unique identifier to a prover without either learning anything unintended (by prover)
