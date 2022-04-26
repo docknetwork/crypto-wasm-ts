@@ -1,13 +1,21 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from '../utils';
 import {
-  Accumulator, CompositeProofG1,
-  KeypairG2, MetaStatement, MetaStatements,
-  PositiveAccumulator, ProofSpecG1,
+  Accumulator,
+  CompositeProofG1,
+  KeypairG2,
+  MetaStatement,
+  MetaStatements,
+  PositiveAccumulator,
+  ProofSpecG1,
   Signature,
   SignatureG1,
   SignatureParamsG1,
-  Statement, Statements, Witness, WitnessEqualityMetaStatement, Witnesses
+  Statement,
+  Statements,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../src';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 
@@ -34,7 +42,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     // Encode messages for signing as well as adding to the accumulator
     const encodedMessages = [];
     for (let i = 0; i < messageCount; i++) {
-      if (i === messageCount-1) {
+      if (i === messageCount - 1) {
         // Last one, i.e. user id is added to the accumulator so encode accordingly
         encodedMessages.push(Accumulator.encodeBytesAsAccumulatorMember(messages[i]));
       } else {
@@ -61,7 +69,11 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
 
     const userIdIdx = messageCount - 1;
     await accumulator.add(encodedMessages[userIdIdx], accumKeypair.secret_key, state);
-    const accumWitness = await accumulator.membershipWitness(encodedMessages[userIdIdx], accumKeypair.secret_key, state)
+    const accumWitness = await accumulator.membershipWitness(
+      encodedMessages[userIdIdx],
+      accumKeypair.secret_key,
+      state
+    );
 
     // User reveals 1 message at index 1 to verifier
     const revealedMsgIndices: Set<number> = new Set();
@@ -79,7 +91,12 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     const provingKey = Accumulator.generateMembershipProvingKey(stringToBytes('Our proving key'));
 
     const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
-    const statement2 = Statement.accumulatorMembership(accumParams, accumKeypair.public_key, provingKey, accumulator.accumulated);
+    const statement2 = Statement.accumulatorMembership(
+      accumParams,
+      accumKeypair.public_key,
+      provingKey,
+      accumulator.accumulated
+    );
     const statements = new Statements();
     statements.add(statement1);
     statements.add(statement2);
@@ -97,7 +114,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
 
     const context = stringToBytes('some context');
 
-    const proofSpec = new ProofSpecG1(statements, metaStatements, context);
+    const proofSpec = new ProofSpecG1(statements, metaStatements, [], context);
 
     const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
     const witness2 = Witness.accumulatorMembership(encodedMessages[userIdIdx], accumWitness);

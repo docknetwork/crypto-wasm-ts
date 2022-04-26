@@ -27,7 +27,7 @@ function getAccum(accumulator: any): PositiveAccumulator | UniversalAccumulator 
   } else {
     tempAccumulator = UniversalAccumulator.fromAccumulated(accumulated);
   }
-  return tempAccumulator
+  return tempAccumulator;
 }
 
 async function runCommonTests(
@@ -146,11 +146,11 @@ async function runCommonTests(
   const e15 = Accumulator.encodePositiveNumberAsAccumulatorMember(115);
 
   const additions = [
-    [e9, e10], [e11, e12], [e13, e14, e15]
+    [e9, e10],
+    [e11, e12],
+    [e13, e14, e15]
   ];
-  const removals = [
-    [e7, e8], [e9], []
-  ];
+  const removals = [[e7, e8], [e9], []];
 
   const witUpd1 = WitnessUpdatePublicInfo.new(accumulator.accumulated, additions[0], removals[0], sk);
   await accumulator.addRemoveBatches(additions[0], removals[0], sk, state);
@@ -181,18 +181,8 @@ async function runCommonTests(
 
   const witUpds = [witUpd1, witUpd2, witUpd3];
 
-  e5Wit.updateUsingPublicInfoPostMultipleBatchUpdates(
-    e5,
-    additions,
-    removals,
-    witUpds
-  );
-  e6Wit.updateUsingPublicInfoPostMultipleBatchUpdates(
-    e6,
-    additions,
-    removals,
-    witUpds
-  );
+  e5Wit.updateUsingPublicInfoPostMultipleBatchUpdates(e5, additions, removals, witUpds);
+  e6Wit.updateUsingPublicInfoPostMultipleBatchUpdates(e6, additions, removals, witUpds);
 
   tempAccumulator = getAccum(accumulator);
 

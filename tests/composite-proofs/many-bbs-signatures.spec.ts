@@ -2,12 +2,17 @@ import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from '../utils';
 import {
   CompositeProofG1,
-  KeypairG2, MetaStatement, MetaStatements, ProofSpecG1,
+  KeypairG2,
+  MetaStatement,
+  MetaStatements,
+  ProofSpecG1,
   SignatureG1,
   SignatureParamsG1,
   Statement,
-  Statements, Witness,
-  WitnessEqualityMetaStatement, Witnesses
+  Statements,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../src';
 
 describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of a specific attribute', () => {
@@ -123,7 +128,7 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
 
     const context = stringToBytes('test-context');
 
-    const proofSpec = new ProofSpecG1(statements, metaStatements, context);
+    const proofSpec = new ProofSpecG1(statements, metaStatements, [], context);
 
     // Using the messages and signature from 1st signer
     const unrevealedMsgs1 = new Map(messages1.map((m, i) => [i, m]));

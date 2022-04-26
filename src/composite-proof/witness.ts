@@ -2,7 +2,9 @@ import {
   generatePedersenCommitmentWitness,
   generatePoKBBSSignatureWitness,
   generateAccumulatorMembershipWitness,
-  generateAccumulatorNonMembershipWitness
+  generateAccumulatorNonMembershipWitness,
+  generateSaverWitness,
+  generateBoundCheckWitness
 } from '@docknetwork/crypto-wasm';
 import { SignatureG1 } from '../bbs-plus';
 import { MembershipWitness, NonMembershipWitness } from '../accumulator';
@@ -49,6 +51,14 @@ export class Witness {
    */
   static accumulatorNonMembership(nonMember: Uint8Array, accumulatorWitness: NonMembershipWitness): Uint8Array {
     return generateAccumulatorNonMembershipWitness(nonMember, accumulatorWitness.value);
+  }
+
+  static saver(message: Uint8Array): Uint8Array {
+    return generateSaverWitness(message);
+  }
+
+  static boundCheck(message: Uint8Array): Uint8Array {
+    return generateBoundCheckWitness(message);
   }
 }
 

@@ -17,3 +17,20 @@ export function areUint8ArraysEqual(arr1: Uint8Array, arr2: Uint8Array): boolean
 
   return true;
 }
+
+export function getRevealedUnrevealed(
+  messages: Uint8Array[],
+  revealedIndices: Set<number>
+): [Map<number, Uint8Array>, Map<number, Uint8Array>] {
+  const revealedMsgs = new Map();
+  const unrevealedMsgs = new Map();
+  for (let i = 0; i < messages.length; i++) {
+    if (revealedIndices.has(i)) {
+      revealedMsgs.set(i, messages[i]);
+    } else {
+      unrevealedMsgs.set(i, messages[i]);
+    }
+  }
+
+  return [revealedMsgs, unrevealedMsgs];
+}

@@ -1,11 +1,14 @@
 import {
   CompositeProofG1,
-  KeypairG2, MetaStatements, ProofSpecG1,
+  KeypairG2,
+  MetaStatements,
+  ProofSpecG1,
   Signature,
   BlindSignatureG1,
   SignatureParamsG1,
   Statement,
-  Statements, Witness,
+  Statements,
+  Witness,
   Witnesses
 } from '../../src';
 
@@ -19,10 +22,10 @@ import { stringToBytes } from '../utils';
 
 describe('Social KYC (Know Your Customer)', () => {
   // A social KYC (Know Your Customer) credential claims that the subject owns certain social media profile like a twitter
-  // profile credential claims that a user owns the twitter profile with certain handle. User posts a commitment to some 
-  // random value on his profile and then requests a credential from the issuer by supplying a proof of knowledge of the 
-  // opening (committed random value) of the commitment. This test shows an example of user getting a twitter profile 
-  // credential from an issuer and the credential contains the profile handle, name, description and no. of followers. The 
+  // profile credential claims that a user owns the twitter profile with certain handle. User posts a commitment to some
+  // random value on his profile and then requests a credential from the issuer by supplying a proof of knowledge of the
+  // opening (committed random value) of the commitment. This test shows an example of user getting a twitter profile
+  // credential from an issuer and the credential contains the profile handle, name, description and no. of followers. The
   // credential will contain the user's secret id which he will hide from the issuer, thus gets a blinded credential.
 
   // Issuer's parameters
@@ -54,10 +57,10 @@ describe('Social KYC (Know Your Customer)', () => {
     const randomValueTweet = generateRandomFieldElement();
     // This commitment will be posted in the tweet
     const commitmentTweet = pedersenCommitmentG1([g], [randomValueTweet]);
-    
+
     // Prepare messages that will be blinded (hidden) and known to signer
     const blindedAttributes = new Map();
-  
+
     // User wants to hide his secret id which is the attribute at index 0
     const blindedIndices: number[] = [0];
     blindedAttributes.set(0, stringToBytes('my-secret-id'));
@@ -79,10 +82,10 @@ describe('Social KYC (Know Your Customer)', () => {
     statements.add(statement1);
     statements.add(statement2);
 
-    // Some context to the proof to prevent replayability, for stronger protection this should contain today's date etc as well 
+    // Some context to the proof to prevent replayability, for stronger protection this should contain today's date etc as well
     const context = stringToBytes('Verifying twitter profile with issuer 1');
 
-    const proofSpec = new ProofSpecG1(statements, new MetaStatements(), context);
+    const proofSpec = new ProofSpecG1(statements, new MetaStatements(), [], context);
 
     // This is the opening of the commitment posted in tweet
     const witness1 = Witness.pedersenCommitment([randomValueTweet]);
@@ -101,8 +104,8 @@ describe('Social KYC (Know Your Customer)', () => {
     // User creates this proof and sends to the issuer.
     const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-    // Issuer checks that the commitment `commitmentTweet` is present in the tweet and then verifies the following 
-    // proof to check user's knowledge of its opening. 
+    // Issuer checks that the commitment `commitmentTweet` is present in the tweet and then verifies the following
+    // proof to check user's knowledge of its opening.
     expect(proof.verify(proofSpec).verified).toEqual(true);
 
     // Issuer will know these attributes
@@ -130,5 +133,4 @@ describe('Social KYC (Know Your Customer)', () => {
     const result = sig.verify(attributes, pk, sigParams, true);
     expect(result.verified).toEqual(true);
   });
-
 });

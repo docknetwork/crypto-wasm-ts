@@ -1,12 +1,17 @@
 import {
   CompositeProofG1,
-  KeypairG2, MetaStatement, MetaStatements, ProofSpecG1,
+  KeypairG2,
+  MetaStatement,
+  MetaStatements,
+  ProofSpecG1,
   Signature,
   SignatureG1,
   SignatureParamsG1,
   Statement,
-  Statements, Witness,
-  WitnessEqualityMetaStatement, Witnesses
+  Statements,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../src';
 import {
   generateRandomFieldElement,
@@ -176,7 +181,7 @@ describe('Verifier-local or opt-in linkability', () => {
 
     // Prover reveals a message at index 2
     const revealedMsgIndices: Set<number> = new Set();
-    revealedMsgIndices.add(2)
+    revealedMsgIndices.add(2);
     const revealedMsgs: Map<number, Uint8Array> = new Map();
     const unrevealedMsgs: Map<number, Uint8Array> = new Map();
     for (let i = 0; i < encodedMessages.length; i++) {

@@ -8,7 +8,9 @@ import {
   SignatureG1,
   SignatureParamsG1,
   Statement,
-  Statements, Witness, Witnesses
+  Statements,
+  Witness,
+  Witnesses
 } from '../../src';
 
 describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
@@ -66,7 +68,7 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
     const context = stringToBytes('some context');
 
     // Both the prover (user) and verifier should independently construct this `ProofSpec` but only for testing, i am reusing it.
-    const proofSpec = new ProofSpecG1(statements, new MetaStatements(), context);
+    const proofSpec = new ProofSpecG1(statements, new MetaStatements(), [], context);
 
     const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, true);
     const witnesses = new Witnesses();

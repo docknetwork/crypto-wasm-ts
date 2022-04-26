@@ -1,13 +1,17 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from '../utils';
 import {
-  BlindSignatureG1, CompositeProofG1,
+  BlindSignatureG1,
+  CompositeProofG1,
   KeypairG2,
   MetaStatements,
-  ProofSpecG1, Signature,
+  ProofSpecG1,
+  Signature,
   SignatureParamsG1,
   Statement,
-  Statements, Witness, Witnesses
+  Statements,
+  Witness,
+  Witnesses
 } from '../../src';
 
 describe('Getting a blind signature, i.e. signature where signer is not aware of certain attributes of the user', () => {

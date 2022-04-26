@@ -89,4 +89,4 @@ describe('Prefilled positive accumulator', () => {
     witness3Old.updateUsingPublicInfoPostBatchUpdate(member3, [], [member2], witnessUpdInfo);
     expect(verifAccumulator.verifyMembershipWitness(member3, witness3Old, keypair.public_key, params)).toEqual(true);
   });
-})
+});

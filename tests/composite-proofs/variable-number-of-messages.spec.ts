@@ -8,7 +8,9 @@ import {
   SignatureG1,
   SignatureParamsG1,
   Statement,
-  Statements, Witness, Witnesses
+  Statements,
+  Witness,
+  Witnesses
 } from '../../src';
 
 describe('Proving knowledge of 1 BBS+ signature where some of the attributes are null, i.e.not applicable', () => {
