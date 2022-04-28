@@ -10,7 +10,7 @@ import {
   SaverEncryptionGens,
   SaverEncryptionGensUncompressed,
   SaverEncryptionKeyUncompressed,
-  SaverProvingKeyUncompressed,
+  SaverProvingKeyUncompressed, SaverSecretKey,
   SaverVerifyingKeyUncompressed,
   SetupParam,
   SignatureG1,
@@ -30,7 +30,7 @@ describe('Verifiable encryption of signed messages', () => {
 
   let snarkProvingKey: SaverProvingKeyUncompressed,
     snarkVerifyingKey: SaverVerifyingKeyUncompressed,
-    saverSk: Uint8Array,
+    saverSk: SaverSecretKey,
     saverEk: SaverEncryptionKeyUncompressed,
     saverDk: SaverDecryptionKeyUncompressed,
     saverEncGens: SaverEncryptionGensUncompressed;

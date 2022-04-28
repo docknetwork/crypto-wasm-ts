@@ -15,6 +15,8 @@ import { ICompressed, IUncompressed } from '../ICompressed';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { SaverCiphertext } from './ciphertext';
 
+export class SaverSecretKey extends BytearrayWrapper {}
+
 export class SaverEncryptionGensUncompressed extends BytearrayWrapper implements IUncompressed {}
 
 export class SaverEncryptionGens extends BytearrayWrapper implements ICompressed<SaverEncryptionGensUncompressed> {
@@ -82,15 +84,20 @@ export class SaverDecryptor {
   static setup(
     encGens: SaverEncryptionGens,
     chunkBitSize?: number
-  ): [SaverProvingKey, Uint8Array, SaverEncryptionKey, SaverDecryptionKey] {
+  ): [SaverProvingKey, SaverSecretKey, SaverEncryptionKey, SaverDecryptionKey] {
     const c = getChunkBitSize(chunkBitSize);
     const [snarkPk, sk, ek, dk] = saverDecryptorSetup(c, encGens.value, false);
-    return [new SaverProvingKey(snarkPk), sk, new SaverEncryptionKey(ek), new SaverDecryptionKey(dk)];
+    return [
+      new SaverProvingKey(snarkPk),
+      new SaverSecretKey(sk),
+      new SaverEncryptionKey(ek),
+      new SaverDecryptionKey(dk)
+    ];
   }
 
   static decryptCiphertext(
     ciphertext: SaverCiphertext,
-    secretKey: Uint8Array,
+    secretKey: SaverSecretKey,
     decryptionKey: SaverDecryptionKeyUncompressed,
     snarkVk: SaverVerifyingKeyUncompressed,
     chunkBitSize: number
@@ -98,7 +105,7 @@ export class SaverDecryptor {
     return new Decrypted(
       ...saverDecryptCiphertextUsingSnarkVk(
         ciphertext.value,
-        secretKey,
+        secretKey.value,
         decryptionKey.value,
         snarkVk.value,
         chunkBitSize,
