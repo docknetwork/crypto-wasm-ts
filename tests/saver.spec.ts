@@ -12,6 +12,7 @@ import {
   SaverEncryptionKeyUncompressed,
   SaverProvingKey,
   SaverProvingKeyUncompressed,
+  SaverSecretKey,
   SaverVerifyingKey,
   SaverVerifyingKeyUncompressed
 } from '../src';
@@ -59,22 +60,23 @@ describe('SAVER setup', () => {
   });
 
   it('do setup for decryptor', () => {
-    expect(getChunkBitSize()).toEqual(8);
+    expect(getChunkBitSize()).toEqual(16);
     expect(getChunkBitSize(4)).toEqual(4);
     expect(getChunkBitSize(8)).toEqual(8);
+    expect(getChunkBitSize(16)).toEqual(16);
     expect(() => getChunkBitSize(2)).toThrow();
     expect(() => getChunkBitSize(3)).toThrow();
     expect(() => getChunkBitSize(10)).toThrow();
-    expect(() => getChunkBitSize(16)).toThrow();
+    expect(() => getChunkBitSize(17)).toThrow();
 
     expect(() => SaverDecryptor.setup(encGens, 2)).toThrow();
     expect(() => SaverDecryptor.setup(encGens, 3)).toThrow();
     expect(() => SaverDecryptor.setup(encGens, 10)).toThrow();
-    expect(() => SaverDecryptor.setup(encGens, 16)).toThrow();
+    expect(() => SaverDecryptor.setup(encGens, 17)).toThrow();
 
-    const [snarkPk, sk, ek, dk] = SaverDecryptor.setup(encGens, 8);
+    const [snarkPk, sk, ek, dk] = SaverDecryptor.setup(encGens, 16);
     expect(snarkPk instanceof SaverProvingKey).toBe(true);
-    expect(sk instanceof Uint8Array).toBe(true);
+    expect(sk instanceof SaverSecretKey).toBe(true);
     expect(ek instanceof SaverEncryptionKey).toBe(true);
     expect(dk instanceof SaverDecryptionKey).toBe(true);
 

@@ -1,5 +1,5 @@
 import { SignatureParamsG1 } from './params';
-import { generateFieldElementFromNumber, VerifyResult } from '@docknetwork/crypto-wasm';
+import { fieldElementAsBytes, generateFieldElementFromNumber, VerifyResult } from '@docknetwork/crypto-wasm';
 import {
   bbsBlindSignG1,
   bbsEncodeMessageForSigning,
@@ -8,6 +8,7 @@ import {
   bbsVerifyG1,
   generateRandomFieldElement
 } from '@docknetwork/crypto-wasm';
+import { isNumberBiggerThanNBits } from '../util';
 
 export abstract class Signature {
   value: Uint8Array;
@@ -16,15 +17,65 @@ export abstract class Signature {
     this.value = value;
   }
 
+  /**
+   * This is an irreversible encoding as a hash function is used to convert a message of
+   * arbitrary length to a fixed length encoding.
+   * @param message
+   */
   static encodeMessageForSigning(message: Uint8Array): Uint8Array {
     return bbsEncodeMessageForSigning(message);
   }
 
-  static encodePositiveNumberMessage(num: number): Uint8Array {
-    if (!Number.isInteger(num) || num < 0) {
-      throw new Error(`Need a positive integer to encode but found ${num} `);
-    }
+  /**
+   * Encodes a positive integer of at most 4 bytes
+   * @param num
+   */
+  static encodePositiveNumberForSigning(num: number): Uint8Array {
     return generateFieldElementFromNumber(num);
+  }
+
+  /**
+   * Encode the given string to bytes and create a field element by considering the bytes in little-endian format.
+   * Note that this will add trailing 0s to the bytes to make the size 32 bytes
+   * @param message - utf-8 string of at most 32 bytes
+   */
+  static reversibleEncodeStringMessageForSigning(message: string): Uint8Array {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(message);
+    const maxLength = 32;
+    if (bytes.length > maxLength) {
+      throw new Error(`Expects a string with at most ${maxLength} bytes`);
+    }
+    // Create a little-endian representation
+    const fieldElementBytes = new Uint8Array(maxLength);
+    fieldElementBytes.set(bytes);
+    fieldElementBytes.set(new Uint8Array(maxLength - bytes.length), bytes.length);
+    return fieldElementAsBytes(fieldElementBytes);
+  }
+
+  /**
+   * Decode the given representation. This should **only** be used when the encoding was done
+   * using `this.reversibleEncodeStringMessageForSigning`. Also, this function trims any characters from the first
+   * occurrence of a null characters (UTF-16 code unit 0) so if the encoded (using `this.reversibleEncodeStringMessageForSigning`)
+   * string also had a null then the decoded string will be different from it.
+   * @param message
+   */
+  static reversibleDecodeStringMessageForSigning(message: Uint8Array): string {
+    const maxLength = 32;
+    if (message.length > maxLength) {
+      throw new Error(`Expects a message with at most ${maxLength} bytes`);
+    }
+    const decoder = new TextDecoder();
+    const decoded = decoder.decode(message);
+    const chars = [];
+    for (let i = 0; i < maxLength; i++) {
+      // If a null character found then stop looking further
+      if (decoded.charCodeAt(i) == 0) {
+        break;
+      }
+      chars.push(decoded.charAt(i));
+    }
+    return chars.join('');
   }
 }
 

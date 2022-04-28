@@ -6,3 +6,4 @@ export * from './saver';
 export * from './legosnark';
 export * from './bound-check';
 export * from './ICompressed';
+export * from './bytearray-wrapper';

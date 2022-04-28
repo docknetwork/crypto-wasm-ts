@@ -10,7 +10,8 @@ import {
   SaverEncryptionGens,
   SaverEncryptionGensUncompressed,
   SaverEncryptionKeyUncompressed,
-  SaverProvingKeyUncompressed, SaverSecretKey,
+  SaverProvingKeyUncompressed,
+  SaverSecretKey,
   SaverVerifyingKeyUncompressed,
   SetupParam,
   SignatureG1,
@@ -24,9 +25,9 @@ import {
 import { getRevealedUnrevealed, stringToBytes } from '../utils';
 
 describe('Verifiable encryption of signed messages', () => {
-  const messageCount = 5;
-  const chunkBitSize = 8;
+  const chunkBitSize = 16;
   const encMsgIdx = 1;
+  let messageCount;
 
   let snarkProvingKey: SaverProvingKeyUncompressed,
     snarkVerifyingKey: SaverVerifyingKeyUncompressed,
@@ -41,6 +42,7 @@ describe('Verifiable encryption of signed messages', () => {
     sigParams2: SignatureParamsG1,
     sigSk2: Uint8Array,
     sigPk2: Uint8Array;
+  let messages1AsStrings: string[], messages2AsStrings: string[];
   let messages1: Uint8Array[], messages2: Uint8Array[], sig1: SignatureG1, sig2: SignatureG1;
 
   beforeAll(async () => {
@@ -50,15 +52,51 @@ describe('Verifiable encryption of signed messages', () => {
   it('do decryptor setup', () => {
     const gens = SaverEncryptionGens.generate();
     const [snarkPk, sk, ek, dk] = SaverDecryptor.setup(gens, chunkBitSize);
+    console.log(snarkPk.value.length, ek.value.length, gens.value.length);
     saverEncGens = gens.decompress();
     snarkProvingKey = snarkPk.decompress();
     snarkVerifyingKey = snarkPk.getVerifyingKeyUncompressed();
     saverSk = sk;
     saverEk = ek.decompress();
     saverDk = dk.decompress();
+    console.log(
+      snarkProvingKey.value.length,
+      snarkVerifyingKey.value.length,
+      saverEk.value.length,
+      saverDk.value.length,
+      saverEncGens.value.length
+    );
   }, 300000);
 
   it('do signers setup', () => {
+    // Setup the messages, its important to use a reversible encoding for the messages used in verifiable encryption as
+    // the decryptor should be able to decrypt the message without the holder's help.
+
+    messages1AsStrings = [
+      'John Jacob Smith Sr.',
+      'San Francisco, California',
+      'john.jacob.smith.1971@gmail.com',
+      '+1 123-4567890009',
+      'user-id:1234567890012134'
+    ];
+
+    messages2AsStrings = [
+      'Alice Jr. from Wonderland',
+      'Wonderland',
+      'alice.wonderland.1980@gmail.com',
+      '+1 456-7891230991',
+      'user-id:9876543210987654'
+    ];
+
+    messageCount = messages1AsStrings.length;
+
+    messages1 = [];
+    messages2 = [];
+    for (let i = 0; i < messageCount; i++) {
+      messages1.push(SignatureG1.reversibleEncodeStringMessageForSigning(messages1AsStrings[i]));
+      messages2.push(SignatureG1.reversibleEncodeStringMessageForSigning(messages2AsStrings[i]));
+    }
+
     sigParams1 = SignatureParamsG1.generate(messageCount);
     const sigKeypair1 = KeypairG2.generate(sigParams1);
     sigSk1 = sigKeypair1.secretKey;
@@ -68,13 +106,6 @@ describe('Verifiable encryption of signed messages', () => {
     const sigKeypair2 = KeypairG2.generate(sigParams2);
     sigSk2 = sigKeypair2.secretKey;
     sigPk2 = sigKeypair2.publicKey;
-
-    messages1 = [];
-    messages2 = [];
-    for (let i = 0; i < messageCount; i++) {
-      messages1.push(generateRandomFieldElement());
-      messages2.push(generateRandomFieldElement());
-    }
 
     sig1 = SignatureG1.generate(messages1, sigSk1, sigParams1, false);
     sig2 = SignatureG1.generate(messages2, sigSk2, sigParams2, false);
@@ -95,6 +126,7 @@ describe('Verifiable encryption of signed messages', () => {
     sigParams: SignatureParamsG1,
     sigPk: Uint8Array,
     messages: Uint8Array[],
+    messagesAsStrings: string[],
     sig: SignatureG1,
     label: string
   ) {
@@ -133,14 +165,16 @@ describe('Verifiable encryption of signed messages', () => {
     expect(proof.verifyWithDeconstructedProofSpec(verifierStatements, metaStatements).verified).toEqual(true);
 
     decryptAndVerify(proof, 1, messages[encMsgIdx]);
+    const decoded = SignatureG1.reversibleDecodeStringMessageForSigning(messages[encMsgIdx]);
+    expect(decoded).toEqual(messagesAsStrings[encMsgIdx]);
   }
 
   it('prove knowledge of verifiable encryption of 1 message from 1st signature', () => {
-    proveAndVerifySingle(sigParams1, sigPk1, messages1, sig1, 'public test label 1');
+    proveAndVerifySingle(sigParams1, sigPk1, messages1, messages1AsStrings, sig1, 'public test label 1');
   }, 20000);
 
   it('prove knowledge of verifiable encryption of 1 message from 2nd signature', () => {
-    proveAndVerifySingle(sigParams2, sigPk2, messages2, sig2, 'public test label 2');
+    proveAndVerifySingle(sigParams2, sigPk2, messages2, messages2AsStrings, sig2, 'public test label 2');
   }, 20000);
 
   it('prove knowledge of verifiable encryption of 1 message from both signatures', () => {

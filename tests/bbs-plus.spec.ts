@@ -8,7 +8,7 @@ import {
   SignatureG1,
   SignatureParamsG1
 } from '../src';
-import { stringToBytes } from './utils';
+import { getRevealedUnrevealed, stringToBytes } from './utils';
 
 function getMessages(count: number): Uint8Array[] {
   const messages: Uint8Array[] = [];
@@ -218,5 +218,49 @@ describe('BBS+ signature', () => {
 
     const sig2 = SignatureG1.generate(messages5, sk, params5, true);
     expect(sig2.verify(messages5, pk, params5, true).verified).toEqual(true);
+  });
+
+  it('should support reversible encoding', () => {
+    const messages = [
+      'John Jacob Smith Sr.',
+      'San Francisco, California',
+      'john.jacob.smith.1971@gmail.com',
+      '+1 123-4567890009',
+      'user-id:1234567890012134'
+    ];
+    const count = messages.length;
+    const encodedMessages = new Array<Uint8Array>(5);
+    for (let i = 0; i < count; i++) {
+      encodedMessages[i] = SignatureG1.reversibleEncodeStringMessageForSigning(messages[i]);
+      const decoded = SignatureG1.reversibleDecodeStringMessageForSigning(encodedMessages[i]);
+      expect(decoded).toEqual(messages[i]);
+    }
+    const params = SignatureParamsG1.generate(count);
+    const keypair = KeypairG2.generate(params);
+    const sig = SignatureG1.generate(encodedMessages, keypair.secretKey, params, false);
+    expect(sig.verify(encodedMessages, keypair.publicKey, params, false).verified).toEqual(true);
+
+    // Reveal all messages! This is done for testing purposes only.
+    let revealed: Set<number> = new Set();
+    for (let i = 0; i < count; i++) {
+      revealed.add(i);
+    }
+
+    const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(encodedMessages, revealed);
+    const protocol = PoKSigProtocol.initialize(encodedMessages, sig, params, false, undefined, revealed);
+    const challengeContributionP = protocol.challengeContribution(params, true, revealedMsgs);
+    const challengeProver = bytesToChallenge(challengeContributionP);
+    const proof = protocol.generateProof(challengeProver);
+
+    const challengeContributionV = proof.challengeContribution(params, true, revealedMsgs);
+    const challengeVerifier = bytesToChallenge(challengeContributionV);
+
+    expect(challengeProver).toEqual(challengeVerifier);
+
+    expect(proof.verify(challengeVerifier, keypair.publicKey, params, false, revealedMsgs).verified).toEqual(true);
+    for (let i = 0; i < count; i++) {
+      const decoded = SignatureG1.reversibleDecodeStringMessageForSigning(revealedMsgs.get(i) as Uint8Array);
+      expect(decoded).toEqual(messages[i]);
+    }
   });
 });

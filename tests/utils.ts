@@ -18,6 +18,11 @@ export function areUint8ArraysEqual(arr1: Uint8Array, arr2: Uint8Array): boolean
   return true;
 }
 
+/**
+ * Given messages and indices to reveal, returns 2 maps, one for revealed messages and one for unrevealed
+ * @param messages
+ * @param revealedIndices
+ */
 export function getRevealedUnrevealed(
   messages: Uint8Array[],
   revealedIndices: Set<number>

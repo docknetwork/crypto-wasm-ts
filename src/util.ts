@@ -3,7 +3,6 @@
  * @param json
  * @returns
  */
-import exp from 'constants';
 import { generateFieldElementFromBytes } from '@docknetwork/crypto-wasm';
 
 export function jsonObjToUint8Array(json: string): Uint8Array {
@@ -34,4 +33,9 @@ export function getUint8ArraysFromObject(obj: Record<string, any>, keys: string[
 
 export function bytesToChallenge(bytes: Uint8Array): Uint8Array {
   return generateFieldElementFromBytes(bytes);
+}
+
+export function isNumberBiggerThanNBits(num: number, bits: number): boolean {
+  // Following can be done using bit shifts, but they only work for small number of shifts. Checked in Chrome and FF
+  return num.toString(2).length > bits;
 }

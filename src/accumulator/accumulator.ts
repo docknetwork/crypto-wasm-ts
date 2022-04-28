@@ -41,7 +41,7 @@ import {
   universalAccumulatorFixedInitialElements
 } from '@docknetwork/crypto-wasm';
 import { MembershipWitness, NonMembershipWitness } from './accumulatorWitness';
-import { getUint8ArraysFromObject } from '../util';
+import { getUint8ArraysFromObject, isNumberBiggerThanNBits } from '../util';
 import { IAccumulatorState, IUniversalAccumulatorState } from './IAccumulatorState';
 import { IInitialElementsStore } from './IInitialElementsStore';
 
@@ -81,7 +81,8 @@ export abstract class Accumulator {
 
   /**
    * To add arbitrary bytes like byte representation of UUID or some other user id or something else as an accumulator
-   * member, encode it first using this.
+   * member, encode it first using this. This is an irreversible encoding as a hash function is used to convert a message
+   * of arbitrary length to a fixed length encoding.
    * @param bytes
    */
   static encodeBytesAsAccumulatorMember(bytes: Uint8Array): Uint8Array {
@@ -90,12 +91,10 @@ export abstract class Accumulator {
 
   /**
    * To add a positive number as an accumulator member, encode it first using this.
+   * Encodes a positive integer of at most 4 bytes
    * @param num - should be a positive integer
    */
   static encodePositiveNumberAsAccumulatorMember(num: number): Uint8Array {
-    if (!Number.isInteger(num) || num < 0) {
-      throw new Error(`Need a positive integer to encode but found ${num} `);
-    }
     return generateFieldElementFromNumber(num);
   }
 
