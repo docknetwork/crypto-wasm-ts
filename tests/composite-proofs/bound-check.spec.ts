@@ -1,5 +1,7 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  BBSPlusPublicKeyG2,
+  BBSPlusSecretKey,
   BoundCheckSnarkSetup,
   CompositeProofG1,
   KeypairG2,
@@ -7,6 +9,7 @@ import {
   LegoVerifyingKeyUncompressed,
   MetaStatement,
   MetaStatements,
+  QuasiProofSpecG1,
   SetupParam,
   SignatureG1,
   SignatureParamsG1,
@@ -34,11 +37,11 @@ describe('Bound check of signed messages', () => {
   let snarkProvingKey: LegoProvingKeyUncompressed, snarkVerifyingKey: LegoVerifyingKeyUncompressed;
   // There are 2 signers
   let sigParams1: SignatureParamsG1,
-    sigSk1: Uint8Array,
-    sigPk1: Uint8Array,
+    sigSk1: BBSPlusSecretKey,
+    sigPk1: BBSPlusPublicKeyG2,
     sigParams2: SignatureParamsG1,
-    sigSk2: Uint8Array,
-    sigPk2: Uint8Array;
+    sigSk2: BBSPlusSecretKey,
+    sigPk2: BBSPlusPublicKeyG2;
   let messages1: Uint8Array[], messages2: Uint8Array[], sig1: SignatureG1, sig2: SignatureG1;
 
   beforeAll(async () => {
@@ -99,7 +102,7 @@ describe('Bound check of signed messages', () => {
 
   function proveAndVerifySingle(
     sigParams: SignatureParamsG1,
-    sigPk: Uint8Array,
+    sigPk: BBSPlusPublicKeyG2,
     messages: Uint8Array[],
     sig: SignatureG1
   ) {
@@ -119,19 +122,21 @@ describe('Bound check of signed messages', () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 
     const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
-    const witness2 = Witness.boundCheck(messages[msgIdx]);
+    const witness2 = Witness.boundCheckLegoGroth16(messages[msgIdx]);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generateWithDeconstructedProofSpec(proverStatements, metaStatements, witnesses);
+    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
+    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
     const statement3 = Statement.boundCheckVerifier(min1, max1, snarkVerifyingKey);
 
     const verifierStatements = new Statements();
     verifierStatements.add(statement1);
     verifierStatements.add(statement3);
 
-    expect(proof.verifyWithDeconstructedProofSpec(verifierStatements, metaStatements).verified).toEqual(true);
+    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
+    expect(proof.verifyUsingQuasiProofSpec(verifierProofSpec).verified).toEqual(true);
   }
 
   it('prove knowledge of 1 bounded message from 1st signature', () => {
@@ -189,17 +194,13 @@ describe('Bound check of signed messages', () => {
     const witnesses = new Witnesses();
     witnesses.add(Witness.bbsSignature(sig1, unrevealedMsgs1, false));
     witnesses.add(Witness.bbsSignature(sig2, unrevealedMsgs2, false));
-    witnesses.add(Witness.boundCheck(messages1[msgIdx]));
-    witnesses.add(Witness.boundCheck(messages1[msgIdx + 1]));
-    witnesses.add(Witness.boundCheck(messages2[msgIdx]));
-    witnesses.add(Witness.boundCheck(messages2[msgIdx + 1]));
+    witnesses.add(Witness.boundCheckLegoGroth16(messages1[msgIdx]));
+    witnesses.add(Witness.boundCheckLegoGroth16(messages1[msgIdx + 1]));
+    witnesses.add(Witness.boundCheckLegoGroth16(messages2[msgIdx]));
+    witnesses.add(Witness.boundCheckLegoGroth16(messages2[msgIdx + 1]));
 
-    const proof = CompositeProofG1.generateWithDeconstructedProofSpec(
-      proverStatements,
-      metaStatements,
-      witnesses,
-      proverSetupParams
-    );
+    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
+    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 
     const verifierSetupParams = [];
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
@@ -217,8 +218,8 @@ describe('Bound check of signed messages', () => {
     verifierStatements.add(statement9);
     verifierStatements.add(statement10);
 
-    expect(
-      proof.verifyWithDeconstructedProofSpec(verifierStatements, metaStatements, verifierSetupParams).verified
-    ).toEqual(true);
+    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
+
+    expect(proof.verifyUsingQuasiProofSpec(verifierProofSpec).verified).toEqual(true);
   });
 });

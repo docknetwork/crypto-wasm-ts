@@ -10,7 +10,18 @@ import {
   SaverVerifyingKeyUncompressed
 } from './decryptor';
 
+/**
+ * The ciphertext that is sent along the proof
+ */
 export class SaverCiphertext extends BytearrayWrapper {
+  /**
+   * Verify that the ciphertext does encrypt the message in `decrypted` using uncompressed public params
+   * @param decrypted
+   * @param decryptionKey
+   * @param snarkVk
+   * @param encGens
+   * @param chunkButSize - Must be same as the one used by the decryptor to create the parameters.
+   */
   verifyDecryption(
     decrypted: Decrypted,
     decryptionKey: SaverDecryptionKeyUncompressed,
@@ -30,6 +41,14 @@ export class SaverCiphertext extends BytearrayWrapper {
     );
   }
 
+  /**
+   * Same as `this.verifyDecryption` except that is takes compressed parameters
+   * @param decrypted
+   * @param decryptionKey
+   * @param snarkVk
+   * @param encGens
+   * @param chunkButSize - Must be same as the one used by the decryptor to create the parameters.
+   */
   verifyDecryptionUsingCompressedParams(
     decrypted: Decrypted,
     decryptionKey: SaverDecryptionKey,

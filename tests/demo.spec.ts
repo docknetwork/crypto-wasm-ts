@@ -1,13 +1,20 @@
 import { generateRandomFieldElement, initializeWasm, universalAccumulatorComputeD } from '@docknetwork/crypto-wasm';
 import {
   Accumulator,
+  AccumulatorParams,
+  AccumulatorPublicKey,
+  AccumulatorSecretKey,
+  BBSPlusPublicKeyG2,
+  BBSPlusSecretKey,
   BlindSignature,
   BlindSignatureG1,
   CompositeProofG1,
   KeypairG2,
+  MembershipProvingKey,
   MembershipWitness,
   MetaStatement,
   MetaStatements,
+  NonMembershipProvingKey,
   NonMembershipWitness,
   PositiveAccumulator,
   ProofSpecG1,
@@ -56,32 +63,32 @@ let Credential3: SignatureG1;
 let Issuer12SigParams: SignatureParamsG1;
 let Issuer3SigParams: SignatureParamsG1;
 // Secret key and public key for issuers
-let Issuer1Sk: Uint8Array;
-let Issuer1Pk: Uint8Array;
-let Issuer2Sk: Uint8Array;
-let Issuer2Pk: Uint8Array;
-let Issuer3Sk: Uint8Array;
-let Issuer3Pk: Uint8Array;
+let Issuer1Sk: BBSPlusSecretKey;
+let Issuer1Pk: BBSPlusPublicKeyG2;
+let Issuer2Sk: BBSPlusSecretKey;
+let Issuer2Pk: BBSPlusPublicKeyG2;
+let Issuer3Sk: BBSPlusSecretKey;
+let Issuer3Pk: BBSPlusPublicKeyG2;
 
 // Accumulator params
-let Accum1Params: Uint8Array;
-let Accum2Params: Uint8Array;
-let Accum3Params: Uint8Array;
+let Accum1Params: AccumulatorParams;
+let Accum2Params: AccumulatorParams;
+let Accum3Params: AccumulatorParams;
 
 // Secret key and public key for accumulator managers
-let Accum1Sk: Uint8Array;
-let Accum1Pk: Uint8Array;
-let Accum2Sk: Uint8Array;
-let Accum2Pk: Uint8Array;
-let Accum3Sk: Uint8Array;
-let Accum3Pk: Uint8Array;
-let Accum1Prk: Uint8Array;
-let Accum2Prk: Uint8Array;
+let Accum1Sk: AccumulatorSecretKey;
+let Accum1Pk: AccumulatorPublicKey;
+let Accum2Sk: AccumulatorSecretKey;
+let Accum2Pk: AccumulatorPublicKey;
+let Accum3Sk: AccumulatorSecretKey;
+let Accum3Pk: AccumulatorPublicKey;
+let Accum1Prk: MembershipProvingKey;
+let Accum2Prk: MembershipProvingKey;
 
 // Proving key for non-membership
-let Accum3NonMemPrk: Uint8Array;
+let Accum3NonMemPrk: NonMembershipProvingKey;
 // Proving key for membership
-let Accum3MemPrk: Uint8Array;
+let Accum3MemPrk: MembershipProvingKey;
 // Positive accumulator that stores the secret key as well
 let Accum1: PositiveAccumulator;
 // Positive accumulator that needs the secret key to passed when needed. This is to avoid having secret key in memory all the time.
@@ -116,15 +123,15 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       }
     }
 
-    function checkPublicKey(sk: Uint8Array, pk: Uint8Array, params: any) {
-      if (!KeypairG2.isPublicKeyValid(pk)) {
+    function checkPublicKey(sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2, params: any) {
+      if (!pk.isValid()) {
         throw new Error('Public key is invalid');
       }
-      const gpk = KeypairG2.generatePublicKeyFromSecretKey(sk, params);
-      if (!areUint8ArraysEqual(gpk, pk)) {
-        throw new Error(`Generated public key ${gpk} different from expected public key ${pk}`);
+      const gpk = sk.generatePublicKeyG2(params);
+      if (!areUint8ArraysEqual(gpk.value, pk.value)) {
+        throw new Error(`Generated public key ${gpk.value} different from expected public key ${pk.value}`);
       }
-      if (!KeypairG2.isPublicKeyValid(gpk)) {
+      if (!gpk.isValid()) {
         throw new Error('Generated public key is invalid');
       }
     }
@@ -212,13 +219,13 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       Accum3Params = Accumulator.generateParams();
       const seed = stringToBytes('secret-seed-for-non-universal-accum');
       const keypair = Accumulator.generateKeypair(Accum3Params, seed);
-      Accum3Sk = keypair.secret_key;
-      Accum3Pk = keypair.public_key;
+      Accum3Sk = keypair.secretKey;
+      Accum3Pk = keypair.publicKey;
       const maxSize = 100;
 
       Accum3 = await UniversalAccumulator.initialize(maxSize, Accum3Params, Accum3Sk);
       Accum3NonMemPrk = Accumulator.generateNonMembershipProvingKey(stringToBytes('Another public label'));
-      Accum3MemPrk = Accumulator.deriveMembershipKeyFromNonMembershipProvingKey(Accum3NonMemPrk);
+      Accum3MemPrk = Accum3NonMemPrk.deriveMembershipProvingKey();
     }
 
     function prepareMessagesForBlindSigning(messages: Uint8Array[]) {
@@ -293,12 +300,12 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       sigParamsForRequestedCredential: SignatureParamsG1,
       credential: SignatureG1,
       sigParams: SignatureParamsG1,
-      pk: Uint8Array,
+      pk: BBSPlusPublicKeyG2,
       revealedMsgs: Map<number, Uint8Array>,
       unrevealedMsgs: Map<number, Uint8Array>,
-      accumParams: Uint8Array,
-      accumPk: Uint8Array,
-      prk: Uint8Array,
+      accumParams: AccumulatorParams,
+      accumPk: AccumulatorPublicKey,
+      prk: MembershipProvingKey,
       accumulated: Uint8Array,
       membershipWitness: MembershipWitness,
       nonce?: Uint8Array
@@ -358,22 +365,22 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       sigParamsForRequestedCredential: SignatureParamsG1,
       credential: SignatureG1,
       sigParams: SignatureParamsG1,
-      pk: Uint8Array,
+      pk: BBSPlusPublicKeyG2,
       revealedMsgs: Map<number, Uint8Array>,
       unrevealedMsgs: Map<number, Uint8Array>,
-      accumParams: Uint8Array,
-      accumPk: Uint8Array,
-      prk: Uint8Array,
+      accumParams: AccumulatorParams,
+      accumPk: AccumulatorPublicKey,
+      prk: MembershipProvingKey,
       accumulated: Uint8Array,
       membershipWitness: MembershipWitness,
       credential2: SignatureG1,
       sigParams2: SignatureParamsG1,
-      pk2: Uint8Array,
+      pk2: BBSPlusPublicKeyG2,
       revealedMsgs2: Map<number, Uint8Array>,
       unrevealedMsgs2: Map<number, Uint8Array>,
-      accumParams2: Uint8Array,
-      accumPk2: Uint8Array,
-      prk2: Uint8Array,
+      accumParams2: AccumulatorParams,
+      accumPk2: AccumulatorPublicKey,
+      prk2: MembershipProvingKey,
       accumulated2: Uint8Array,
       membershipWitness2: MembershipWitness,
       nonce?: Uint8Array
@@ -445,7 +452,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     function issueBlindSig(
       blindSigReq: BlindSigRequest,
       sigParams: SignatureParamsG1,
-      sk: Uint8Array,
+      sk: BBSPlusSecretKey,
       otherMsgs: Map<number, Uint8Array>,
       nonce?: Uint8Array
     ) {
@@ -468,14 +475,14 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     function issueBlindSigWithCredVerif(
       blindSigReq: BlindSigRequest,
       sigParamsForRequestedCredential: SignatureParamsG1,
-      sk: Uint8Array,
+      sk: BBSPlusSecretKey,
       otherMsgs: Map<number, Uint8Array>,
       sigParams: SignatureParamsG1,
-      pk: Uint8Array,
+      pk: BBSPlusPublicKeyG2,
       revealedMsgs: Map<number, Uint8Array>,
-      accumParams: Uint8Array,
-      accumPk: Uint8Array,
-      prk: Uint8Array,
+      accumParams: AccumulatorParams,
+      accumPk: AccumulatorPublicKey,
+      prk: MembershipProvingKey,
       accumulated: Uint8Array,
       nonce?: Uint8Array
     ) {
@@ -522,21 +529,21 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     function issueBlindSigWith2CredVerifs(
       blindSigReq: BlindSigRequest,
       sigParamsForRequestedCredential: SignatureParamsG1,
-      sk: Uint8Array,
+      sk: BBSPlusSecretKey,
       otherMsgs: Map<number, Uint8Array>,
       sigParams: SignatureParamsG1,
-      pk: Uint8Array,
+      pk: BBSPlusPublicKeyG2,
       revealedMsgs: Map<number, Uint8Array>,
-      accumParams: Uint8Array,
-      accumPk: Uint8Array,
-      prk: Uint8Array,
+      accumParams: AccumulatorParams,
+      accumPk: AccumulatorPublicKey,
+      prk: MembershipProvingKey,
       accumulated: Uint8Array,
       sigParams2: SignatureParamsG1,
-      pk2: Uint8Array,
+      pk2: BBSPlusPublicKeyG2,
       revealedMsgs2: Map<number, Uint8Array>,
-      accumParams2: Uint8Array,
-      accumPk2: Uint8Array,
-      prk2: Uint8Array,
+      accumParams2: AccumulatorParams,
+      accumPk2: AccumulatorPublicKey,
+      prk2: MembershipProvingKey,
       accumulated2: Uint8Array,
       nonce?: Uint8Array
     ) {
@@ -593,32 +600,32 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     function proofOf3Creds(
       credential: SignatureG1,
       sigParams: SignatureParamsG1,
-      pk: Uint8Array,
+      pk: BBSPlusPublicKeyG2,
       revealedMsgs: Map<number, Uint8Array>,
       unrevealedMsgs: Map<number, Uint8Array>,
-      accumParams: Uint8Array,
-      accumPk: Uint8Array,
-      prk: Uint8Array,
+      accumParams: AccumulatorParams,
+      accumPk: AccumulatorPublicKey,
+      prk: MembershipProvingKey,
       accumulated: Uint8Array,
       membershipWitness: MembershipWitness,
       credential2: SignatureG1,
       sigParams2: SignatureParamsG1,
-      pk2: Uint8Array,
+      pk2: BBSPlusPublicKeyG2,
       revealedMsgs2: Map<number, Uint8Array>,
       unrevealedMsgs2: Map<number, Uint8Array>,
-      accumParams2: Uint8Array,
-      accumPk2: Uint8Array,
-      prk2: Uint8Array,
+      accumParams2: AccumulatorParams,
+      accumPk2: AccumulatorPublicKey,
+      prk2: MembershipProvingKey,
       accumulated2: Uint8Array,
       membershipWitness2: MembershipWitness,
       credential3: SignatureG1,
       sigParams3: SignatureParamsG1,
-      pk3: Uint8Array,
+      pk3: BBSPlusPublicKeyG2,
       revealedMsgs3: Map<number, Uint8Array>,
       unrevealedMsgs3: Map<number, Uint8Array>,
-      accumParams3: Uint8Array,
-      accumPk3: Uint8Array,
-      prk3: Uint8Array,
+      accumParams3: AccumulatorParams,
+      accumPk3: AccumulatorPublicKey,
+      prk3: MembershipProvingKey,
       accumulated3: Uint8Array,
       membershipWitness3: MembershipWitness,
       nonce?: Uint8Array
@@ -696,25 +703,25 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     function verifyProofOf3Creds(
       proof: CompositeProofG1,
       sigParams: SignatureParamsG1,
-      pk: Uint8Array,
+      pk: BBSPlusPublicKeyG2,
       revealedMsgs: Map<number, Uint8Array>,
-      accumParams: Uint8Array,
-      accumPk: Uint8Array,
-      prk: Uint8Array,
+      accumParams: AccumulatorParams,
+      accumPk: AccumulatorPublicKey,
+      prk: MembershipProvingKey,
       accumulated: Uint8Array,
       sigParams2: SignatureParamsG1,
-      pk2: Uint8Array,
+      pk2: BBSPlusPublicKeyG2,
       revealedMsgs2: Map<number, Uint8Array>,
-      accumParams2: Uint8Array,
-      accumPk2: Uint8Array,
-      prk2: Uint8Array,
+      accumParams2: AccumulatorParams,
+      accumPk2: AccumulatorPublicKey,
+      prk2: MembershipProvingKey,
       accumulated2: Uint8Array,
       sigParams3: SignatureParamsG1,
-      pk3: Uint8Array,
+      pk3: BBSPlusPublicKeyG2,
       revealedMsgs3: Map<number, Uint8Array>,
-      accumParams3: Uint8Array,
-      accumPk3: Uint8Array,
-      prk3: Uint8Array,
+      accumParams3: AccumulatorParams,
+      accumPk3: AccumulatorPublicKey,
+      prk3: MembershipProvingKey,
       accumulated3: Uint8Array,
       nonce?: Uint8Array
     ) {
@@ -786,7 +793,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       blinding: Uint8Array,
       holderSecret: Uint8Array,
       msgs: Uint8Array[],
-      pk: Uint8Array,
+      pk: BBSPlusPublicKeyG2,
       sigParams: SignatureParamsG1
     ): [SignatureG1, Uint8Array[]] {
       const unblinded = blindedSig.unblind(blinding);

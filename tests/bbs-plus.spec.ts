@@ -89,10 +89,10 @@ describe('BBS+ signature', () => {
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 
-    expect(KeypairG2.isPublicKeyValid(pk)).toEqual(true);
+    expect(pk.isValid()).toEqual(true);
 
-    const pk1 = KeypairG2.generatePublicKeyFromSecretKey(sk, params);
-    expect(pk).toEqual(pk1);
+    const pk1 = sk.generatePublicKeyG2(params);
+    expect(pk.value).toEqual(pk1.value);
 
     const sig = SignatureG1.generate(messages, sk, params, true);
     expect(sig.verify(messages, pk, params, true).verified).toEqual(true);

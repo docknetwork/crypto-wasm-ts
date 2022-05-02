@@ -68,12 +68,8 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     expect(result.verified).toEqual(true);
 
     const userIdIdx = messageCount - 1;
-    await accumulator.add(encodedMessages[userIdIdx], accumKeypair.secret_key, state);
-    const accumWitness = await accumulator.membershipWitness(
-      encodedMessages[userIdIdx],
-      accumKeypair.secret_key,
-      state
-    );
+    await accumulator.add(encodedMessages[userIdIdx], accumKeypair.secretKey, state);
+    const accumWitness = await accumulator.membershipWitness(encodedMessages[userIdIdx], accumKeypair.secretKey, state);
 
     // User reveals 1 message at index 1 to verifier
     const revealedMsgIndices: Set<number> = new Set();
@@ -93,7 +89,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.accumulatorMembership(
       accumParams,
-      accumKeypair.public_key,
+      accumKeypair.publicKey,
       provingKey,
       accumulator.accumulated
     );

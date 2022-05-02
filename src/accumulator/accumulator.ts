@@ -1,49 +1,52 @@
-import { IKeypair } from '@docknetwork/crypto-wasm';
 import {
+  accumulatorDeriveMembershipProvingKeyFromNonMembershipKey,
+  generateAccumulatorKeyPair,
+  generateFieldElementFromBytes,
+  generateFieldElementFromNumber,
+  generateMembershipProvingKey,
+  generateNonMembershipProvingKey,
+  generateRandomFieldElement,
+  IKeypair,
   positiveAccumulatorAdd,
   positiveAccumulatorAddBatch,
   positiveAccumulatorBatchUpdates,
   positiveAccumulatorInitialize,
+  positiveAccumulatorMembershipWitness,
+  positiveAccumulatorMembershipWitnessesForBatch,
   positiveAccumulatorRemove,
   positiveAccumulatorRemoveBatch,
-  universalAccumulatorAdd,
-  universalAccumulatorRemove,
-  universalAccumulatorAddBatch,
-  universalAccumulatorRemoveBatch,
-  universalAccumulatorBatchUpdates,
-  universalAccumulatorInitialiseGivenFv,
-  universalAccumulatorComputeInitialFv,
-  universalAccumulatorCombineMultipleInitialFv,
-  positiveAccumulatorMembershipWitness,
-  universalAccumulatorMembershipWitness,
   positiveAccumulatorVerifyMembership,
-  universalAccumulatorVerifyMembership,
-  positiveAccumulatorMembershipWitnessesForBatch,
-  universalAccumulatorMembershipWitnessesForBatch,
-  universalAccumulatorNonMembershipWitnessesForBatch,
-  universalAccumulatorNonMembershipWitness,
+  universalAccumulatorAdd,
+  universalAccumulatorAddBatch,
+  universalAccumulatorBatchUpdates,
+  universalAccumulatorCombineMultipleD,
+  universalAccumulatorCombineMultipleInitialFv,
   universalAccumulatorComputeD,
   universalAccumulatorComputeDForBatch,
-  generateAccumulatorParams,
-  isAccumulatorParamsValid,
-  universalAccumulatorVerifyNonMembership,
-  generateAccumulatorKeyPair,
-  generateAccumulatorSecretKey,
-  generateAccumulatorPublicKey,
-  isAccumulatorPublicKeyValid,
-  generateMembershipProvingKey,
-  generateNonMembershipProvingKey,
-  accumulatorDeriveMembershipProvingKeyFromNonMembershipKey,
-  generateRandomFieldElement,
-  universalAccumulatorCombineMultipleD,
-  generateFieldElementFromBytes,
-  generateFieldElementFromNumber,
-  universalAccumulatorFixedInitialElements
+  universalAccumulatorComputeInitialFv,
+  universalAccumulatorFixedInitialElements,
+  universalAccumulatorInitialiseGivenFv,
+  universalAccumulatorMembershipWitness,
+  universalAccumulatorMembershipWitnessesForBatch,
+  universalAccumulatorNonMembershipWitness,
+  universalAccumulatorNonMembershipWitnessesForBatch,
+  universalAccumulatorRemove,
+  universalAccumulatorRemoveBatch,
+  universalAccumulatorVerifyMembership,
+  universalAccumulatorVerifyNonMembership
 } from '@docknetwork/crypto-wasm';
 import { MembershipWitness, NonMembershipWitness } from './accumulatorWitness';
-import { getUint8ArraysFromObject, isNumberBiggerThanNBits } from '../util';
+import { getUint8ArraysFromObject } from '../util';
 import { IAccumulatorState, IUniversalAccumulatorState } from './IAccumulatorState';
 import { IInitialElementsStore } from './IInitialElementsStore';
+import {
+  AccumulatorKeypair,
+  AccumulatorParams,
+  AccumulatorPublicKey,
+  AccumulatorSecretKey,
+  MembershipProvingKey,
+  NonMembershipProvingKey
+} from './params-and-keys';
 
 /**
  * Interface implemented by both Positive and Universal accumulator. Contains implementations for parameter and key generation.
@@ -57,8 +60,8 @@ import { IInitialElementsStore } from './IInitialElementsStore';
  */
 export abstract class Accumulator {
   value: Uint8Array | object;
-  secretKey: Uint8Array | undefined;
-  params: Uint8Array | undefined;
+  secretKey: AccumulatorSecretKey | undefined;
+  params: AccumulatorParams | undefined;
 
   /**
    * Construct an accumulator object.
@@ -103,18 +106,8 @@ export abstract class Accumulator {
    * @param label - Pass to generate parameters deterministically.
    * @returns
    */
-  static generateParams(label?: Uint8Array): Uint8Array {
-    return generateAccumulatorParams(label);
-  }
-
-  /**
-   * Check if parameters are valid. Before verifying witness or using for proof verification,
-   * make sure the params are valid.
-   * @param params
-   * @returns true if key is valid, false otherwise
-   */
-  static isParamsValid(params: Uint8Array): boolean {
-    return isAccumulatorParamsValid(params);
+  static generateParams(label?: Uint8Array): AccumulatorParams {
+    return AccumulatorParams.generate(label);
   }
 
   /**
@@ -122,8 +115,8 @@ export abstract class Accumulator {
    * @param seed - Pass to generate key deterministically.
    * @returns
    */
-  static generateSecretKey(seed?: Uint8Array): Uint8Array {
-    return generateAccumulatorSecretKey(seed);
+  static generateSecretKey(seed?: Uint8Array): AccumulatorSecretKey {
+    return AccumulatorSecretKey.generate(seed);
   }
 
   /**
@@ -132,18 +125,11 @@ export abstract class Accumulator {
    * @param params
    * @returns
    */
-  static generatePublicKeyFromSecretKey(secretKey: Uint8Array, params: Uint8Array): Uint8Array {
-    return generateAccumulatorPublicKey(secretKey, params);
-  }
-
-  /**
-   * Check if public key is valid. Before verifying witness or using for proof verification,
-   * make sure the public key is valid.
-   * @param publicKey
-   * @returns true if key is valid, false otherwise
-   */
-  static isPublicKeyValid(publicKey: Uint8Array): boolean {
-    return isAccumulatorPublicKeyValid(publicKey);
+  static generatePublicKeyFromSecretKey(
+    secretKey: AccumulatorSecretKey,
+    params: AccumulatorParams
+  ): AccumulatorPublicKey {
+    return secretKey.generatePublicKey(params);
   }
 
   /**
@@ -152,8 +138,8 @@ export abstract class Accumulator {
    * @param seed - Pass to generate keys deterministically.
    * @returns
    */
-  static generateKeypair(params: Uint8Array, seed?: Uint8Array): IKeypair {
-    return generateAccumulatorKeyPair(params, seed);
+  static generateKeypair(params: AccumulatorParams, seed?: Uint8Array): AccumulatorKeypair {
+    return AccumulatorKeypair.generate(params, seed);
   }
 
   /**
@@ -162,20 +148,22 @@ export abstract class Accumulator {
    * on a proving key and the manager does not need to be aware of any proving key.
    * @param label - The bytearray that is hashed to deterministically generate the proving key.
    */
-  static generateMembershipProvingKey(label?: Uint8Array): Uint8Array {
-    return generateMembershipProvingKey(label);
+  static generateMembershipProvingKey(label?: Uint8Array): MembershipProvingKey {
+    return MembershipProvingKey.generate(label);
   }
 
   /**
    * Generate proving key for proving non-membership in a universal accumulator in zero knowledge.
    * @param label - The bytearray that is hashed to deterministically generate the proving key.
    */
-  static generateNonMembershipProvingKey(label?: Uint8Array): Uint8Array {
-    return generateNonMembershipProvingKey(label);
+  static generateNonMembershipProvingKey(label?: Uint8Array): NonMembershipProvingKey {
+    return NonMembershipProvingKey.generate(label);
   }
 
-  static deriveMembershipKeyFromNonMembershipProvingKey(nonMembershipKey: Uint8Array): Uint8Array {
-    return accumulatorDeriveMembershipProvingKeyFromNonMembershipKey(nonMembershipKey);
+  static deriveMembershipKeyFromNonMembershipProvingKey(
+    nonMembershipKey: NonMembershipProvingKey
+  ): MembershipProvingKey {
+    return nonMembershipKey.deriveMembershipProvingKey();
   }
 
   /**
@@ -183,7 +171,7 @@ export abstract class Accumulator {
    * @param secretKey
    * @returns secret key or throws error if cannot find secret key
    */
-  protected getSecretKey(secretKey?: Uint8Array): Uint8Array {
+  protected getSecretKey(secretKey?: AccumulatorSecretKey): AccumulatorSecretKey {
     if (secretKey === undefined) {
       if (this.secretKey === undefined) {
         throw new Error('Secret key needs to be provided');
@@ -198,7 +186,7 @@ export abstract class Accumulator {
    * @param params
    * @returns params or throws error if cannot find params
    */
-  protected getParams(params?: Uint8Array): Uint8Array {
+  protected getParams(params?: AccumulatorParams): AccumulatorParams {
     if (params === undefined) {
       if (this.params === undefined) {
         throw new Error('Params needs to be provided');
@@ -224,7 +212,7 @@ export abstract class Accumulator {
    * @param state - If state is provided it is checked before computing the new accumulator and updated with new element after
    * computing the new accumulator. Throws error if element present.
    */
-  abstract add(element: Uint8Array, secretKey?: Uint8Array, state?: IAccumulatorState): void;
+  abstract add(element: Uint8Array, secretKey?: AccumulatorSecretKey, state?: IAccumulatorState): void;
 
   /**
    * Remove a single element from the accumulator
@@ -233,7 +221,7 @@ export abstract class Accumulator {
    * @param state - If state is provided it is checked before computing the new accumulator and element is removed from it after
    * computing the new accumulator. Throws error if element is not present.
    */
-  abstract remove(element: Uint8Array, secretKey?: Uint8Array, state?: IAccumulatorState): void;
+  abstract remove(element: Uint8Array, secretKey?: AccumulatorSecretKey, state?: IAccumulatorState): void;
 
   /**
    * Add a batch of elements to the accumulator.
@@ -242,7 +230,7 @@ export abstract class Accumulator {
    * @param state - If state is provided it is checked before computing the new accumulator and updated with new elements after
    * computing the new accumulator
    */
-  abstract addBatch(elements: Uint8Array[], secretKey?: Uint8Array, state?: IAccumulatorState): void;
+  abstract addBatch(elements: Uint8Array[], secretKey?: AccumulatorSecretKey, state?: IAccumulatorState): void;
 
   /**
    * Remove a batch of elements from the accumulator.
@@ -251,7 +239,7 @@ export abstract class Accumulator {
    * @param state - If state is provided it is checked before computing the new accumulator and updated by removing those elements
    * after computing the new accumulator
    */
-  abstract removeBatch(elements: Uint8Array[], secretKey?: Uint8Array, state?: IAccumulatorState): void;
+  abstract removeBatch(elements: Uint8Array[], secretKey?: AccumulatorSecretKey, state?: IAccumulatorState): void;
 
   /**
    * Add and remove batches of elements.
@@ -264,7 +252,7 @@ export abstract class Accumulator {
   abstract addRemoveBatches(
     additions: Uint8Array[],
     removals: Uint8Array[],
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
   ): void;
 
@@ -276,7 +264,7 @@ export abstract class Accumulator {
    */
   abstract membershipWitness(
     element: Uint8Array,
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
   ): Promise<MembershipWitness>;
 
@@ -288,7 +276,7 @@ export abstract class Accumulator {
    */
   abstract membershipWitnessesForBatch(
     elements: Uint8Array[],
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
   ): Promise<MembershipWitness[]>;
 
@@ -302,8 +290,8 @@ export abstract class Accumulator {
   abstract verifyMembershipWitness(
     member: Uint8Array,
     witness: MembershipWitness,
-    pk: Uint8Array,
-    params?: Uint8Array
+    pk: AccumulatorPublicKey,
+    params?: AccumulatorParams
   ): boolean;
 
   /**
@@ -436,8 +424,8 @@ export class PositiveAccumulator extends Accumulator {
    * @param params
    * @param secretKey - Optional. If provided, its stored to do any future updates.
    */
-  static initialize(params: Uint8Array, secretKey?: Uint8Array): PositiveAccumulator {
-    const value = positiveAccumulatorInitialize(params);
+  static initialize(params: AccumulatorParams, secretKey?: AccumulatorSecretKey): PositiveAccumulator {
+    const value = positiveAccumulatorInitialize(params.value);
     return new PositiveAccumulator({ value, params, sk: secretKey });
   }
 
@@ -447,10 +435,10 @@ export class PositiveAccumulator extends Accumulator {
    * @param secretKey
    * @param state - Optional. If provided, checked before adding and updated with the new element
    */
-  async add(element: Uint8Array, secretKey?: Uint8Array, state?: IAccumulatorState) {
+  async add(element: Uint8Array, secretKey?: AccumulatorSecretKey, state?: IAccumulatorState) {
     await this.ensureAbsence(element, state);
     const sk = this.getSecretKey(secretKey);
-    this.value = positiveAccumulatorAdd(this.value, element, sk);
+    this.value = positiveAccumulatorAdd(this.value, element, sk.value);
     await this.addToState(element, state);
   }
 
@@ -460,10 +448,10 @@ export class PositiveAccumulator extends Accumulator {
    * @param secretKey
    * @param state- Optional. If provided, checked before removing and element is removed
    */
-  async remove(element: Uint8Array, secretKey?: Uint8Array, state?: IAccumulatorState) {
+  async remove(element: Uint8Array, secretKey?: AccumulatorSecretKey, state?: IAccumulatorState) {
     await this.ensurePresence(element, state);
     const sk = this.getSecretKey(secretKey);
-    this.value = positiveAccumulatorRemove(this.value, element, sk);
+    this.value = positiveAccumulatorRemove(this.value, element, sk.value);
     await this.removeFromState(element, state);
   }
 
@@ -473,10 +461,10 @@ export class PositiveAccumulator extends Accumulator {
    * @param secretKey
    * @param state
    */
-  async addBatch(elements: Uint8Array[], secretKey?: Uint8Array, state?: IAccumulatorState) {
+  async addBatch(elements: Uint8Array[], secretKey?: AccumulatorSecretKey, state?: IAccumulatorState) {
     await this.ensureAbsenceOfBatch(elements, state);
     const sk = this.getSecretKey(secretKey);
-    this.value = positiveAccumulatorAddBatch(this.value, elements, sk);
+    this.value = positiveAccumulatorAddBatch(this.value, elements, sk.value);
     await this.addBatchToState(elements, state);
   }
 
@@ -486,10 +474,10 @@ export class PositiveAccumulator extends Accumulator {
    * @param secretKey
    * @param state
    */
-  async removeBatch(elements: Uint8Array[], secretKey?: Uint8Array, state?: IAccumulatorState) {
+  async removeBatch(elements: Uint8Array[], secretKey?: AccumulatorSecretKey, state?: IAccumulatorState) {
     await this.ensurePresenceOfBatch(elements, state);
     const sk = this.getSecretKey(secretKey);
-    this.value = positiveAccumulatorRemoveBatch(this.value, elements, sk);
+    this.value = positiveAccumulatorRemoveBatch(this.value, elements, sk.value);
     await this.removeBatchFromState(elements, state);
   }
 
@@ -503,13 +491,13 @@ export class PositiveAccumulator extends Accumulator {
   async addRemoveBatches(
     additions: Uint8Array[],
     removals: Uint8Array[],
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
   ) {
     await this.ensureAbsenceOfBatch(additions, state);
     await this.ensurePresenceOfBatch(removals, state);
     const sk = this.getSecretKey(secretKey);
-    this.value = positiveAccumulatorBatchUpdates(this.value, additions, removals, sk);
+    this.value = positiveAccumulatorBatchUpdates(this.value, additions, removals, sk.value);
     await this.addBatchToState(additions, state);
     await this.removeBatchFromState(removals, state);
   }
@@ -523,12 +511,12 @@ export class PositiveAccumulator extends Accumulator {
    */
   async membershipWitness(
     member: Uint8Array,
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
   ): Promise<MembershipWitness> {
     await this.ensurePresence(member, state);
     const sk = this.getSecretKey(secretKey);
-    const wit = positiveAccumulatorMembershipWitness(this.value, member, sk);
+    const wit = positiveAccumulatorMembershipWitness(this.value, member, sk.value);
     return new MembershipWitness(wit);
   }
 
@@ -541,12 +529,14 @@ export class PositiveAccumulator extends Accumulator {
    */
   async membershipWitnessesForBatch(
     members: Uint8Array[],
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
   ): Promise<MembershipWitness[]> {
     await this.ensurePresenceOfBatch(members, state);
     const sk = this.getSecretKey(secretKey);
-    return positiveAccumulatorMembershipWitnessesForBatch(this.value, members, sk).map((m) => new MembershipWitness(m));
+    return positiveAccumulatorMembershipWitnessesForBatch(this.value, members, sk.value).map(
+      (m) => new MembershipWitness(m)
+    );
   }
 
   /**
@@ -560,11 +550,11 @@ export class PositiveAccumulator extends Accumulator {
   verifyMembershipWitness(
     member: Uint8Array,
     witness: MembershipWitness,
-    publicKey: Uint8Array,
-    params?: Uint8Array
+    publicKey: AccumulatorPublicKey,
+    params?: AccumulatorParams
   ): boolean {
     const params_ = this.getParams(params);
-    return positiveAccumulatorVerifyMembership(this.value, member, witness.value, publicKey, params_);
+    return positiveAccumulatorVerifyMembership(this.value, member, witness.value, publicKey.value, params_.value);
   }
 
   toJSON(): string {
@@ -615,8 +605,8 @@ export class UniversalAccumulator extends Accumulator {
    */
   static async initialize(
     maxSize: number,
-    params: Uint8Array,
-    secretKey: Uint8Array,
+    params: AccumulatorParams,
+    secretKey: AccumulatorSecretKey,
     initialElementsStore?: IInitialElementsStore,
     batchSize = 100
   ): Promise<UniversalAccumulator> {
@@ -631,7 +621,7 @@ export class UniversalAccumulator extends Accumulator {
         await initialElementsStore.add(i);
       }
     }
-    products.push(universalAccumulatorComputeInitialFv(fixed, secretKey));
+    products.push(universalAccumulatorComputeInitialFv(fixed, secretKey.value));
 
     // store a batch of generated elements and take the product once the batch is full
     let currentBatch = [];
@@ -644,12 +634,12 @@ export class UniversalAccumulator extends Accumulator {
       }
       if (currentBatch.length == batchSize) {
         // Batch full, take product
-        products.push(universalAccumulatorComputeInitialFv(currentBatch, secretKey));
+        products.push(universalAccumulatorComputeInitialFv(currentBatch, secretKey.value));
         currentBatch = [];
       }
     }
     if (currentBatch.length > 0) {
-      products.push(universalAccumulatorComputeInitialFv(currentBatch, secretKey));
+      products.push(universalAccumulatorComputeInitialFv(currentBatch, secretKey.value));
     }
     // take the product of the products from each batch
     const product = universalAccumulatorCombineMultipleInitialFv(products);
@@ -666,10 +656,10 @@ export class UniversalAccumulator extends Accumulator {
   static initializeGivenInitialElementsProduct(
     maxSize: number,
     initialElementsProduct: Uint8Array,
-    params: Uint8Array,
-    secretKey?: Uint8Array
+    params: AccumulatorParams,
+    secretKey?: AccumulatorSecretKey
   ): UniversalAccumulator {
-    const value = universalAccumulatorInitialiseGivenFv(initialElementsProduct, params, maxSize);
+    const value = universalAccumulatorInitialiseGivenFv(initialElementsProduct, params.value, maxSize);
     return new UniversalAccumulator({ value, params, sk: secretKey });
   }
 
@@ -691,13 +681,13 @@ export class UniversalAccumulator extends Accumulator {
    */
   async add(
     element: Uint8Array,
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ) {
     await this.checkBeforeAdd(element, state, initialElementsStore);
     const sk = this.getSecretKey(secretKey);
-    this.value = universalAccumulatorAdd(this.value, element, sk);
+    this.value = universalAccumulatorAdd(this.value, element, sk.value);
     await this.addToState(element, state);
   }
 
@@ -711,78 +701,78 @@ export class UniversalAccumulator extends Accumulator {
    */
   async remove(
     element: Uint8Array,
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ) {
     await this.checkBeforeRemove(element, state, initialElementsStore);
     const sk = this.getSecretKey(secretKey);
-    this.value = universalAccumulatorRemove(this.value, element, sk);
+    this.value = universalAccumulatorRemove(this.value, element, sk.value);
     await this.removeFromState(element, state);
   }
 
   async addBatch(
     elements: Uint8Array[],
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ) {
     await this.checkBeforeAddBatch(elements, state, initialElementsStore);
     const sk = this.getSecretKey(secretKey);
-    this.value = universalAccumulatorAddBatch(this.value, elements, sk);
+    this.value = universalAccumulatorAddBatch(this.value, elements, sk.value);
     await this.addBatchToState(elements, state);
   }
 
   async removeBatch(
     elements: Uint8Array[],
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ) {
     await this.checkBeforeRemoveBatch(elements, state, initialElementsStore);
     const sk = this.getSecretKey(secretKey);
-    this.value = universalAccumulatorRemoveBatch(this.value, elements, sk);
+    this.value = universalAccumulatorRemoveBatch(this.value, elements, sk.value);
     await this.removeBatchFromState(elements, state);
   }
 
   async addRemoveBatches(
     additions: Uint8Array[],
     removals: Uint8Array[],
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ) {
     await this.checkBeforeAddBatch(additions, state, initialElementsStore);
     await this.checkBeforeRemoveBatch(removals, state, initialElementsStore);
     const sk = this.getSecretKey(secretKey);
-    this.value = universalAccumulatorBatchUpdates(this.value, additions, removals, sk);
+    this.value = universalAccumulatorBatchUpdates(this.value, additions, removals, sk.value);
     await this.addBatchToState(additions, state);
     await this.removeBatchFromState(removals, state);
   }
 
   async membershipWitness(
     member: Uint8Array,
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ): Promise<MembershipWitness> {
     await this.checkElementAcceptable(member, initialElementsStore);
     await this.ensurePresence(member, state);
     const sk = this.getSecretKey(secretKey);
-    const wit = universalAccumulatorMembershipWitness(this.value, member, sk);
+    const wit = universalAccumulatorMembershipWitness(this.value, member, sk.value);
     return new MembershipWitness(wit);
   }
 
   async membershipWitnessesForBatch(
     members: Uint8Array[],
-    secretKey?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ): Promise<MembershipWitness[]> {
     await this.checkElementBatchAcceptable(members, initialElementsStore);
     await this.ensurePresenceOfBatch(members, state);
     const sk = this.getSecretKey(secretKey);
-    return universalAccumulatorMembershipWitnessesForBatch(this.value, members, sk).map(
+    return universalAccumulatorMembershipWitnessesForBatch(this.value, members, sk.value).map(
       (m) => new MembershipWitness(m)
     );
   }
@@ -801,8 +791,8 @@ export class UniversalAccumulator extends Accumulator {
   async nonMembershipWitness(
     nonMember: Uint8Array,
     state: IUniversalAccumulatorState,
-    secretKey?: Uint8Array,
-    params?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
+    params?: AccumulatorParams,
     initialElementsStore?: IInitialElementsStore,
     batchSize = 100
   ): Promise<NonMembershipWitness> {
@@ -824,7 +814,7 @@ export class UniversalAccumulator extends Accumulator {
       ds.push(universalAccumulatorComputeD(nonMember, currentBatch));
     }
     const d = universalAccumulatorCombineMultipleD(ds);
-    const wit = universalAccumulatorNonMembershipWitness(this.value, d, nonMember, sk, params_);
+    const wit = universalAccumulatorNonMembershipWitness(this.value, d, nonMember, sk.value, params_.value);
     return new NonMembershipWitness(wit);
   }
 
@@ -841,8 +831,8 @@ export class UniversalAccumulator extends Accumulator {
   async nonMembershipWitnessGivenD(
     nonMember: Uint8Array,
     d: Uint8Array,
-    secretKey?: Uint8Array,
-    params?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
+    params?: AccumulatorParams,
     state?: IUniversalAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ): Promise<NonMembershipWitness> {
@@ -850,7 +840,7 @@ export class UniversalAccumulator extends Accumulator {
     await this.ensureAbsence(nonMember, state);
     const sk = this.getSecretKey(secretKey);
     const params_ = this.getParams(params);
-    const wit = universalAccumulatorNonMembershipWitness(this.value, d, nonMember, sk, params_);
+    const wit = universalAccumulatorNonMembershipWitness(this.value, d, nonMember, sk.value, params_.value);
     return new NonMembershipWitness(wit);
   }
 
@@ -867,8 +857,8 @@ export class UniversalAccumulator extends Accumulator {
   async nonMembershipWitnessesForBatch(
     nonMembers: Uint8Array[],
     state: IUniversalAccumulatorState,
-    secretKey?: Uint8Array,
-    params?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
+    params?: AccumulatorParams,
     initialElementsStore?: IInitialElementsStore,
     batchSize = 100
   ): Promise<NonMembershipWitness[]> {
@@ -900,7 +890,7 @@ export class UniversalAccumulator extends Accumulator {
       // Combine `d`s corresponding to each non-member
       ds[i] = universalAccumulatorCombineMultipleD(dsForAll[i]);
     }
-    return universalAccumulatorNonMembershipWitnessesForBatch(this.value, ds, nonMembers, sk, params_).map(
+    return universalAccumulatorNonMembershipWitnessesForBatch(this.value, ds, nonMembers, sk.value, params_.value).map(
       (m) => new NonMembershipWitness(m)
     );
   }
@@ -918,8 +908,8 @@ export class UniversalAccumulator extends Accumulator {
   async nonMembershipWitnessesForBatchGivenD(
     nonMembers: Uint8Array[],
     d: Uint8Array[],
-    secretKey?: Uint8Array,
-    params?: Uint8Array,
+    secretKey?: AccumulatorSecretKey,
+    params?: AccumulatorParams,
     state?: IUniversalAccumulatorState,
     initialElementsStore?: IInitialElementsStore
   ): Promise<NonMembershipWitness[]> {
@@ -927,7 +917,7 @@ export class UniversalAccumulator extends Accumulator {
     await this.ensureAbsenceOfBatch(nonMembers, state);
     const sk = this.getSecretKey(secretKey);
     const params_ = this.getParams(params);
-    return universalAccumulatorNonMembershipWitnessesForBatch(this.value, d, nonMembers, sk, params_).map(
+    return universalAccumulatorNonMembershipWitnessesForBatch(this.value, d, nonMembers, sk.value, params_.value).map(
       (m) => new NonMembershipWitness(m)
     );
   }
@@ -935,21 +925,21 @@ export class UniversalAccumulator extends Accumulator {
   verifyMembershipWitness(
     member: Uint8Array,
     witness: MembershipWitness,
-    pk: Uint8Array,
-    params?: Uint8Array
+    pk: AccumulatorPublicKey,
+    params?: AccumulatorParams
   ): boolean {
     const params_ = this.getParams(params);
-    return universalAccumulatorVerifyMembership(this.value.V, member, witness.value, pk, params_);
+    return universalAccumulatorVerifyMembership(this.value.V, member, witness.value, pk.value, params_.value);
   }
 
   verifyNonMembershipWitness(
     nonMember: Uint8Array,
     witness: NonMembershipWitness,
-    pk: Uint8Array,
-    params?: Uint8Array
+    pk: AccumulatorPublicKey,
+    params?: AccumulatorParams
   ): boolean {
     const params_ = this.getParams(params);
-    return universalAccumulatorVerifyNonMembership(this.value.V, nonMember, witness.value, pk, params_);
+    return universalAccumulatorVerifyNonMembership(this.value.V, nonMember, witness.value, pk.value, params_.value);
   }
 
   /**
@@ -957,8 +947,8 @@ export class UniversalAccumulator extends Accumulator {
    * @param initialElements
    * @param secretKey
    */
-  static initialElementsProduct(initialElements: Uint8Array[], secretKey: Uint8Array): Uint8Array {
-    return universalAccumulatorComputeInitialFv(initialElements, secretKey);
+  static initialElementsProduct(initialElements: Uint8Array[], secretKey: AccumulatorSecretKey): Uint8Array {
+    return universalAccumulatorComputeInitialFv(initialElements, secretKey.value);
   }
 
   static combineInitialElementsProducts(products: Uint8Array[]): Uint8Array {

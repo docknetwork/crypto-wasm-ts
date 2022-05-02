@@ -11,6 +11,7 @@ import {
   bbsChallengeContributionFromProof,
   bbsVerifyProofOfKnowledgeOfSignature
 } from '@docknetwork/crypto-wasm';
+import { BBSPlusPublicKeyG2 } from './keys';
 
 export class PoKSigProtocol {
   value: BbsPoKSigProtocol;
@@ -70,13 +71,20 @@ export class PoKSigProof {
 
   verify(
     challenge: Uint8Array,
-    publicKey: Uint8Array,
+    publicKey: BBSPlusPublicKeyG2,
     params: SignatureParamsG1,
     encodeMessages: boolean,
     revealedMsgs?: Map<number, Uint8Array>
   ): VerifyResult {
     const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsVerifyProofOfKnowledgeOfSignature(this.value, r, challenge, publicKey, params.value, encodeMessages);
+    return bbsVerifyProofOfKnowledgeOfSignature(
+      this.value,
+      r,
+      challenge,
+      publicKey.value,
+      params.value,
+      encodeMessages
+    );
   }
 
   challengeContribution(

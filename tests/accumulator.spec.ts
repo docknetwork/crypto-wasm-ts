@@ -10,7 +10,9 @@ import {
   PositiveAccumulator,
   UniversalAccumulator,
   MembershipWitness,
-  WitnessUpdatePublicInfo
+  WitnessUpdatePublicInfo,
+  AccumulatorParams,
+  AccumulatorKeypair
 } from '../src';
 import {
   InMemoryInitialElementsStore,
@@ -31,14 +33,14 @@ function getAccum(accumulator: any): PositiveAccumulator | UniversalAccumulator 
 }
 
 async function runCommonTests(
-  keypair: IKeypair,
-  params: Uint8Array,
+  keypair: AccumulatorKeypair,
+  params: AccumulatorParams,
   accumulator: PositiveAccumulator | UniversalAccumulator,
   state: InMemoryState,
   store?: IInitialElementsStore
 ) {
-  const sk = keypair.secret_key;
-  const pk = keypair.public_key;
+  const sk = keypair.sk;
+  const pk = keypair.pk;
 
   const e1 = Accumulator.encodePositiveNumberAsAccumulatorMember(101);
   const e2 = Accumulator.encodePositiveNumberAsAccumulatorMember(102);
@@ -202,10 +204,10 @@ describe('Accumulators type', () => {
     const state = new InMemoryState();
 
     const members1 = [generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement()];
-    await posAccumulator.addBatch(members1, keypair.secret_key, state);
+    await posAccumulator.addBatch(members1, keypair.secretKey, state);
 
     const members2 = [generateRandomFieldElement(), generateRandomFieldElement()];
-    await posAccumulator.addRemoveBatches(members2, members1, keypair.secret_key, state);
+    await posAccumulator.addRemoveBatches(members2, members1, keypair.secretKey, state);
   });
 
   it('Positive accumulator', async () => {
@@ -221,7 +223,7 @@ describe('Accumulators type', () => {
     const params = UniversalAccumulator.generateParams();
     const keypair = UniversalAccumulator.generateKeypair(params);
     const store = new InMemoryInitialElementsStore();
-    const accumulator1 = await UniversalAccumulator.initialize(20, params, keypair.secret_key, store);
+    const accumulator1 = await UniversalAccumulator.initialize(20, params, keypair.secretKey, store);
 
     const fixed = universalAccumulatorFixedInitialElements();
     expect(store.store.size).toEqual(20 + fixed.length + 1);

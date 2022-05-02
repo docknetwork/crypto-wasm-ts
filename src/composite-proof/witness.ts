@@ -53,11 +53,19 @@ export class Witness {
     return generateAccumulatorNonMembershipWitness(nonMember, accumulatorWitness.value);
   }
 
+  /**
+   * Witness for verifiable encryption using SAVER
+   * @param message - Message being encrypted
+   */
   static saver(message: Uint8Array): Uint8Array {
     return generateSaverWitness(message);
   }
 
-  static boundCheck(message: Uint8Array): Uint8Array {
+  /**
+   * Witness for bound check using LegoGroth16
+   * @param message - Message whose bounds are being proven using LegoGroth16
+   */
+  static boundCheckLegoGroth16(message: Uint8Array): Uint8Array {
     return generateBoundCheckWitness(message);
   }
 }

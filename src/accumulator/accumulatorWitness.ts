@@ -12,6 +12,7 @@ import {
   updateNonMembershipWitnessUsingPublicInfoAfterMultipleBatchUpdates
 } from '@docknetwork/crypto-wasm';
 import { getUint8ArraysFromObject, jsonObjToUint8Array } from '../util';
+import { AccumulatorSecretKey } from './params-and-keys';
 
 export abstract class AccumulatorWitness {
   value: Uint8Array | object;
@@ -121,7 +122,7 @@ export class MembershipWitness extends AccumulatorWitness {
     additions: Uint8Array[],
     removals: Uint8Array[],
     accumulatorValueBeforeUpdates: Uint8Array,
-    secretKey: Uint8Array
+    secretKey: AccumulatorSecretKey
   ): MembershipWitness[] {
     const wits = witnesses.map((m) => m.value);
     return updateMembershipWitnessesPostBatchUpdates(
@@ -130,7 +131,7 @@ export class MembershipWitness extends AccumulatorWitness {
       additions,
       removals,
       accumulatorValueBeforeUpdates,
-      secretKey
+      secretKey.value
     ).map((m) => new MembershipWitness(m));
   }
 
@@ -232,7 +233,7 @@ export class NonMembershipWitness extends AccumulatorWitness {
     additions: Uint8Array[],
     removals: Uint8Array[],
     accumulatorValueBeforeUpdates: Uint8Array,
-    secretKey: Uint8Array
+    secretKey: AccumulatorSecretKey
   ): NonMembershipWitness[] {
     const wits = witnesses.map((w) => w.value);
     return updateNonMembershipWitnessesPostBatchUpdates(
@@ -241,7 +242,7 @@ export class NonMembershipWitness extends AccumulatorWitness {
       additions,
       removals,
       accumulatorValueBeforeUpdates,
-      secretKey
+      secretKey.value
     ).map((m) => new NonMembershipWitness(m));
   }
 
@@ -289,9 +290,9 @@ export class WitnessUpdatePublicInfo {
     accumulatorValueBeforeUpdates: Uint8Array,
     additions: Uint8Array[],
     removals: Uint8Array[],
-    sk: Uint8Array
+    sk: AccumulatorSecretKey
   ): WitnessUpdatePublicInfo {
-    const value = publicInfoForWitnessUpdate(accumulatorValueBeforeUpdates, additions, removals, sk);
+    const value = publicInfoForWitnessUpdate(accumulatorValueBeforeUpdates, additions, removals, sk.value);
     return new WitnessUpdatePublicInfo(value);
   }
 }

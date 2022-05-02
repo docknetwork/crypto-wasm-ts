@@ -1,9 +1,12 @@
 import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  BBSPlusPublicKeyG2,
+  BBSPlusSecretKey,
   CompositeProofG1,
   KeypairG2,
   MetaStatement,
   MetaStatements,
+  QuasiProofSpecG1,
   SaverChunkedCommitmentGens,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
@@ -26,7 +29,7 @@ import { getRevealedUnrevealed, stringToBytes } from '../utils';
 
 describe('Verifiable encryption of signed messages', () => {
   const chunkBitSize = 16;
-  const encMsgIdx = 1;
+  const encMsgIdx = 4;
   let messageCount;
 
   let snarkProvingKey: SaverProvingKeyUncompressed,
@@ -37,11 +40,11 @@ describe('Verifiable encryption of signed messages', () => {
     saverEncGens: SaverEncryptionGensUncompressed;
   // There are 2 signers
   let sigParams1: SignatureParamsG1,
-    sigSk1: Uint8Array,
-    sigPk1: Uint8Array,
+    sigSk1: BBSPlusSecretKey,
+    sigPk1: BBSPlusPublicKeyG2,
     sigParams2: SignatureParamsG1,
-    sigSk2: Uint8Array,
-    sigPk2: Uint8Array;
+    sigSk2: BBSPlusSecretKey,
+    sigPk2: BBSPlusPublicKeyG2;
   let messages1AsStrings: string[], messages2AsStrings: string[];
   let messages1: Uint8Array[], messages2: Uint8Array[], sig1: SignatureG1, sig2: SignatureG1;
 
@@ -51,14 +54,18 @@ describe('Verifiable encryption of signed messages', () => {
 
   it('do decryptor setup', () => {
     const gens = SaverEncryptionGens.generate();
-    const [snarkPk, sk, ek, dk] = SaverDecryptor.setup(gens, chunkBitSize);
-    console.log(snarkPk.value.length, ek.value.length, gens.value.length);
+    // `chunkBitSize` is optional, it will default to reasonable good value.
+    const [snarkPk, secretKey, encryptionKey, decryptionKey] = SaverDecryptor.setup(gens, chunkBitSize);
+    console.log(snarkPk.value.length, encryptionKey.value.length, decryptionKey.value.length, gens.value.length);
+    saverSk = secretKey;
+
+    // The following decompressions can be done by anyone. Ideally the decryptor will publish `gens`, `snarkPk`, `encryptionKey`
+    // and `decryptionKey` and respective parties will create/keep the information necessary for them.
     saverEncGens = gens.decompress();
     snarkProvingKey = snarkPk.decompress();
     snarkVerifyingKey = snarkPk.getVerifyingKeyUncompressed();
-    saverSk = sk;
-    saverEk = ek.decompress();
-    saverDk = dk.decompress();
+    saverEk = encryptionKey.decompress();
+    saverDk = decryptionKey.decompress();
     console.log(
       snarkProvingKey.value.length,
       snarkVerifyingKey.value.length,
@@ -124,7 +131,7 @@ describe('Verifiable encryption of signed messages', () => {
 
   function proveAndVerifySingle(
     sigParams: SignatureParamsG1,
-    sigPk: Uint8Array,
+    sigPk: BBSPlusPublicKeyG2,
     messages: Uint8Array[],
     messagesAsStrings: string[],
     sig: SignatureG1,
@@ -137,7 +144,7 @@ describe('Verifiable encryption of signed messages', () => {
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
     const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
-    const statement2 = Statement.saverProver(chunkBitSize, saverEncGens, commGens, saverEk, snarkProvingKey);
+    const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, snarkProvingKey, chunkBitSize);
 
     const proverStatements = new Statements();
     proverStatements.add(statement1);
@@ -155,14 +162,16 @@ describe('Verifiable encryption of signed messages', () => {
     witnesses.add(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generateWithDeconstructedProofSpec(proverStatements, metaStatements, witnesses);
+    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
+    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 
-    const statement3 = Statement.saverVerifier(chunkBitSize, saverEncGens, commGens, saverEk, snarkVerifyingKey);
+    const statement3 = Statement.saverVerifier(saverEncGens, commGens, saverEk, snarkVerifyingKey, chunkBitSize);
     const verifierStatements = new Statements();
     verifierStatements.add(statement1);
     verifierStatements.add(statement3);
 
-    expect(proof.verifyWithDeconstructedProofSpec(verifierStatements, metaStatements).verified).toEqual(true);
+    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
+    expect(proof.verifyUsingQuasiProofSpec(verifierProofSpec).verified).toEqual(true);
 
     decryptAndVerify(proof, 1, messages[encMsgIdx]);
     const decoded = SignatureG1.reversibleDecodeStringMessageForSigning(messages[encMsgIdx]);
@@ -190,8 +199,8 @@ describe('Verifiable encryption of signed messages', () => {
 
     const statement1 = Statement.bbsSignature(sigParams1, sigPk1, revealedMsgs1, false);
     const statement2 = Statement.bbsSignature(sigParams2, sigPk2, revealedMsgs2, false);
-    const statement3 = Statement.saverProverFromSetupParamRefs(chunkBitSize, 0, 1, 2, 3);
-    const statement4 = Statement.saverProverFromSetupParamRefs(chunkBitSize, 0, 1, 2, 3);
+    const statement3 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
+    const statement4 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
 
     const proverStatements = new Statements();
     proverStatements.add(statement1);
@@ -217,12 +226,8 @@ describe('Verifiable encryption of signed messages', () => {
     witnesses.add(Witness.saver(messages1[encMsgIdx]));
     witnesses.add(Witness.saver(messages2[encMsgIdx]));
 
-    const proof = CompositeProofG1.generateWithDeconstructedProofSpec(
-      proverStatements,
-      metaStatements,
-      witnesses,
-      proverSetupParams
-    );
+    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
+    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 
     const verifierSetupParams = [];
     verifierSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
@@ -230,17 +235,16 @@ describe('Verifiable encryption of signed messages', () => {
     verifierSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
     verifierSetupParams.push(SetupParam.saverVerifyingKeyUncompressed(snarkVerifyingKey));
 
-    const statement5 = Statement.saverVerifierFromSetupParamRefs(chunkBitSize, 0, 1, 2, 3);
-    const statement6 = Statement.saverVerifierFromSetupParamRefs(chunkBitSize, 0, 1, 2, 3);
+    const statement5 = Statement.saverVerifierFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
+    const statement6 = Statement.saverVerifierFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
     const verifierStatements = new Statements();
     verifierStatements.add(statement1);
     verifierStatements.add(statement2);
     verifierStatements.add(statement5);
     verifierStatements.add(statement6);
 
-    expect(
-      proof.verifyWithDeconstructedProofSpec(verifierStatements, metaStatements, verifierSetupParams).verified
-    ).toEqual(true);
+    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
+    expect(proof.verifyUsingQuasiProofSpec(verifierProofSpec).verified).toEqual(true);
 
     decryptAndVerify(proof, 2, messages1[encMsgIdx]);
     decryptAndVerify(proof, 3, messages2[encMsgIdx]);

@@ -374,6 +374,8 @@ The code for accumulators lives [here](./src/accumulator).
 - **MetaStatement** - Describes a condition that must hold between witnesses of several statements or the same statement. Eg. to 
   express equality between attributes of 2 credentials, `MetaStatement` will refer to the `WitnessRef` of each attribute. This is
   public information as well.
+- **SetupParam** - Represents (public) setup parameters of different protocols. This is helpful when the same setup parameter needs to 
+  be passed to several `Statement`s
 - **ProofSpec** - This is the proof specification and its goal is to unambiguously define what **all** needs to be proven. This is created
   from all `Statement`s, `MetaStatement`s and an optional context. Both prover and verifier should independently create this. The prover 
   uses the `ProofSpec` and all `Witness`es to create the proof and the verifier uses the`ProofSpec` to verify the proof.  
@@ -394,7 +396,7 @@ const messages: Uint8Array[] = [...];
 
 // Public values
 const parasm: SignatureParamsG1;
-const pk: Uint8Array;
+const pk: BBSPlusPublicKeyG2;
 
 // The signature
 const sig: SignatureG1 = ...;
@@ -434,7 +436,7 @@ other conditions on the witnesses and thus its empty
 
 ```ts
 const ms = new MetaStatements();
-const proofSpec = new ProofSpecG1(statements, ms, context);
+const proofSpec = new ProofSpecG1(statements, ms, [], context);
 ```
 
 Prover creates `Witness` using the signature and hidden attributes 
@@ -485,11 +487,11 @@ const messages2: Uint8Array[] = [...];
 
 // Public values for 1st issuer
 const parasm1: SignatureParamsG1;
-const pk1: Uint8Array;
+const pk1: BBSPlusPublicKeyG2;
 
 // Public values for 2nd issuer
 const parasm2: SignatureParamsG1;
-const pk2: Uint8Array;
+const pk2: BBSPlusPublicKeyG2;
 
 // The signature from 1st credential
 const sig1: SignatureG1 = ...;
@@ -615,8 +617,8 @@ Both signer and accumulator manager will have public params and their secret key
 const sigParams = SignatureParamsG1.generate(5, label);
 
 // Signers keys
-const sigSk: Uint8Array = ...;
-const sigPk: Uint8Array = ...;
+const sigSk: BBSPlusSecretKey = ...;
+const sigPk: BBSPlusSecretKey = ...;
 
 // Accumulator manager's params, keys and state
 const accumParams = PositiveAccumulator.generateParams(stringToBytes('Accumulator params'));
@@ -809,10 +811,368 @@ last name and email and during registration, the prover creates commitment to SS
 commitment. See the test for more details.
 
 ##### Social KYC
-A social KYC (Know Your Customer) credential claims that the subject owns certain social media profile like a twitter profile credential claims that a user owns the twitter profile with certain handle. Here the issuer of the credential must verify the user's control of the profile. One way to achieve that is for the user to post a unique issuer supplied challenge string on his profile, like tweeting it when requesting twitter profile credential. This makes the process 2-step, in step 1 user requests the challenge from issuer and which he tweets and in step 2, he asks the issuer to check the tweet and issue him a credential. An alternate approach is for the user to post a commitment to some random value on his profile and then request a credential from the issuer by supplying a proof of knowledge of the opening (committed random value) of the commitment. The issuer is convinced that no one else could know the opening of the commitment which was posted by the user. Note that the user is proving knowledge of the committed value and not revealing it to the issuer because revealing the value will allow the issuer to request a similar credential from some another issuer of it the revealed value is leaked then someone else can impersonate the user.  
+A social KYC (Know Your Customer) credential claims that the subject owns certain social media profile like a twitter profile 
+credential claims that a user owns the twitter profile with certain handle. Here the issuer of the credential must verify 
+the user's control of the profile. One way to achieve that is for the user to post a unique issuer supplied challenge string 
+on his profile, like tweeting it when requesting twitter profile credential. This makes the process 2-step, in step 1 user 
+requests the challenge from issuer and which he tweets and in step 2, he asks the issuer to check the tweet and issue him 
+a credential. An alternate approach is for the user to post a commitment to some random value on his profile and then request 
+a credential from the issuer by supplying a proof of knowledge of the opening (committed random value) of the commitment. 
+The issuer is convinced that no one else could know the opening of the commitment which was posted by the user. Note that 
+the user is proving knowledge of the committed value and not revealing it to the issuer because revealing the value will 
+allow the issuer to request a similar credential from some another issuer of it the revealed value is leaked then someone 
+else can impersonate the user.  
 The [test](tests/composite-proofs/social-kyc.spec.ts) shows a complete example.
 
 The code for composite proof lives [here](./src/composite-proof). See the tests [here](./tests/composite-proofs) for various scenarios.
 For a more involved demo with multiple BBS+ signatures being used with accumulator and knowledge of signatures being proved 
 before requesting blind signatures, see [here](./tests/demo.spec.ts). This test paints a picture where before getting any credential, 
 a user has to prove possession of a credential and membership in an accumulator (except the 1st credential).
+
+##### Verifiable encryption using SAVER
+
+Note: This section assumes you have read some of the previous examples on composite proof.
+
+A complete example as a test is [here](./tests/composite-proofs/saver.spec.ts) 
+
+Say a verifier wants the prover to encrypt an attribute from his credential for a 3rd party say a regulator. The verifier should be 
+able to check that the prover did encrypt a specific attribute from his credential and not some arbitrary value. Also, the verifier
+should be able to check that the ciphertext is encrypted for the specific public key. This is achieved through verifiable 
+encryption and implemented using a protocol called [SAVER](https://eprint.iacr.org/2019/1270).  
+For this, the decryptor needs to do a setup where it creates several parameters including encrytion key, decryption key, 
+SNARK proving key and verification key, etc. The decryptor then publishes the public parameters. In the snippet below,
+`snarkPk`, `encryptionKey`, `decryptionKey` and `gens` are published.
+
+```ts
+const encGens = SaverEncryptionGens.generate();
+const [snarkPk, secretKey, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens);
+```
+
+`SaverDecryptor.setup` above takes an optional parameter `chunkBitSize` which can make the encryption and proving faster (or slower)
+while making decryption slower (or faster). Since encryption and proving are done more often, a higher default value of 16 
+is chosen for this parameter. Note that once parameters have been created with a certain value of `chunkBitSize`, the same value
+should be used while encryption, decryption, proving and verification (as shown below). 
+
+For signers (issuers of credentials), it's important to encode attributes that need to be verifiably encoded using a reversible 
+encoding as the decryption might happen much later than the proof verification and thus the decryptor should be able to independently 
+recover the actual attributes. This situation is different from selective disclosure where the actual attributes are given to the 
+verifier who can then encode the attributes before verifying the proof. One such pair of functions are `Signature.reversibleEncodeStringMessageForSigning`
+and `Signature.reversibleDecodeStringMessageForSigning` and you can see its use in the above-mentioned test.  
+
+For creating the proof of knowledge of the BBS+ signature and verifiably encrypting an attribute, the prover creates the following 2 statements.
+
+```ts
+// Signer's parameters
+let sigParams: BbsSigParams, sigPk: BBSPlusPublicKeyG2, sig: SignatureG1;
+// Signed messages
+let messages: Uint8Array[];
+...
+...
+// The value used by decryptor during setup
+let chunkBitSize = ...;
+...
+...
+// The following is either created by the verifier and is shared with the prover or created by the prover using a public bytes 
+// as argument to `SaverChunkedCommitmentGens.generate`  
+const gens = SaverChunkedCommitmentGens.generate(<some public bytes>);
+...
+...
+// Uncompressed form of `gens` created above
+const commGens = gens.decompress();
+// Uncompressed form of other parameters created by decryptor
+const saverEncGens = encGens.decompress();
+const saverEk = encryptionKey.decompress();
+const snarkProvingKey = snarkPk.decompress();
+...
+...
+const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, snarkProvingKey, chunkBitSize);
+
+const proverStatements = new Statements();
+proverStatements.add(statement1);
+proverStatements.add(statement2);
+```
+
+`statement1` is the for proving knowledge of BBS+ signature as seen in previous examples. `statement2` is for proving the encryption of message from a 
+BBS+ signature. Some things to note about this statement.
+- The statement is created using `Statement.saverProver` because it is being created by a prover. A verifier would have 
+  used `Statement.saverVerifier` to create it and one of the arguments would be different (shown below).
+- The argument `saverEncGens` is the encryption generators created by decryptor. However, before they are passed to `Statement.saverProver`,
+  the are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles 
+  their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.saverProverFromCompressedParams`
+- `saverEk` is the encryption key created by the decryptor during `setup` but is uncompressed.
+- `snarkProvingKey` is the proving key created by the decryptor during `setup` but is uncompressed.
+
+The prover then establishes the equality between the message in the BBS+ signature and the message being encrypted by using
+`WitnessEqualityMetaStatement` as below. `encMsgIdx` is the index of the message being encrypted in the array of signed 
+messages under BBS+, `messages`. For the second statement, there is only 1 witness, thus the index 0.
+
+```ts
+const witnessEq = new WitnessEqualityMetaStatement();
+witnessEq.addWitnessRef(0, encMsgIdx);
+witnessEq.addWitnessRef(1, 0);
+const metaStatements = new MetaStatements();
+metaStatements.add(MetaStatement.witnessEquality(witnessEq));
+```
+
+The prover then creates witness for both statements. The message `messages[encMsgIdx]` passed to `Witness.saver` is the
+message being encrypted. `unrevealedMsgs` passed to `Witness.bbsSignature` is created from `messages` and consists of
+messages not being revealed to the verifier.
+
+```ts
+const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
+const witness2 = Witness.saver(messages[encMsgIdx]);
+const witnesses = new Witnesses();
+witnesses.add(witness1);
+witnesses.add(witness2);
+```
+
+The prover then creates a proof specification using `QuasiProofSpecG1`. This is different from `ProofSpecG1` object seen in 
+previous examples as it does not call WASM to get a proof specification object and thus is more efficient.  
+Now prover creates the proof using `CompositeProofG1.generateUsingQuasiProofSpec`
+
+```ts
+const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
+const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
+```
+
+Similarly, the verifier also creates 2 statements and the same meta statement to verify the proof.  
+
+```ts
+// Get the uncompressed verifying key from the compressed proving key.
+const snarkVerifyingKey = snarkPk.getVerifyingKeyUncompressed();
+
+const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+const statement2 = Statement.saverVerifier(saverEncGens, commGens, saverEk, snarkVerifyingKey, chunkBitSize);
+const verifierStatements = new Statements();
+verifierStatements.add(statement1);
+verifierStatements.add(statement2);
+
+const witnessEq = new WitnessEqualityMetaStatement();
+witnessEq.addWitnessRef(0, encMsgIdx);
+witnessEq.addWitnessRef(1, 0);
+const metaStatements = new MetaStatements();
+metaStatements.add(MetaStatement.witnessEquality(witnessEq));
+```
+
+The above has a few differences from the prover's statements:
+- Instead of using `Statement.saverProver`, verifier uses `Statement.saverVerifier`.
+- Instead of proving key, verifier uses verifying key for the snark.
+
+The verifier now creates the proof specification and verifies the proof.
+
+```ts
+const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
+// result.verified should be true for the proof to be valid.
+const result = proof.verifyUsingQuasiProofSpec(verifierProofSpec);
+```
+
+The verifier will now extract the ciphertext from the proof so that it can share that with the decryptor later. Here `1` 
+passed to `proof.getSaverCiphertext` is the index (0-based) of the statement in the list of statements being proven and the 
+statement from verifiable encryption was the 2nd one.
+
+```ts
+const ciphertext = proof.getSaverCiphertext(1);
+```
+
+The decryptor can decrypt the ciphertext to get message that was encrypted.
+
+```ts
+const saverDk = decryptionKey.decompress();
+// decrypted.message is the message
+const decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, snarkVerifyingKey, chunkBitSize);
+```
+
+Sometimes the verifier might want to know the decrypted message but might not trust that the decryptor to correctly tell 
+him the decrypted message. In this it can verify the decryption done by the decryptor as below
+
+```ts
+// result.verified should be true
+const result = ciphertext.verifyDecryption(decrypted, saverDk, snarkVerifyingKey, saverEncGens, chunkBitSize);
+```
+
+### Bound check using LegoGroth16
+
+Note: This section assumes you have read some of the previous examples on composite proof.
+
+A complete example as a test is [here](./tests/composite-proofs/bound-check.spec.ts)
+
+Allow a verifier to check that some attribute of the credential satisfies given bounds `min` and `max`, i.e. `min <= message <= max` 
+without learning the attribute itself. Both `min` and `max` are positive integers. This is implemented using LegoGroth16, a protocol described in the SNARK 
+framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2
+
+For this, the verifier needs to first create the setup parameters which he then shares with the prover. Note that the 
+verifier does not have to create them each time a proof needs to be verifier, it can create them once and publish somewhere 
+such that all provers interacting with it can use them.  
+In the following snippet, the verifier ask to prove that certain message satisfies the lower and upper bounds `min` and `max`,
+i.e. `min <= message <= max`. Note than both bounds are positive integers and inclusive, for exclusive bounds, add or subtract 1
+from lower and upper bound respectively.
+
+```ts
+const provingKey = BoundCheckSnarkSetup();
+```
+
+For creating the proof of knowledge of the BBS+ signature and one of the signed message being in certain bounds, the prover 
+creates the following 2 statements.
+
+```ts
+// Signer's parameters
+let sigParams: BbsSigParams, sigPk: BBSPlusPublicKeyG2, sig: SignatureG1;
+// Signed messages
+let messages: Uint8Array[];
+...
+...
+let min: number, max: number;
+...
+// Decompress the proving key 
+const snarkProvingKey = provingKey.decompress();
+const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+const statement2 = Statement.boundCheckProver(min, max, snarkProvingKey);
+const proverStatements = new Statements();
+proverStatements.add(statement1);
+proverStatements.add(statement2);
+```
+
+`statement1` is the for proving knowledge of BBS+ signature as seen in previous examples. `statement2` is for proving the 
+bounds of message from a BBS+ signature. Some things to note about this statement.
+- The statement is created using `Statement.boundCheckProver` because it is being created by a prover. A verifier would have
+  used `Statement.boundCheckVerifier` to create it and one of the arguments would be different (shown below).
+- - The argument `snarkProvingKey` is the public parameter created by the verifier. However, before they are passed to `Statement.boundCheckProver`,
+    the are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles
+    their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.boundCheckProverFromCompressedParams`
+
+The prover then establishes the equality between the message in the BBS+ signature and the bounded message by using
+`WitnessEqualityMetaStatement` as below. `msgIdx` is the index of the bounded message in the array of signed messages 
+under BBS+, `messages`. For the second statement, there is only 1 witness, thus the index 0.
+
+```ts
+const witnessEq = new WitnessEqualityMetaStatement();
+witnessEq.addWitnessRef(0, msgIdx);
+witnessEq.addWitnessRef(1, 0);
+const metaStatements = new MetaStatements();
+metaStatements.add(MetaStatement.witnessEquality(witnessEq));
+```
+
+The prover then creates witness for both statements. The message `messages[msgIdx]` passed to `Witness.boundCheckLegoGroth16` is the
+bounded message. `unrevealedMsgs` passed to `Witness.bbsSignature` is created from `messages` and consists of
+messages not being revealed to the verifier.
+
+```ts
+const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
+const witness2 = Witness.boundCheckLegoGroth16(messages[msgIdx]);
+const witnesses = new Witnesses();
+witnesses.add(witness1);
+witnesses.add(witness2);
+```
+
+The prover then creates a proof specification using `QuasiProofSpecG1`. This is different from `ProofSpecG1` object seen in
+previous examples as it does not call WASM to get a proof specification object and thus is more efficient.  
+Now prover creates the proof using `CompositeProofG1.generateUsingQuasiProofSpec`
+
+```ts
+const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
+const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
+```
+
+Similarly, the verifier also creates 2 statements and the same meta statement to verify the proof.
+
+```ts
+// Get the uncompressed verifying key from the compressed proving key.
+const snarkVerifyingKey = provingKey.getVerifyingKeyUncompressed();
+
+const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+const statement2 = Statement.boundCheckVerifier(min, max, snarkVerifyingKey);
+const verifierStatements = new Statements();
+verifierStatements.add(statement1);
+verifierStatements.add(statement2);
+
+const witnessEq = new WitnessEqualityMetaStatement();
+witnessEq.addWitnessRef(0, msgIdx);
+witnessEq.addWitnessRef(1, 0);
+const metaStatements = new MetaStatements();
+metaStatements.add(MetaStatement.witnessEquality(witnessEq));
+```
+
+The above has a few differences from the prover's statements:
+- Instead of using `Statement.boundCheckProver`, verifier uses `Statement.boundCheckVerifier`.
+- Instead of proving key, verifier uses verifying key for the snark.
+
+The verifier now creates the proof specification and verifies the proof.
+
+```ts
+const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
+// result.verified should be true for the proof to be valid.
+const result = proof.verifyUsingQuasiProofSpec(verifierProofSpec);
+```
+
+### Optimization
+
+You might notice some public parameters are huge and also the statements involving them take noticeable time to create. Eg,
+`snarkProvingKey`, `snarkVerifyingKey`, `saverEk` are huge and thus creating `Statement.saverProver`, `Statement.saverVerifier`, 
+`Statement.boundCheckprover` and `Statement.boundCheckVerifier` take some time to create. This becomes a bigger problem 
+when several messages need to be encrypted for the same decryptor or bounds over several messages need to be proved.  
+To solve this, the public parameters don't need to be passed directly to the `Statement`s. They can be wrapped in a `SetupParam`
+and then a reference to them is passed as an argument in place of the parameter itself to the `Statement`. See the snippet 
+below for creating 2 statements for verifiable encryption for the same setup parameters:
+
+```ts
+// Prover creates an array of `SetupParam`s
+const proverSetupParams = [];
+proverSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
+proverSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commGens));
+proverSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
+proverSetupParams.push(SetupParam.saverProvingKeyUncompressed(snarkProvingKey));
+
+// Passing reference to parameters as array indices from `proverSetupParams`
+const statement3 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
+const statement4 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
+```
+
+Note the use of `Statement.saverProverFromSetupParamRefs` rather than `Statement.saverProver`. The arguments:
+- 0 for the encryption generators which are at index 0 in `proverSetupParams`
+- 1 for the commitment generators which are at index 1 in `proverSetupParams`
+- 2 for the encryption key which is at index 2 in `proverSetupParams`
+- 3 for the proving key which is at index 3 in `proverSetupParams`
+
+Now the prover creates the proof specification by passing `SetupParam`s array as well.
+
+```ts
+const proverStatements = new Statements();
+...
+proverStatements.add(statement3);
+proverStatements.add(statement4);
+...
+...
+...
+const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
+const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
+```
+
+Similarly, the verifier can create his own `SetupParam`s array for his proof specification and then proof
+
+```ts
+const verifierSetupParams = [];
+verifierSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
+verifierSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commGens));
+verifierSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
+verifierSetupParams.push(SetupParam.saverVerifyingKeyUncompressed(snarkVerifyingKey));
+
+const statement5 = Statement.saverVerifierFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
+const statement6 = Statement.saverVerifierFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
+
+const verifierStatements = new Statements();
+...
+...
+verifierStatements.add(statement5);
+verifierStatements.add(statement6);
+
+const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
+const result = proof.verifyUsingQuasiProofSpec(verifierProofSpec);
+```
+
+For a complete example, see [these tests](./tests/composite-proofs/saver.spec.ts)
+
+Similarly, for bound checks, use `Statement.boundCheckProverFromSetupParamRefs` and `Statement.boundCheckVerifierFromSetupParamRefs`. 
+For complete example, see [these tests](./tests/composite-proofs/bound-check.spec.ts)
+
+

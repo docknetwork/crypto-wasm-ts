@@ -14,7 +14,7 @@ import {
   generateSetupParamForLegoProvingKey,
   generateSetupParamForLegoVerifyingKey
 } from '@docknetwork/crypto-wasm';
-import { SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
 import {
   SaverChunkedCommitmentGens,
   SaverChunkedCommitmentGensUncompressed,
@@ -33,7 +33,13 @@ import {
   LegoVerifyingKey,
   LegoVerifyingKeyUncompressed
 } from '../legosnark';
+import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 
+/**
+ * Represents (public) setup parameters of different protocols. Different setup parameters can be wrapped in this and
+ * then a reference to this is passed to the `Statement`. This is helpful when the same setup parameter needs
+ * to be passed to several `Statement`s as it avoids the need of having several copies of the setup parameter.
+ */
 export class SetupParam {
   readonly value: Uint8Array;
 
@@ -45,24 +51,24 @@ export class SetupParam {
     return new SetupParam(generateSetupParamForBBSSignatureParametersG1(params.value));
   }
 
-  static bbsSignaturePublicKeyG2(publicKey: Uint8Array): SetupParam {
-    return new SetupParam(generateSetupParamForBBSPublicKeyG2(publicKey));
+  static bbsSignaturePublicKeyG2(publicKey: BBSPlusPublicKeyG2): SetupParam {
+    return new SetupParam(generateSetupParamForBBSPublicKeyG2(publicKey.value));
   }
 
-  static vbAccumulatorParams(params: Uint8Array): SetupParam {
-    return new SetupParam(generateSetupParamForVbAccumulatorParams(params));
+  static vbAccumulatorParams(params: AccumulatorParams): SetupParam {
+    return new SetupParam(generateSetupParamForVbAccumulatorParams(params.value));
   }
 
-  static vbAccumulatorPublicKey(publicKey: Uint8Array): SetupParam {
-    return new SetupParam(generateSetupParamForVbAccumulatorPublicKey(publicKey));
+  static vbAccumulatorPublicKey(publicKey: AccumulatorPublicKey): SetupParam {
+    return new SetupParam(generateSetupParamForVbAccumulatorPublicKey(publicKey.value));
   }
 
-  static vbAccumulatorMemProvingKey(provingKey: Uint8Array): SetupParam {
-    return new SetupParam(generateSetupParamForVbAccumulatorMemProvingKey(provingKey));
+  static vbAccumulatorMemProvingKey(provingKey: MembershipProvingKey): SetupParam {
+    return new SetupParam(generateSetupParamForVbAccumulatorMemProvingKey(provingKey.value));
   }
 
-  static vbAccumulatorNonMemProvingKey(provingKey: Uint8Array): SetupParam {
-    return new SetupParam(generateSetupParamForVbAccumulatorNonMemProvingKey(provingKey));
+  static vbAccumulatorNonMemProvingKey(provingKey: NonMembershipProvingKey): SetupParam {
+    return new SetupParam(generateSetupParamForVbAccumulatorNonMemProvingKey(provingKey.value));
   }
 
   static pedersenCommitmentKeyG1(commitmentKey: Uint8Array[]): SetupParam {

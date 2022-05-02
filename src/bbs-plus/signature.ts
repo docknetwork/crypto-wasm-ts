@@ -9,6 +9,7 @@ import {
   generateRandomFieldElement
 } from '@docknetwork/crypto-wasm';
 import { isNumberBiggerThanNBits } from '../util';
+import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 
 export abstract class Signature {
   value: Uint8Array;
@@ -36,7 +37,11 @@ export abstract class Signature {
 
   /**
    * Encode the given string to bytes and create a field element by considering the bytes in little-endian format.
-   * Note that this will add trailing 0s to the bytes to make the size 32 bytes
+   * Use this way of encoding only if the input string's UTF-8 representation is <= 32 bytes else this will throw an error.
+   * Also adds trailing 0s to the bytes to make the size 32 bytes so use this function carefully. The only place this is
+   * currently useful is verifiable encryption as in some cases the prover might not be willing/available at the time of
+   * decryption and thus the decryptor must be able to decrypt it independently. This is different from selective disclosure
+   * where the verifier can check that the revealed message is same as the encoded one before even verifying the proof.
    * @param message - utf-8 string of at most 32 bytes
    */
   static reversibleEncodeStringMessageForSigning(message: string): Uint8Array {
@@ -89,7 +94,7 @@ export class SignatureG1 extends Signature {
    */
   static generate(
     messages: Uint8Array[],
-    secretKey: Uint8Array,
+    secretKey: BBSPlusSecretKey,
     params: SignatureParamsG1,
     encodeMessages: boolean
   ): SignatureG1 {
@@ -100,7 +105,7 @@ export class SignatureG1 extends Signature {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsSignG1(messages, secretKey, params.value, encodeMessages);
+    const sig = bbsSignG1(messages, secretKey.value, params.value, encodeMessages);
     return new SignatureG1(sig);
   }
 
@@ -113,7 +118,7 @@ export class SignatureG1 extends Signature {
    */
   verify(
     messages: Uint8Array[],
-    publicKey: Uint8Array,
+    publicKey: BBSPlusPublicKeyG2,
     params: SignatureParamsG1,
     encodeMessages: boolean
   ): VerifyResult {
@@ -124,7 +129,7 @@ export class SignatureG1 extends Signature {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    return bbsVerifyG1(messages, this.value, publicKey, params.value, encodeMessages);
+    return bbsVerifyG1(messages, this.value, publicKey.value, params.value, encodeMessages);
   }
 }
 
@@ -157,7 +162,7 @@ export class BlindSignatureG1 extends BlindSignature {
   static generate(
     commitment: Uint8Array,
     knownMessages: Map<number, Uint8Array>,
-    secretKey: Uint8Array,
+    secretKey: BBSPlusSecretKey,
     params: SignatureParamsG1,
     encodeMessages: boolean
   ): BlindSignatureG1 {
@@ -168,7 +173,7 @@ export class BlindSignatureG1 extends BlindSignature {
         } must be less than ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsBlindSignG1(commitment, knownMessages, secretKey, params.value, encodeMessages);
+    const sig = bbsBlindSignG1(commitment, knownMessages, secretKey.value, params.value, encodeMessages);
     return new BlindSignatureG1(sig);
   }
 

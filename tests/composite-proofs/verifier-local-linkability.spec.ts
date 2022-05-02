@@ -1,4 +1,6 @@
 import {
+  BBSPlusPublicKeyG2,
+  BBSPlusSecretKey,
   CompositeProofG1,
   KeypairG2,
   MetaStatement,
@@ -36,7 +38,7 @@ describe('Verifier-local or opt-in linkability', () => {
   const encodedMessages: Uint8Array[] = [];
   let sigParams: SignatureParamsG1;
   let sig: SignatureG1;
-  let sigPk: Uint8Array, sigSk: Uint8Array;
+  let sigPk: BBSPlusPublicKeyG2, sigSk: BBSPlusSecretKey;
   let bases1: Uint8Array[];
   let blinding1: Uint8Array;
   let registrationComm1: Uint8Array;

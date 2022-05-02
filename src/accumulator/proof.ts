@@ -13,6 +13,12 @@ import {
   accumulatorVerifyMembershipProof
 } from '@docknetwork/crypto-wasm';
 import { MembershipWitness, NonMembershipWitness } from './accumulatorWitness';
+import {
+  AccumulatorParams,
+  AccumulatorPublicKey,
+  MembershipProvingKey,
+  NonMembershipProvingKey
+} from './params-and-keys';
 
 export class MembershipProofProtocol {
   value: Uint8Array;
@@ -24,13 +30,20 @@ export class MembershipProofProtocol {
   static initialize(
     member: Uint8Array,
     witness: MembershipWitness,
-    publicKey: Uint8Array,
-    params: Uint8Array,
-    provingKey: Uint8Array,
+    publicKey: AccumulatorPublicKey,
+    params: AccumulatorParams,
+    provingKey: MembershipProvingKey,
     blinding?: Uint8Array
   ): MembershipProofProtocol {
     const b = blinding === undefined ? generateRandomFieldElement() : blinding;
-    const protocol = accumulatorInitializeMembershipProof(member, b, witness.value, publicKey, params, provingKey);
+    const protocol = accumulatorInitializeMembershipProof(
+      member,
+      b,
+      witness.value,
+      publicKey.value,
+      params.value,
+      provingKey.value
+    );
     return new MembershipProofProtocol(protocol);
   }
 
@@ -41,16 +54,16 @@ export class MembershipProofProtocol {
 
   challengeContribution(
     accumulated: Uint8Array,
-    publicKey: Uint8Array,
-    params: Uint8Array,
-    provingKey: Uint8Array
+    publicKey: AccumulatorPublicKey,
+    params: AccumulatorParams,
+    provingKey: MembershipProvingKey
   ): Uint8Array {
     return accumulatorChallengeContributionFromMembershipProtocol(
       this.value,
       accumulated,
-      publicKey,
-      params,
-      provingKey
+      publicKey.value,
+      params.value,
+      provingKey.value
     );
   }
 }
@@ -65,9 +78,9 @@ export class NonMembershipProofProtocol {
   static initialize(
     nonMember: Uint8Array,
     witness: NonMembershipWitness,
-    publicKey: Uint8Array,
-    params: Uint8Array,
-    provingKey: Uint8Array,
+    publicKey: AccumulatorPublicKey,
+    params: AccumulatorParams,
+    provingKey: NonMembershipProvingKey,
     blinding?: Uint8Array
   ): MembershipProofProtocol {
     const b = blinding === undefined ? generateRandomFieldElement() : blinding;
@@ -75,9 +88,9 @@ export class NonMembershipProofProtocol {
       nonMember,
       b,
       witness.value,
-      publicKey,
-      params,
-      provingKey
+      publicKey.value,
+      params.value,
+      provingKey.value
     );
     return new MembershipProofProtocol(protocol);
   }
@@ -89,16 +102,16 @@ export class NonMembershipProofProtocol {
 
   challengeContribution(
     accumulated: Uint8Array,
-    publicKey: Uint8Array,
-    params: Uint8Array,
-    provingKey: Uint8Array
+    publicKey: AccumulatorPublicKey,
+    params: AccumulatorParams,
+    provingKey: NonMembershipProvingKey
   ): Uint8Array {
     return accumulatorChallengeContributionFromNonMembershipProtocol(
       this.value,
       accumulated,
-      publicKey,
-      params,
-      provingKey
+      publicKey.value,
+      params.value,
+      provingKey.value
     );
   }
 }
@@ -113,20 +126,33 @@ export class MembershipProof {
   verify(
     accumulated: Uint8Array,
     challenge: Uint8Array,
-    publicKey: Uint8Array,
-    params: Uint8Array,
-    provingKey: Uint8Array
+    publicKey: AccumulatorPublicKey,
+    params: AccumulatorParams,
+    provingKey: MembershipProvingKey
   ): VerifyResult {
-    return accumulatorVerifyMembershipProof(this.value, accumulated, challenge, publicKey, params, provingKey);
+    return accumulatorVerifyMembershipProof(
+      this.value,
+      accumulated,
+      challenge,
+      publicKey.value,
+      params.value,
+      provingKey.value
+    );
   }
 
   challengeContribution(
     accumulated: Uint8Array,
-    publicKey: Uint8Array,
-    params: Uint8Array,
-    provingKey: Uint8Array
+    publicKey: AccumulatorPublicKey,
+    params: AccumulatorParams,
+    provingKey: MembershipProvingKey
   ): Uint8Array {
-    return accumulatorChallengeContributionFromMembershipProof(this.value, accumulated, publicKey, params, provingKey);
+    return accumulatorChallengeContributionFromMembershipProof(
+      this.value,
+      accumulated,
+      publicKey.value,
+      params.value,
+      provingKey.value
+    );
   }
 }
 
@@ -140,25 +166,32 @@ export class NonMembershipProof {
   verify(
     accumulated: Uint8Array,
     challenge: Uint8Array,
-    publicKey: Uint8Array,
-    params: Uint8Array,
-    provingKey: Uint8Array
+    publicKey: AccumulatorPublicKey,
+    params: AccumulatorParams,
+    provingKey: NonMembershipProvingKey
   ): VerifyResult {
-    return accumulatorVerifyNonMembershipProof(this.value, accumulated, challenge, publicKey, params, provingKey);
+    return accumulatorVerifyNonMembershipProof(
+      this.value,
+      accumulated,
+      challenge,
+      publicKey.value,
+      params.value,
+      provingKey.value
+    );
   }
 
   challengeContribution(
     accumulated: Uint8Array,
-    publicKey: Uint8Array,
-    params: Uint8Array,
-    provingKey: Uint8Array
+    publicKey: AccumulatorPublicKey,
+    params: AccumulatorParams,
+    provingKey: NonMembershipProvingKey
   ): Uint8Array {
     return accumulatorChallengeContributionFromNonMembershipProof(
       this.value,
       accumulated,
-      publicKey,
-      params,
-      provingKey
+      publicKey.value,
+      params.value,
+      provingKey.value
     );
   }
 }

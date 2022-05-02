@@ -9,7 +9,9 @@ import {
   Statement,
   Statements,
   Witness,
-  Witnesses
+  Witnesses,
+  BBSPlusPublicKeyG2,
+  BBSPlusSecretKey
 } from '../../src';
 
 import {
@@ -31,7 +33,7 @@ describe('Social KYC (Know Your Customer)', () => {
   // Issuer's parameters
   let sigParams: SignatureParamsG1;
   // Issuers secret key and public keys
-  let sk: Uint8Array, pk: Uint8Array;
+  let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
   // Commitment key for commitment posted on social profile.
   let g: Uint8Array;
 

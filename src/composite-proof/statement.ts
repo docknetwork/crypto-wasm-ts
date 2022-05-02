@@ -17,8 +17,9 @@ import {
   generateBoundCheckLegoVerifierStatement,
   generateBoundCheckLegoVerifierStatementFromParamRefs
 } from '@docknetwork/crypto-wasm';
-import { SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
 import {
+  getChunkBitSize,
   SaverChunkedCommitmentGens,
   SaverChunkedCommitmentGensUncompressed,
   SaverEncryptionGens,
@@ -36,6 +37,7 @@ import {
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed
 } from '../legosnark';
+import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 
 /**
  * Relation which needs to be proven. Contains any public data that needs to be known to both prover and verifier
@@ -63,13 +65,21 @@ export class Statement {
    */
   static bbsSignature(
     sigParams: SignatureParamsG1,
-    publicKey: Uint8Array,
+    publicKey: BBSPlusPublicKeyG2,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSSignatureStatement(sigParams.value, publicKey, revealedMessages, encodeMessages);
+    return generatePoKBBSSignatureStatement(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
   }
 
+  /**
+   * Same as `Statement.bbsSignature` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param sigParamsRef
+   * @param publicKeyRef
+   * @param revealedMessages
+   * @param encodeMessages
+   */
   static bbsSignatureFromSetupParamRefs(
     sigParamsRef: number,
     publicKeyRef: number,
@@ -87,14 +97,22 @@ export class Statement {
    * @param accumulated
    */
   static accumulatorMembership(
-    params: Uint8Array,
-    publicKey: Uint8Array,
-    provingKey: Uint8Array,
+    params: AccumulatorParams,
+    publicKey: AccumulatorPublicKey,
+    provingKey: MembershipProvingKey,
     accumulated: Uint8Array
   ): Uint8Array {
-    return generateAccumulatorMembershipStatement(params, publicKey, provingKey, accumulated);
+    return generateAccumulatorMembershipStatement(params.value, publicKey.value, provingKey.value, accumulated);
   }
 
+  /**
+   * Same as `Statement.accumulatorMembership` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param params
+   * @param publicKey
+   * @param provingKey
+   * @param accumulated
+   */
   static accumulatorMembershipFromSetupParamRefs(
     params: number,
     publicKey: number,
@@ -112,14 +130,22 @@ export class Statement {
    * @param accumulated
    */
   static accumulatorNonMembership(
-    params: Uint8Array,
-    publicKey: Uint8Array,
-    provingKey: Uint8Array,
+    params: AccumulatorParams,
+    publicKey: AccumulatorPublicKey,
+    provingKey: NonMembershipProvingKey,
     accumulated: Uint8Array
   ): Uint8Array {
-    return generateAccumulatorNonMembershipStatement(params, publicKey, provingKey, accumulated);
+    return generateAccumulatorNonMembershipStatement(params.value, publicKey.value, provingKey.value, accumulated);
   }
 
+  /**
+   * Same as `Statement.accumulatorNonMembership` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param params
+   * @param publicKey
+   * @param provingKey
+   * @param accumulated
+   */
   static accumulatorNonMembershipFromSetupParamRefs(
     params: number,
     publicKey: number,
@@ -129,15 +155,23 @@ export class Statement {
     return generateAccumulatorNonMembershipStatementFromParamRefs(params, publicKey, provingKey, accumulated);
   }
 
+  /**
+   * Create statement for verifiable encryption of a message using SAVER, for the prover. Accepts the parameters in uncompressed form.
+   * @param encGens
+   * @param commGens
+   * @param encryptionKey
+   * @param snarkPk
+   * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
+   */
   static saverProver(
-    chunkBitSize: number,
     encGens: SaverEncryptionGensUncompressed,
     commGens: SaverChunkedCommitmentGensUncompressed,
     encryptionKey: SaverEncryptionKeyUncompressed,
-    snarkPk: SaverProvingKeyUncompressed
+    snarkPk: SaverProvingKeyUncompressed,
+    chunkBitSize: number
   ): Uint8Array {
     return generateSaverProverStatement(
-      chunkBitSize,
+      getChunkBitSize(chunkBitSize),
       encGens.value,
       commGens.value,
       encryptionKey.value,
@@ -146,15 +180,23 @@ export class Statement {
     );
   }
 
+  /**
+   * Same as `Statement.saverProver` except that it takes compressed parameters.
+   * @param encGens
+   * @param commGens
+   * @param encryptionKey
+   * @param snarkPk
+   * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
+   */
   static saverProverFromCompressedParams(
-    chunkBitSize: number,
     encGens: SaverEncryptionGens,
     commGens: SaverChunkedCommitmentGens,
     encryptionKey: SaverEncryptionKey,
-    snarkPk: SaverProvingKey
+    snarkPk: SaverProvingKey,
+    chunkBitSize: number
   ): Uint8Array {
     return generateSaverProverStatement(
-      chunkBitSize,
+      getChunkBitSize(chunkBitSize),
       encGens.value,
       commGens.value,
       encryptionKey.value,
@@ -163,25 +205,48 @@ export class Statement {
     );
   }
 
+  /**
+   * Same as `Statement.saverProver` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param encGensRef
+   * @param commGensRef
+   * @param encryptionKeyRef
+   * @param snarkPkRef
+   * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
+   */
   static saverProverFromSetupParamRefs(
-    chunkBitSize: number,
-    encGens: number,
-    commGens: number,
-    encryptionKey: number,
-    snarkPk: number
+    encGensRef: number,
+    commGensRef: number,
+    encryptionKeyRef: number,
+    snarkPkRef: number,
+    chunkBitSize: number
   ): Uint8Array {
-    return generateSaverProverStatementFromParamRefs(chunkBitSize, encGens, commGens, encryptionKey, snarkPk);
+    return generateSaverProverStatementFromParamRefs(
+      getChunkBitSize(chunkBitSize),
+      encGensRef,
+      commGensRef,
+      encryptionKeyRef,
+      snarkPkRef
+    );
   }
 
+  /**
+   * Create statement for verifiable encryption of a message using SAVER, for the verifier. Accepts the parameters in uncompressed form.
+   * @param encGens
+   * @param commGens
+   * @param encryptionKey
+   * @param snarkVk,
+   * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters
+   */
   static saverVerifier(
-    chunkBitSize: number,
     encGens: SaverEncryptionGensUncompressed,
     commGens: SaverChunkedCommitmentGensUncompressed,
     encryptionKey: SaverEncryptionKeyUncompressed,
-    snarkVk: SaverVerifyingKeyUncompressed
+    snarkVk: SaverVerifyingKeyUncompressed,
+    chunkBitSize: number
   ): Uint8Array {
     return generateSaverVerifierStatement(
-      chunkBitSize,
+      getChunkBitSize(chunkBitSize),
       encGens.value,
       commGens.value,
       encryptionKey.value,
@@ -190,15 +255,23 @@ export class Statement {
     );
   }
 
+  /**
+   * Same as `Statement.saverVerifier` except that it takes compressed parameters.
+   * @param encGens
+   * @param commGens
+   * @param encryptionKey
+   * @param snarkVk
+   * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
+   */
   static saverVerifierFromCompressedParams(
-    chunkBitSize: number,
     encGens: SaverEncryptionGens,
     commGens: SaverChunkedCommitmentGens,
     encryptionKey: SaverEncryptionKey,
-    snarkVk: SaverVerifyingKey
+    snarkVk: SaverVerifyingKey,
+    chunkBitSize: number
   ): Uint8Array {
     return generateSaverVerifierStatement(
-      chunkBitSize,
+      getChunkBitSize(chunkBitSize),
       encGens.value,
       commGens.value,
       encryptionKey.value,
@@ -207,36 +280,89 @@ export class Statement {
     );
   }
 
+  /**
+   * Same as `Statement.saverVerifier` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param encGensRef
+   * @param commGensRef
+   * @param encryptionKeyRef
+   * @param snarkVkRef
+   * @param chunkBitSize
+   */
   static saverVerifierFromSetupParamRefs(
-    chunkBitSize: number,
-    encGens: number,
-    commGens: number,
-    encryptionKey: number,
-    snarkVk: number
+    encGensRef: number,
+    commGensRef: number,
+    encryptionKeyRef: number,
+    snarkVkRef: number,
+    chunkBitSize: number
   ): Uint8Array {
-    return generateSaverVerifierStatementFromParamRefs(chunkBitSize, encGens, commGens, encryptionKey, snarkVk);
+    return generateSaverVerifierStatementFromParamRefs(
+      getChunkBitSize(chunkBitSize),
+      encGensRef,
+      commGensRef,
+      encryptionKeyRef,
+      snarkVkRef
+    );
   }
 
+  /**
+   * Create statement for proving bounds of a message using LegoGroth 16, for the prover.
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Inclusive upper bound on the message.
+   * @param snarkPk - Proving key for LegoGroth16
+   */
   static boundCheckProver(min: number, max: number, snarkPk: LegoProvingKeyUncompressed): Uint8Array {
     return generateBoundCheckLegoProverStatement(min, max, snarkPk.value, true);
   }
 
+  /**
+   * Same as `Statement.boundCheckProver` except that it takes compressed parameters.
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Inclusive upper bound on the message.
+   * @param snarkPk - Proving key for LegoGroth16
+   */
   static boundCheckProverFromCompressedParams(min: number, max: number, snarkPk: LegoProvingKey): Uint8Array {
     return generateBoundCheckLegoProverStatement(min, max, snarkPk.value, false);
   }
 
+  /**
+   * Same as `Statement.boundCheckProver` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Inclusive upper bound on the message.
+   * @param snarkPkRef - Index of proving key in array of `SetupParam`
+   */
   static boundCheckProverFromSetupParamRefs(min: number, max: number, snarkPkRef: number): Uint8Array {
     return generateBoundCheckLegoProverStatementFromParamRefs(min, max, snarkPkRef);
   }
 
+  /**
+   * Create statement for proving bounds of a message using LegoGroth 16, for the verifier.
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Inclusive upper bound on the message.
+   * @param snarkVk - Verifying key for LegoGroth16
+   */
   static boundCheckVerifier(min: number, max: number, snarkVk: LegoVerifyingKeyUncompressed): Uint8Array {
     return generateBoundCheckLegoVerifierStatement(min, max, snarkVk.value, true);
   }
 
+  /**
+   * Same as `Statement.boundCheckVerifier` except that it takes compressed parameters.
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Inclusive upper bound on the message.
+   * @param snarkVk - Verifying key for LegoGroth16
+   */
   static boundCheckVerifierFromCompressedParams(min: number, max: number, snarkVk: LegoVerifyingKey): Uint8Array {
     return generateBoundCheckLegoVerifierStatement(min, max, snarkVk.value, false);
   }
 
+  /**
+   * Same as `Statement.boundCheckVerifier` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Inclusive upper bound on the message.
+   * @param snarkVkRef - Index of verifying key in array of `SetupParam`
+   */
   static boundCheckVerifierFromSetupParamRefs(min: number, max: number, snarkVkRef: number): Uint8Array {
     return generateBoundCheckLegoVerifierStatementFromParamRefs(min, max, snarkVkRef);
   }
