@@ -1,6 +1,6 @@
 {
   "name": "@docknetwork/crypto-wasm-ts",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Typescript abstractions over Dock's Rust crypto library's WASM wrapper",
   "homepage": "https://github.com/docknetwork/crypto-wasm-ts",
   "main": "lib/crypto-wasm-ts/src/index.js",
@@ -10,8 +10,7 @@
     "clean": "rm -rf lib/",
     "prepare": "husky install",
     "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "test": "jest",
-    "publish": "yarn build & npm publish"
+    "test": "jest"
   },
   "license": "Apache-2.0",
   "private": false,
