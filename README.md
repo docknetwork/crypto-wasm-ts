@@ -829,7 +829,7 @@ For a more involved demo with multiple BBS+ signatures being used with accumulat
 before requesting blind signatures, see [here](./tests/demo.spec.ts). This test paints a picture where before getting any credential, 
 a user has to prove possession of a credential and membership in an accumulator (except the 1st credential).
 
-##### Verifiable encryption using SAVER
+### Verifiable encryption using SAVER
 
 Note: This section assumes you have read some of the previous examples on composite proof.
 

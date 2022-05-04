@@ -16,14 +16,14 @@ export class LegoProvingKey extends BytearrayWrapper implements ICompressed<Lego
   }
 
   /**
-   * Get compressed verifying key from proving key
+   * Get the compressed verifying key from this proving key
    */
   getVerifyingKey(): LegoVerifyingKey {
     return new LegoVerifyingKey(legosnarkVkFromPk(this.value, false));
   }
 
   /**
-   * Get uncompressed verifying key from proving key
+   * Get the uncompressed verifying key from this proving key
    */
   getVerifyingKeyUncompressed(): LegoVerifyingKeyUncompressed {
     return new LegoVerifyingKeyUncompressed(legosnarkVkFromPk(this.value, true));

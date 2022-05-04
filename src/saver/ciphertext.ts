@@ -9,6 +9,7 @@ import {
   SaverVerifyingKey,
   SaverVerifyingKeyUncompressed
 } from './decryptor';
+import { getChunkBitSize } from './util';
 
 /**
  * The ciphertext that is sent along the proof
@@ -20,14 +21,14 @@ export class SaverCiphertext extends BytearrayWrapper {
    * @param decryptionKey
    * @param snarkVk
    * @param encGens
-   * @param chunkButSize - Must be same as the one used by the decryptor to create the parameters.
+   * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
    */
   verifyDecryption(
     decrypted: Decrypted,
     decryptionKey: SaverDecryptionKeyUncompressed,
     snarkVk: SaverVerifyingKeyUncompressed,
     encGens: SaverEncryptionGensUncompressed,
-    chunkButSize: number
+    chunkBitSize: number
   ): VerifyResult {
     return saverVerifyDecryptionUsingSnarkVk(
       this.value,
@@ -36,7 +37,7 @@ export class SaverCiphertext extends BytearrayWrapper {
       decryptionKey.value,
       snarkVk.value,
       encGens.value,
-      chunkButSize,
+      getChunkBitSize(chunkBitSize),
       true
     );
   }
@@ -47,14 +48,14 @@ export class SaverCiphertext extends BytearrayWrapper {
    * @param decryptionKey
    * @param snarkVk
    * @param encGens
-   * @param chunkButSize - Must be same as the one used by the decryptor to create the parameters.
+   * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
    */
   verifyDecryptionUsingCompressedParams(
     decrypted: Decrypted,
     decryptionKey: SaverDecryptionKey,
     snarkVk: SaverVerifyingKey,
     encGens: SaverEncryptionGens,
-    chunkButSize: number
+    chunkBitSize: number
   ): VerifyResult {
     return saverVerifyDecryptionUsingSnarkVk(
       this.value,
@@ -63,7 +64,7 @@ export class SaverCiphertext extends BytearrayWrapper {
       decryptionKey.value,
       snarkVk.value,
       encGens.value,
-      chunkButSize,
+      getChunkBitSize(chunkBitSize),
       false
     );
   }

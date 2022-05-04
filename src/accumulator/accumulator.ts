@@ -1,12 +1,7 @@
 import {
-  accumulatorDeriveMembershipProvingKeyFromNonMembershipKey,
-  generateAccumulatorKeyPair,
   generateFieldElementFromBytes,
   generateFieldElementFromNumber,
-  generateMembershipProvingKey,
-  generateNonMembershipProvingKey,
   generateRandomFieldElement,
-  IKeypair,
   positiveAccumulatorAdd,
   positiveAccumulatorAddBatch,
   positiveAccumulatorBatchUpdates,
@@ -36,7 +31,7 @@ import {
   universalAccumulatorVerifyNonMembership
 } from '@docknetwork/crypto-wasm';
 import { MembershipWitness, NonMembershipWitness } from './accumulatorWitness';
-import { getUint8ArraysFromObject } from '../util';
+import { ensurePositiveIntegerOfSize, getUint8ArraysFromObject } from '../util';
 import { IAccumulatorState, IUniversalAccumulatorState } from './IAccumulatorState';
 import { IInitialElementsStore } from './IInitialElementsStore';
 import {
@@ -98,6 +93,7 @@ export abstract class Accumulator {
    * @param num - should be a positive integer
    */
   static encodePositiveNumberAsAccumulatorMember(num: number): Uint8Array {
+    ensurePositiveIntegerOfSize(num, 32);
     return generateFieldElementFromNumber(num);
   }
 
@@ -614,8 +610,8 @@ export class UniversalAccumulator extends Accumulator {
 
     // store the products of each batch
     const products: Uint8Array[] = [];
-    // The first batch of products is the elements fixed for each curve, in this case it's for BLS12-381
-    const fixed = universalAccumulatorFixedInitialElements();
+    // The first batch of products is the elements fixed for each curve
+    const fixed = UniversalAccumulator.fixedInitialElements();
     if (storePresent) {
       for (const i of fixed) {
         await initialElementsStore.add(i);
@@ -940,6 +936,14 @@ export class UniversalAccumulator extends Accumulator {
   ): boolean {
     const params_ = this.getParams(params);
     return universalAccumulatorVerifyNonMembership(this.value.V, nonMember, witness.value, pk.value, params_.value);
+  }
+
+  /**
+   * The first few members of a universal accumulator are fixed for each curve. These should be added to the curve
+   * before creating any witness and must never be removed.
+   */
+  static fixedInitialElements(): Uint8Array[] {
+    return universalAccumulatorFixedInitialElements();
   }
 
   /**

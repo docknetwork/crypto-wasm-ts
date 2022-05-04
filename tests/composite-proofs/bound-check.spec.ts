@@ -129,8 +129,8 @@ describe('Bound check of signed messages', () => {
 
     const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
-    const statement3 = Statement.boundCheckVerifier(min1, max1, snarkVerifyingKey);
 
+    const statement3 = Statement.boundCheckVerifier(min1, max1, snarkVerifyingKey);
     const verifierStatements = new Statements();
     verifierStatements.add(statement1);
     verifierStatements.add(statement3);

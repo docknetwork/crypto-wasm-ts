@@ -3,7 +3,7 @@
  * @param json
  * @returns
  */
-import { generateFieldElementFromBytes } from '@docknetwork/crypto-wasm';
+import { generateFieldElementFromBytes, generateRandomFieldElement } from '@docknetwork/crypto-wasm';
 
 export function jsonObjToUint8Array(json: string): Uint8Array {
   const obj = JSON.parse(json);
@@ -38,4 +38,22 @@ export function bytesToChallenge(bytes: Uint8Array): Uint8Array {
 export function isNumberBiggerThanNBits(num: number, bits: number): boolean {
   // Following can be done using bit shifts, but they only work for small number of shifts. Checked in Chrome and FF
   return num.toString(2).length > bits;
+}
+
+/**
+ * Throws an error if the given number takes more bits than expected.
+ * @param num
+ * @param size - expected size in bits
+ */
+export function ensurePositiveIntegerOfSize(num: number, size: number) {
+  if (!(Number.isSafeInteger(num) && num > 0)) {
+    throw new Error(`{num} should be safe positive integer`);
+  }
+  if (isNumberBiggerThanNBits(num, size)) {
+    throw new Error(`{num} was found to be bigger than {size} bits`);
+  }
+}
+
+export function randomFieldElement(seed?: Uint8Array): Uint8Array {
+  return generateRandomFieldElement(seed);
 }

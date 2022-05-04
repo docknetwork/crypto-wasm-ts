@@ -1,5 +1,9 @@
 export const DEFAULT_CHUNK_BIT_SIZE = 16;
 
+/**
+ * Validate the given chunk size and throw error if its invalid. If not provided then return the default value.
+ * @param chunkBitSize
+ */
 export function getChunkBitSize(chunkBitSize?: number): number {
   if (chunkBitSize === undefined) {
     return DEFAULT_CHUNK_BIT_SIZE;

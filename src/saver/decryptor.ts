@@ -39,40 +39,70 @@ export class SaverEncryptionGens extends BytearrayWrapper implements ICompressed
   }
 }
 
+/**
+ * Same as `SaverEncryptionKey` but in uncompressed form.
+ */
 export class SaverEncryptionKeyUncompressed extends BytearrayWrapper implements IUncompressed {}
 
+/**
+ * Key used to encrypt the message and prove and verify the encryption
+ */
 export class SaverEncryptionKey extends BytearrayWrapper implements ICompressed<SaverEncryptionKeyUncompressed> {
   decompress(): SaverEncryptionKeyUncompressed {
     return new SaverEncryptionKeyUncompressed(saverDecompressEncryptionKey(this.value));
   }
 }
 
+/**
+ * Same as `SaverDecryptionKey` but in uncompressed form.
+ */
 export class SaverDecryptionKeyUncompressed extends BytearrayWrapper implements IUncompressed {}
 
+/**
+ * Key used to decrypt the message and verify the decryption
+ */
 export class SaverDecryptionKey extends BytearrayWrapper implements ICompressed<SaverDecryptionKeyUncompressed> {
   decompress(): SaverDecryptionKeyUncompressed {
     return new SaverDecryptionKeyUncompressed(saverDecompressDecryptionKey(this.value));
   }
 }
 
+/**
+ * Same as `SaverProvingKey` but in uncompressed form.
+ */
 export class SaverProvingKeyUncompressed extends BytearrayWrapper implements IUncompressed {}
 
+/**
+ * Key used to create the snark proof during encryption
+ */
 export class SaverProvingKey extends BytearrayWrapper implements ICompressed<SaverProvingKeyUncompressed> {
   decompress(): SaverProvingKeyUncompressed {
     return new SaverProvingKeyUncompressed(saverDecompressSnarkPk(this.value));
   }
 
+  /**
+   * Get compressed verifying key from this proving key
+   */
   getVerifyingKey(): SaverVerifyingKey {
     return new SaverVerifyingKey(saverGetSnarkVkFromPk(this.value, false));
   }
 
+  /**
+   * Get the uncompressed verifying key from this proving key
+   */
   getVerifyingKeyUncompressed(): SaverVerifyingKeyUncompressed {
     return new SaverVerifyingKeyUncompressed(saverGetSnarkVkFromPk(this.value, true));
   }
 }
 
+/**
+ * Same as `SaverVerifyingKey` but in uncompressed form.
+ */
 export class SaverVerifyingKeyUncompressed extends BytearrayWrapper implements IUncompressed {}
 
+/**
+ * Key used to verify the snark proof created during encryption
+ */
 export class SaverVerifyingKey extends BytearrayWrapper implements ICompressed<SaverVerifyingKeyUncompressed> {
   decompress(): SaverVerifyingKeyUncompressed {
     return new SaverVerifyingKeyUncompressed(saverDecompressSnarkVk(this.value));
@@ -143,7 +173,7 @@ export class SaverDecryptor {
         secretKey.value,
         decryptionKey.value,
         snarkVk.value,
-        chunkBitSize,
+        getChunkBitSize(chunkBitSize),
         true
       )
     );
@@ -170,7 +200,7 @@ export class SaverDecryptor {
         secretKey,
         decryptionKey.value,
         snarkVk.value,
-        chunkBitSize,
+        getChunkBitSize(chunkBitSize),
         false
       )
     );

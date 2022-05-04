@@ -5,8 +5,15 @@ import {
   saverDecompressChunkedCommitmentGenerators
 } from '@docknetwork/crypto-wasm';
 
+/**
+ * Same as `SaverChunkedCommitmentGens` but in uncompressed form.
+ */
 export class SaverChunkedCommitmentGensUncompressed extends BytearrayWrapper implements IUncompressed {}
 
+/**
+ * Generators used by the prover and verifier to connect the commitment to the message in SAVER's ciphertext to the
+ * commitment to message under BBS+ signature
+ */
 export class SaverChunkedCommitmentGens extends BytearrayWrapper
   implements ICompressed<SaverChunkedCommitmentGensUncompressed> {
   static generate(label?: Uint8Array): SaverChunkedCommitmentGens {

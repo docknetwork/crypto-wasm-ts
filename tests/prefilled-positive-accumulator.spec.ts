@@ -1,4 +1,4 @@
-import { IKeypair, initializeWasm } from '@docknetwork/crypto-wasm';
+import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   Accumulator,
   AccumulatorKeypair,

@@ -22,11 +22,23 @@ export class CompositeProofG1 {
     this.value = proof;
   }
 
+  /**
+   * Generate the composite proof using a `ProofSpec`
+   * @param proofSpec
+   * @param witnesses
+   * @param nonce
+   */
   static generate(proofSpec: ProofSpecG1, witnesses: Witnesses, nonce?: Uint8Array): CompositeProofG1 {
     const proof = generateCompositeProofG1(proofSpec.value, witnesses.values, nonce);
     return new CompositeProofG1(proof);
   }
 
+  /**
+   * Generate the composite proof using a `QuasiProofSpecG1`
+   * @param proofSpec
+   * @param witnesses
+   * @param nonce
+   */
   static generateUsingQuasiProofSpec(
     proofSpec: QuasiProofSpecG1,
     witnesses: Witnesses,
@@ -40,6 +52,40 @@ export class CompositeProofG1 {
       proofSpec.context,
       nonce
     );
+  }
+
+  /**
+   * Verify this composite proof using a `ProofSpec`
+   * @param proofSpec
+   * @param nonce
+   */
+  verify(proofSpec: ProofSpecG1, nonce?: Uint8Array): VerifyResult {
+    return verifyCompositeProofG1(this.value, proofSpec.value, nonce);
+  }
+
+  /**
+   * Verify this composite proof using a `QuasiProofSpecG1`
+   * @param proofSpec
+   * @param nonce
+   */
+  verifyUsingQuasiProofSpec(proofSpec: QuasiProofSpecG1, nonce?: Uint8Array): VerifyResult {
+    return this.verifyWithDeconstructedProofSpec(
+      proofSpec.statements,
+      proofSpec.metaStatements,
+      proofSpec.setupParams,
+      proofSpec.context,
+      nonce
+    );
+  }
+
+  /**
+   * Get the ciphertext for the SAVER statement at index `statementIndex`. The proof involving any SAVER statement also
+   * contains the ciphertext corresponding to that statement. Will throw an error if it could not find the ciphertext or
+   * statement at that index
+   * @param statementIndex
+   */
+  getSaverCiphertext(statementIndex: number): SaverCiphertext {
+    return new SaverCiphertext(saverGetCiphertextFromProof(this.value, statementIndex));
   }
 
   static generateWithDeconstructedProofSpec(
@@ -62,20 +108,6 @@ export class CompositeProofG1 {
     return new CompositeProofG1(proof);
   }
 
-  verify(proofSpec: ProofSpecG1, nonce?: Uint8Array): VerifyResult {
-    return verifyCompositeProofG1(this.value, proofSpec.value, nonce);
-  }
-
-  verifyUsingQuasiProofSpec(proofSpec: QuasiProofSpecG1, nonce?: Uint8Array): VerifyResult {
-    return this.verifyWithDeconstructedProofSpec(
-      proofSpec.statements,
-      proofSpec.metaStatements,
-      proofSpec.setupParams,
-      proofSpec.context,
-      nonce
-    );
-  }
-
   verifyWithDeconstructedProofSpec(
     statements: Statements,
     metaStatements: MetaStatements,
@@ -92,14 +124,5 @@ export class CompositeProofG1 {
       context,
       nonce
     );
-  }
-
-  /**
-   * Get the ciphertext for the SAVER statement at index `statementIndex`. The proof involving any SAVER statement also
-   * contains the ciphertext corresponding to that statement. Will throw an error if it could not find the ciphertext
-   * @param statementIndex
-   */
-  getSaverCiphertext(statementIndex: number): SaverCiphertext {
-    return new SaverCiphertext(saverGetCiphertextFromProof(this.value, statementIndex));
   }
 }

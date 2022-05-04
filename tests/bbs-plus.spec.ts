@@ -1,5 +1,6 @@
-import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  initializeWasm,
+  randomFieldElement,
   BlindSignatureG1,
   bytesToChallenge,
   KeypairG2,
@@ -49,7 +50,7 @@ describe('BBS+ signature sunny day scenario', () => {
     revealedMsgs.set(0, messages[0]);
     revealedMsgs.set(2, messages[2]);
     const blindings: Map<number, Uint8Array> = new Map();
-    blindings.set(1, generateRandomFieldElement());
+    blindings.set(1, randomFieldElement());
 
     const protocol = PoKSigProtocol.initialize(messages, sig, params, true, blindings, revealed);
     const challengeContributionP = protocol.challengeContribution(params, true, revealedMsgs);
@@ -138,7 +139,7 @@ describe('BBS+ signature', () => {
 
     // 2 revealed messages and 1 user supplied blinding
     let blindings: Map<number, Uint8Array> = new Map();
-    blindings.set(1, generateRandomFieldElement());
+    blindings.set(1, randomFieldElement());
     protocol = PoKSigProtocol.initialize(messages, sig, params, true, blindings, revealed);
     challengeContributionP = protocol.challengeContribution(params, true, revealedMsgs);
     challengeProver = bytesToChallenge(challengeContributionP);

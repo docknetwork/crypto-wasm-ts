@@ -14,7 +14,7 @@ export interface ICompressed<UncompressedType> {
   readonly value: Uint8Array;
 
   /**
-   * Convert the uncompressed
+   * Convert to uncompressed form
    */
   decompress(): UncompressedType;
 }

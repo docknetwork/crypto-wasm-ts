@@ -8,8 +8,8 @@ import {
   bbsVerifyG1,
   generateRandomFieldElement
 } from '@docknetwork/crypto-wasm';
-import { isNumberBiggerThanNBits } from '../util';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
+import { ensurePositiveIntegerOfSize } from '../util';
 
 export abstract class Signature {
   value: Uint8Array;
@@ -32,6 +32,7 @@ export abstract class Signature {
    * @param num
    */
   static encodePositiveNumberForSigning(num: number): Uint8Array {
+    ensurePositiveIntegerOfSize(num, 32);
     return generateFieldElementFromNumber(num);
   }
 

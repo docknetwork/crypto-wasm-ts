@@ -32,6 +32,12 @@ describe('SAVER setup', () => {
     const gens1Uncompressed = gens1.decompress();
     expect(gens1Uncompressed instanceof SaverEncryptionGensUncompressed).toBe(true);
 
+    expect(gens1.bytes).toEqual(gens1.value);
+    expect(gens1Uncompressed.bytes).toEqual(gens1Uncompressed.value);
+    expect(gens1.length).toEqual(gens1.value.length);
+    expect(gens1Uncompressed.length).toEqual(gens1Uncompressed.value.length);
+    expect(gens1Uncompressed.length).toBeGreaterThan(gens1.length);
+
     const label = stringToBytes('Some string to deterministically generate EncryptionGens');
     const gens2 = SaverEncryptionGens.generate(label);
     const gens3 = SaverEncryptionGens.generate(label);

@@ -1,4 +1,4 @@
-import { generateRandomFieldElement, initializeWasm, universalAccumulatorComputeD } from '@docknetwork/crypto-wasm';
+import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   Accumulator,
   AccumulatorParams,
@@ -26,7 +26,8 @@ import {
   UniversalAccumulator,
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses
+  Witnesses,
+  randomFieldElement
 } from '../src';
 import { areUint8ArraysEqual, stringToBytes } from './utils';
 
@@ -1089,8 +1090,10 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       Accum3.accumulated
     );
 
-    const nonMember = generateRandomFieldElement();
-    const d = universalAccumulatorComputeD(nonMember, [Accumulator.encodeBytesAsAccumulatorMember(revocationId3)]);
+    const nonMember = randomFieldElement();
+    const d = UniversalAccumulator.dForNonMembershipWitness(nonMember, [
+      Accumulator.encodeBytesAsAccumulatorMember(revocationId3)
+    ]);
     const nonMemWitness = await Accum3.nonMembershipWitnessGivenD(nonMember, d, Accum3Sk);
     const nonMemCheck = Accum3.verifyNonMembershipWitness(nonMember, nonMemWitness, Accum3Pk);
     if (!nonMemCheck) {

@@ -8,4 +8,18 @@ export class BytearrayWrapper {
   constructor(value: Uint8Array) {
     this.value = value;
   }
+
+  /**
+   * Return the wrapped bytearray
+   */
+  get bytes(): Uint8Array {
+    return this.value;
+  }
+
+  /**
+   * Return the length of the wrapped bytearray
+   */
+  get length(): number {
+    return this.value.length;
+  }
 }
