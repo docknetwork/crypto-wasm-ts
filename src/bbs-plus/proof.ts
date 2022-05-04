@@ -12,6 +12,7 @@ import {
   bbsVerifyProofOfKnowledgeOfSignature
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2 } from './keys';
+import { BytearrayWrapper } from '../bytearray-wrapper';
 
 export class PoKSigProtocol {
   value: BbsPoKSigProtocol;
@@ -62,13 +63,7 @@ export class PoKSigProtocol {
   }
 }
 
-export class PoKSigProof {
-  value: Uint8Array;
-
-  constructor(proof: Uint8Array) {
-    this.value = proof;
-  }
-
+export class PoKSigProof extends BytearrayWrapper {
   verify(
     challenge: Uint8Array,
     publicKey: BBSPlusPublicKeyG2,

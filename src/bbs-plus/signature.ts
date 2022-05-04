@@ -10,14 +10,9 @@ import {
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 import { ensurePositiveIntegerOfSize } from '../util';
+import { BytearrayWrapper } from '../bytearray-wrapper';
 
-export abstract class Signature {
-  value: Uint8Array;
-
-  constructor(value: Uint8Array) {
-    this.value = value;
-  }
-
+export abstract class Signature extends BytearrayWrapper {
   /**
    * This is an irreversible encoding as a hash function is used to convert a message of
    * arbitrary length to a fixed length encoding.
@@ -134,13 +129,7 @@ export class SignatureG1 extends Signature {
   }
 }
 
-export abstract class BlindSignature {
-  value: Uint8Array;
-
-  constructor(value: Uint8Array) {
-    this.value = value;
-  }
-
+export abstract class BlindSignature extends BytearrayWrapper {
   /**
    * Generate blinding for creating the commitment used in the request for blind signature
    * @param seed - Optional seed to serve as entropy for the blinding.

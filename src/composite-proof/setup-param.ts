@@ -34,19 +34,14 @@ import {
   LegoVerifyingKeyUncompressed
 } from '../legosnark';
 import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
+import { BytearrayWrapper } from '../bytearray-wrapper';
 
 /**
  * Represents (public) setup parameters of different protocols. Different setup parameters can be wrapped in this and
  * then a reference to this is passed to the `Statement`. This is helpful when the same setup parameter needs
  * to be passed to several `Statement`s as it avoids the need of having several copies of the setup parameter.
  */
-export class SetupParam {
-  readonly value: Uint8Array;
-
-  constructor(param: Uint8Array) {
-    this.value = param;
-  }
-
+export class SetupParam extends BytearrayWrapper {
   static bbsSignatureParamsG1(params: SignatureParamsG1): SetupParam {
     return new SetupParam(generateSetupParamForBBSSignatureParametersG1(params.value));
   }

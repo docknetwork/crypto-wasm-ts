@@ -19,14 +19,9 @@ import {
   MembershipProvingKey,
   NonMembershipProvingKey
 } from './params-and-keys';
+import { BytearrayWrapper } from '../bytearray-wrapper';
 
-export class MembershipProofProtocol {
-  value: Uint8Array;
-
-  constructor(protocol: Uint8Array) {
-    this.value = protocol;
-  }
-
+export class MembershipProofProtocol extends BytearrayWrapper {
   static initialize(
     member: Uint8Array,
     witness: MembershipWitness,
@@ -68,13 +63,7 @@ export class MembershipProofProtocol {
   }
 }
 
-export class NonMembershipProofProtocol {
-  value: Uint8Array;
-
-  constructor(protocol: Uint8Array) {
-    this.value = protocol;
-  }
-
+export class NonMembershipProofProtocol extends BytearrayWrapper {
   static initialize(
     nonMember: Uint8Array,
     witness: NonMembershipWitness,
@@ -116,13 +105,7 @@ export class NonMembershipProofProtocol {
   }
 }
 
-export class MembershipProof {
-  value: Uint8Array;
-
-  constructor(proof: Uint8Array) {
-    this.value = proof;
-  }
-
+export class MembershipProof extends BytearrayWrapper {
   verify(
     accumulated: Uint8Array,
     challenge: Uint8Array,
@@ -156,13 +139,7 @@ export class MembershipProof {
   }
 }
 
-export class NonMembershipProof {
-  value: Uint8Array;
-
-  constructor(proof: Uint8Array) {
-    this.value = proof;
-  }
-
+export class NonMembershipProof extends BytearrayWrapper {
   verify(
     accumulated: Uint8Array,
     challenge: Uint8Array,

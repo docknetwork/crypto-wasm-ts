@@ -13,6 +13,7 @@ import {
 } from '@docknetwork/crypto-wasm';
 import { getUint8ArraysFromObject, jsonObjToUint8Array } from '../util';
 import { AccumulatorSecretKey } from './params-and-keys';
+import { BytearrayWrapper } from '../bytearray-wrapper';
 
 export abstract class AccumulatorWitness {
   value: Uint8Array | object;
@@ -262,13 +263,7 @@ export class NonMembershipWitness extends AccumulatorWitness {
 /**
  * Public info published by the accumulator manager used to update witnesses after several additions and removals.
  */
-export class WitnessUpdatePublicInfo {
-  value: Uint8Array;
-
-  constructor(info: Uint8Array) {
-    this.value = info;
-  }
-
+export class WitnessUpdatePublicInfo extends BytearrayWrapper {
   toJSON(): string {
     return JSON.stringify({
       value: this.value

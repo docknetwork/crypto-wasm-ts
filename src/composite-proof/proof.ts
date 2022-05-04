@@ -11,17 +11,12 @@ import { Witnesses } from './witness';
 import { SetupParam } from './setup-param';
 import { SaverCiphertext } from '../saver';
 import { ProofSpecG1, QuasiProofSpecG1 } from './proof-spec';
+import { BytearrayWrapper } from '../bytearray-wrapper';
 
 /**
  * A proof of 1 or more statements and meta statements.
  */
-export class CompositeProofG1 {
-  value: Uint8Array;
-
-  constructor(proof: Uint8Array) {
-    this.value = proof;
-  }
-
+export class CompositeProofG1 extends BytearrayWrapper {
   /**
    * Generate the composite proof using a `ProofSpec`
    * @param proofSpec
