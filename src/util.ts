@@ -7,26 +7,25 @@ import { generateFieldElementFromBytes, generateRandomFieldElement } from '@dock
 
 export function jsonObjToUint8Array(json: string): Uint8Array {
   const obj = JSON.parse(json);
-  if (obj.value === undefined) {
-    throw new Error('Missing field `value`');
-  }
-  if (obj.value instanceof Uint8Array) {
-    throw new Error('`value` should be Uint8Array');
-  }
-  return obj.value;
+  const arr = getUint8ArraysFromObject(obj, ['value']);
+  return arr[0];
 }
 
 export function getUint8ArraysFromObject(obj: Record<string, any>, keys: string[]): Uint8Array[] {
   const values: Uint8Array[] = [];
-  keys.forEach((k) => {
+  for (const k of keys) {
     if (obj[k] === undefined) {
       throw new Error(`Missing field "${k}"`);
     }
     if (obj[k] instanceof Uint8Array) {
-      throw new Error(`value of key "${k}" should be Uint8Array`);
+      values.push(obj[k]);
+      continue;
     }
-    values.push(new Uint8Array(obj[k]));
-  });
+    if (!(obj[k] instanceof Array)) {
+      throw new Error(`value of key "${k}" should be Array`);
+    }
+    values.push(obj[k] as Uint8Array);
+  }
 
   return values;
 }

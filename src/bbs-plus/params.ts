@@ -1,5 +1,3 @@
-import { BbsSigParams } from '../../../crypto-wasm/src/js';
-
 import {
   generateSignatureParamsG1,
   generateSignatureParamsG2,
@@ -12,7 +10,8 @@ import {
   bbsAdaptSigParamsG1ForMsgCount,
   bbsAdaptSigParamsG2ForMsgCount,
   bbsCommitMsgsInG1,
-  generateRandomFieldElement
+  generateRandomFieldElement,
+  BbsSigParams
 } from '@docknetwork/crypto-wasm';
 
 /**
@@ -70,7 +69,7 @@ export abstract class SignatureParams {
         g1: Array.from(this.value.g1),
         g2: Array.from(this.value.g2),
         h_0: Array.from(this.value.h_0),
-        h: this.value.h.map((h) => Array.from(h))
+        h: this.value.h.map((h: Uint8Array) => Array.from(h))
       },
       label: this.label
     });
