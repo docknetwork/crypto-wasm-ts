@@ -55,6 +55,7 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
     statements.add(statement1);
 
     const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+    expect(proofSpec.isValid()).toEqual(true);
 
     // The witness to the Pedersen commitment contains the blinding at index 0 by convention and then the hidden messages
     const committeds = [blinding];

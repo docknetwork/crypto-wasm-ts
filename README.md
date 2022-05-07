@@ -3,6 +3,41 @@
 This repository is a Typescript interface to [Dock's Rust crypto library](https://github.com/docknetwork/crypto). It uses 
 the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
 
+## Contents
+- [crypto-wasm-ts](#crypto-wasm-ts)
+  - [Contents](#contents)
+  - [Getting started](#getting-started)
+    - [Build](#build)
+    - [Test](#test)
+  - [Overview](#overview)
+    - [BBS+ Signature](#bbs-signature)
+    - [Accumulator](#accumulator)
+    - [Composite proof](#composite-proof)
+  - [Usage](#usage)
+    - [BBS+ signatures](#bbs-signatures)
+      - [Setup](#setup)
+      - [Signing and verification](#signing-and-verification)
+      - [Proof of knowledge of signature](#proof-of-knowledge-of-signature)
+    - [Accumulators](#accumulators)
+      - [Setup](#setup-1)
+      - [Updating the accumulator](#updating-the-accumulator)
+      - [Generating witnesses](#generating-witnesses)
+      - [Updating witnesses](#updating-witnesses)
+      - [Prefilled accumulator](#prefilled-accumulator)
+    - [Composite proofs](#composite-proofs)
+      - [Terminology](#terminology)
+      - [Examples](#examples)
+        - [Selective disclosure](#selective-disclosure)
+        - [BBS+ signature over varying number of messages](#bbs-signature-over-varying-number-of-messages)
+        - [Multiple BBS+ signatures](#multiple-bbs-signatures)
+        - [BBS+ signature together with accumulator membership](#bbs-signature-together-with-accumulator-membership)
+        - [Getting a blind signature](#getting-a-blind-signature)
+        - [Verifier-local or opt-in linkability](#verifier-local-or-opt-in-linkability)
+        - [Social KYC](#social-kyc)
+    - [Verifiable encryption using SAVER](#verifiable-encryption-using-saver)
+    - [Bound check using LegoGroth16](#bound-check-using-legogroth16)
+    - [Optimization](#optimization)
+
 ## Getting started
 
 To use this package within your project simply run
@@ -36,7 +71,7 @@ yarn test
 ## Overview
 Following is a conceptual explanation of the primitives.
 
-### BBS+ Signatures
+### BBS+ Signature
 BBS+ signature allow for signing an ordered list of messages, producing a signature of constant size independent of the number
 of messages. The signer needs to have a public-private keypair and signature parameters which are public values whose size
 depends on the number of messages being signed. A verifier who needs to verify the signature needs to know the
@@ -93,7 +128,7 @@ A typical use of accumulator looks like:
 - Verifier can verify above proof using the current accumulator, the parameters and signer's public key and is convinced
   that the user knows of an element and its witness and the (non)-membership.
 
-### Composite proofs
+### Composite proof
 The above primitives can be combined using the composite proof system. An example is (in zero knowledge) proving knowledge of 2
 different signatures and the message lists. Another example is proving knowledge of the signature and messages and certain message's presence (absence)
 in an accumulator. Or the knowledge of 5 signatures and proving certain message is the same in the 5 message lists.
@@ -447,17 +482,18 @@ const witnesses = new Witnesses();
 witnesses.add(witness1);
 ```
 
-Prover now uses the `ProofSpec` to create the proof
+Prover now uses the `ProofSpec` to create the proof. To ensure that the prover is not replaying, i.e. reusing a proof created by someone else, the verifier can request the prover to include its provided nonce in the proof.
 
 ```ts
-const proof = CompositeProofG1.generate(proofSpec, witnesses);
+const nonce = stringToBytes('a unique nonce given by verifier');
+const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
 ```
 
 Verifier can now verify this proof. Note that the verifier does not and must not receive `ProofSpec` from prover, it 
 needs to generate on its own.
 
 ```ts
-expect(proof.verify(proofSpec).verified).toEqual(true);
+expect(proof.verify(proofSpec, nonce).verified).toEqual(true);
 ```
 
 ##### BBS+ signature over varying number of messages 
@@ -530,8 +566,7 @@ const sId2 = statements.add(statement2);
 The prover has 2 prove that both credentials contain the same SSN which is same as saying for the 1st signature (1st `Statement`), 
 attribute at index 0 is equal to 2nd signature's (2nd `Statement`) attribute index 5. This requires the use of a `MetaStatement` to 
 express this condition, specifically `MetaStatement.witnessEquality` which takes the `WitnessRef` for each witness that needs to be 
-proven equal. `WitnessRef` for SSN in 1st signature is (0, 0) and in 2nd signature is (1, 5). Create a `WitnessEqualityMetaStatement` to 
-express that.
+proven equal. `WitnessRef` for SSN in 1st signature is (0, 0) and in 2nd signature is (1, 5). Create a `WitnessEqualityMetaStatement` to express that.
 
 ```ts
 // For proving equality of SSN, messages1[0] == messages2[5], specify using MetaStatement
@@ -895,11 +930,10 @@ proverStatements.add(statement2);
 
 `statement1` is the for proving knowledge of BBS+ signature as seen in previous examples. `statement2` is for proving the encryption of message from a 
 BBS+ signature. Some things to note about this statement.
-- The statement is created using `Statement.saverProver` because it is being created by a prover. A verifier would have 
+
+- The statement is created using `Statement.saverProver` because it is being created by a prover. A verifier would have
   used `Statement.saverVerifier` to create it and one of the arguments would be different (shown below).
-- The argument `saverEncGens` is the encryption generators created by decryptor. However, before they are passed to `Statement.saverProver`,
-  the are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles 
-  their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.saverProverFromCompressedParams`
+- The argument `saverEncGens` is the encryption generators created by decryptor. However, before they are passed to `Statement.saverProver`, the are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.saverProverFromCompressedParams`
 - `saverEk` is the encryption key created by the decryptor during `setup` but is uncompressed.
 - `snarkProvingKey` is the proving key created by the decryptor during `setup` but is uncompressed.
 
@@ -956,6 +990,7 @@ metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 ```
 
 The above has a few differences from the prover's statements:
+
 - Instead of using `Statement.saverProver`, verifier uses `Statement.saverVerifier`.
 - Instead of proving key, verifier uses verifying key for the snark.
 
@@ -999,7 +1034,8 @@ A complete example as a test is [here](./tests/composite-proofs/bound-check.spec
 
 Allow a verifier to check that some attribute of the credential satisfies given bounds `min` and `max`, i.e. `min <= message <= max` 
 without learning the attribute itself. Both `min` and `max` are positive integers. This is implemented using LegoGroth16, a protocol described in the SNARK 
-framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2
+framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2.  
+To work with negative integers or decimal numbers, they must be converted to positive integers first and this conversion must happen before these are signed. When working with negative integers, add the absolute value of the smallest (negative) integer to all values including bounds. Eg, if the smallest negative number a value can be is -300, the signer should sign `value + 300` to ensure that values are always positive. During the bound check, say the verifier has to check if the value is between -200 and 50, the verifier should ask the prover to the bounds as 100 (-200 + 300) and 350 (50 + 300). When working with decimal numbers, convert them to integers by multiplying with a number to make it integer, like if a decimal value can have maximum of 3 decimal places, they should be multiplied by 1000.  The test mentioned above shows these scenarios.
 
 For this, the verifier needs to first create the setup parameters which he then shares with the prover. Note that the 
 verifier does not have to create them each time a proof needs to be verifier, it can create them once and publish somewhere 
@@ -1012,8 +1048,7 @@ from lower and upper bound respectively.
 const provingKey = BoundCheckSnarkSetup();
 ```
 
-For creating the proof of knowledge of the BBS+ signature and one of the signed message being in certain bounds, the prover 
-creates the following 2 statements.
+For creating the proof of knowledge of the BBS+ signature and one of the signed message being in certain bounds, the prover creates the following 2 statements.
 
 ```ts
 // Signer's parameters
@@ -1033,13 +1068,11 @@ proverStatements.add(statement1);
 proverStatements.add(statement2);
 ```
 
-`statement1` is the for proving knowledge of BBS+ signature as seen in previous examples. `statement2` is for proving the 
-bounds of message from a BBS+ signature. Some things to note about this statement.
+`statement1` is the for proving knowledge of BBS+ signature as seen in previous examples. `statement2` is for proving the bounds of message from a BBS+ signature. Some things to note about this statement.
+
 - The statement is created using `Statement.boundCheckProver` because it is being created by a prover. A verifier would have
   used `Statement.boundCheckVerifier` to create it and one of the arguments would be different (shown below).
-- - The argument `snarkProvingKey` is the public parameter created by the verifier. However, before they are passed to `Statement.boundCheckProver`,
-    the are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles
-    their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.boundCheckProverFromCompressedParams`
+- The argument `snarkProvingKey` is the public parameter created by the verifier. However, before they are passed to `Statement.boundCheckProver`, they are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.boundCheckProverFromCompressedParams`
 
 The prover then establishes the equality between the message in the BBS+ signature and the bounded message by using
 `WitnessEqualityMetaStatement` as below. `msgIdx` is the index of the bounded message in the array of signed messages 
@@ -1094,6 +1127,7 @@ metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 ```
 
 The above has a few differences from the prover's statements:
+
 - Instead of using `Statement.boundCheckProver`, verifier uses `Statement.boundCheckVerifier`.
 - Instead of proving key, verifier uses verifying key for the snark.
 
@@ -1129,6 +1163,7 @@ const statement4 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitS
 ```
 
 Note the use of `Statement.saverProverFromSetupParamRefs` rather than `Statement.saverProver`. The arguments:
+
 - 0 for the encryption generators which are at index 0 in `proverSetupParams`
 - 1 for the commitment generators which are at index 1 in `proverSetupParams`
 - 2 for the encryption key which is at index 2 in `proverSetupParams`
@@ -1172,7 +1207,7 @@ const result = proof.verifyUsingQuasiProofSpec(verifierProofSpec);
 
 For a complete example, see [these tests](./tests/composite-proofs/saver.spec.ts)
 
-Similarly, for bound checks, use `Statement.boundCheckProverFromSetupParamRefs` and `Statement.boundCheckVerifierFromSetupParamRefs`. 
+Similarly, for bound checks, use `Statement.boundCheckProverFromSetupParamRefs` and `Statement.boundCheckVerifierFromSetupParamRefs`.  
 For complete example, see [these tests](./tests/composite-proofs/bound-check.spec.ts)
 
 

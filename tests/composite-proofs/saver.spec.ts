@@ -79,6 +79,9 @@ describe('Verifiable encryption of signed messages', () => {
     // Setup the messages, its important to use a reversible encoding for the messages used in verifiable encryption as
     // the decryptor should be able to decrypt the message without the holder's help.
 
+    // Following are encoded assuming messages are utf-8 and each character is 8 bits (1 byte) and
+    // thus the maximum length of string can be 32. If these are known to ascii, then can be encoded using a more
+    // efficient encoding as each character will be 7 bits and thus strings of length 36 (256 / 7) can be used.
     messages1AsStrings = [
       'John Jacob Smith Sr.',
       'San Francisco, California',

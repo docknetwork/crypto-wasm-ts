@@ -23,11 +23,10 @@ export abstract class Signature extends BytearrayWrapper {
   }
 
   /**
-   * Encodes a positive integer of at most 4 bytes
+   * Encodes a positive safe integer, i.e. of 53 bits
    * @param num
    */
   static encodePositiveNumberForSigning(num: number): Uint8Array {
-    ensurePositiveIntegerOfSize(num, 32);
     return generateFieldElementFromNumber(num);
   }
 

@@ -165,6 +165,7 @@ describe('Verifier-local or opt-in linkability', () => {
     metaStatements.add(ms);
 
     const proofSpec = new ProofSpecG1(statements, metaStatements);
+    expect(proofSpec.isValid()).toEqual(true);
 
     const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
     const witness2 = Witness.pedersenCommitment([encodedMessages[0], blinding2]);

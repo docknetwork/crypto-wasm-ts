@@ -307,8 +307,8 @@ export class Statement {
 
   /**
    * Create statement for proving bounds of a message using LegoGroth 16, for the prover.
-   * @param min - Inclusive lower bound on the message.
-   * @param max - Inclusive upper bound on the message.
+   * @param min - Inclusive lower bound on the message, must be a positive integer.
+   * @param max - Inclusive upper bound on the message, must be a positive integer.
    * @param snarkPk - Proving key for LegoGroth16
    */
   static boundCheckProver(min: number, max: number, snarkPk: LegoProvingKeyUncompressed): Uint8Array {
@@ -338,8 +338,8 @@ export class Statement {
 
   /**
    * Create statement for proving bounds of a message using LegoGroth 16, for the verifier.
-   * @param min - Inclusive lower bound on the message.
-   * @param max - Inclusive upper bound on the message.
+   * @param min - Inclusive lower bound on the message, must be a positive integer.
+   * @param max - Inclusive upper bound on the message, must be a positive integer.
    * @param snarkVk - Verifying key for LegoGroth16
    */
   static boundCheckVerifier(min: number, max: number, snarkVk: LegoVerifyingKeyUncompressed): Uint8Array {

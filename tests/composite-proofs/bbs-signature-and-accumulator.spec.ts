@@ -111,6 +111,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     const context = stringToBytes('some context');
 
     const proofSpec = new ProofSpecG1(statements, metaStatements, [], context);
+    expect(proofSpec.isValid()).toEqual(true);
 
     const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
     const witness2 = Witness.accumulatorMembership(encodedMessages[userIdIdx], accumWitness);
@@ -118,8 +119,10 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     witnesses.add(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generate(proofSpec, witnesses);
+    const nonce = stringToBytes('some unique nonce');
 
-    expect(proof.verify(proofSpec).verified).toEqual(true);
+    const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
+
+    expect(proof.verify(proofSpec, nonce).verified).toEqual(true);
   });
 });

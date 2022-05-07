@@ -288,6 +288,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
 
       // Proof spec with statement and meta-statement
       const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+      expect(proofSpec.isValid()).toEqual(true);
 
       const witnesses = new Witnesses();
       witnesses.add(witness);
@@ -352,6 +353,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
 
       // Create proof spec with statements and meta statements
       const proofSpec = new ProofSpecG1(statements, metaStatements);
+      expect(proofSpec.isValid()).toEqual(true);
 
       const witnesses = new Witnesses();
       witnesses.add(witness1);
@@ -439,6 +441,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
+      expect(proofSpec.isValid()).toEqual(true);
 
       const witnesses = new Witnesses();
       witnesses.add(witness1);
@@ -466,6 +469,8 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       statements.add(statement);
 
       const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+      expect(proofSpec.isValid()).toEqual(true);
+
       const res = blindSigReq.proof.verify(proofSpec, nonce);
       if (!res.verified) {
         throw new Error(`Failed to verify blind sig request due to ${res.error}`);
@@ -519,6 +524,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(ms2);
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
+      expect(proofSpec.isValid()).toEqual(true);
 
       const res = blindSigReq.proof.verify(proofSpec, nonce);
       if (!res.verified) {
@@ -590,6 +596,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
+      expect(proofSpec.isValid()).toEqual(true);
 
       const res = blindSigReq.proof.verify(proofSpec, nonce);
       if (!res.verified) {
@@ -689,6 +696,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(MetaStatement.witnessEquality(witnessEq4));
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
+      expect(proofSpec.isValid()).toEqual(true);
 
       const witnesses = new Witnesses();
       witnesses.add(witness1);
@@ -773,6 +781,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       metaStatements.add(MetaStatement.witnessEquality(witnessEq4));
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
+      expect(proofSpec.isValid()).toEqual(true);
 
       const res = proof.verify(proofSpec, nonce);
       if (!res.verified) {

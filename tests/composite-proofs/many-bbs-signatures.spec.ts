@@ -129,6 +129,7 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
     const context = stringToBytes('test-context');
 
     const proofSpec = new ProofSpecG1(statements, metaStatements, [], context);
+    expect(proofSpec.isValid()).toEqual(true);
 
     // Using the messages and signature from 1st signer
     const unrevealedMsgs1 = new Map(messages1.map((m, i) => [i, m]));
@@ -141,8 +142,10 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
     witnesses.add(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generate(proofSpec, witnesses);
+    const nonce = stringToBytes('some unique nonce');
 
-    expect(proof.verify(proofSpec).verified).toEqual(true);
+    const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
+
+    expect(proof.verify(proofSpec, nonce).verified).toEqual(true);
   });
 });

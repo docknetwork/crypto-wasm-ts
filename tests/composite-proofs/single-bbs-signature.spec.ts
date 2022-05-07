@@ -69,13 +69,16 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
 
     // Both the prover (user) and verifier should independently construct this `ProofSpec` but only for testing, i am reusing it.
     const proofSpec = new ProofSpecG1(statements, new MetaStatements(), [], context);
+    expect(proofSpec.isValid()).toEqual(true);
 
     const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, true);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
 
-    const proof = CompositeProofG1.generate(proofSpec, witnesses);
+    const nonce = stringToBytes('some unique nonce');
 
-    expect(proof.verify(proofSpec).verified).toEqual(true);
+    const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
+
+    expect(proof.verify(proofSpec, nonce).verified).toEqual(true);
   });
 });

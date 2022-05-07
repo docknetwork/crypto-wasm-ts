@@ -80,6 +80,7 @@ describe('Proving knowledge of 1 BBS+ signature where some of the attributes are
 
     // Both the prover (user) and verifier should independently construct this `ProofSpec` but only for testing, i am reusing it.
     const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+    expect(proofSpec.isValid()).toEqual(true);
 
     const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, true);
     const witnesses = new Witnesses();

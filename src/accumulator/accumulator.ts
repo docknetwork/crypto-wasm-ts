@@ -89,11 +89,10 @@ export abstract class Accumulator {
 
   /**
    * To add a positive number as an accumulator member, encode it first using this.
-   * Encodes a positive integer of at most 4 bytes
+   * Encodes a positive safe integer, i.e. of 53 bits
    * @param num - should be a positive integer
    */
   static encodePositiveNumberAsAccumulatorMember(num: number): Uint8Array {
-    ensurePositiveIntegerOfSize(num, 32);
     return generateFieldElementFromNumber(num);
   }
 
