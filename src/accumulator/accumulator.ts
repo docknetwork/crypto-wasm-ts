@@ -73,7 +73,7 @@ export abstract class Accumulator {
     this.params = params;
   }
 
-  setNew(value: any) {
+  setNew(value: Uint8Array | object) {
     this.value = value;
   }
 

@@ -154,11 +154,11 @@ export class SaverDecryptor {
 
   /**
    * Decrypt the ciphertext using uncompressed public parameters.
-   * @param ciphertext - Must be same as the one used during setup to create the parameters.
+   * @param ciphertext
    * @param secretKey
    * @param decryptionKey
    * @param snarkVk
-   * @param chunkBitSize
+   * @param chunkBitSize - Must be same as the one used during setup to create the parameters.
    */
   static decryptCiphertext(
     ciphertext: SaverCiphertext,
@@ -181,11 +181,11 @@ export class SaverDecryptor {
 
   /**
    * Same as `decryptCiphertext` but uses compressed parameters.
-   * @param ciphertext - Must be same as the one used during setup to create the parameters.
+   * @param ciphertext
    * @param secretKey
    * @param decryptionKey
    * @param snarkVk
-   * @param chunkBitSize
+   * @param chunkBitSize - Must be same as the one used during setup to create the parameters.
    */
   static decryptCiphertextUsingCompressedParams(
     ciphertext: SaverCiphertext,

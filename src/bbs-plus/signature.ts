@@ -1,15 +1,16 @@
 import { SignatureParamsG1 } from './params';
-import { fieldElementAsBytes, generateFieldElementFromNumber, VerifyResult } from '@docknetwork/crypto-wasm';
 import {
   bbsBlindSignG1,
   bbsEncodeMessageForSigning,
   bbsSignG1,
   bbsUnblindSigG1,
   bbsVerifyG1,
-  generateRandomFieldElement
+  generateRandomFieldElement,
+  fieldElementAsBytes,
+  generateFieldElementFromNumber,
+  VerifyResult
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
-import { ensurePositiveIntegerOfSize } from '../util';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 
 export abstract class Signature extends BytearrayWrapper {

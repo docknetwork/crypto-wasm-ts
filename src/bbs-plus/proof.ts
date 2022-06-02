@@ -3,13 +3,14 @@
  */
 import { SignatureG1 } from './signature';
 import { SignatureParamsG1 } from './params';
-import { BbsPoKSigProtocol, VerifyResult } from '@docknetwork/crypto-wasm';
 import {
   bbsInitializeProofOfKnowledgeOfSignature,
   bbsGenProofOfKnowledgeOfSignature,
   bbsChallengeContributionFromProtocol,
   bbsChallengeContributionFromProof,
-  bbsVerifyProofOfKnowledgeOfSignature
+  bbsVerifyProofOfKnowledgeOfSignature,
+  BbsPoKSigProtocol,
+  VerifyResult
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2 } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';

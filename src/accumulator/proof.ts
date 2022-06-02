@@ -1,4 +1,3 @@
-import { VerifyResult } from '@docknetwork/crypto-wasm';
 import {
   accumulatorChallengeContributionFromNonMembershipProof,
   accumulatorInitializeMembershipProof,
@@ -10,7 +9,8 @@ import {
   accumulatorGenMembershipProof,
   accumulatorGenNonMembershipProof,
   accumulatorInitializeNonMembershipProof,
-  accumulatorVerifyMembershipProof
+  accumulatorVerifyMembershipProof,
+  VerifyResult
 } from '@docknetwork/crypto-wasm';
 import { MembershipWitness, NonMembershipWitness } from './accumulatorWitness';
 import {
