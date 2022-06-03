@@ -51,7 +51,7 @@ export abstract class Signature extends BytearrayWrapper {
     const fieldElementBytes = new Uint8Array(maxLength);
     fieldElementBytes.set(bytes);
     fieldElementBytes.set(new Uint8Array(maxLength - bytes.length), bytes.length);
-    return fieldElementAsBytes(fieldElementBytes);
+    return fieldElementAsBytes(fieldElementBytes, true);
   }
 
   /**

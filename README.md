@@ -32,7 +32,7 @@ the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
         - [Multiple BBS+ signatures](#multiple-bbs-signatures)
         - [BBS+ signature together with accumulator membership](#bbs-signature-together-with-accumulator-membership)
         - [Getting a blind signature](#getting-a-blind-signature)
-        - [Verifier-local or opt-in linkability](#verifier-local-or-opt-in-linkability)
+        - [Pseudonyms](#pseudonyms)
         - [Social KYC](#social-kyc)
     - [Verifiable encryption using SAVER](#verifiable-encryption-using-saver)
     - [Bound check using LegoGroth16](#bound-check-using-legogroth16)
@@ -825,25 +825,28 @@ const result = sig.verify(messages, pk, params, true);
 expect(result.verified).toEqual(true);
 ```
 
-##### Verifier-local or opt-in linkability
+##### Pseudonyms
 
-Proving knowledge of BBS+ signatures is unlinkable meaning the verifier cannot link to 2 proofs presented from the same
+A pseudonym is meant to be used as a unique identifier. It can be considered as a public key where the creator of the 
+pseudonym has the secret key, and it can prove the knowledge of this secret key. A pseudonym can also be bound to multiple 
+attributes from multiple credentials. This concept was introduced in [Attribute-based Credentials for Trust](https://link.springer.com/book/10.1007/978-3-319-14439-9). 
+
+**Motivation**: Proving knowledge of BBS+ signatures is unlinkable meaning the verifier cannot link to 2 proofs presented from the same
 credential (signature). But this might not always be desirable for the verifier and the prover might agree to being linked for any 
 proofs that he creates for that particular verifier without revealing any attribute of the credential.  
-
 A verifier wants to attach a unique identifier to a prover without either learning anything unintended (by prover)
 from the prover's signature nor can that unique identifier be used by other verifiers to identify the prover,
 eg. a seller (as a verifier) should be able to identify repeat customers (prover) by using a unique identifier, but
 he should not be able to share that unique identifier with other sellers using their own identifier for that prover.
-This is done by making the prover go through a one-time registration process with the verifier by creating a Pedersen
-commitment to some value in the signature(s) which the verifier persists, lets call it registration commitment.
-At each subsequent proof, the prover resends the commitment with the proof that commitment contains message from the prover's
-signature (prover had persisted commitment and randomness) and the verifier checks that the commitment is same as the one during
-registration. The registration commitment serves as an identifier.
 
-In the [test](tests/composite-proofs/verifier-local-linkability.spec.ts), the credential has 4 attributes, SSN, first name, 
-last name and email and during registration, the prover creates commitment to SSN which serves as the registration 
-commitment. See the test for more details.
+
+Above is achieved by making the prover go through a one-time registration process with the verifier where the prover creates 
+a pseudonym and shares the pseudonym with the verifier. The prover on subsequent interactions share the pseudonym and 
+proof of knowledge of the pseudonym's secret key with the verifier. Thus, pseudonyms allow for verifier-local and opt-in linkability.
+
+In the [test](tests/composite-proofs/pseudonyms.spec.ts), the credential has 4 attributes, SSN, first name, 
+last name and email and during registration, the prover creates many pseudonyms, for different verifiers, some are bound to attributes 
+and some not. See the test for more details.
 
 ##### Social KYC
 A social KYC (Know Your Customer) credential claims that the subject owns certain social media profile like a twitter profile 

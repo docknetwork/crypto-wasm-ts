@@ -1,6 +1,6 @@
 {
   "name": "@docknetwork/crypto-wasm-ts",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Typescript abstractions over Dock's Rust crypto library's WASM wrapper",
   "homepage": "https://github.com/docknetwork/crypto-wasm-ts",
   "main": "lib/crypto-wasm-ts/src/index.js",
@@ -21,7 +21,7 @@
     "lib": "lib"
   },
   "dependencies": {
-    "@docknetwork/crypto-wasm": "0.11.0"
+    "@docknetwork/crypto-wasm": "0.12.0"
   },
   "devDependencies": {
     "eslint-config-prettier": "^8.3.0",

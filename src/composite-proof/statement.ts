@@ -38,6 +38,7 @@ import {
   LegoVerifyingKeyUncompressed
 } from '../legosnark';
 import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
+import { AttributeBoundPseudonym, Pseudonym } from '../Pseudonym';
 
 /**
  * Relation which needs to be proven. Contains any public data that needs to be known to both prover and verifier
@@ -45,13 +46,18 @@ import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembe
 export class Statement {
   /**
    * Create statement for proving knowledge of opening of Pedersen commitment with commitment key and commitment in G1
-   * @param commitmentKey - commitment key
+   * @param commitmentKey - commitment key used to create the commitment
    * @param commitment
    */
   static pedersenCommitmentG1(commitmentKey: Uint8Array[], commitment: Uint8Array): Uint8Array {
     return generatePedersenCommitmentG1Statement(commitmentKey, commitment);
   }
 
+  /**
+   * Same as `Statement.pedersenCommitmentG1` but does not take the commitment key directly but a reference to it
+   * @param commitmentKeyRef
+   * @param commitment
+   */
   static pedersenCommitmentG1FromSetupParamRef(commitmentKeyRef: number, commitment: Uint8Array): Uint8Array {
     return generatePedersenCommitmentG1StatementFromParamRefs(commitmentKeyRef, commitment);
   }
@@ -365,6 +371,33 @@ export class Statement {
    */
   static boundCheckVerifierFromSetupParamRefs(min: number, max: number, snarkVkRef: number): Uint8Array {
     return generateBoundCheckLegoVerifierStatementFromParamRefs(min, max, snarkVkRef);
+  }
+
+  /**
+   * Statement for proving knowledge of secret key behind pseudonym
+   * @param pseudonym
+   * @param base
+   */
+  static pseudonym(pseudonym: Pseudonym, base: Uint8Array): Uint8Array {
+    return Statement.pedersenCommitmentG1([base], pseudonym.value);
+  }
+
+  /**
+   * Statement for proving knowledge of secret key and attributes behind pseudonym
+   * @param pseudonym
+   * @param basesForAttributes
+   * @param baseForSecretKey
+   */
+  static attributeBoundPseudonym(
+    pseudonym: AttributeBoundPseudonym,
+    basesForAttributes: Uint8Array[],
+    baseForSecretKey?: Uint8Array
+  ): Uint8Array {
+    const b = [...basesForAttributes];
+    if (baseForSecretKey !== undefined) {
+      b.push(baseForSecretKey);
+    }
+    return Statement.pedersenCommitmentG1(b, pseudonym.value);
   }
 }
 

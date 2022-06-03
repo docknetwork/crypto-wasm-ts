@@ -68,6 +68,18 @@ export class Witness {
   static boundCheckLegoGroth16(message: Uint8Array): Uint8Array {
     return generateBoundCheckWitness(message);
   }
+
+  static pseudonym(secretKey: Uint8Array): Uint8Array {
+    return Witness.pedersenCommitment([secretKey]);
+  }
+
+  static attributeBoundPseudonym(attributes: Uint8Array[], secretKey?: Uint8Array): Uint8Array {
+    const a = [...attributes];
+    if (secretKey !== undefined) {
+      a.push(secretKey);
+    }
+    return Witness.pedersenCommitment(a);
+  }
 }
 
 /**
