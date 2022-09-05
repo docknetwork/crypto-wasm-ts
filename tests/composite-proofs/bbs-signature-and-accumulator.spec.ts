@@ -122,7 +122,6 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     const nonce = stringToBytes('some unique nonce');
 
     const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
-
     expect(proof.verify(proofSpec, nonce).verified).toEqual(true);
   });
 });

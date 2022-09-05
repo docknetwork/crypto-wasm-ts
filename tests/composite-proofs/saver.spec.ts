@@ -124,9 +124,14 @@ describe('Verifiable encryption of signed messages', () => {
   });
 
   function decryptAndVerify(proof: CompositeProofG1, statementIndex: number, message: Uint8Array) {
+    // Verifier extracts the ciphertext
     const ciphertext = proof.getSaverCiphertext(statementIndex);
+
+    // Decryptor gets the ciphertext from the verifier and decrypts it
     const decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, snarkVerifyingKey, chunkBitSize);
     expect(decrypted.message).toEqual(message);
+
+    // Decryptor shares the decryption result with verifier which the verifier can check for correctness.
     expect(
       ciphertext.verifyDecryption(decrypted, saverDk, snarkVerifyingKey, saverEncGens, chunkBitSize).verified
     ).toEqual(true);
@@ -176,7 +181,10 @@ describe('Verifiable encryption of signed messages', () => {
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
     expect(proof.verifyUsingQuasiProofSpec(verifierProofSpec).verified).toEqual(true);
 
+    // The ciphertext present in the proof is decrypted and checked to match the original message
     decryptAndVerify(proof, 1, messages[encMsgIdx]);
+
+    // Message can be successfully decoded to the original string
     const decoded = SignatureG1.reversibleDecodeStringMessageForSigning(messages[encMsgIdx]);
     expect(decoded).toEqual(messagesAsStrings[encMsgIdx]);
   }

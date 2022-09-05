@@ -473,4 +473,9 @@ export class MetaStatements {
     this.values.push(metaStatement);
     return this.values.length - 1;
   }
+
+  addWitnessEquality(wq: WitnessEqualityMetaStatement) {
+    this.values.push(MetaStatement.witnessEquality(wq));
+    return this.values.length - 1;
+  }
 }

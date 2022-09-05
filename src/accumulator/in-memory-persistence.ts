@@ -5,53 +5,71 @@ import { IInitialElementsStore } from './IInitialElementsStore';
  * In memory implementation of the state. For testing only
  */
 export class InMemoryState implements IAccumulatorState {
-  state: Set<Uint8Array>;
+  state: Set<string>;
   constructor() {
-    this.state = new Set<Uint8Array>();
+    this.state = new Set<string>();
   }
 
   async add(element: Uint8Array): Promise<void> {
-    if (this.state.has(element)) {
+    const key = InMemoryState.key(element);
+    if (this.state.has(key)) {
       throw new Error(`${element} already present`);
     }
-    this.state.add(element);
+    this.state.add(key);
     return Promise.resolve();
   }
 
   async remove(element: Uint8Array): Promise<void> {
-    if (!this.state.has(element)) {
+    const key = InMemoryState.key(element);
+    if (!this.state.has(key)) {
       throw new Error(`${element} not present`);
     }
-    this.state.delete(element);
+    this.state.delete(key);
     return Promise.resolve();
   }
 
   async has(element: Uint8Array): Promise<boolean> {
-    return Promise.resolve(this.state.has(element));
+    const key = InMemoryState.key(element);
+    return Promise.resolve(this.state.has(key));
+  }
+
+  static key(element: Uint8Array) {
+    return JSON.stringify(Array.from(element));
   }
 }
 
 export class InMemoryUniversalState extends InMemoryState implements IUniversalAccumulatorState {
   elements(): Promise<Iterable<Uint8Array>> {
-    return Promise.resolve(this.state[Symbol.iterator]());
+    function* y(state: Set<string>) {
+      for (const k of state) {
+        yield new Uint8Array(JSON.parse(k));
+      }
+    }
+    return Promise.resolve(y(this.state));
   }
 }
 
 export class InMemoryInitialElementsStore implements IInitialElementsStore {
-  store: Set<Uint8Array>;
+  store: Set<string>;
   constructor() {
-    this.store = new Set<Uint8Array>();
+    this.store = new Set<string>();
   }
 
   async add(element: Uint8Array): Promise<void> {
-    if (this.store.has(element)) {
+    const key = InMemoryInitialElementsStore.key(element);
+    if (this.store.has(key)) {
       throw new Error(`${element} already present`);
     }
-    this.store.add(element);
+    this.store.add(key);
     return Promise.resolve();
   }
 
   async has(element: Uint8Array): Promise<boolean> {
-    return Promise.resolve(this.store.has(element));
+    const key = InMemoryInitialElementsStore.key(element);
+    return Promise.resolve(this.store.has(key));
+  }
+
+  static key(element: Uint8Array) {
+    return JSON.stringify(Array.from(element));
   }
 }

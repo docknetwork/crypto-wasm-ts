@@ -43,6 +43,8 @@ describe('Prefilled positive accumulator', () => {
     for (let i = 1; i <= totalMembers; i++) {
       members.push(Accumulator.encodePositiveNumberAsAccumulatorMember(i));
     }
+    // Adding a single batch as `totalMembers` is fairly small (100s) in this test but in practice choose a reasonable
+    // batch size to not take up complete system's memory
     await accumulator.addBatch(members, keypair.secretKey, state);
     expect(state.state.size).toEqual(totalMembers);
   });

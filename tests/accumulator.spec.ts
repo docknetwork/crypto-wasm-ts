@@ -41,12 +41,12 @@ async function runCommonTests(
   const e2 = Accumulator.encodePositiveNumberAsAccumulatorMember(102);
 
   expect(state.state.size).toEqual(0);
-  expect(state.state.has(e1)).toEqual(false);
+  await expect(state.has(e1)).resolves.toEqual(false);
 
   await accumulator.add(e1, sk, state, store);
 
   expect(state.state.size).toEqual(1);
-  expect(state.state.has(e1)).toEqual(true);
+  await expect(state.has(e1)).resolves.toEqual(true);
 
   await expect(accumulator.add(e1, sk, state, store)).rejects.toThrow();
 
@@ -55,12 +55,12 @@ async function runCommonTests(
   await accumulator.add(e2, sk, state, store);
 
   expect(state.state.size).toEqual(2);
-  expect(state.state.has(e2)).toEqual(true);
+  await expect(state.has(e2)).resolves.toEqual(true);
 
   await accumulator.remove(e2, sk, state, store);
 
   expect(state.state.size).toEqual(1);
-  expect(state.state.has(e2)).toEqual(false);
+  await expect(state.has(e2)).resolves.toEqual(false);
 
   const e3 = Accumulator.encodePositiveNumberAsAccumulatorMember(103);
   const e4 = Accumulator.encodePositiveNumberAsAccumulatorMember(104);
@@ -68,8 +68,8 @@ async function runCommonTests(
   await accumulator.addBatch([e3, e4], sk, state, store);
 
   expect(state.state.size).toEqual(3);
-  expect(state.state.has(e3)).toEqual(true);
-  expect(state.state.has(e4)).toEqual(true);
+  await expect(state.has(e3)).resolves.toEqual(true);
+  await expect(state.has(e4)).resolves.toEqual(true);
 
   await expect(accumulator.addBatch([e3, e4], sk, state, store)).rejects.toThrow();
 
@@ -77,8 +77,8 @@ async function runCommonTests(
 
   await accumulator.removeBatch([e3, e4], sk, state, store);
   expect(state.state.size).toEqual(1);
-  expect(state.state.has(e3)).toEqual(false);
-  expect(state.state.has(e4)).toEqual(false);
+  await expect(state.has(e3)).resolves.toEqual(false);
+  await expect(state.has(e4)).resolves.toEqual(false);
 
   await expect(accumulator.removeBatch([e3, e4], sk, state, store)).rejects.toThrow();
   expect(state.state.size).toEqual(1);
@@ -88,9 +88,9 @@ async function runCommonTests(
 
   await accumulator.addRemoveBatches([e5, e6], [e1], sk, state, store);
   expect(state.state.size).toEqual(2);
-  expect(state.state.has(e5)).toEqual(true);
-  expect(state.state.has(e6)).toEqual(true);
-  expect(state.state.has(e1)).toEqual(false);
+  await expect(state.has(e5)).resolves.toEqual(true);
+  await expect(state.has(e6)).resolves.toEqual(true);
+  await expect(state.has(e1)).resolves.toEqual(false);
 
   const accumulated = accumulator.accumulated;
   let tempAccumulator = getAccum(accumulator);
@@ -223,7 +223,7 @@ describe('Accumulators type', () => {
     const fixed = UniversalAccumulator.fixedInitialElements();
     expect(store.store.size).toEqual(20 + fixed.length + 1);
     for (const i of fixed) {
-      expect(store.store.has(i));
+      await expect(store.has(i)).resolves.toEqual(true);
     }
     const state1 = new InMemoryUniversalState();
     await runCommonTests(keypair, params, accumulator1, state1, store);

@@ -8,3 +8,4 @@ export * from './legosnark';
 export * from './bound-check';
 export * from './ICompressed';
 export * from './Pseudonym';
+export * from './sign-verify-js-objs';

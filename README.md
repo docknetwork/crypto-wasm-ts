@@ -37,6 +37,7 @@ the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
     - [Verifiable encryption using SAVER](#verifiable-encryption-using-saver)
     - [Bound check using LegoGroth16](#bound-check-using-legogroth16)
     - [Optimization](#optimization)
+    - [Working with messages as JS objects](#working-with-messages-as-js-objects)
 
 ## Getting started
 
@@ -170,10 +171,12 @@ Now each of the above list must be converted to bytearrays, i.e. `Uint8Array` an
 #### Setup
 
 Before messages can be signed, 2 things are needed:
-- **Signature parameters**: Public values, that can be created by anyone but must be known to the signer and verifier to sign and verify respectively. To create them, the number of messages (attributes) being signed must be known and the size of the parameters increases with the number. In the above example, number of attributes is 4. These parameters can be generated randomly or deterministically by using a publicly known label. It is advised to use the latter as it allows for extending/shrinking the same parameters when number of messages change.     
+
+- **Signature parameters**: Public values, that can be created by anyone but must be known to the signer and verifier to sign and verify respectively. To create them, the number of messages (attributes) being signed must be known and the size of the parameters increases with the number. In the above example, number of attributes is 4. These parameters can be generated randomly or deterministically by using a publicly known label. It is advised to use the latter as it allows for extending/shrinking the same parameters when number of messages change.
 - **Keypair**: To create and verify BBS+ signature, the signer (issuer in case of a credential) needs to create a secret key to sign, public key to verify. 
 
   2 ways of generating signature parameters
+
   ```ts
   const messageCount = 4;
   
@@ -190,6 +193,7 @@ Before messages can be signed, 2 things are needed:
   ```
   
   Generating a keypair once signature parameters are created.
+
   ```ts
   const keypair1 = KeypairG2.generate(paramsDeterministc);
   const sk = keypair.secretKey;
@@ -203,7 +207,7 @@ the `encode` argument as true to encode it using your own encoding function.
   
   Letting the signing function encode  
   ```ts
-  // messages is a list of bytesarrays and converted as mentioned above  
+  // messages is a list of bytearrays and converted as mentioned above  
   const messages: Uint8Array[] = [...];
   
   // The signing function will encode bytes to a field element as true is passed
@@ -216,7 +220,7 @@ the `encode` argument as true to encode it using your own encoding function.
   
   Passing pre-encoded messages to signing function
   ```ts
-  // messages is a list of bytesarrays and converted as mentioned above  
+  // messages is a list of bytearrays and converted as mentioned above  
   const messages: Uint8Array[] = [...];
   
   for (let i = 0; i < messages.length; i++) {
@@ -1213,4 +1217,7 @@ For a complete example, see [these tests](./tests/composite-proofs/saver.spec.ts
 Similarly, for bound checks, use `Statement.boundCheckProverFromSetupParamRefs` and `Statement.boundCheckVerifierFromSetupParamRefs`.  
 For complete example, see [these tests](./tests/composite-proofs/bound-check.spec.ts)
 
+### Working with messages as JS objects
 
+The above interfaces have been found to be a bit difficult to work with when signing messages that are represented as JS objects. 
+[Here](./src/sign-verify-js-objs.ts) are some [utilities](./src/bbs-plus/encoder.ts) to make this task a bit easier. [These tests](./tests/composite-proofs/sign-verify-js-obj.spec.ts) contain plenty of examples.
