@@ -3,7 +3,9 @@ import {
   encodeRevealedMsgs,
   getAdaptedSignatureParamsForMessages,
   getRevealedAndUnrevealed,
+  getSigParamsOfRequiredSize,
   signMessageObject,
+  SigParamsGetter,
   verifyMessageObject
 } from '../../src/sign-verify-js-objs';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
@@ -12,7 +14,11 @@ import {
   Accumulator,
   AccumulatorSecretKey,
   BoundCheckSnarkSetup,
-  CompositeProofG1, EncodeFunc, Encoder, flattenObjectToKeyValuesList, getIndicesForMsgNames,
+  CompositeProofG1,
+  EncodeFunc,
+  Encoder,
+  flattenObjectToKeyValuesList,
+  getIndicesForMsgNames,
   IAccumulatorState,
   KeypairG2,
   MetaStatements,
@@ -29,11 +35,17 @@ import {
   Statements,
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses
+  Witnesses,
+  WitnessUpdatePublicInfo
 } from '../../src';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 
 describe('Utils', () => {
+  beforeAll(async () => {
+    // Load the WASM module
+    await initializeWasm();
+  });
+
   it('flattening works', () => {
     const msgs1 = { foo: 'Foo1', 'bar-0': 'Bar0', bar: 'Bar', grault: 'aGrault', corge: 'Corge', waldo: 'Waldo' };
     const [keys1, vals1] = flattenObjectToKeyValuesList(msgs1);
@@ -52,6 +64,149 @@ describe('Utils', () => {
     expect(keys3.length).toEqual(vals3.length);
     expect(keys3).toEqual(['axe.0', 'axe.1', 'axe.2', 'bar', 'baz.bar', 'baz.foo0', 'foo']);
     expect(vals3).toEqual(['foo', 'bar', 1, 'Bar10', 'Bar4', 'Foo', 'Foo1']);
+  });
+
+  it('Signature params getter', () => {
+    const params1 = SignatureParamsG1.generate(2);
+
+    expect(() => getSigParamsOfRequiredSize(1, params1)).toThrow();
+    expect(() => getSigParamsOfRequiredSize(3, params1)).toThrow();
+    expect(() => getSigParamsOfRequiredSize(2, params1)).not.toThrow();
+    expect(() => getSigParamsOfRequiredSize(1, stringToBytes('some label'))).not.toThrow();
+    expect(() => getSigParamsOfRequiredSize(2, stringToBytes('some label'))).not.toThrow();
+    expect(() => getSigParamsOfRequiredSize(3, stringToBytes('some label'))).not.toThrow();
+
+    const params2 = SignatureParamsG1.generate(2, stringToBytes('label2'));
+    expect(() => getSigParamsOfRequiredSize(1, params2)).not.toThrow();
+    expect(() => getSigParamsOfRequiredSize(2, params2)).not.toThrow();
+    expect(() => getSigParamsOfRequiredSize(3, params2)).not.toThrow();
+
+    const pg1 = new SigParamsGetter();
+    expect(() => pg1.getSigParamsOfRequiredSize(2)).toThrow();
+    expect(() => pg1.getSigParamsOfRequiredSize(1, params1)).toThrow();
+    expect(() => pg1.getSigParamsOfRequiredSize(3, params1)).toThrow();
+    expect(() => pg1.getSigParamsOfRequiredSize(2, params1)).not.toThrow();
+    expect(() => pg1.getSigParamsOfRequiredSize(1, stringToBytes('some label'))).not.toThrow();
+    expect(() => pg1.getSigParamsOfRequiredSize(2, stringToBytes('some label'))).not.toThrow();
+    expect(() => pg1.getSigParamsOfRequiredSize(3, stringToBytes('some label'))).not.toThrow();
+
+    const pg2 = new SigParamsGetter(stringToBytes('a label'));
+    expect(() => pg2.getSigParamsOfRequiredSize(2)).not.toThrow();
+    expect(() => pg2.getSigParamsOfRequiredSize(5)).not.toThrow();
+  });
+
+  it('encoder works', () => {
+    expect(() => new Encoder()).toThrow();
+    expect(() => new Encoder(new Map<string, EncodeFunc>())).toThrow();
+
+    const encoders1 = new Map<string, EncodeFunc>();
+    encoders1.set('foo', Encoder.positiveIntegerEncoder());
+    const encoder1 = new Encoder(encoders1);
+
+    // Throws for unknown message name when no default encoder
+    expect(() => encoder1.encodeMessage('bar', 6)).toThrow();
+    expect(() => encoder1.encodeMessageObject({ bar: 6, foo: 10 })).toThrow();
+
+    // Throws for known message name but invalid value
+    expect(() => encoder1.encodeMessage('foo', 6.5)).toThrow();
+    expect(() => encoder1.encodeMessageObject({ foo: 6.5 })).toThrow();
+
+    expect(() => encoder1.encodeMessage('foo', 6)).not.toThrow();
+    expect(() => encoder1.encodeMessageObject({ foo: 6 })).not.toThrow();
+
+    const defaultEncoder = (v: unknown) => {
+      // @ts-ignore
+      return SignatureG1.encodeMessageForSigning(stringToBytes(v.toString()));
+    };
+    const encoder2 = new Encoder(undefined, defaultEncoder);
+    expect(() => encoder2.encodeMessage('bar', 6)).not.toThrow();
+    expect(() => encoder2.encodeMessageObject({ bar: 6 })).not.toThrow();
+
+    const encoder3 = new Encoder(encoders1, defaultEncoder);
+    // Throws for known message name but invalid value even with default encoder
+    expect(() => encoder3.encodeMessage('foo', 6.5)).toThrow();
+    expect(() => encoder3.encodeMessageObject({ bar: 10, foo: 6.5 })).toThrow();
+
+    encoders1.set('bar', Encoder.integerEncoder(-100));
+
+    const encoder4 = new Encoder(encoders1, defaultEncoder);
+
+    // Throws when message is not an integer
+    expect(() => encoder4.encodeMessage('bar', 2.6)).toThrow();
+    expect(() => encoder4.encodeMessage('bar', -2.6)).toThrow();
+    expect(() => encoder4.encodeMessage('bar', 'Bar1')).toThrow();
+    expect(() => encoder4.encodeMessageObject({ bar: 2.6 })).toThrow();
+    expect(() => encoder4.encodeMessageObject({ bar: -2.6 })).toThrow();
+    expect(() => encoder4.encodeMessageObject({ bar: 'Bar1' })).toThrow();
+
+    // Does not throw when positive integers
+    expect(() => encoder4.encodeMessage('bar', 2)).not.toThrow();
+    expect(() => encoder4.encodeMessageObject({ bar: 2 })).not.toThrow();
+
+    // Throws when message is not a below the specified minimum
+    expect(() => encoder4.encodeMessage('bar', -102)).toThrow();
+    expect(() => encoder4.encodeMessageObject({ bar: -102 })).toThrow();
+
+    expect(() => encoder4.encodeMessage('bar', -100)).not.toThrow();
+    expect(() => encoder4.encodeMessageObject({ bar: -100 })).not.toThrow();
+
+    // Does not throw no specific encoder is defined and thus default encoder is used
+    expect(() => encoder4.encodeMessage('foo1', -102)).not.toThrow();
+    expect(() => encoder4.encodeMessage('foo1', 2.6)).not.toThrow();
+    expect(() => encoder4.encodeMessageObject({ foo1: -102, baz1: 'Bar1' })).not.toThrow();
+    expect(() => encoder4.encodeMessageObject({ foo1: -102, baz1: 'Bar1', barfoo: -2.6 })).not.toThrow();
+
+    encoders1.set('baz', Encoder.positiveDecimalNumberEncoder(3));
+
+    const encoder5 = new Encoder(encoders1, defaultEncoder);
+
+    // Throws when message is a negative number or other invalid type
+    expect(() => encoder5.encodeMessage('baz', -2.6)).toThrow();
+    expect(() => encoder5.encodeMessage('baz', -2)).toThrow();
+    expect(() => encoder5.encodeMessage('baz', '-2.6')).toThrow();
+    expect(() => encoder5.encodeMessageObject({ baz: -2.6 })).toThrow();
+    expect(() => encoder5.encodeMessageObject({ baz: -2 })).toThrow();
+    expect(() => encoder5.encodeMessageObject({ baz: '-2.6' })).toThrow();
+
+    // Throws when message has more decimal places than intended
+    expect(() => encoder5.encodeMessage('baz', 2.1234)).toThrow();
+    expect(() => encoder5.encodeMessageObject({ baz: 2.1234 })).toThrow();
+
+    // Does not throw when message has expected number of decimal places
+    expect(() => encoder5.encodeMessage('baz', 2.0)).not.toThrow();
+    expect(() => encoder5.encodeMessage('baz', 2.1)).not.toThrow();
+    expect(() => encoder5.encodeMessage('baz', 2.12)).not.toThrow();
+    expect(() => encoder5.encodeMessage('baz', 2.13)).not.toThrow();
+    expect(() => encoder5.encodeMessageObject({ baz: 2.0 })).not.toThrow();
+    expect(() => encoder5.encodeMessageObject({ baz: 2.0 })).not.toThrow();
+    expect(() => encoder5.encodeMessageObject({ baz: 2.12 })).not.toThrow();
+    expect(() => encoder5.encodeMessageObject({ baz: 2.13 })).not.toThrow();
+
+    // Does not throw when positive integers
+    expect(() => encoder5.encodeMessage('baz', 2)).not.toThrow();
+    expect(() => encoder5.encodeMessageObject({ baz: 2 })).not.toThrow();
+
+    // Does not throw no specific encoder is defined and thus default encoder is used
+    expect(() => encoder5.encodeMessage('foo1', -2)).not.toThrow();
+    expect(() => encoder5.encodeMessage('foo1', 2.1234)).not.toThrow();
+    expect(() => encoder5.encodeMessageObject({ foo1: -2 })).not.toThrow();
+    expect(() => encoder5.encodeMessageObject({ foo1: 2.1234 })).not.toThrow();
+
+    encoders1.set('waldo', Encoder.decimalNumberEncoder(-1000, 2));
+
+    const encoder6 = new Encoder(encoders1, defaultEncoder);
+
+    // Throws when message is below the intended minimum or has more decimal places than intended
+    for (const v of [-1001, -999.234, 0.056, 2.123, -1002.123]) {
+      expect(() => encoder6.encodeMessage('waldo', v)).toThrow();
+      expect(() => encoder6.encodeMessageObject({ waldo: v })).toThrow();
+    }
+
+    // Does not throw for valid values
+    for (const v of [-1000, -999, -100.1, -40.0, -5.01, -1, 0, 1, 1.2, 1.45, 100, 200.9, 300.0, 300.1, 300.2]) {
+      expect(() => encoder6.encodeMessage('waldo', v)).not.toThrow();
+      expect(() => encoder6.encodeMessageObject({ waldo: v })).not.toThrow();
+    }
   });
 });
 
@@ -212,21 +367,21 @@ describe('Signing and proof of signature', () => {
   encoders.set('physical.weight', Encoder.positiveIntegerEncoder());
 
   // height contains at most 1 decimal place
-  encoders.set('height', Encoder.decimalNumberEncoder(1));
-  encoders.set('physical.height', Encoder.decimalNumberEncoder(1));
+  encoders.set('height', Encoder.positiveDecimalNumberEncoder(1));
+  encoders.set('physical.height', Encoder.positiveDecimalNumberEncoder(1));
 
   // BMI contains at most 2 decimal place
-  encoders.set('BMI', Encoder.decimalNumberEncoder(2));
-  encoders.set('physical.BMI', Encoder.decimalNumberEncoder(2));
+  encoders.set('BMI', Encoder.positiveDecimalNumberEncoder(2));
+  encoders.set('physical.BMI', Encoder.positiveDecimalNumberEncoder(2));
 
   // score contains at most 1 decimal place and its minimum value is -100
-  encoders.set('score', Encoder.negativeDecimalNumberEncoder(-100, 1));
+  encoders.set('score', Encoder.decimalNumberEncoder(-100, 1));
 
   // latitude contains at most 3 decimal places (in this example) and its minimum value is -90
-  encoders.set('lessSensitive.department.location.geo.lat', Encoder.negativeDecimalNumberEncoder(-90, 3));
+  encoders.set('lessSensitive.department.location.geo.lat', Encoder.decimalNumberEncoder(-90, 3));
 
   // longitude contains at most 3 decimal places (in this example) and its minimum value is -180
-  encoders.set('lessSensitive.department.location.geo.long', Encoder.negativeDecimalNumberEncoder(-180, 3));
+  encoders.set('lessSensitive.department.location.geo.long', Encoder.decimalNumberEncoder(-180, 3));
 
   encoders.set('SSN', (v: unknown) => {
     // @ts-ignore
@@ -307,7 +462,7 @@ describe('Signing and proof of signature', () => {
       // `revealedMsgsRaw` contains the messages being revealed without the values being encoded. The idea is for the
       // verifier to encode it independently.
       if (i == 1) {
-        expect(revealedMsgsRaw).toEqual({fname: 'John', country: 'USA'});
+        expect(revealedMsgsRaw).toEqual({ fname: 'John', country: 'USA' });
       }
 
       if (i == 2) {
@@ -423,6 +578,8 @@ describe('Signing and proof of signature', () => {
       revealedNames1,
       encoder
     );
+    expect(revealedMsgsRaw1).toEqual({ fname: 'John', BMI: 23.25, country: 'USA' });
+
     const statement1 = Statement.bbsSignature(sigParams1, pk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
@@ -430,6 +587,17 @@ describe('Signing and proof of signature', () => {
       revealedNames2,
       encoder
     );
+    expect(revealedMsgsRaw2).toEqual({
+      fname: 'John',
+      location: {
+        country: 'USA'
+      },
+      physical: {
+        BMI: 23.25
+      },
+      score: -13.5
+    });
+
     const statement2 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
 
     const statementsProver = new Statements();
@@ -545,6 +713,8 @@ describe('Signing and proof of signature', () => {
       revealedNames1,
       encoder
     );
+    expect(revealedMsgsRaw1).toEqual({ fname: 'John', BMI: 23.25, country: 'USA' });
+
     const statement1 = Statement.bbsSignature(sigParams1, pk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
@@ -552,6 +722,16 @@ describe('Signing and proof of signature', () => {
       revealedNames2,
       encoder
     );
+    expect(revealedMsgsRaw2).toEqual({
+      fname: 'John',
+      location: {
+        country: 'USA'
+      },
+      physical: {
+        BMI: 23.25
+      }
+    });
+
     const statement2 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
 
     const [revealedMsgs3, unrevealedMsgs3, revealedMsgsRaw3] = getRevealedAndUnrevealed(
@@ -559,6 +739,22 @@ describe('Signing and proof of signature', () => {
       revealedNames3,
       encoder
     );
+    expect(revealedMsgsRaw3).toEqual({
+      fname: 'John',
+      lessSensitive: {
+        location: {
+          country: 'USA'
+        },
+        department: {
+          name: 'Random',
+          location: {
+            name: 'Somewhere'
+          }
+        }
+      },
+      rank: 6
+    });
+
     const statement3 = Statement.bbsSignature(sigParams3, pk3, revealedMsgs3, false);
 
     const statementsProver = new Statements();
@@ -812,7 +1008,12 @@ describe('Signing and proof of signature', () => {
     const encoder = new Encoder(encoders, defaultEncoder);
 
     // Sign and verify all signatures
+
+    // Signer 1 signs the attributes
     const signed1 = signMessageObject(attributes1, sk1, label1, encoder);
+
+    // Accumulator manager 1 generates the witness for the accumulator member, i.e. attribute signed1.encodedMessages['user-id']
+    // and gives the witness to the user.
     const accumWitness1 = await accumulator1.membershipWitness(
       signed1.encodedMessages['user-id'],
       accumKeypair1.secretKey,
@@ -820,6 +1021,8 @@ describe('Signing and proof of signature', () => {
     );
 
     expect(verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder)).toBe(true);
+
+    // The user verifies the accumulator membership by using the witness
     let verifAccumulator1 = PositiveAccumulator.fromAccumulated(accumulator1.accumulated);
     expect(
       verifAccumulator1.verifyMembershipWitness(
@@ -830,13 +1033,19 @@ describe('Signing and proof of signature', () => {
       )
     ).toEqual(true);
 
+    // Signer 2 signs the attributes
     const signed2 = signMessageObject(attributes2, sk2, label2, encoder);
+
+    // Accumulator manager 2 generates the witness and gives it to the user
     const accumWitness2 = await accumulator2.membershipWitness(
       signed2.encodedMessages['sensitive.user-id'],
       accumKeypair2.secretKey,
       accumState2
     );
+
     expect(verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder)).toBe(true);
+
+    // The user verifies the accumulator membership by using the witness
     let verifAccumulator2 = PositiveAccumulator.fromAccumulated(accumulator2.accumulated);
     expect(
       verifAccumulator2.verifyMembershipWitness(
@@ -922,7 +1131,8 @@ describe('Signing and proof of signature', () => {
     metaStmtsProver.addWitnessEquality(witnessEq3);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new QuasiProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = Witness.bbsSignature(signed1.signature, unrevealedMsgs1, false);
     const witness2 = Witness.bbsSignature(signed2.signature, unrevealedMsgs2, false);
@@ -935,7 +1145,7 @@ describe('Signing and proof of signature', () => {
     witnesses.add(witness3);
     witnesses.add(witness4);
 
-    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proofSpecProver, witnesses);
+    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgs1FromVerifier = encodeRevealedMsgs(revealedMsgsRaw1, attributes1Struct, encoder);
@@ -989,6 +1199,61 @@ describe('Signing and proof of signature', () => {
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     expect(proof.verify(proofSpecVerifier).verified).toEqual(true);
+
+    // Remove members from accumulator
+
+    // Prepare witness update info that needs to be shared with the members
+    const witnessUpdInfo1 = WitnessUpdatePublicInfo.new(
+      accumulator1.accumulated,
+      [],
+      [allMembers1[5]],
+      accumKeypair1.secretKey
+    );
+    const witnessUpdInfo2 = WitnessUpdatePublicInfo.new(
+      accumulator2.accumulated,
+      [],
+      [allMembers1[20]],
+      accumKeypair2.secretKey
+    );
+
+    // Accumulator managers remove the member from accumulaator
+    await accumulator1.remove(allMembers1[5], accumKeypair1.secretKey, accumState1);
+    await accumulator2.remove(allMembers2[20], accumKeypair2.secretKey, accumState2);
+
+    // Prover updates its witnesses
+    accumWitness1.updateUsingPublicInfoPostBatchUpdate(
+      signed1.encodedMessages['user-id'],
+      [],
+      [allMembers1[5]],
+      witnessUpdInfo1
+    );
+    accumWitness2.updateUsingPublicInfoPostBatchUpdate(
+      signed2.encodedMessages['sensitive.user-id'],
+      [],
+      [allMembers2[20]],
+      witnessUpdInfo2
+    );
+
+    // The witnesses are still valid. Proof can be created as above
+    verifAccumulator1 = PositiveAccumulator.fromAccumulated(accumulator1.accumulated);
+    expect(
+      verifAccumulator1.verifyMembershipWitness(
+        signed1.encodedMessages['user-id'],
+        accumWitness1,
+        accumKeypair1.publicKey,
+        accumParams1
+      )
+    ).toEqual(true);
+
+    verifAccumulator2 = PositiveAccumulator.fromAccumulated(accumulator2.accumulated);
+    expect(
+      verifAccumulator2.verifyMembershipWitness(
+        signed2.encodedMessages['sensitive.user-id'],
+        accumWitness2,
+        accumKeypair2.publicKey,
+        accumParams2
+      )
+    ).toEqual(true);
   });
 
   it('signing and proof of knowledge of signature, verifiable encryption and range proof', () => {
@@ -1050,6 +1315,7 @@ describe('Signing and proof of signature', () => {
       revealedNames,
       globalEncoder
     );
+    expect(revealedMsgsRaw).toEqual({ fname: 'John', lname: 'Smith', country: 'USA' });
 
     const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
     const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, saverProvingKey, chunkBitSize);
@@ -1226,6 +1492,8 @@ describe('Signing and proof of signature', () => {
       revealedNames1,
       globalEncoder
     );
+    expect(revealedMsgsRaw1).toEqual({ fname: 'John', country: 'USA' });
+
     const statement1 = Statement.bbsSignature(sigParams1, pk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
@@ -1233,6 +1501,8 @@ describe('Signing and proof of signature', () => {
       revealedNames2,
       globalEncoder
     );
+    expect(revealedMsgsRaw2).toEqual({ fname: 'John', location: { country: 'USA' } });
+
     const statement2 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
 
     const [revealedMsgs3, unrevealedMsgs3, revealedMsgsRaw3] = getRevealedAndUnrevealed(
@@ -1240,6 +1510,18 @@ describe('Signing and proof of signature', () => {
       revealedNames3,
       globalEncoder
     );
+    expect(revealedMsgsRaw3).toEqual({
+      fname: 'John',
+      lessSensitive: {
+        location: {
+          country: 'USA'
+        },
+        department: {
+          name: 'Random'
+        }
+      }
+    });
+
     const statement3 = Statement.bbsSignature(sigParams3, pk3, revealedMsgs3, false);
 
     // Construct statements for bound check

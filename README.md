@@ -1042,7 +1042,15 @@ A complete example as a test is [here](./tests/composite-proofs/bound-check.spec
 Allow a verifier to check that some attribute of the credential satisfies given bounds `min` and `max`, i.e. `min <= message <= max` 
 without learning the attribute itself. Both `min` and `max` are positive integers. This is implemented using LegoGroth16, a protocol described in the SNARK 
 framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2.  
-To work with negative integers or decimal numbers, they must be converted to positive integers first and this conversion must happen before these are signed. When working with negative integers, add the absolute value of the smallest (negative) integer to all values including bounds. Eg, if the smallest negative number a value can be is -300, the signer should sign `value + 300` to ensure that values are always positive. During the bound check, say the verifier has to check if the value is between -200 and 50, the verifier should ask the prover to the bounds as 100 (-200 + 300) and 350 (50 + 300). When working with decimal numbers, convert them to integers by multiplying with a number to make it integer, like if a decimal value can have maximum of 3 decimal places, they should be multiplied by 1000.  The test mentioned above shows these scenarios.
+To work with negative integers or decimal numbers, they must be converted to positive integers first and this conversion must happen before these are signed. 
+When working with negative integers, add the absolute value of the smallest (negative) integer to all values including bounds. Eg, if the smallest negative 
+number a value can be is -300, the signer should sign `value + 300` to ensure that values are always positive. During the bound check, say the verifier has to 
+check if the value is between -200 and 50, the verifier should ask the prover to the bounds as 100 (-200 + 300) and 350 (50 + 300). When working with decimal 
+numbers, convert them to integers by multiplying with a number to make it integer, like if a decimal value can have maximum of 3 decimal places, they should be 
+multiplied by 1000.  The [test](./tests/composite-proofs/bound-check.spec.ts) mentioned above shows these scenarios.  
+The conversions defined in the above tests are abstracted in this [Encoders](./src/bbs-plus/encoder.ts) class and you can see the usage 
+in [these tests](./tests/composite-proofs/sign-verify-js-obj.spec.ts). 
+
 
 For this, the verifier needs to first create the setup parameters which he then shares with the prover. Note that the 
 verifier does not have to create them each time a proof needs to be verifier, it can create them once and publish somewhere 

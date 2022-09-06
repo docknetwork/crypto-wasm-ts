@@ -90,3 +90,8 @@ export function getIndicesForMsgNames(msgNames: string[], msgStructure: object):
     return i;
   });
 }
+
+export function isPositiveInteger(n: unknown) {
+  // @ts-ignore
+  return Number.isInteger(n) && n >= 0;
+}

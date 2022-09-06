@@ -39,6 +39,7 @@ import {
 } from '../legosnark';
 import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 import { AttributeBoundPseudonym, Pseudonym } from '../Pseudonym';
+import { isPositiveInteger } from '../util';
 
 /**
  * Relation which needs to be proven. Contains any public data that needs to be known to both prover and verifier
@@ -419,10 +420,10 @@ export class WitnessEqualityMetaStatement {
    * @param witnessIndex
    */
   addWitnessRef(statementIndex: number, witnessIndex: number) {
-    if (!Number.isInteger(statementIndex) || statementIndex < 0) {
+    if (!isPositiveInteger(statementIndex)) {
       throw new Error(`Statement index should be a positive integer but was ${statementIndex}`);
     }
-    if (!Number.isInteger(witnessIndex) || witnessIndex < 0) {
+    if (!isPositiveInteger(witnessIndex)) {
       throw new Error(`Witness index should be a positive integer but was ${witnessIndex}`);
     }
     this.witnessRefs.add([statementIndex, witnessIndex]);

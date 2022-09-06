@@ -1,5 +1,5 @@
 import { SignatureG1 } from './signature';
-import { flattenObjectToKeyValuesList } from '../util';
+import { flattenObjectToKeyValuesList, isPositiveInteger } from '../util';
 
 /**
  * A function that encodes the input to field element bytes
@@ -64,20 +64,28 @@ export class Encoder {
    */
   static positiveIntegerEncoder(): EncodeFunc {
     return (v: unknown) => {
-      Encoder.ensureNumber(v);
+      if (!isPositiveInteger(v)) {
+        throw new Error(`Expected positive integer but ${v} has type ${typeof v}`);
+      }
       // @ts-ignore
       return SignatureG1.encodePositiveNumberForSigning(v);
     };
   }
 
   /**
-   * Returns an encoding function to be used on a message that can be a negative integer.
+   * Returns an encoding function to be used on a message that can be a positive or negative integer.
    * @param minimum - The minimum negative value that the message can take
    */
-  static negativeIntegerEncoder(minimum: number): EncodeFunc {
+  static integerEncoder(minimum: number): EncodeFunc {
     const offset = Math.abs(minimum);
     return (v: unknown) => {
-      Encoder.ensureNumber(v);
+      if (!Number.isInteger(v)) {
+        throw new Error(`Expected integer but ${v} has type ${typeof v}`);
+      }
+      // @ts-ignore
+      if (v < minimum) {
+        throw new Error(`Encoder was created with minimum value ${minimum} but was asked to encode ${v}`);
+      }
       // @ts-ignore
       return SignatureG1.encodePositiveNumberForSigning(offset + v);
     };
@@ -87,7 +95,7 @@ export class Encoder {
    * Returns an encoding function to be used on a message that can be a positive decimal number, eg. 2.7
    * @param maxDecimalPlaces - The maximum decimal places
    */
-  static decimalNumberEncoder(maxDecimalPlaces: number): EncodeFunc {
+  static positiveDecimalNumberEncoder(maxDecimalPlaces: number): EncodeFunc {
     if (!Number.isInteger(maxDecimalPlaces) || maxDecimalPlaces < 1) {
       throw new Error(`Maximum decimal places should be a positive integer greater than 1 but was ${maxDecimalPlaces}`);
     }
@@ -95,16 +103,18 @@ export class Encoder {
     return (v: unknown) => {
       Encoder.ensureNumber(v);
       // @ts-ignore
-      return SignatureG1.encodePositiveNumberForSigning(v * multiple);
+      Encoder.ensureCorrectDecimalNumberPlaces(v, maxDecimalPlaces);
+      // @ts-ignore
+      return SignatureG1.encodePositiveNumberForSigning(Math.trunc(v * multiple));
     };
   }
 
   /**
-   * Returns an encoding function to be used on a message that can be a negative and decimal number, eg. -2.35
+   * Returns an encoding function to be used on a message that can be a positive, negative or decimal number, eg. -2.35
    * @param minimum - The minimum negative value that the message can take
    * @param maxDecimalPlaces - The maximum decimal places
    */
-  static negativeDecimalNumberEncoder(minimum: number, maxDecimalPlaces: number): EncodeFunc {
+  static decimalNumberEncoder(minimum: number, maxDecimalPlaces: number): EncodeFunc {
     if (!Number.isInteger(maxDecimalPlaces) || maxDecimalPlaces < 1) {
       throw new Error(`Maximum decimal places should be a positive integer greater than 1 but was ${maxDecimalPlaces}`);
     }
@@ -113,13 +123,28 @@ export class Encoder {
     return (v: unknown) => {
       Encoder.ensureNumber(v);
       // @ts-ignore
-      return SignatureG1.encodePositiveNumberForSigning((offset + v) * multiple);
+      if (v < minimum) {
+        throw new Error(`Encoder was created with minimum value ${minimum} but was asked to encode ${v}`);
+      }
+      // @ts-ignore
+      Encoder.ensureCorrectDecimalNumberPlaces(v, maxDecimalPlaces);
+      // @ts-ignore
+      return SignatureG1.encodePositiveNumberForSigning(Math.trunc((offset + v) * multiple));
     };
   }
 
   private static ensureNumber(v: unknown) {
     if (typeof v !== 'number') {
       throw new Error(`Expected number but ${v} has type ${typeof v}`);
+    }
+  }
+
+  private static ensureCorrectDecimalNumberPlaces(n: number, maxDecimalPlaces: number) {
+    const parts = n.toString().split('.');
+    if (parts.length > 1 && parts[1].length > maxDecimalPlaces) {
+      throw new Error(
+        `Encoder was created with maximum decimal places ${maxDecimalPlaces} but was asked to encode ${n}`
+      );
     }
   }
 }

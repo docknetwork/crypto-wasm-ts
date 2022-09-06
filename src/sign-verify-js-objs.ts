@@ -27,7 +27,10 @@ export class SigParamsGetter {
     this.defaultLabel = defaultLabel;
   }
 
-  getSigParamsOfRequiredSize(msgCount: number, labelOrParams: Uint8Array | SignatureParamsG1): SignatureParamsG1 {
+  getSigParamsOfRequiredSize(msgCount: number, labelOrParams?: Uint8Array | SignatureParamsG1): SignatureParamsG1 {
+    if (labelOrParams === undefined && this.defaultLabel === undefined) {
+      throw new Error(`No default label or argument to create signature params of size of size ${msgCount}`);
+    }
     let sigParams: SignatureParamsG1;
     if (labelOrParams instanceof SignatureParamsG1) {
       if (labelOrParams.supportedMessageCount() !== msgCount) {
@@ -41,12 +44,10 @@ export class SigParamsGetter {
       } else {
         sigParams = labelOrParams;
       }
-    } else if (labelOrParams instanceof Uint8Array) {
+    } else if (labelOrParams !== undefined) {
       sigParams = SignatureParamsG1.generate(msgCount, labelOrParams);
-    } else if (this.defaultLabel !== undefined) {
-      sigParams = SignatureParamsG1.generate(msgCount, this.defaultLabel);
     } else {
-      throw new Error(`Could not get SignatureParamsG1 of size ${msgCount}`);
+      sigParams = SignatureParamsG1.generate(msgCount, this.defaultLabel);
     }
     return sigParams;
   }
@@ -157,7 +158,7 @@ export function getRevealedAndUnrevealed(
   const revealedMsgs = new Map<number, Uint8Array>();
   const unrevealedMsgs = new Map<number, Uint8Array>();
   for (let i = 0; i < names.length; i++) {
-    if (revealedMsgNames.has(names[i]) === true) {
+    if (revealedMsgNames.has(names[i])) {
       revealedMsgs.set(i, encodedValues[i]);
     } else {
       unrevealedMsgs.set(i, encodedValues[i]);
