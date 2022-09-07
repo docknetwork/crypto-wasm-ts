@@ -31,7 +31,7 @@ import {
   universalAccumulatorVerifyNonMembership
 } from '@docknetwork/crypto-wasm';
 import { MembershipWitness, NonMembershipWitness } from './accumulatorWitness';
-import { ensurePositiveIntegerOfSize, getUint8ArraysFromObject } from '../util';
+import { getUint8ArraysFromObject } from '../util';
 import { IAccumulatorState, IUniversalAccumulatorState } from './IAccumulatorState';
 import { IInitialElementsStore } from './IInitialElementsStore';
 import {

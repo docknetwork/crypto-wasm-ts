@@ -7,6 +7,11 @@ import { flattenObjectToKeyValuesList, isPositiveInteger } from '../util';
 export type EncodeFunc = (value: unknown) => Uint8Array;
 
 /**
+ * A function that encodes the input to a positive integer
+ */
+export type ToPositiveIntFunc = (value: unknown) => number;
+
+/**
  * Encodes the input to a field element for signing with BBS+ in group G1.
  * Used when working with messages that are specified as JS objects. This encoder object will contain
  * the mapping from message name (key in JS object) to an encoding function
@@ -29,13 +34,14 @@ export class Encoder {
    * Encode a message with given name and value. Will throw an error if no appropriate encoder found.
    * @param name
    * @param value
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
-  encodeMessage(name: string, value: unknown): Uint8Array {
+  encodeMessage(name: string, value: unknown, strict = false): Uint8Array {
     const encoder = this.encoders?.get(name) || this.defaultEncoder;
     if (encoder !== undefined) {
       return encoder(value);
     } else {
-      if (value instanceof Uint8Array) {
+      if (!strict && value instanceof Uint8Array) {
         return SignatureG1.encodeMessageForSigning(value);
       } else {
         throw new Error(
@@ -49,12 +55,13 @@ export class Encoder {
    * Encode messages given as JS object. It flattens the object into a sorted list and encodes each value as per the known
    * encoding functions Returns 2 arrays, 1st with message names and 2nd with encoded values.
    * @param messages
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
-  encodeMessageObject(messages: object): [string[], Uint8Array[]] {
+  encodeMessageObject(messages: object, strict = false): [string[], Uint8Array[]] {
     const [names, values] = flattenObjectToKeyValuesList(messages);
     const encoded: Uint8Array[] = [];
     for (let i = 0; i < names.length; i++) {
-      encoded.push(this.encodeMessage(names[i], values[i]));
+      encoded.push(this.encodeMessage(names[i], values[i], strict));
     }
     return [names, encoded];
   }
@@ -67,8 +74,29 @@ export class Encoder {
       if (!isPositiveInteger(v)) {
         throw new Error(`Expected positive integer but ${v} has type ${typeof v}`);
       }
-      // @ts-ignore
-      return SignatureG1.encodePositiveNumberForSigning(v);
+      return SignatureG1.encodePositiveNumberForSigning(v as number);
+    };
+  }
+
+  /**
+   * Returns a function that can convert any input integer to a positive integer when its minimum
+   * negative value is known. Does that by adding an offset of abs(minimum) to the input
+   * @param minimum
+   */
+  static integerToPositiveInt(minimum: number): ToPositiveIntFunc {
+    if (!Number.isInteger(minimum)) {
+      throw new Error(`Expected integer but ${minimum} has type ${typeof minimum}`);
+    }
+    const offset = Math.abs(minimum);
+    return (v: unknown) => {
+      if (!Number.isInteger(v)) {
+        throw new Error(`Expected integer but ${v} has type ${typeof v}`);
+      }
+      const vNum = v as number;
+      if (vNum < minimum) {
+        throw new Error(`Encoder was created with minimum value ${minimum} but was asked to encode ${vNum}`);
+      }
+      return offset + vNum;
     };
   }
 
@@ -77,17 +105,27 @@ export class Encoder {
    * @param minimum - The minimum negative value that the message can take
    */
   static integerEncoder(minimum: number): EncodeFunc {
-    const offset = Math.abs(minimum);
+    const f = Encoder.integerToPositiveInt(minimum);
     return (v: unknown) => {
-      if (!Number.isInteger(v)) {
-        throw new Error(`Expected integer but ${v} has type ${typeof v}`);
-      }
-      // @ts-ignore
-      if (v < minimum) {
-        throw new Error(`Encoder was created with minimum value ${minimum} but was asked to encode ${v}`);
-      }
-      // @ts-ignore
-      return SignatureG1.encodePositiveNumberForSigning(offset + v);
+      return SignatureG1.encodePositiveNumberForSigning(f(v));
+    };
+  }
+
+  /**
+   * Returns a function that can convert any positive number to a positive integer when its maximum decimal
+   * places are known. Does that by multiplying it by 10^max_decimal_places, eg. 23.452 -> 23452
+   * @param maxDecimalPlaces
+   */
+  static positiveDecimalNumberToPositiveInt(maxDecimalPlaces: number): ToPositiveIntFunc {
+    if (!isPositiveInteger(maxDecimalPlaces)) {
+      throw new Error(`Maximum decimal places should be a positive integer but was ${maxDecimalPlaces}`);
+    }
+    const multiple = Math.pow(10, maxDecimalPlaces);
+    return (v: unknown) => {
+      Encoder.ensureNumber(v);
+      const vNum = v as number;
+      Encoder.ensureCorrectDecimalNumberPlaces(vNum, maxDecimalPlaces);
+      return Math.trunc(vNum * multiple);
     };
   }
 
@@ -96,16 +134,32 @@ export class Encoder {
    * @param maxDecimalPlaces - The maximum decimal places
    */
   static positiveDecimalNumberEncoder(maxDecimalPlaces: number): EncodeFunc {
-    if (!Number.isInteger(maxDecimalPlaces) || maxDecimalPlaces < 1) {
-      throw new Error(`Maximum decimal places should be a positive integer greater than 1 but was ${maxDecimalPlaces}`);
+    const f = Encoder.positiveDecimalNumberToPositiveInt(maxDecimalPlaces);
+    return (v: unknown) => {
+      return SignatureG1.encodePositiveNumberForSigning(f(v));
+    };
+  }
+
+  /**
+   * Returns a function that can convert any number to a positive integer when its minimum negative value and maximum
+   * decimal places are known. Does that by adding an offset of abs(minimum) and then multiplying it by 10^max_decimal_places
+   * @param minimum
+   * @param maxDecimalPlaces
+   */
+  static decimalNumberToPositiveInt(minimum: number, maxDecimalPlaces: number): ToPositiveIntFunc {
+    if (!isPositiveInteger(maxDecimalPlaces)) {
+      throw new Error(`Maximum decimal places should be a positive integer but was ${maxDecimalPlaces}`);
     }
+    const offset = Math.abs(minimum);
     const multiple = Math.pow(10, maxDecimalPlaces);
     return (v: unknown) => {
       Encoder.ensureNumber(v);
-      // @ts-ignore
-      Encoder.ensureCorrectDecimalNumberPlaces(v, maxDecimalPlaces);
-      // @ts-ignore
-      return SignatureG1.encodePositiveNumberForSigning(Math.trunc(v * multiple));
+      const vNum = v as number;
+      if (vNum < minimum) {
+        throw new Error(`Encoder was created with minimum value ${minimum} but was asked to encode ${vNum}`);
+      }
+      Encoder.ensureCorrectDecimalNumberPlaces(vNum, maxDecimalPlaces);
+      return Math.trunc((offset + vNum) * multiple);
     };
   }
 
@@ -115,21 +169,9 @@ export class Encoder {
    * @param maxDecimalPlaces - The maximum decimal places
    */
   static decimalNumberEncoder(minimum: number, maxDecimalPlaces: number): EncodeFunc {
-    if (!Number.isInteger(maxDecimalPlaces) || maxDecimalPlaces < 1) {
-      throw new Error(`Maximum decimal places should be a positive integer greater than 1 but was ${maxDecimalPlaces}`);
-    }
-    const offset = Math.abs(minimum);
-    const multiple = Math.pow(10, maxDecimalPlaces);
+    const f = Encoder.decimalNumberToPositiveInt(minimum, maxDecimalPlaces);
     return (v: unknown) => {
-      Encoder.ensureNumber(v);
-      // @ts-ignore
-      if (v < minimum) {
-        throw new Error(`Encoder was created with minimum value ${minimum} but was asked to encode ${v}`);
-      }
-      // @ts-ignore
-      Encoder.ensureCorrectDecimalNumberPlaces(v, maxDecimalPlaces);
-      // @ts-ignore
-      return SignatureG1.encodePositiveNumberForSigning(Math.trunc((offset + v) * multiple));
+      return SignatureG1.encodePositiveNumberForSigning(f(v));
     };
   }
 

@@ -4,10 +4,14 @@ import { flatten, unflatten } from 'flat';
 import {
   BBSPlusPublicKeyG2,
   BBSPlusSecretKey,
+  BlindSignatureG1,
+  BlindSignatureRequest,
   Encoder,
   getIndicesForMsgNames,
   SignatureG1,
   SignatureParamsG1,
+  Statement,
+  Witness,
   WitnessEqualityMetaStatement
 } from './index';
 
@@ -16,8 +20,7 @@ export function getAdaptedSignatureParamsForMessages(
   msgStructure: object
 ): SignatureParamsG1 {
   const flattened = flatten(msgStructure);
-  // @ts-ignore
-  return params.adapt(Object.keys(flattened).length);
+  return params.adapt(Object.keys(flattened as object).length);
 }
 
 export class SigParamsGetter {
@@ -79,9 +82,14 @@ export function getSigParamsOfRequiredSize(
   return sigParams;
 }
 
-interface SignedMessages {
+export interface SignedMessages {
   encodedMessages: { [key: string]: Uint8Array };
   signature: SignatureG1;
+}
+
+export interface BlindSignedMessages {
+  encodedMessages: { [key: string]: Uint8Array };
+  signature: BlindSignatureG1;
 }
 
 /**
@@ -157,12 +165,22 @@ export function getRevealedAndUnrevealed(
   const [names, encodedValues] = encoder.encodeMessageObject(messages);
   const revealedMsgs = new Map<number, Uint8Array>();
   const unrevealedMsgs = new Map<number, Uint8Array>();
+  let found = 0;
   for (let i = 0; i < names.length; i++) {
     if (revealedMsgNames.has(names[i])) {
       revealedMsgs.set(i, encodedValues[i]);
+      found++;
     } else {
       unrevealedMsgs.set(i, encodedValues[i]);
     }
+  }
+
+  if (revealedMsgNames.size !== found) {
+    throw new Error(
+      `Some of the revealed message names were not found in the given messages object, ${
+        revealedMsgNames.size - found
+      } extra names found`
+    );
   }
 
   // This will be given to the verifier to encode independently.
@@ -185,10 +203,8 @@ export function encodeRevealedMsgs(
   encoder: Encoder
 ): Map<number, Uint8Array> {
   const revealed = new Map<number, Uint8Array>();
-  // @ts-ignore
-  const names = Object.keys(flatten(msgStructure)).sort();
-  const flattenedRevealed = flatten(revealedMsgsRaw);
-  // @ts-ignore
+  const names = Object.keys(flatten(msgStructure) as object).sort();
+  const flattenedRevealed = flatten(revealedMsgsRaw) as object;
   Object.entries(flattenedRevealed).forEach(([n, v]) => {
     const i = names.indexOf(n);
     if (i === -1) {
@@ -197,6 +213,117 @@ export function encodeRevealedMsgs(
     revealed.set(i, encoder.encodeMessage(n, v));
   });
   return revealed;
+}
+
+/**
+ * Generate a request for getting a blind signature from a signer, i.e. some messages are hidden from signer.
+ * Returns the blinding, the request to be sent to the signer and the witness to be used in the proof
+ * @param hiddenMsgNames - The names of messages being hidden from signer
+ * @param messages - All the message, i.e. known + hidden.
+ * @param labelOrParams
+ * @param encoder
+ * @param blinding - Optional, if not provided, its generated randomly
+ */
+export function genBlindSigRequestAndWitness(
+  hiddenMsgNames: Set<string>,
+  messages: object,
+  labelOrParams: Uint8Array | SignatureParamsG1,
+  encoder: Encoder,
+  blinding?: Uint8Array
+): [Uint8Array, BlindSignatureRequest, Uint8Array] {
+  const [names, encodedValues] = encoder.encodeMessageObject(messages);
+  const hiddenMsgs = new Map<number, Uint8Array>();
+  let found = 0;
+  hiddenMsgNames.forEach((n) => {
+    const i = names.indexOf(n);
+    if (i !== -1) {
+      hiddenMsgs.set(i, encodedValues[i]);
+      found++;
+    }
+  });
+  if (hiddenMsgNames.size !== found) {
+    throw new Error(
+      `Some of the hidden message names were not found in the given messages object, ${
+        hiddenMsgNames.size - found
+      } missing names`
+    );
+  }
+  const sigParams = getSigParamsOfRequiredSize(names.length, labelOrParams);
+  const [blinding_, request] = BlindSignatureG1.generateRequest(hiddenMsgs, sigParams, false, blinding);
+  const committeds = [blinding_];
+  for (const i of request.blindedIndices) {
+    committeds.push(hiddenMsgs.get(i) as Uint8Array);
+  }
+  const witness = Witness.pedersenCommitment(committeds);
+  return [blinding_, request, witness];
+}
+
+/**
+ * Get the statement to be used in composite proof for the blind signature request
+ * @param request
+ * @param sigParams
+ */
+export function getStatementForBlindSigRequest(
+  request: BlindSignatureRequest,
+  sigParams: SignatureParamsG1
+): Uint8Array {
+  const commKey = sigParams.getParamsForIndices(request.blindedIndices);
+  return Statement.pedersenCommitmentG1(commKey, request.commitment);
+}
+
+/**
+ * Used by the signer to create a blind signature
+ * @param blindSigRequest - The blind sig request sent by user.
+ * @param knownMessages - The messages known to the signer
+ * @param secretKey
+ * @param msgStructure
+ * @param labelOrParams
+ * @param encoder
+ */
+export function blindSignMessageObject(
+  blindSigRequest: BlindSignatureRequest,
+  knownMessages: object,
+  secretKey: BBSPlusSecretKey,
+  msgStructure: object,
+  labelOrParams: Uint8Array | SignatureParamsG1,
+  encoder: Encoder
+): BlindSignedMessages {
+  const flattenedAllNames = Object.keys(flatten(msgStructure) as object).sort();
+  const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
+
+  const knownMessagesEncoded = new Map<number, Uint8Array>();
+  const encodedMessages: { [key: string]: Uint8Array } = {};
+  flattenedAllNames.forEach((n, i) => {
+    const j = flattenedUnblindedNames.indexOf(n);
+    if (j > -1) {
+      knownMessagesEncoded.set(i, encodedValues[j]);
+      encodedMessages[n] = encodedValues[j];
+    }
+  });
+
+  if (flattenedUnblindedNames.length !== knownMessagesEncoded.size) {
+    throw new Error(
+      `Message structure incompatible with knownMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${knownMessagesEncoded.size}`
+    );
+  }
+  if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
+    throw new Error(
+      `Message structure likely incompatible with knownMessages and blindSigRequest. ${flattenedAllNames.length} != (${knownMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
+    );
+  }
+
+  const sigParams = getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
+  const blindSig = BlindSignatureG1.generate(
+    blindSigRequest.commitment,
+    knownMessagesEncoded,
+    secretKey,
+    sigParams,
+    false
+  );
+  return {
+    encodedMessages: encodedMessages,
+    signature: blindSig
+  };
 }
 
 /**

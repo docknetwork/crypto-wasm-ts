@@ -207,7 +207,7 @@ export class BlindSignatureG1 extends BlindSignature {
 /**
  * Structure to send to the signer to request a blind signature
  */
-interface BlindSignatureRequest {
+export interface BlindSignatureRequest {
   /**
    * The commitment to the blinded messages
    */

@@ -12,14 +12,14 @@ export function jsonObjToUint8Array(json: string): Uint8Array {
   return arr[0];
 }
 
-export function getUint8ArraysFromObject(obj: Record<string, any>, keys: string[]): Uint8Array[] {
+export function getUint8ArraysFromObject(obj: Record<string, unknown>, keys: string[]): Uint8Array[] {
   const values: Uint8Array[] = [];
   for (const k of keys) {
     if (obj[k] === undefined) {
       throw new Error(`Missing field "${k}"`);
     }
     if (obj[k] instanceof Uint8Array) {
-      values.push(obj[k]);
+      values.push(obj[k] as Uint8Array);
       continue;
     }
     if (!(obj[k] instanceof Array)) {
@@ -65,12 +65,32 @@ export function randomFieldElement(seed?: Uint8Array): Uint8Array {
  * @param flattenOptions
  */
 export function flattenObjectToKeyValuesList(obj: object, flattenOptions = undefined): [string[], unknown[]] {
-  const flattened = flatten(obj, flattenOptions);
-  // @ts-ignore
+  const flattened = flatten(obj, flattenOptions) as object;
   const keys = Object.keys(flattened).sort();
   // @ts-ignore
   const values = keys.map((k) => flattened[k]);
   return [keys, values];
+}
+
+/**
+ * Check if the given structure is compatible with the given messages object.
+ * @param messages
+ * @param msgStructure
+ */
+export function isValidMsgStructure(messages: object, msgStructure: object): boolean {
+  const namesInStruct = Object.keys(flatten(msgStructure) as object).sort();
+  const namesInMsgs = Object.keys(flatten(messages) as object).sort();
+  return (
+    namesInMsgs.length === namesInStruct.length &&
+    (() => {
+      for (let i = 0; i <= namesInMsgs.length; i++) {
+        if (namesInStruct[i] !== namesInMsgs[i]) {
+          return false;
+        }
+      }
+      return true;
+    })()
+  );
 }
 
 /**
@@ -80,8 +100,7 @@ export function flattenObjectToKeyValuesList(obj: object, flattenOptions = undef
  * @returns Returns in same order as given names in `msgNames`
  */
 export function getIndicesForMsgNames(msgNames: string[], msgStructure: object): number[] {
-  // @ts-ignore
-  const allNames = Object.keys(flatten(msgStructure)).sort();
+  const allNames = Object.keys(flatten(msgStructure) as object).sort();
   return msgNames.map((n) => {
     const i = allNames.indexOf(n);
     if (i === -1) {
@@ -91,7 +110,16 @@ export function getIndicesForMsgNames(msgNames: string[], msgStructure: object):
   });
 }
 
-export function isPositiveInteger(n: unknown) {
+export function isPositiveInteger(n: unknown): boolean {
   // @ts-ignore
   return Number.isInteger(n) && n >= 0;
+}
+
+export function bytearrayToHex(b: Uint8Array): string {
+  const alphabet = '0123456789abcdef';
+  let hex = '';
+  b.forEach((v) => {
+    hex += alphabet[v >> 4] + alphabet[v & 15];
+  });
+  return hex;
 }

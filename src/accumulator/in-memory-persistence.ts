@@ -5,6 +5,7 @@ import { IInitialElementsStore } from './IInitialElementsStore';
  * In memory implementation of the state. For testing only
  */
 export class InMemoryState implements IAccumulatorState {
+  // Converts item to string (JSON.stringify) before adding to set as equality checks wont work with Uint8Array.
   state: Set<string>;
   constructor() {
     this.state = new Set<string>();
@@ -50,6 +51,7 @@ export class InMemoryUniversalState extends InMemoryState implements IUniversalA
 }
 
 export class InMemoryInitialElementsStore implements IInitialElementsStore {
+  // Converts item to string (JSON.stringify) before adding to set as equality checks wont work with Uint8Array.
   store: Set<string>;
   constructor() {
     this.store = new Set<string>();

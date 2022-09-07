@@ -1,13 +1,19 @@
 import {
+  blindSignMessageObject,
+  bytearrayToHex,
   createWitnessEqualityMetaStatement,
   encodeRevealedMsgs,
+  genBlindSigRequestAndWitness,
   getAdaptedSignatureParamsForMessages,
   getRevealedAndUnrevealed,
   getSigParamsOfRequiredSize,
+  getStatementForBlindSigRequest,
+  isValidMsgStructure,
+  SignedMessages,
   signMessageObject,
   SigParamsGetter,
   verifyMessageObject
-} from '../../src/sign-verify-js-objs';
+} from '../../src';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from '../utils';
 import {
@@ -39,6 +45,16 @@ import {
   WitnessUpdatePublicInfo
 } from '../../src';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
+
+function signedToHex(signed: SignedMessages): object {
+  const sig = signed.signature.hex;
+  const enc = {};
+  Object.keys(signed.encodedMessages).forEach((k) => {
+    // @ts-ignore
+    enc[k] = bytearrayToHex(signed.encodedMessages[k]);
+  });
+  return { encodedMessages: enc, signature: sig };
+}
 
 describe('Utils', () => {
   beforeAll(async () => {
@@ -127,6 +143,13 @@ describe('Utils', () => {
     expect(() => encoder3.encodeMessage('foo', 6.5)).toThrow();
     expect(() => encoder3.encodeMessageObject({ bar: 10, foo: 6.5 })).toThrow();
 
+    // Throws when integer encoder is given a decimal number as minimum
+    expect(() => Encoder.integerEncoder(-100.2)).toThrow();
+    expect(() => Encoder.integerEncoder(100.2)).toThrow();
+
+    // Does not throw when given a positive integer
+    expect(() => Encoder.integerEncoder(100)).not.toThrow();
+
     encoders1.set('bar', Encoder.integerEncoder(-100));
 
     const encoder4 = new Encoder(encoders1, defaultEncoder);
@@ -155,6 +178,9 @@ describe('Utils', () => {
     expect(() => encoder4.encodeMessage('foo1', 2.6)).not.toThrow();
     expect(() => encoder4.encodeMessageObject({ foo1: -102, baz1: 'Bar1' })).not.toThrow();
     expect(() => encoder4.encodeMessageObject({ foo1: -102, baz1: 'Bar1', barfoo: -2.6 })).not.toThrow();
+
+    expect(() => Encoder.positiveDecimalNumberEncoder(-1)).toThrow();
+    expect(() => Encoder.positiveDecimalNumberEncoder(2.3)).toThrow();
 
     encoders1.set('baz', Encoder.positiveDecimalNumberEncoder(3));
 
@@ -192,6 +218,9 @@ describe('Utils', () => {
     expect(() => encoder5.encodeMessageObject({ foo1: -2 })).not.toThrow();
     expect(() => encoder5.encodeMessageObject({ foo1: 2.1234 })).not.toThrow();
 
+    expect(() => Encoder.decimalNumberEncoder(-1000, -1)).toThrow();
+    expect(() => Encoder.decimalNumberEncoder(-1000, 2.3)).toThrow();
+
     encoders1.set('waldo', Encoder.decimalNumberEncoder(-1000, 2));
 
     const encoder6 = new Encoder(encoders1, defaultEncoder);
@@ -226,7 +255,8 @@ describe('Signing and proof of signature', () => {
     height: 181.5,
     weight: 210,
     BMI: 23.25,
-    score: -13.5
+    score: -13.5,
+    secret: 'my-secret-that-wont-tell-anyone'
   };
 
   // This is the structure of `attributes1`. This does not contain any attribute values but contains the names with the
@@ -244,7 +274,8 @@ describe('Signing and proof of signature', () => {
     height: undefined,
     weight: undefined,
     BMI: undefined,
-    score: undefined
+    score: undefined,
+    secret: undefined
   };
 
   // 2nd attribute set. This is a nested JS object with 1 level of nesting.
@@ -252,6 +283,7 @@ describe('Signing and proof of signature', () => {
     fname: 'John',
     lname: 'Smith',
     sensitive: {
+      secret: 'my-secret-that-wont-tell-anyone',
       email: 'john.smith@example.com',
       SSN: '123-456789-0',
       'user-id': 'user:123-xyz-#'
@@ -275,6 +307,7 @@ describe('Signing and proof of signature', () => {
     fname: undefined,
     lname: undefined,
     sensitive: {
+      secret: undefined,
       email: undefined,
       SSN: undefined,
       'user-id': undefined
@@ -297,6 +330,9 @@ describe('Signing and proof of signature', () => {
     fname: 'John',
     lname: 'Smith',
     sensitive: {
+      very: {
+        secret: 'my-secret-that-wont-tell-anyone'
+      },
       email: 'john.smith@acme.com',
       phone: '801009801',
       SSN: '123-456789-0',
@@ -326,6 +362,9 @@ describe('Signing and proof of signature', () => {
     fname: undefined,
     lname: undefined,
     sensitive: {
+      very: {
+        secret: undefined
+      },
       email: undefined,
       phone: undefined,
       SSN: undefined,
@@ -439,8 +478,13 @@ describe('Signing and proof of signature', () => {
         ['fname', 'lessSensitive.department.name', 'lessSensitive.department.location.name']
       ]
     ]) {
+      expect(isValidMsgStructure(attributes, attributesStruct)).toEqual(true);
+
       const signed = signMessageObject(attributes, sk, label, encoder);
       expect(verifyMessageObject(attributes, signed.signature, pk, label, encoder)).toBe(true);
+
+      // For debugging
+      console.log(signedToHex(signed));
 
       const revealedNames = new Set<string>();
       // @ts-ignore
@@ -504,6 +548,8 @@ describe('Signing and proof of signature', () => {
       witnesses.add(witness1);
 
       const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+      // For debugging
+      console.log(proof.hex);
 
       // Verifier independently encodes revealed messages
       const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
@@ -682,7 +728,7 @@ describe('Signing and proof of signature', () => {
     // - attributes "lessSensitive.location.country", "lessSensitive.department.name", "lessSensitive.department.location.name" and "rank" from 3rd signed attribute set
 
     // Prove equality in zero knowledge of
-    // - last name ("lname" attribute), Social security numer ("SSN" attribute) and city in all 3 sets of signed attributes
+    // - last name ("lname" attribute), Social security number ("SSN" attribute) and city in all 3 sets of signed attributes
     // - attributes "email", "score", "height" and "weight" in 1st and 2nd sets of signed attributes
     // - attributes "user-id" and "employee-id" in 2nd and 3rd set of attributes
 
@@ -994,7 +1040,7 @@ describe('Signing and proof of signature', () => {
     const allMembers2 = await prefillAccumulator(accumulator2, accumKeypair2.secretKey, accumState2, 300);
     const provingKey2 = Accumulator.generateMembershipProvingKey(stringToBytes('Proving key2'));
 
-    // Endoder knows how to encode the attribute being added to the accumulator.
+    // Encoder knows how to encode the attribute being added to the accumulator.
     const encoders = new Map<string, EncodeFunc>();
     encoders.set('user-id', (v: unknown) => {
       // @ts-ignore
@@ -1113,9 +1159,11 @@ describe('Signing and proof of signature', () => {
     const witnessEq1 = new WitnessEqualityMetaStatement();
     witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['user-id'], attributes1Struct)[0]);
     witnessEq1.addWitnessRef(sIdx3, 0);
+
     const witnessEq2 = new WitnessEqualityMetaStatement();
     witnessEq2.addWitnessRef(sIdx2, getIndicesForMsgNames(['sensitive.user-id'], attributes2Struct)[0]);
     witnessEq2.addWitnessRef(sIdx4, 0);
+
     const witnessEq3 = createWitnessEqualityMetaStatement(
       (() => {
         const m = new Map<number, [msgNames: string[], msgStructure: object]>();
@@ -1216,7 +1264,7 @@ describe('Signing and proof of signature', () => {
       accumKeypair2.secretKey
     );
 
-    // Accumulator managers remove the member from accumulaator
+    // Accumulator managers remove the member from accumulator
     await accumulator1.remove(allMembers1[5], accumKeypair1.secretKey, accumState1);
     await accumulator2.remove(allMembers2[20], accumKeypair2.secretKey, accumState2);
 
@@ -1446,16 +1494,23 @@ describe('Signing and proof of signature', () => {
     const timeMax = 1662011149654;
     const weightMin = 60;
     const weightMax = 600;
-    const heightMin = 1000;
-    const heightMax = 2400;
-    const bmiMin = 1000;
-    const bmiMax = 4000;
+
+    const heightMin = Encoder.positiveDecimalNumberToPositiveInt(1)(100); // min height is 100
+    const heightMax = Encoder.positiveDecimalNumberToPositiveInt(1)(240); // max height is 240
+    const bmiMin = Encoder.positiveDecimalNumberToPositiveInt(2)(10); // min BMI is 10
+    const bmiMax = Encoder.positiveDecimalNumberToPositiveInt(2)(40); // max BMI is 40
+
+    // min score is -100 and max is 100 and it can have at most 1 decimal place
     const scoreMin = 0;
-    const scoreMax = 2000; // (100 + 100)*10
+    const scoreMax = Encoder.decimalNumberToPositiveInt(-100, 1)(100);
+
+    // min lat is -90 and max is 90 and it can have at most 3 decimal places
     const latMin = 0;
-    const latMax = 180000; // (90 + 90)*1000
+    const latMax = Encoder.decimalNumberToPositiveInt(-90, 3)(90);
+
+    // min long is -180 and max is 180 and it can have at most 3 decimal places
     const longMin = 0;
-    const longMax = 360000; // (180 + 180)*1000
+    const longMax = Encoder.decimalNumberToPositiveInt(-180, 3)(180); // (180 + 180)*1000
 
     // Reveal
     // - first name ("fname" attribute) from all 3 sets of signed attributes
@@ -1463,7 +1518,7 @@ describe('Signing and proof of signature', () => {
     // - attribute "location.country" from 2nd signed attribute set
     // - attributes "lessSensitive.location.country", "lessSensitive.department.name" from 3rd signed attribute set
 
-    // Prove equality in zero knowledge of last name ("lname" attribute), Social security numer ("SSN" attribute) and city in all 3 sets of signed attributes
+    // Prove equality in zero knowledge of last name ("lname" attribute), Social security number ("SSN" attribute) and city in all 3 sets of signed attributes
 
     const revealedNames1 = new Set<string>();
     revealedNames1.add('fname');
@@ -1783,6 +1838,160 @@ describe('Signing and proof of signature', () => {
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     expect(proof.verify(proofSpecVerifier).verified).toEqual(true);
+  });
+
+  it('blind signature', () => {
+    // This test check that a user can get signatures from the signer even after hiding some of its messages. The signature
+    // generated by the signer is a blind signature as signer could not see all the messages. The user will then unblind the
+    // signature to use in proofs
+
+    const label = stringToBytes('Sig params label - this is public');
+    // Message count shouldn't matter as `label` is known
+    let params = SignatureParamsG1.generate(1, label);
+    const keypair = KeypairG2.generate(params);
+    const sk = keypair.secretKey;
+    const pk = keypair.publicKey;
+
+    // The user will hide the "user-id" and "secret" attributes from the signer for the 1st signature
+    const hiddenAttrNames1 = new Set<string>();
+    hiddenAttrNames1.add('user-id');
+    hiddenAttrNames1.add('secret');
+
+    // The user will hide the "user-id" and "secret" attributes from the signer for the 2nd signature
+    const hiddenAttrNames2 = new Set<string>();
+    hiddenAttrNames2.add('sensitive.user-id');
+    hiddenAttrNames2.add('sensitive.secret');
+
+    // The user will hide the "employee-id", "phone" and "secret" attributes from the signer for the 3rd signature
+    const hiddenAttrNames3 = new Set<string>();
+    hiddenAttrNames3.add('sensitive.employee-id');
+    hiddenAttrNames3.add('sensitive.phone');
+    hiddenAttrNames3.add('sensitive.very.secret');
+
+    // The attributes known to signer for the 1st signature
+    const knownAttributes1 = {
+      fname: 'John',
+      lname: 'Smith',
+      email: 'john.smith@example.com',
+      SSN: '123-456789-0',
+      country: 'USA',
+      city: 'New York',
+      timeOfBirth: 1662010849619,
+      height: 181.5,
+      weight: 210,
+      BMI: 23.25,
+      score: -13.5
+    };
+
+    // The attributes known to signer for the 2nd signature
+    const knownAttributes2 = {
+      fname: 'John',
+      lname: 'Smith',
+      sensitive: {
+        email: 'john.smith@example.com',
+        SSN: '123-456789-0'
+      },
+      location: {
+        country: 'USA',
+        city: 'New York'
+      },
+      timeOfBirth: 1662010849619,
+      physical: {
+        height: 181.5,
+        weight: 210,
+        BMI: 23.25
+      },
+      score: -13.5
+    };
+
+    // The attributes known to signer for the 3rd signature
+    const knownAttributes3 = {
+      fname: 'John',
+      lname: 'Smith',
+      sensitive: {
+        email: 'john.smith@acme.com',
+        SSN: '123-456789-0'
+      },
+      lessSensitive: {
+        location: {
+          country: 'USA',
+          city: 'New York'
+        },
+        department: {
+          name: 'Random',
+          location: {
+            name: 'Somewhere',
+            geo: {
+              lat: -23.658,
+              long: 2.556
+            }
+          }
+        }
+      },
+      rank: 6
+    };
+
+    for (const [attributes, attributesStruct, hiddenAttrNames, knownAttributes] of [
+      [attributes1, attributes1Struct, hiddenAttrNames1, knownAttributes1],
+      [attributes2, attributes2Struct, hiddenAttrNames2, knownAttributes2],
+      [attributes3, attributes3Struct, hiddenAttrNames3, knownAttributes3]
+    ]) {
+      const sigParams = getAdaptedSignatureParamsForMessages(params, attributesStruct);
+
+      // The user generates a blind signature request which will be sent to the signer. The blinding and witness are not
+      // shared with the signer but used later in the proof and unblinding of signature
+      const [blinding, request, witness1] = genBlindSigRequestAndWitness(
+        // @ts-ignore
+        hiddenAttrNames,
+        attributes,
+        sigParams,
+        globalEncoder
+      );
+
+      // The user creates a proof of knowledge of the blinded attributes.
+      const statement1 = getStatementForBlindSigRequest(request, sigParams);
+      const proverStatements = new Statements();
+      proverStatements.add(statement1);
+
+      const proofSpecProver = new ProofSpecG1(proverStatements, new MetaStatements());
+      expect(proofSpecProver.isValid()).toEqual(true);
+
+      const witnesses = new Witnesses();
+      witnesses.add(witness1);
+
+      const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+
+      // The signer is the verifier of the user's proof here. Uses the blind signature request to create the statement
+      // and proof spec independently.
+      const statement2 = getStatementForBlindSigRequest(request, sigParams);
+      const verifierStatements = new Statements();
+      verifierStatements.add(statement2);
+
+      const proofSpecVerifier = new ProofSpecG1(verifierStatements, new MetaStatements());
+      expect(proofSpecVerifier.isValid()).toEqual(true);
+
+      // Signer/verifier verifies the proof
+      expect(proof.verify(proofSpecVerifier).verified).toEqual(true);
+
+      // Signer generates the blind signature using the signature request and attributes known to him. It sends the blind
+      // signature to the user
+      const blingSignature = blindSignMessageObject(
+        request,
+        knownAttributes,
+        sk,
+        attributesStruct,
+        sigParams,
+        globalEncoder
+      );
+
+      // User unblinds the blind signature
+      const unblindedSig = blingSignature.signature.unblind(blinding);
+
+      // The unblinded signature can now be used in the usual verification process
+      expect(verifyMessageObject(attributes, unblindedSig, pk, sigParams, globalEncoder)).toBe(true);
+
+      // Proof of knowledge of signature can be created and verified as usual.
+    }
   });
 });
 
