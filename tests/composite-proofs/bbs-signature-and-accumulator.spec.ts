@@ -40,7 +40,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     const messageCount = messages.length;
 
     // Encode messages for signing as well as adding to the accumulator
-    const encodedMessages = [];
+    const encodedMessages: Uint8Array[] = [];
     for (let i = 0; i < messageCount; i++) {
       if (i === messageCount - 1) {
         // Last one, i.e. user id is added to the accumulator so encode accordingly

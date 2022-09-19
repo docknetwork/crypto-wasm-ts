@@ -6,6 +6,7 @@ import {
   BoundCheckSnarkSetup
 } from '../src';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
+import { checkLegoProvingKey } from './utils';
 
 describe('Bound check snark setup', () => {
   beforeAll(async () => {
@@ -14,20 +15,6 @@ describe('Bound check snark setup', () => {
 
   it('setup legosnark', () => {
     const pk = BoundCheckSnarkSetup();
-    expect(pk instanceof LegoProvingKey).toBe(true);
-
-    const pkUncompressed = pk.decompress();
-    expect(pkUncompressed instanceof LegoProvingKeyUncompressed).toBe(true);
-
-    const vk = pk.getVerifyingKey();
-    const vkUncompressed = pk.getVerifyingKeyUncompressed();
-
-    expect(vk instanceof LegoVerifyingKey).toBe(true);
-    expect(vkUncompressed instanceof LegoVerifyingKeyUncompressed).toBe(true);
-
-    const vkUncompressed1 = vk.decompress();
-    expect(vkUncompressed1 instanceof LegoVerifyingKeyUncompressed).toBe(true);
-
-    expect(vkUncompressed1.value).toEqual(vkUncompressed.value);
+    checkLegoProvingKey(pk);
   }, 90000);
 });

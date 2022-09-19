@@ -1049,7 +1049,7 @@ check if the value is between -200 and 50, the verifier should ask the prover to
 numbers, convert them to integers by multiplying with a number to make it integer, like if a decimal value can have maximum of 3 decimal places, they should be 
 multiplied by 1000.  The [test](./tests/composite-proofs/bound-check.spec.ts) mentioned above shows these scenarios.  
 The conversions defined in the above tests are abstracted in this [Encoders](./src/bbs-plus/encoder.ts) class and you can see the usage 
-in [these tests](./tests/composite-proofs/sign-verify-js-obj.spec.ts). 
+in [these tests](tests/composite-proofs/msg-js-obj/bound-check.spec.ts). 
 
 
 For this, the verifier needs to first create the setup parameters which he then shares with the prover. Note that the 
@@ -1228,4 +1228,4 @@ For complete example, see [these tests](./tests/composite-proofs/bound-check.spe
 ### Working with messages as JS objects
 
 The above interfaces have been found to be a bit difficult to work with when signing messages that are represented as JS objects. 
-[Here](./src/sign-verify-js-objs.ts) are some [utilities](./src/bbs-plus/encoder.ts) to make this task a bit easier. [These tests](./tests/composite-proofs/sign-verify-js-obj.spec.ts) contain plenty of examples.
+[Here](./src/sign-verify-js-objs.ts) are some [utilities](./src/bbs-plus/encoder.ts) to make this task a bit easier. [These tests](tests/composite-proofs/msg-js-obj) contain plenty of examples.

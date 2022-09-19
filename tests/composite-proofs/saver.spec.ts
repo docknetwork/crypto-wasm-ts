@@ -202,7 +202,7 @@ describe('Verifiable encryption of signed messages', () => {
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
     const [revealedMsgs2, unrevealedMsgs2] = getRevealedUnrevealed(messages2, new Set<number>());
 
-    const proverSetupParams = [];
+    const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
     proverSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commGens));
     proverSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
@@ -240,7 +240,7 @@ describe('Verifiable encryption of signed messages', () => {
     const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 
-    const verifierSetupParams = [];
+    const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
     verifierSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commGens));
     verifierSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));

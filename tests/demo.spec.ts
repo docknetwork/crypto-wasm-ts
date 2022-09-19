@@ -230,7 +230,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     }
 
     function prepareMessagesForBlindSigning(messages: Uint8Array[]) {
-      const encodedMessages = [];
+      const encodedMessages: Uint8Array[] = [];
       for (const msg of messages) {
         encodedMessages.push(Signature.encodeMessageForSigning(msg));
       }
@@ -497,7 +497,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 2) accumulator membership and
       // 3) opening of commitment in the blind signature request.
 
-      const indicesToCommit = [];
+      const indicesToCommit: number[] = [];
       indicesToCommit.push(0);
       const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
       const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
@@ -561,7 +561,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 4) accumulator membership for credential1,
       // 5) opening of commitment in the blind signature request.
 
-      const indicesToCommit = [];
+      const indicesToCommit: number[] = [];
       indicesToCommit.push(0);
       const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
       const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
@@ -807,7 +807,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       sigParams: SignatureParamsG1
     ): [SignatureG1, Uint8Array[]] {
       const unblinded = blindedSig.unblind(blinding);
-      let final = [];
+      let final: Uint8Array[] = [];
       final.push(Signature.encodeMessageForSigning(holderSecret));
       final = final.concat(msgs);
       const res1 = unblinded.verify(final, pk, sigParams, false);

@@ -1,0 +1,190 @@
+import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
+import { areUint8ArraysEqual, checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import {
+  BBSPlusPublicKeyG2,
+  CircomInputs, CompositeProofG1,
+  Encoder, encodeRevealedMsgs,
+  getIndicesForMsgNames,
+  getRevealedAndUnrevealed,
+  getSigParamsForMsgStructure,
+  KeypairG2,
+  LegoProvingKeyUncompressed,
+  LegoVerifyingKeyUncompressed, MetaStatements,
+  ParsedR1CSFile, ProofSpecG1,
+  R1CSSnarkSetup,
+  SignatureParamsG1,
+  SignedMessages,
+  signMessageObject, Statement, Statements,
+  verifyMessageObject, Witness, WitnessEqualityMetaStatement, Witnesses
+} from '../../../../src';
+import { checkMapsEqual, defaultEncoder } from '../index';
+
+
+describe('Proving that grade is either A+, A, B+, B or C', () => {
+  let encoder: Encoder;
+
+  const label = stringToBytes('Sig params label');
+  let sigPk: BBSPlusPublicKeyG2;
+
+  let signed1: SignedMessages;
+  let signed2: SignedMessages;
+
+  const allowedGrades = ['A+', 'A', 'B+', 'B', 'C']
+  let encodedGrades: Uint8Array[];
+  let r1cs: ParsedR1CSFile;
+  let wasm: Uint8Array;
+
+  let provingKey: LegoProvingKeyUncompressed, verifyingKey: LegoVerifyingKeyUncompressed;
+
+  const attributesStruct = {
+    fname: undefined,
+    lname: undefined,
+    email: undefined,
+    SSN: undefined,
+    'user-id': undefined,
+    grade: undefined
+  };
+
+  // 1st attribute where grade is B+ and a satisfactory proof can be created
+  const attributes1 = {
+    fname: 'John',
+    lname: 'Smith',
+    email: 'john.smith@example.com',
+    SSN: '123-456789-0',
+    'user-id': 'user:123-xyz-#',
+    grade: 'B+',
+  };
+
+  // 2nd attribute where grade is E and its not an acceptable grade so proof will fail
+  const attributes2 = {
+    fname: 'Carol',
+    lname: 'Smith',
+    email: 'carol.smith@example.com',
+    SSN: '233-456788-1',
+    'user-id': 'user:764-xyz-#',
+    grade: 'E',
+  };
+
+  beforeAll(async () => {
+    await initializeWasm();
+
+    // Setup encoder
+    encoder = new Encoder(undefined, defaultEncoder);
+    encodedGrades = allowedGrades.map((g: string) => encoder.encodeDefault(g))
+
+
+    // This should ideally be done by the verifier but the verifier can publish only the Circom program and
+    // prover can check that the same R1CS and WASM are generated.
+    r1cs = await parseR1CSFile('set_membership_5_public.r1cs');
+    wasm = getWasmBytes('set_membership_5_public.wasm');
+  });
+
+  it('verifier generates SNARk proving and verifying key', async () => {
+    const pk = R1CSSnarkSetup.fromParsedR1CSFile(r1cs, 1);
+    provingKey = pk.decompress();
+    verifyingKey = pk.getVerifyingKeyUncompressed();
+  });
+
+  it('signers signs attributes', () => {
+    // Message count shouldn't matter as `label` is known
+    let params = SignatureParamsG1.generate(1, label);
+    const keypair = KeypairG2.generate(params);
+    const sk = keypair.secretKey;
+    sigPk = keypair.publicKey;
+
+    signed1 = signMessageObject(attributes1, sk, label, encoder);
+    expect(verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder)).toBe(true);
+
+    signed2 = signMessageObject(attributes2, sk, label, encoder);
+    expect(verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder)).toBe(true);
+  });
+
+  it('proof verifies when grade is either A+, A, B+, B or C', () => {
+    expect(encodedGrades.some((g) => areUint8ArraysEqual(g, signed1.encodedMessages['grade']))).toEqual(true);
+
+    const revealedNames = new Set<string>();
+    revealedNames.add('fname');
+
+    const sigParams = getSigParamsForMsgStructure(attributesStruct, label);
+    const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
+      attributes1,
+      revealedNames,
+      encoder
+    );
+    expect(revealedMsgsRaw).toEqual({ fname: 'John' });
+
+    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
+
+    const statementsProver = new Statements();
+    const sIdx1 = statementsProver.add(statement1);
+    const sIdx2 = statementsProver.add(statement2);
+
+    const witnessEq1 = new WitnessEqualityMetaStatement();
+    witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
+    witnessEq1.addWitnessRef(sIdx2, 0);
+
+    const metaStmtsProver = new MetaStatements();
+    // metaStmtsProver.addWitnessEquality(witnessEq1);
+
+    // The prover should independently construct this `ProofSpec`
+    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    expect(proofSpecProver.isValid()).toEqual(true);
+
+    const witness1 = Witness.bbsSignature(signed1.signature, unrevealedMsgs, false);
+
+    const inputs = new CircomInputs();
+    inputs.setInput('x', signed1.encodedMessages['grade']);
+    inputs.setArrayInput('set', encodedGrades);
+    const witness2 = Witness.r1csCircomWitness(inputs);
+
+    const witnesses = new Witnesses();
+    witnesses.add(witness1);
+    witnesses.add(witness2);
+
+    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+
+    // Verifier independently encodes revealed messages
+    const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
+    checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
+
+    const statement3 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const pub = [generateFieldElementFromNumber(1), ...encodedGrades];
+    const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
+
+    const verifierStatements = new Statements();
+    verifierStatements.add(statement3);
+    verifierStatements.add(statement4);
+
+    const statementsVerifier = new Statements();
+    const sIdx3 = statementsVerifier.add(statement3);
+    const sIdx4 = statementsVerifier.add(statement4);
+
+    const witnessEq2 = new WitnessEqualityMetaStatement();
+    witnessEq2.addWitnessRef(sIdx3, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
+    witnessEq2.addWitnessRef(sIdx4, 0);
+
+    const metaStmtsVerifier = new MetaStatements();
+    // metaStmtsVerifier.addWitnessEquality(witnessEq2);
+
+    const proofSpecVerifier = new ProofSpecG1(verifierStatements, metaStmtsVerifier);
+    expect(proofSpecVerifier.isValid()).toEqual(true);
+
+    checkResult(proof.verify(proofSpecVerifier));
+  });
+
+  it('proof does not verify when grade is none of A+, A, B+, B or C but E', () => {
+    expect(encodedGrades.some((g) => areUint8ArraysEqual(g, signed2.encodedMessages['grade']))).toEqual(false);
+
+    const revealedNames = new Set<string>();
+    revealedNames.add('fname');
+
+    const sigParams = getSigParamsForMsgStructure(attributesStruct, label);
+    const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
+      attributes2,
+      revealedNames,
+      encoder
+    );
+    expect(revealedMsgsRaw).toEqual({ fname: 'Carol' });
+  });
+});

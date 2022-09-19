@@ -6,6 +6,7 @@ export * from './composite-proof';
 export * from './saver';
 export * from './legosnark';
 export * from './bound-check';
+export * from './r1cs';
 export * from './ICompressed';
 export * from './Pseudonym';
 export * from './sign-verify-js-objs';

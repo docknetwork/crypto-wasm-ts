@@ -68,4 +68,8 @@ export class QuasiProofSpecG1 {
   setContext(context: Uint8Array) {
     this.context = context;
   }
+
+  toProofSpec(): ProofSpecG1 {
+    return new ProofSpecG1(this.statements, this.metaStatements, this.setupParams, this.context);
+  }
 }

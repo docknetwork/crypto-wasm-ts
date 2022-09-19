@@ -19,7 +19,7 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
-import { getRevealedUnrevealed, stringToBytes } from '../utils';
+import { checkResult, getRevealedUnrevealed, stringToBytes } from '../utils';
 
 describe('Bound check of signed messages', () => {
   const messageCount = 5;
@@ -144,7 +144,7 @@ describe('Bound check of signed messages', () => {
     verifierStatements.add(statement3);
 
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
-    expect(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce).verified).toEqual(true);
+    checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
   }
 
   it('prove knowledge of 1 bounded message from 1st signature', () => {
@@ -156,7 +156,7 @@ describe('Bound check of signed messages', () => {
   }, 20000);
 
   it('prove knowledge of 2 bounded messages from both signatures with different bounds for each message', () => {
-    const proverSetupParams = [];
+    const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
 
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
@@ -213,7 +213,7 @@ describe('Bound check of signed messages', () => {
 
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
-    const verifierSetupParams = [];
+    const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
 
     const statement7 = Statement.boundCheckVerifierFromSetupParamRefs(min1, max1, 0);
@@ -231,7 +231,7 @@ describe('Bound check of signed messages', () => {
 
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
 
-    expect(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce).verified).toEqual(true);
+    checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
   });
 
   it('use bound check for proving earlier than or later than with timestamps', () => {
@@ -244,7 +244,7 @@ describe('Bound check of signed messages', () => {
     const now = 1620585000000; // Timestamp as of now, i.e proof generation
     const someDistantFuture = 1777746600000; // Timestamp from future
 
-    const attributes = [];
+    const attributes: Uint8Array[] = [];
     attributes.push(SignatureG1.encodeMessageForSigning(stringToBytes('John Smith'))); // Name
     attributes.push(SignatureG1.encodeMessageForSigning(stringToBytes('123-456789-0'))); // SSN
     attributes.push(SignatureG1.encodePositiveNumberForSigning(bornAfter + 100000)); // Birth date as no. of milliseconds since epoch
@@ -254,7 +254,7 @@ describe('Bound check of signed messages', () => {
     // Signer creates the signature and shares with prover
     const sig = SignatureG1.generate(attributes, sigSk1, sigParams1, false);
 
-    const proverSetupParams = [];
+    const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
 
     const revealedIndices = new Set<number>();
@@ -306,7 +306,7 @@ describe('Bound check of signed messages', () => {
 
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
-    const verifierSetupParams = [];
+    const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
 
     // For verifying birth date was after `bornAfter`
@@ -324,7 +324,7 @@ describe('Bound check of signed messages', () => {
 
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
 
-    expect(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce).verified).toEqual(true);
+    checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
   });
 
   it('use bound check for negative or decimal bounds', () => {
@@ -422,7 +422,7 @@ describe('Bound check of signed messages', () => {
     expect(transformedAttributes[4]).toBeGreaterThanOrEqual(transMin4);
 
     // Encode for signing
-    const encodedAttributes = [];
+    const encodedAttributes: Uint8Array[] = [];
     for (let i = 0; i < transformedAttributes.length; i++) {
       encodedAttributes.push(SignatureG1.encodePositiveNumberForSigning(transformedAttributes[i]));
     }
@@ -430,7 +430,7 @@ describe('Bound check of signed messages', () => {
     // Signer creates the signature and shares with prover
     const sig = SignatureG1.generate(encodedAttributes, sigSk1, sigParams1, false);
 
-    const proverSetupParams = [];
+    const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
 
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(encodedAttributes, new Set<number>());
@@ -470,7 +470,7 @@ describe('Bound check of signed messages', () => {
 
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
-    const verifierSetupParams = [];
+    const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
 
     const statement7 = Statement.boundCheckVerifierFromSetupParamRefs(transMin1, transMax1, 0);
@@ -489,6 +489,6 @@ describe('Bound check of signed messages', () => {
 
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
 
-    expect(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce).verified).toEqual(true);
+    checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
   });
 });

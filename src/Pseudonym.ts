@@ -79,7 +79,7 @@ export class PseudonymBases {
    * Each verifier should have a unique scope
    */
   static generateBasesForAttributes(attributeCount: number, scope?: Uint8Array): Uint8Array[] {
-    const b = [];
+    const b: Uint8Array[] = [];
     let s: number[];
     if (scope !== undefined) {
       s = Array.from(scope);

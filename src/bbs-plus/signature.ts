@@ -68,7 +68,7 @@ export abstract class Signature extends BytearrayWrapper {
     }
     const decoder = new TextDecoder();
     const decoded = decoder.decode(message);
-    const chars = [];
+    const chars: string[] = [];
     for (let i = 0; i < maxLength; i++) {
       // If a null character found then stop looking further
       if (decoded.charCodeAt(i) == 0) {

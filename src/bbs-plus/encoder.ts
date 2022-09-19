@@ -66,6 +66,19 @@ export class Encoder {
     return [names, encoded];
   }
 
+  encodeDefault(value: unknown, strict = false): Uint8Array {
+    if (this.defaultEncoder !== undefined) {
+      return this.defaultEncoder(value);
+    } else {
+      if (!strict && value instanceof Uint8Array) {
+        return SignatureG1.encodeMessageForSigning(value);
+      } else {
+        throw new Error(
+          `Cannot encode value ${value} as neither was default encoder present nor it was an Uint8Array. Its type was ${typeof value}`
+        );
+      }
+    }
+  }
   /**
    * Returns an encoding function to be used on a message that is a positive integer.
    */

@@ -52,7 +52,7 @@ export abstract class SignatureParams {
    * @param indices
    */
   getParamsForIndices(indices: number[]): Uint8Array[] {
-    const p = [];
+    const p: Uint8Array[] = [];
     p.push(this.value.h_0);
     for (const i of indices) {
       if (!this.isValidIndex(i)) {

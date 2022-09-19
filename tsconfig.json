@@ -3,7 +3,7 @@
         "module": "commonjs",
         "target": "es6",
         "sourceMap": true,
-        "allowJs": false,
+        "allowJs": true,
         "moduleResolution": "node",
         "strict": true,
         "declaration": true,
@@ -13,6 +13,7 @@
         "esModuleInterop": true,
         "resolveJsonModule": true,
         "outDir": "./lib",
+        "noImplicitAny": false,
         "types": [
             "jest",
             "node"

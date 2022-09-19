@@ -619,7 +619,7 @@ export class UniversalAccumulator extends Accumulator {
     products.push(universalAccumulatorComputeInitialFv(fixed, secretKey.value));
 
     // store a batch of generated elements and take the product once the batch is full
-    let currentBatch = [];
+    let currentBatch: Uint8Array[] = [];
     // Accumulate 1 more than the maximum number of allowed members as specified in the paper
     for (let i = 0; i <= maxSize; i++) {
       const e = generateRandomFieldElement();
@@ -796,7 +796,7 @@ export class UniversalAccumulator extends Accumulator {
     const sk = this.getSecretKey(secretKey);
     const params_ = this.getParams(params);
     const members = await state.elements();
-    let currentBatch = [];
+    let currentBatch: Uint8Array[] = [];
     const ds: Uint8Array[] = [];
     for (const member of members) {
       currentBatch.push(member);
@@ -862,7 +862,7 @@ export class UniversalAccumulator extends Accumulator {
     const sk = this.getSecretKey(secretKey);
     const params_ = this.getParams(params);
     const members = await state.elements();
-    let currentBatch = [];
+    let currentBatch: Uint8Array[] = [];
     // store multiple `d`s for each non-member
     const dsForAll: Uint8Array[][] = new Array(nonMembers.length);
     for (const member of members) {

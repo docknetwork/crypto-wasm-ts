@@ -12,7 +12,10 @@ import {
   generateSetupParamForSaverProvingKey,
   generateSetupParamForSaverVerifyingKey,
   generateSetupParamForLegoProvingKey,
-  generateSetupParamForLegoVerifyingKey
+  generateSetupParamForLegoVerifyingKey, generateSetupParamForR1CS,
+  R1CS,
+  generateSetupParamForBytes,
+  generateSetupParamForFieldElemVec
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
 import {
@@ -35,6 +38,7 @@ import {
 } from '../legosnark';
 import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 import { BytearrayWrapper } from '../bytearray-wrapper';
+import { getR1CS, ParsedR1CSFile } from '../r1cs';
 
 /**
  * Represents (public) setup parameters of different protocols. Different setup parameters can be wrapped in this and
@@ -124,5 +128,18 @@ export class SetupParam extends BytearrayWrapper {
 
   static legosnarkVerifyingKeyUncompressed(key: LegoVerifyingKeyUncompressed): SetupParam {
     return new SetupParam(generateSetupParamForLegoVerifyingKey(key.value, true));
+  }
+
+  static r1cs(r1cs: R1CS | ParsedR1CSFile): SetupParam {
+    let processedR1cs = getR1CS(r1cs);
+    return new SetupParam(generateSetupParamForR1CS(processedR1cs.curveName, processedR1cs.numPublic, processedR1cs.numPrivate, processedR1cs.constraints));
+  }
+
+  static bytes(b: Uint8Array): SetupParam {
+    return new SetupParam(generateSetupParamForBytes(b));
+  }
+
+  static fieldElementVec(arr: Uint8Array[]): SetupParam {
+    return new SetupParam(generateSetupParamForFieldElemVec(arr));
   }
 }

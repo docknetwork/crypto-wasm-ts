@@ -82,6 +82,15 @@ export function getSigParamsOfRequiredSize(
   return sigParams;
 }
 
+export function getSigParamsForMsgStructure(
+  msgStructure: object,
+  labelOrParams: Uint8Array | SignatureParamsG1
+): SignatureParamsG1 {
+  const flattened = flatten(msgStructure);
+  const msgCount = Object.keys(flattened as object).length;
+  return getSigParamsOfRequiredSize(msgCount, labelOrParams);
+}
+
 export interface SignedMessages {
   encodedMessages: { [key: string]: Uint8Array };
   signature: SignatureG1;

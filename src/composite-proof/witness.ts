@@ -4,10 +4,12 @@ import {
   generateAccumulatorMembershipWitness,
   generateAccumulatorNonMembershipWitness,
   generateSaverWitness,
-  generateBoundCheckWitness
+  generateBoundCheckWitness,
+  generateR1CSCircomWitness
 } from '@docknetwork/crypto-wasm';
 import { SignatureG1 } from '../bbs-plus';
 import { MembershipWitness, NonMembershipWitness } from '../accumulator';
+import { CircomInputs } from '../r1cs/circom-inputs';
 
 /**
  * Private data known only to the prover whose knowledge is being proved in a proof.
@@ -79,6 +81,10 @@ export class Witness {
       a.push(secretKey);
     }
     return Witness.pedersenCommitment(a);
+  }
+
+  static r1csCircomWitness(inputs: CircomInputs): Uint8Array {
+    return generateR1CSCircomWitness(inputs.wires);
   }
 }
 

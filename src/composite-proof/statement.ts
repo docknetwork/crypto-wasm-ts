@@ -15,7 +15,11 @@ import {
   generateBoundCheckLegoProverStatement,
   generateBoundCheckLegoProverStatementFromParamRefs,
   generateBoundCheckLegoVerifierStatement,
-  generateBoundCheckLegoVerifierStatementFromParamRefs
+  generateBoundCheckLegoVerifierStatementFromParamRefs,
+  generateR1CSCircomProverStatement,
+  generateR1CSCircomProverStatementFromParamRefs,
+  generateR1CSCircomVerifierStatement,
+  generateR1CSCircomVerifierStatementFromParamRefs, R1CS
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
 import {
@@ -40,6 +44,7 @@ import {
 import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 import { AttributeBoundPseudonym, Pseudonym } from '../Pseudonym';
 import { isPositiveInteger } from '../util';
+import { getR1CS, ParsedR1CSFile } from '../r1cs';
 
 /**
  * Relation which needs to be proven. Contains any public data that needs to be known to both prover and verifier
@@ -399,6 +404,32 @@ export class Statement {
       b.push(baseForSecretKey);
     }
     return Statement.pedersenCommitmentG1(b, pseudonym.value);
+  }
+
+  static r1csCircomProver(r1cs: R1CS | ParsedR1CSFile, wasmBytes: Uint8Array, snarkPk: LegoProvingKeyUncompressed): Uint8Array {
+    let processedR1cs = getR1CS(r1cs);
+    return generateR1CSCircomProverStatement(processedR1cs.curveName, processedR1cs.numPublic, processedR1cs.numPrivate, processedR1cs.constraints, wasmBytes, snarkPk.value, true);
+  }
+
+  static r1csCircomProverFromCompressedParams(r1cs: R1CS | ParsedR1CSFile, wasmBytes: Uint8Array, snarkPk: LegoProvingKey): Uint8Array {
+    let processedR1cs = getR1CS(r1cs);
+    return generateR1CSCircomProverStatement(processedR1cs.curveName, processedR1cs.numPublic, processedR1cs.numPrivate, processedR1cs.constraints, wasmBytes, snarkPk.value, false);
+  }
+
+  static r1csCircomProverFromSetupParamRefs(processedR1cs: number, wasmBytes: number, snarkPkRef: number): Uint8Array {
+    return generateR1CSCircomProverStatementFromParamRefs(processedR1cs, wasmBytes, snarkPkRef);
+  }
+
+  static r1csCircomVerifier(publicInputs: Uint8Array[], snarkVk: LegoVerifyingKeyUncompressed): Uint8Array {
+    return generateR1CSCircomVerifierStatement(publicInputs, snarkVk.value, true);
+  }
+
+  static r1csCircomVerifierFromCompressedParams(publicInputs: Uint8Array[], snarkVk: LegoVerifyingKey): Uint8Array {
+    return generateR1CSCircomVerifierStatement(publicInputs, snarkVk.value, false);
+  }
+
+  static r1csCircomVerifierFromSetupParamRefs(publicInputsRef: number, snarkVkRef: number): Uint8Array {
+    return generateR1CSCircomVerifierStatementFromParamRefs(publicInputsRef, snarkVkRef);
   }
 }
 
