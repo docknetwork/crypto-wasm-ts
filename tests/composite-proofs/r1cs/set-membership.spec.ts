@@ -73,8 +73,8 @@ describe('Proof with R1CS and Circom circuits: set membership check', () => {
     const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
 
     const inputs = new CircomInputs();
-    inputs.setInput('x', messages[2]);
-    inputs.setArrayInput('set', publicSet);
+    inputs.setPrivateInput('x', messages[2]);
+    inputs.setPublicArrayInput('set', publicSet);
     const witness2 = Witness.r1csCircomWitness(inputs);
 
     const witnesses = new Witnesses();

@@ -38,6 +38,7 @@ the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
     - [Bound check using LegoGroth16](#bound-check-using-legogroth16)
     - [Optimization](#optimization)
     - [Working with messages as JS objects](#working-with-messages-as-js-objects)
+    - [Writing predicates in Circom](#writing-predicates-in-circom)
 
 ## Getting started
 
@@ -1228,4 +1229,34 @@ For complete example, see [these tests](./tests/composite-proofs/bound-check.spe
 ### Working with messages as JS objects
 
 The above interfaces have been found to be a bit difficult to work with when signing messages that are represented as JS objects. 
-[Here](./src/sign-verify-js-objs.ts) are some [utilities](./src/bbs-plus/encoder.ts) to make this task a bit easier. [These tests](tests/composite-proofs/msg-js-obj) contain plenty of examples.
+[Here](./src/sign-verify-js-objs.ts) are some [utilities](./src/bbs-plus/encoder.ts) to make this task a bit easier. [The tests here](tests/composite-proofs/msg-js-obj) contain 
+plenty of examples.
+
+
+### Writing predicates in Circom
+
+Simple predicates like a range proof or equality of messages in zero knowledge are already hardcoded in the library but we 
+cannot imagine all the possible predicates different use-cases can require. We expect developers to write these predicates 
+in a programming language that we can then use to create zero-knowledge proofs. We currently support [Circom](https://docs.circom.io/), version 2.
+The predicates can be written as Circom programs and then compiled for curve BLS12-381. The generated R1CS and WASM can then be feed 
+to the composite proof system to generate a zero knowledge proof of the predicate.
+
+The workflow is this:
+
+1. Express the predicates/arbitrary computation as a Circom program.
+2. Compile the above program to get the constraints (R1CS file) and witness generator (WASM file, takes input wires and calculates all the intermediate wires).
+3. Use the constraints from step 2 to generate SNARK proving and verification key of LegoGroth16.
+4. Use the R1CS and WASM files from step 2 and proving key from step 3 to create a LegoGroth16 proof.
+5. Use the verification key from step 3 to verify the LegoGroth16 proof.
+
+
+The steps 1-3 are done by the verifier and the result of these steps, i.e. R1CS file, WASM file, proving and verification key 
+are shared with any potential prover (published or shared P2P). Step 4 is done by the prover and step 5 again by the verifier.
+
+See some of the following tests for Circom usage:
+1. [The yearly income, calculate from monthly payslips is less/greater than certain amount.](./tests/composite-proofs/msg-js-obj/r1cs/yearly-income.spec.ts).
+2. [The sum of assets is greater than the sum of liabilities where are assets and liabilities are calculated from several credentials.](./tests/composite-proofs/msg-js-obj/r1cs/assets-liabilities.spec.ts)
+3. [The blood group is not AB-](./tests/composite-proofs/msg-js-obj/r1cs/blood-group.spec.ts)
+4. [The grade is either A+, A, B+, B or C but nothing else.](./tests/composite-proofs/msg-js-obj/r1cs/grade.ts)
+5. [Either vaccinated less than 30 days ago OR last checked negative less than 2 days ago](./tests/composite-proofs/msg-js-obj/r1cs/vaccination.spec.ts)
+6. [Certain attribute is the preimage of an MiMC hash](./tests/composite-proofs/msg-js-obj/r1cs/mimc-hash.spec.ts)

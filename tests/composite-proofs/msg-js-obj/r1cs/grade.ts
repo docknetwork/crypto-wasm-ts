@@ -19,7 +19,8 @@ import {
 } from '../../../../src';
 import { checkMapsEqual, defaultEncoder } from '../index';
 
-
+// Test for scenario where the user wants to prove that his grade belongs/does not belong to the given set.
+// Similar test can be written for other "set-membership" relations like user is not resident of certain cities
 describe('Proving that grade is either A+, A, B+, B or C', () => {
   let encoder: Encoder;
 
@@ -125,7 +126,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     witnessEq1.addWitnessRef(sIdx2, 0);
 
     const metaStmtsProver = new MetaStatements();
-    // metaStmtsProver.addWitnessEquality(witnessEq1);
+    metaStmtsProver.addWitnessEquality(witnessEq1);
 
     // The prover should independently construct this `ProofSpec`
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
@@ -134,8 +135,83 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const witness1 = Witness.bbsSignature(signed1.signature, unrevealedMsgs, false);
 
     const inputs = new CircomInputs();
-    inputs.setInput('x', signed1.encodedMessages['grade']);
-    inputs.setArrayInput('set', encodedGrades);
+    inputs.setPrivateInput('x', signed1.encodedMessages['grade']);
+    inputs.setPublicArrayInput('set', encodedGrades);
+    const witness2 = Witness.r1csCircomWitness(inputs);
+
+    const witnesses = new Witnesses();
+    witnesses.add(witness1);
+    witnesses.add(witness2);
+
+    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+
+    // Verifier independently encodes revealed messages
+    const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
+    checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
+
+    const statement3 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    // generateFieldElementFromNumber(1) because membership is being check, use generateFieldElementFromNumber(0) for checking non-membership
+    const pub = [generateFieldElementFromNumber(1), ...encodedGrades];
+    const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
+
+    const verifierStatements = new Statements();
+    verifierStatements.add(statement3);
+    verifierStatements.add(statement4);
+
+    const statementsVerifier = new Statements();
+    const sIdx3 = statementsVerifier.add(statement3);
+    const sIdx4 = statementsVerifier.add(statement4);
+
+    const witnessEq2 = new WitnessEqualityMetaStatement();
+    witnessEq2.addWitnessRef(sIdx3, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
+    witnessEq2.addWitnessRef(sIdx4, 0);
+
+    const metaStmtsVerifier = new MetaStatements();
+    metaStmtsVerifier.addWitnessEquality(witnessEq2);
+
+    const proofSpecVerifier = new ProofSpecG1(verifierStatements, metaStmtsVerifier);
+    expect(proofSpecVerifier.isValid()).toEqual(true);
+
+    checkResult(proof.verify(proofSpecVerifier));
+  });
+
+  it('proof does not verify when grade is none of A+, A, B+, B or C but E', () => {
+    expect(encodedGrades.some((g) => areUint8ArraysEqual(g, signed2.encodedMessages['grade']))).toEqual(false);
+
+    const revealedNames = new Set<string>();
+    revealedNames.add('fname');
+
+    const sigParams = getSigParamsForMsgStructure(attributesStruct, label);
+    const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
+      attributes2,
+      revealedNames,
+      encoder
+    );
+    expect(revealedMsgsRaw).toEqual({ fname: 'Carol' });
+
+    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
+
+    const statementsProver = new Statements();
+    const sIdx1 = statementsProver.add(statement1);
+    const sIdx2 = statementsProver.add(statement2);
+
+    const witnessEq1 = new WitnessEqualityMetaStatement();
+    witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
+    witnessEq1.addWitnessRef(sIdx2, 0);
+
+    const metaStmtsProver = new MetaStatements();
+    metaStmtsProver.addWitnessEquality(witnessEq1);
+
+    // The prover should independently construct this `ProofSpec`
+    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    expect(proofSpecProver.isValid()).toEqual(true);
+
+    const witness1 = Witness.bbsSignature(signed2.signature, unrevealedMsgs, false);
+
+    const inputs = new CircomInputs();
+    inputs.setPrivateInput('x', signed2.encodedMessages['grade']);
+    inputs.setPublicArrayInput('set', encodedGrades);
     const witness2 = Witness.r1csCircomWitness(inputs);
 
     const witnesses = new Witnesses();
@@ -165,26 +241,11 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     witnessEq2.addWitnessRef(sIdx4, 0);
 
     const metaStmtsVerifier = new MetaStatements();
-    // metaStmtsVerifier.addWitnessEquality(witnessEq2);
+    metaStmtsVerifier.addWitnessEquality(witnessEq2);
 
     const proofSpecVerifier = new ProofSpecG1(verifierStatements, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
-    checkResult(proof.verify(proofSpecVerifier));
-  });
-
-  it('proof does not verify when grade is none of A+, A, B+, B or C but E', () => {
-    expect(encodedGrades.some((g) => areUint8ArraysEqual(g, signed2.encodedMessages['grade']))).toEqual(false);
-
-    const revealedNames = new Set<string>();
-    revealedNames.add('fname');
-
-    const sigParams = getSigParamsForMsgStructure(attributesStruct, label);
-    const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
-      attributes2,
-      revealedNames,
-      encoder
-    );
-    expect(revealedMsgsRaw).toEqual({ fname: 'Carol' });
+    expect(proof.verify(proofSpecVerifier).verified).toEqual(false);
   });
 });

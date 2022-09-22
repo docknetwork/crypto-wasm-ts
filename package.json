@@ -21,7 +21,7 @@
     "lib": "lib"
   },
   "dependencies": {
-    "@docknetwork/crypto-wasm": "file:../crypto-wasm"
+    "@docknetwork/crypto-wasm": "0.13.0"
   },
   "devDependencies": {
     "@types/flat": "^5.0.2",

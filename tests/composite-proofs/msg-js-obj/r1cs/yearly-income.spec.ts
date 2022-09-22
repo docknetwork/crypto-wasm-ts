@@ -19,7 +19,8 @@ import {
 } from '../../../../src';
 import { checkMapsEqual, defaultEncoder } from '../index';
 
-
+// Test for a scenario where a user wants to prove that his yearly income is less than 25000 where his income comprises
+// of 12 payslip credentials, 1 for each month's.
 describe('Proving that yearly income calculated from monthly payslips is less than 25000', () => {
   let encoder: Encoder;
 
@@ -203,8 +204,8 @@ describe('Proving that yearly income calculated from monthly payslips is less th
 
     const inputs = new CircomInputs();
     // Add each encoded salary as the circuit input
-    inputs.setArrayInput('in', signed.map((s) => s.encodedMessages['salary.amount']));
-    inputs.setInput('max', salaryLimitEncoded);
+    inputs.setPrivateArrayInput('in', signed.map((s) => s.encodedMessages['salary.amount']));
+    inputs.setPublicInput('max', salaryLimitEncoded);
     witnesses.add(Witness.r1csCircomWitness(inputs));
 
     const proof = CompositeProofG1.generate(proofSpecProver, witnesses);

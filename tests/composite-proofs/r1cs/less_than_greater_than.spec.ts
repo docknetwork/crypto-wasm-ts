@@ -111,13 +111,13 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
     const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
 
     const inputs1 = new CircomInputs();
-    inputs1.setInput('a', messages[1]);
-    inputs1.setInput('b', messages[2]);
+    inputs1.setPrivateInput('a', messages[1]);
+    inputs1.setPrivateInput('b', messages[2]);
     const witness2 = Witness.r1csCircomWitness(inputs1);
 
     const inputs2 = new CircomInputs();
-    inputs2.setInput('a', messages[2]);
-    inputs2.setInput('b', publicMax);
+    inputs2.setPrivateInput('a', messages[2]);
+    inputs2.setPublicInput('b', publicMax);
     const witness3 = Witness.r1csCircomWitness(inputs2);
 
     const witnesses = new Witnesses();
@@ -179,8 +179,8 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
     const witness2 = Witness.bbsSignature(sig2, unrevealedMsgs2, false);
 
     const inputs = new CircomInputs();
-    inputs.setInput('a', messages1[2]);
-    inputs.setInput('b', messages2[2]);
+    inputs.setPrivateInput('a', messages1[2]);
+    inputs.setPrivateInput('b', messages2[2]);
     const witness3 = Witness.r1csCircomWitness(inputs);
 
     const witnesses = new Witnesses();

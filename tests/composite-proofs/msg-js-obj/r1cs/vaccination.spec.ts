@@ -1,5 +1,5 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { areUint8ArraysEqual, checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
   BBSPlusPublicKeyG2, BBSPlusSecretKey,
   CircomInputs, CompositeProofG1, createWitnessEqualityMetaStatement, EncodeFunc,
@@ -19,7 +19,8 @@ import {
 } from '../../../../src';
 import { checkMapsEqual, defaultEncoder } from '../index';
 
-
+// Test for a scenario where a user wants to prove that he either got the vaccination less than 30 days ago or got
+// tested negative less than 2 days ago but does not reveal when these events happened or which of these conditions is true.
 describe('Proving that either vaccinated less than 30 days ago OR last checked negative less than 2 days ago', () => {
   let encoder: Encoder;
 
@@ -100,7 +101,9 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     vaccinationAttributes.vaccination.date = now - (vDays * secondsInADay);
     diseaseTestAttributes.test.date = now - (tDays * secondsInADay);
     const signedV = signMessageObject(vaccinationAttributes, sigSk, label, encoder);
+    expect(verifyMessageObject(vaccinationAttributes, signedV.signature, sigPk, label, encoder)).toBe(true);
     const signedT = signMessageObject(diseaseTestAttributes, sigSk, label, encoder);
+    expect(verifyMessageObject(diseaseTestAttributes, signedT.signature, sigPk, label, encoder)).toBe(true);
     return [signedV, signedT];
   }
 
@@ -131,15 +134,12 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
   });
 
   it('verifier generates SNARk proving and verifying key', async () => {
-    const pk = R1CSSnarkSetup.fromParsedR1CSFile(r1cs, 4);
+    const pk = R1CSSnarkSetup.fromParsedR1CSFile(r1cs, 2);
     provingKey = pk.decompress();
     verifyingKey = pk.getVerifyingKeyUncompressed();
   });
 
-  it('proof verifies when both vaccination and negative test are recent enough', () => {
-    // Set both vaccination date and test date to 25 days and 1 day in the past respectively
-    const [vaccinationAttributesSigned, testAttributesSigned] = sign(25, 1)
-
+  function check(vaccinationAttributesSigned: SignedMessages, testAttributesSigned: SignedMessages, checkShouldPass: boolean) {
     const revealedNamesV = new Set<string>();
     revealedNamesV.add('fname');
     revealedNamesV.add('vaccination.name');
@@ -205,10 +205,10 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     witnesses.add(Witness.bbsSignature(testAttributesSigned.signature, unrevealedMsgsT, false));
 
     const inputs = new CircomInputs();
-    inputs.setInput('in1', vaccinationAttributesSigned.encodedMessages['vaccination.date']);
-    inputs.setInput('in2', testAttributesSigned.encodedMessages['test.date']);
-    inputs.setInput('in3', encodedTime30DaysAgo);
-    inputs.setInput('in4', encodedTime2DaysAgo);
+    inputs.setPrivateInput('in1', vaccinationAttributesSigned.encodedMessages['vaccination.date']);
+    inputs.setPrivateInput('in2', testAttributesSigned.encodedMessages['test.date']);
+    inputs.setPublicInput('in3', encodedTime30DaysAgo);
+    inputs.setPublicInput('in4', encodedTime2DaysAgo);
     witnesses.add(Witness.r1csCircomWitness(inputs));
 
     const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
@@ -221,7 +221,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
 
     const statement4 = Statement.bbsSignature(sigParamsV, sigPk, revealedMsgsFromVerifierV, false);
     const statement5 = Statement.bbsSignature(sigParamsT, sigPk, revealedMsgsFromVerifierT, false);
-    const pub = [generateFieldElementFromNumber(1), encodedTime30DaysAgo, encodedTime2DaysAgo];
+    const pub = [generateFieldElementFromNumber(checkShouldPass ? 1 : 0), encodedTime30DaysAgo, encodedTime2DaysAgo];
     const statement6 = Statement.r1csCircomVerifier(pub, verifyingKey);
 
     const statementsVerifier = new Statements();
@@ -256,9 +256,29 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
-  });
+  }
 
   it('proof verifies when both vaccination and negative test are recent enough', () => {
     // Set both vaccination date and test date to 25 days and 1 day in the past respectively
+    const [vaccinationAttributesSigned, testAttributesSigned] = sign(25, 1)
+    check(vaccinationAttributesSigned, testAttributesSigned, true);
+  });
+
+  it('proof verifies when vaccination date is recent but negative test is older than required', () => {
+    // Set both vaccination date and test date to 25 days and 4 day in the past respectively
+    const [vaccinationAttributesSigned, testAttributesSigned] = sign(25, 4);
+    check(vaccinationAttributesSigned, testAttributesSigned, true);
+  });
+
+  it('proof verifies when vaccination date is older than required but negative test is recent', () => {
+    // Set both vaccination date and test date to 31 days and 1 day in the past respectively
+    const [vaccinationAttributesSigned, testAttributesSigned] = sign(31, 1);
+    check(vaccinationAttributesSigned, testAttributesSigned, true);
+  });
+
+  it('proof does not verify successfully when both vaccination date and negative test are older than required', () => {
+    // Set both vaccination date and test date to 31 days and 4 day in the past respectively
+    const [vaccinationAttributesSigned, testAttributesSigned] = sign(31, 4);
+    check(vaccinationAttributesSigned, testAttributesSigned, false);
   });
 });

@@ -13,8 +13,8 @@ describe('For R1CS from Circom', () => {
     const ltWasm = getWasmBytes('less_than_32.wasm');
 
     const ltInputs = new CircomInputs();
-    ltInputs.setInput('a', generateFieldElementFromNumber(100));
-    ltInputs.setInput('b', generateFieldElementFromNumber(200));
+    ltInputs.setPrivateInput('a', generateFieldElementFromNumber(100));
+    ltInputs.setPrivateInput('b', generateFieldElementFromNumber(200));
 
     expect(CircomCircuit.isSatisfied(ltR1cs, ltWasm, ltInputs));
 
@@ -25,8 +25,8 @@ describe('For R1CS from Circom', () => {
     expect(fromLeToBigInt(wires[3])).toEqual(BigInt("200"));
 
     const ltInputs1 = new CircomInputs();
-    ltInputs1.setInput('a', generateFieldElementFromNumber(200));
-    ltInputs1.setInput('b', generateFieldElementFromNumber(100));
+    ltInputs1.setPrivateInput('a', generateFieldElementFromNumber(200));
+    ltInputs1.setPrivateInput('b', generateFieldElementFromNumber(100));
 
     expect(CircomCircuit.isSatisfied(ltR1cs, ltWasm, ltInputs1));
 
@@ -42,8 +42,8 @@ describe('For R1CS from Circom', () => {
     const ltPubWasm = getWasmBytes('less_than_public_64.wasm');
 
     const ltPubInputs = new CircomInputs();
-    ltPubInputs.setInput('a', generateFieldElementFromNumber(100));
-    ltPubInputs.setInput('b', generateFieldElementFromNumber(200));
+    ltPubInputs.setPrivateInput('a', generateFieldElementFromNumber(100));
+    ltPubInputs.setPublicInput('b', generateFieldElementFromNumber(200));
 
     expect(CircomCircuit.isSatisfied(ltPubR1cs, ltPubWasm, ltPubInputs));
 
@@ -54,8 +54,8 @@ describe('For R1CS from Circom', () => {
     expect(fromLeToBigInt(wires[3])).toEqual(BigInt("100"));
 
     const ltPubInputs1 = new CircomInputs();
-    ltPubInputs1.setInput('a', generateFieldElementFromNumber(200));
-    ltPubInputs1.setInput('b', generateFieldElementFromNumber(100));
+    ltPubInputs1.setPrivateInput('a', generateFieldElementFromNumber(200));
+    ltPubInputs1.setPublicInput('b', generateFieldElementFromNumber(100));
 
     expect(CircomCircuit.isSatisfied(ltPubR1cs, ltPubWasm, ltPubInputs1));
 

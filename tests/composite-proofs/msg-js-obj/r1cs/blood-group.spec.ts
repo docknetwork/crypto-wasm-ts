@@ -20,6 +20,8 @@ import {
 import { checkMapsEqual, defaultEncoder } from '../index';
 
 
+// Test for a scenario where a user wants to prove that his blood group is AB- without revealing the blood group.
+// Similar test can be written for other "not-equals" relations like user is not resident of certain city
 describe('Proving that blood group is not AB-', () => {
   let encoder: Encoder;
   let encodedABNeg: Uint8Array;
@@ -27,7 +29,9 @@ describe('Proving that blood group is not AB-', () => {
   const label = stringToBytes('Sig params label');
   let sigPk: BBSPlusPublicKeyG2;
 
+  // Credential for the user with blood group AB+
   let signed1: SignedMessages;
+  // Credential for the user with blood group AB-
   let signed2: SignedMessages;
 
   let r1cs: ParsedR1CSFile;
@@ -35,6 +39,7 @@ describe('Proving that blood group is not AB-', () => {
 
   let provingKey: LegoProvingKeyUncompressed, verifyingKey: LegoVerifyingKeyUncompressed;
 
+  // Structure of credential that has the blood group attribute
   const attributesStruct = {
     fname: undefined,
     lname: undefined,
@@ -49,7 +54,7 @@ describe('Proving that blood group is not AB-', () => {
     'user-id': undefined,
   };
 
-  // 1st attribute where blood group is AB+ and a satisfactory proof can be created
+  // 1st credential where blood group is AB+ and a satisfactory proof can be created
   const attributes1 = {
     fname: 'John',
     lname: 'Smith',
@@ -64,7 +69,7 @@ describe('Proving that blood group is not AB-', () => {
     'user-id': 'user:123-xyz-#'
   };
 
-  // 2nd attribute where blood group is AB- and its not acceptable so proof will fail
+  // 2nd credential where blood group is AB- and its not acceptable so proof will fail
   const attributes2 = {
     fname: 'Carol',
     lname: 'Smith',
@@ -134,6 +139,7 @@ describe('Proving that blood group is not AB-', () => {
     const sIdx1 = statementsProver.add(statement1);
     const sIdx2 = statementsProver.add(statement2);
 
+    // Enforce the equality between credential attribute and the Circom program input
     const witnessEq1 = new WitnessEqualityMetaStatement();
     witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['physical.bloodGroup'], attributesStruct)[0]);
     witnessEq1.addWitnessRef(sIdx2, 0);
@@ -148,8 +154,8 @@ describe('Proving that blood group is not AB-', () => {
     const witness1 = Witness.bbsSignature(signed1.signature, unrevealedMsgs, false);
 
     const inputs = new CircomInputs();
-    inputs.setInput('in', signed1.encodedMessages['physical.bloodGroup']);
-    inputs.setInput('pub', encodedABNeg);
+    inputs.setPrivateInput('in', signed1.encodedMessages['physical.bloodGroup']);
+    inputs.setPublicInput('pub', encodedABNeg);
     const witness2 = Witness.r1csCircomWitness(inputs);
 
     const witnesses = new Witnesses();
@@ -218,8 +224,8 @@ describe('Proving that blood group is not AB-', () => {
     const witness1 = Witness.bbsSignature(signed2.signature, unrevealedMsgs, false);
 
     const inputs = new CircomInputs();
-    inputs.setInput('in', signed2.encodedMessages['physical.bloodGroup']);
-    inputs.setInput('pub', encodedABNeg);
+    inputs.setPrivateInput('in', signed2.encodedMessages['physical.bloodGroup']);
+    inputs.setPublicInput('pub', encodedABNeg);
     const witness2 = Witness.r1csCircomWitness(inputs);
 
     const witnesses = new Witnesses();

@@ -9,7 +9,7 @@ import {
 } from '@docknetwork/crypto-wasm';
 import { SignatureG1 } from '../bbs-plus';
 import { MembershipWitness, NonMembershipWitness } from '../accumulator';
-import { CircomInputs } from '../r1cs/circom-inputs';
+import { CircomInputs } from '../r1cs';
 
 /**
  * Private data known only to the prover whose knowledge is being proved in a proof.
@@ -84,7 +84,7 @@ export class Witness {
   }
 
   static r1csCircomWitness(inputs: CircomInputs): Uint8Array {
-    return generateR1CSCircomWitness(inputs.wires);
+    return generateR1CSCircomWitness(inputs.wires, inputs.privates, inputs.publics);
   }
 }
 
