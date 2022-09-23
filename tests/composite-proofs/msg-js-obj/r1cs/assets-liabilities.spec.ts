@@ -2,20 +2,32 @@ import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/cry
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
   BBSPlusPublicKeyG2,
-  CircomInputs, CompositeProofG1, createWitnessEqualityMetaStatement, EncodeFunc,
-  Encoder, encodeRevealedMsgs,
+  CircomInputs,
+  CompositeProofG1,
+  createWitnessEqualityMetaStatement,
+  EncodeFunc,
+  Encoder,
+  encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
   KeypairG2,
   LegoProvingKeyUncompressed,
-  LegoVerifyingKeyUncompressed, MetaStatements,
-  ParsedR1CSFile, QuasiProofSpecG1,
-  R1CSSnarkSetup, SetupParam,
+  LegoVerifyingKeyUncompressed,
+  MetaStatements,
+  ParsedR1CSFile,
+  QuasiProofSpecG1,
+  R1CSSnarkSetup,
+  SetupParam,
   SignatureParamsG1,
   SignedMessages,
-  signMessageObject, Statement, Statements,
-  verifyMessageObject, Witness, WitnessEqualityMetaStatement, Witnesses
+  signMessageObject,
+  Statement,
+  Statements,
+  verifyMessageObject,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../../../src';
 import { checkMapsEqual, defaultEncoder } from '../index';
 
@@ -38,15 +50,16 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     lname: undefined,
     sensitive: {
       email: undefined,
-      SSN: undefined,
+      SSN: undefined
     },
-    assets: {   // 5 different assets, number 5 is arbitrary
+    assets: {
+      // 5 different assets, number 5 is arbitrary
       id1: undefined,
       id2: undefined,
       id3: undefined,
       id4: undefined,
-      id5: undefined,
-    },
+      id5: undefined
+    }
   };
 
   // Structure of liability credential
@@ -55,17 +68,18 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     lname: undefined,
     sensitive: {
       email: undefined,
-      SSN: undefined,
+      SSN: undefined
     },
-    liabilities: {    // 4 different liabilities, number 4 is arbitrary
+    liabilities: {
+      // 4 different liabilities, number 4 is arbitrary
       id1: undefined,
       id2: undefined,
       id3: undefined,
-      id4: undefined,
-    },
+      id4: undefined
+    }
   };
 
-  const numAssetCredentials = 4;   // Circuit supports 20 assets, and each asset above has 5 values so 4 credentials (5*4=20)
+  const numAssetCredentials = 4; // Circuit supports 20 assets, and each asset above has 5 values so 4 credentials (5*4=20)
   const numLiabilityCredentials = 5; // Circuit supports 20 liabilities, and each liability above has 4 values so 5 credentials (5*4=20)
 
   // Array of assets credentials (unsigned)
@@ -127,15 +141,15 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
         lname: 'Smith',
         sensitive: {
           email: 'john.smith@example.com',
-          SSN: '123-456789-0',
+          SSN: '123-456789-0'
         },
         assets: {
-          id1: (i+1)*10000,
-          id2: (i+2)*10000,
-          id3: (i+3)*10000,
-          id4: (i+4)*10000,
-          id5: (i+5)*10000,
-        },
+          id1: (i + 1) * 10000,
+          id2: (i + 2) * 10000,
+          id3: (i + 3) * 10000,
+          id4: (i + 4) * 10000,
+          id5: (i + 5) * 10000
+        }
       });
       signedAssets.push(signMessageObject(assetAttributes[i], sk, label, encoder));
       expect(verifyMessageObject(assetAttributes[i], signedAssets[i].signature, sigPk, label, encoder)).toBe(true);
@@ -147,33 +161,36 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
         lname: 'Smith',
         sensitive: {
           email: 'john.smith@example.com',
-          SSN: '123-456789-0',
+          SSN: '123-456789-0'
         },
         liabilities: {
-          id1: (i+1)*100,
-          id2: (i+2)*100,
-          id3: (i+3)*100,
-          id4: (i+4)*100,
-        },
+          id1: (i + 1) * 100,
+          id2: (i + 2) * 100,
+          id3: (i + 3) * 100,
+          id4: (i + 4) * 100
+        }
       });
       signedLiabilities.push(signMessageObject(liabilityAttributes[i], sk, label, encoder));
-      expect(verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, label, encoder)).toBe(true);
+      expect(verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, label, encoder)).toBe(
+        true
+      );
     }
   });
 
   it('proof verifies when difference between total assets and total liabilities is more than 10000', () => {
     // Check that the sum of assets - sum of liabilities is greater than expected
-    let assets = 0, liabilities = 0;
+    let assets = 0,
+      liabilities = 0;
     for (let i = 0; i < numAssetCredentials; i++) {
       for (let j = 1; j <= 5; j++) {
         // @ts-ignore
-        assets += assetAttributes[i].assets['id'+j];
+        assets += assetAttributes[i].assets['id' + j];
       }
     }
     for (let i = 0; i < numLiabilityCredentials; i++) {
       for (let j = 1; j <= 4; j++) {
         // @ts-ignore
-        liabilities += liabilityAttributes[i].liabilities['id'+j];
+        liabilities += liabilityAttributes[i].liabilities['id' + j];
       }
     }
 
@@ -195,11 +212,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     const revealedMsgsRaw: object[] = [];
 
     for (let i = 0; i < numAssetCredentials; i++) {
-      const [r, u, rRaw] = getRevealedAndUnrevealed(
-        assetAttributes[i],
-        revealedNames,
-        encoder
-      );
+      const [r, u, rRaw] = getRevealedAndUnrevealed(assetAttributes[i], revealedNames, encoder);
       revealedMsgs.push(r);
       unrevealedMsgs.push(u);
       revealedMsgsRaw.push(rRaw);
@@ -207,11 +220,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     }
 
     for (let i = 0; i < numLiabilityCredentials; i++) {
-      const [r, u, rRaw] = getRevealedAndUnrevealed(
-        liabilityAttributes[i],
-        revealedNames,
-        encoder
-      );
+      const [r, u, rRaw] = getRevealedAndUnrevealed(liabilityAttributes[i], revealedNames, encoder);
       revealedMsgs.push(r);
       unrevealedMsgs.push(u);
       revealedMsgsRaw.push(rRaw);
@@ -230,7 +239,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     const statementsProver = new Statements();
 
     // Statements to prove possesion of credentials
-    const sIdxs: number[] = []
+    const sIdxs: number[] = [];
     for (let i = 0; i < numAssetCredentials; i++) {
       sIdxs.push(statementsProver.add(Statement.bbsSignatureFromSetupParamRefs(0, 2, revealedMsgs[i], false)));
     }
@@ -277,7 +286,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     for (let i = 0; i < numAssetCredentials; i++) {
       for (let j = 1; j <= 5; j++) {
         const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(sIdxs[i], getIndicesForMsgNames(['assets.id'+j], assetAttributesStruct)[0]);
+        witnessEq.addWitnessRef(sIdxs[i], getIndicesForMsgNames(['assets.id' + j], assetAttributesStruct)[0]);
         witnessEq.addWitnessRef(sIdxs[numAssetCredentials + numLiabilityCredentials], counter);
         counter++;
         metaStmtsProver.addWitnessEquality(witnessEq);
@@ -287,7 +296,10 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
       for (let j = 1; j <= 4; j++) {
         const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(sIdxs[i], getIndicesForMsgNames(['liabilities.id'+j], liabilitiesAttributesStruct)[0]);
+        witnessEq.addWitnessRef(
+          sIdxs[i],
+          getIndicesForMsgNames(['liabilities.id' + j], liabilitiesAttributesStruct)[0]
+        );
         witnessEq.addWitnessRef(sIdxs[numAssetCredentials + numLiabilityCredentials], counter);
         counter++;
         metaStmtsProver.addWitnessEquality(witnessEq);
@@ -298,29 +310,37 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
     const witnesses = new Witnesses();
     for (let i = 0; i < numAssetCredentials; i++) {
-      witnesses.add(Witness.bbsSignature(signedAssets[i].signature, unrevealedMsgs[i], false))
+      witnesses.add(Witness.bbsSignature(signedAssets[i].signature, unrevealedMsgs[i], false));
     }
     for (let i = 0; i < numLiabilityCredentials; i++) {
-      witnesses.add(Witness.bbsSignature(signedLiabilities[i].signature, unrevealedMsgs[numAssetCredentials+i], false))
+      witnesses.add(
+        Witness.bbsSignature(signedLiabilities[i].signature, unrevealedMsgs[numAssetCredentials + i], false)
+      );
     }
 
     const inputs = new CircomInputs();
     // Add each encoded asset value as the circuit input
-    inputs.setPrivateArrayInput('inA', signedAssets.flatMap((s) => {
-      const arr: Uint8Array[] = [];
-      for (let j = 1; j <= 5; j++) {
-       arr.push(s.encodedMessages['assets.id'+j]);
-      }
-      return arr;
-    }));
+    inputs.setPrivateArrayInput(
+      'inA',
+      signedAssets.flatMap((s) => {
+        const arr: Uint8Array[] = [];
+        for (let j = 1; j <= 5; j++) {
+          arr.push(s.encodedMessages['assets.id' + j]);
+        }
+        return arr;
+      })
+    );
     // Add each encoded liability value as the circuit input
-    inputs.setPrivateArrayInput('inB', signedLiabilities.flatMap((s) => {
-      const arr: Uint8Array[] = [];
-      for (let j = 1; j <= 4; j++) {
-        arr.push(s.encodedMessages['liabilities.id'+j]);
-      }
-      return arr;
-    }));
+    inputs.setPrivateArrayInput(
+      'inB',
+      signedLiabilities.flatMap((s) => {
+        const arr: Uint8Array[] = [];
+        for (let j = 1; j <= 4; j++) {
+          arr.push(s.encodedMessages['liabilities.id' + j]);
+        }
+        return arr;
+      })
+    );
     inputs.setPublicInput('min', minDiffEncoded);
     witnesses.add(Witness.r1csCircomWitness(inputs));
 
@@ -332,7 +352,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
       revealedMsgsFromVerifier.push(encodeRevealedMsgs(revealedMsgsRaw[i], assetAttributesStruct, encoder));
       checkMapsEqual(revealedMsgs[i], revealedMsgsFromVerifier[i]);
     }
-    for (let i = numAssetCredentials; i < numAssetCredentials+numLiabilityCredentials; i++) {
+    for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
       revealedMsgsFromVerifier.push(encodeRevealedMsgs(revealedMsgsRaw[i], liabilitiesAttributesStruct, encoder));
       checkMapsEqual(revealedMsgs[i], revealedMsgsFromVerifier[i]);
     }
@@ -349,12 +369,16 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
     const statementsVerifier = new Statements();
 
-    const sIdxVs: number[] = []
+    const sIdxVs: number[] = [];
     for (let i = 0; i < numAssetCredentials; i++) {
-      sIdxVs.push(statementsVerifier.add(Statement.bbsSignatureFromSetupParamRefs(0, 2, revealedMsgsFromVerifier[i], false)));
+      sIdxVs.push(
+        statementsVerifier.add(Statement.bbsSignatureFromSetupParamRefs(0, 2, revealedMsgsFromVerifier[i], false))
+      );
     }
     for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-      sIdxVs.push(statementsVerifier.add(Statement.bbsSignatureFromSetupParamRefs(1, 2, revealedMsgsFromVerifier[i], false)));
+      sIdxVs.push(
+        statementsVerifier.add(Statement.bbsSignatureFromSetupParamRefs(1, 2, revealedMsgsFromVerifier[i], false))
+      );
     }
 
     sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(3, 4)));
@@ -393,7 +417,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     for (let i = 0; i < numAssetCredentials; i++) {
       for (let j = 1; j <= 5; j++) {
         const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(sIdxVs[i], getIndicesForMsgNames(['assets.id'+j], assetAttributesStruct)[0]);
+        witnessEq.addWitnessRef(sIdxVs[i], getIndicesForMsgNames(['assets.id' + j], assetAttributesStruct)[0]);
         witnessEq.addWitnessRef(sIdxVs[numAssetCredentials + numLiabilityCredentials], counter);
         counter++;
         metaStmtsVerifier.addWitnessEquality(witnessEq);
@@ -403,7 +427,10 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
       for (let j = 1; j <= 4; j++) {
         const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(sIdxVs[i], getIndicesForMsgNames(['liabilities.id'+j], liabilitiesAttributesStruct)[0]);
+        witnessEq.addWitnessRef(
+          sIdxVs[i],
+          getIndicesForMsgNames(['liabilities.id' + j], liabilitiesAttributesStruct)[0]
+        );
         witnessEq.addWitnessRef(sIdxVs[numAssetCredentials + numLiabilityCredentials], counter);
         counter++;
         metaStmtsVerifier.addWitnessEquality(witnessEq);
@@ -414,4 +441,4 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
     checkResult(proof.verifyUsingQuasiProofSpec(proofSpecVerifier));
   }, 120000);
-})
+});

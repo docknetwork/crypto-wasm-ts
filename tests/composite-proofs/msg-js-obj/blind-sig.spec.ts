@@ -4,9 +4,15 @@ import {
   blindSignMessageObject,
   CompositeProofG1,
   genBlindSigRequestAndWitness,
-  getAdaptedSignatureParamsForMessages, getStatementForBlindSigRequest,
-  KeypairG2, MetaStatements, ProofSpecG1,
-  SignatureParamsG1, Statements, verifyMessageObject, Witnesses
+  getAdaptedSignatureParamsForMessages,
+  getStatementForBlindSigRequest,
+  KeypairG2,
+  MetaStatements,
+  ProofSpecG1,
+  SignatureParamsG1,
+  Statements,
+  verifyMessageObject,
+  Witnesses
 } from '../../../src';
 import { attributes1, attributes1Struct, attributes2, attributes2Struct, attributes3, attributes3Struct } from './data';
 import { GlobalEncoder } from './index';

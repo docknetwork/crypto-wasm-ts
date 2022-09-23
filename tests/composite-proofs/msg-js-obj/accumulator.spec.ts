@@ -1,21 +1,29 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   Accumulator,
-  AccumulatorSecretKey, CompositeProofG1, createWitnessEqualityMetaStatement,
+  AccumulatorSecretKey,
+  CompositeProofG1,
+  createWitnessEqualityMetaStatement,
   EncodeFunc,
-  Encoder, encodeRevealedMsgs,
+  Encoder,
+  encodeRevealedMsgs,
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   IAccumulatorState,
-  KeypairG2, MetaStatements,
-  PositiveAccumulator, ProofSpecG1,
+  KeypairG2,
+  MetaStatements,
+  PositiveAccumulator,
+  ProofSpecG1,
   SignatureParamsG1,
   signMessageObject,
   Statement,
   Statements,
-  verifyMessageObject, Witness,
-  WitnessEqualityMetaStatement, Witnesses, WitnessUpdatePublicInfo
+  verifyMessageObject,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses,
+  WitnessUpdatePublicInfo
 } from '../../../src';
 import { checkResult, stringToBytes } from '../../utils';
 import { InMemoryState } from '../../../src/accumulator/in-memory-persistence';

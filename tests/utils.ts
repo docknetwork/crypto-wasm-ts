@@ -1,6 +1,6 @@
-import * as r1csf from "r1csfile";
-import * as fs from "fs";
-import * as path from "path";
+import * as r1csf from 'r1csfile';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   LegoProvingKey,
   LegoProvingKeyUncompressed,
@@ -68,7 +68,7 @@ export function fromLeToBigInt(arr: Uint8Array): BigInt {
 }
 
 export function circomArtifactPath(fileName: string): string {
-  return `${path.resolve("./")}/tests/circom/${fileName}`;
+  return `${path.resolve('./')}/tests/circom/${fileName}`;
 }
 
 export async function parseR1CSFile(r1csName: string): Promise<ParsedR1CSFile> {

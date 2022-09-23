@@ -1,10 +1,23 @@
 import {
   BBSPlusPublicKeyG2,
-  BBSPlusSecretKey, CircomInputs, CompositeProofG1, KeypairG2,
+  BBSPlusSecretKey,
+  CircomInputs,
+  CompositeProofG1,
+  KeypairG2,
   LegoProvingKeyUncompressed,
-  LegoVerifyingKeyUncompressed, MetaStatement, MetaStatements,
-  ParsedR1CSFile, ProofSpecG1, R1CSSnarkSetup, SignatureG1,
-  SignatureParamsG1, Statement, Statements, Witness, WitnessEqualityMetaStatement, Witnesses
+  LegoVerifyingKeyUncompressed,
+  MetaStatement,
+  MetaStatements,
+  ParsedR1CSFile,
+  ProofSpecG1,
+  R1CSSnarkSetup,
+  SignatureG1,
+  SignatureParamsG1,
+  Statement,
+  Statements,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../../src';
 import { generateFieldElementFromNumber, initializeWasm, generateRandomFieldElement } from '@docknetwork/crypto-wasm';
 import { checkResult, getRevealedUnrevealed, getWasmBytes, parseR1CSFile } from '../../utils';
@@ -50,7 +63,13 @@ describe('Proof with R1CS and Circom circuits: set membership check', () => {
   });
 
   it('check for message present in the set', () => {
-    const publicSet = [generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement(), messages[2]];
+    const publicSet = [
+      generateRandomFieldElement(),
+      generateRandomFieldElement(),
+      generateRandomFieldElement(),
+      generateRandomFieldElement(),
+      messages[2]
+    ];
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, new Set<number>());
 
     const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);

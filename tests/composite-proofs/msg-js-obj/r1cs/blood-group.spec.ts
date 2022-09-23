@@ -2,23 +2,31 @@ import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/cry
 import { areUint8ArraysEqual, checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
   BBSPlusPublicKeyG2,
-  CircomInputs, CompositeProofG1,
-  Encoder, encodeRevealedMsgs,
+  CircomInputs,
+  CompositeProofG1,
+  Encoder,
+  encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
   KeypairG2,
   LegoProvingKeyUncompressed,
-  LegoVerifyingKeyUncompressed, MetaStatements,
-  ParsedR1CSFile, ProofSpecG1,
+  LegoVerifyingKeyUncompressed,
+  MetaStatements,
+  ParsedR1CSFile,
+  ProofSpecG1,
   R1CSSnarkSetup,
   SignatureParamsG1,
   SignedMessages,
-  signMessageObject, Statement, Statements,
-  verifyMessageObject, Witness, WitnessEqualityMetaStatement, Witnesses
+  signMessageObject,
+  Statement,
+  Statements,
+  verifyMessageObject,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../../../src';
 import { checkMapsEqual, defaultEncoder } from '../index';
-
 
 // Test for a scenario where a user wants to prove that his blood group is AB- without revealing the blood group.
 // Similar test can be written for other "not-equals" relations like user is not resident of certain city
@@ -45,13 +53,13 @@ describe('Proving that blood group is not AB-', () => {
     lname: undefined,
     verySensitive: {
       email: undefined,
-      SSN: undefined,
+      SSN: undefined
     },
     physical: {
       gender: undefined,
       bloodGroup: undefined
     },
-    'user-id': undefined,
+    'user-id': undefined
   };
 
   // 1st credential where blood group is AB+ and a satisfactory proof can be created
@@ -60,7 +68,7 @@ describe('Proving that blood group is not AB-', () => {
     lname: 'Smith',
     verySensitive: {
       email: 'john.smith@example.com',
-      SSN: '123-456789-0',
+      SSN: '123-456789-0'
     },
     physical: {
       gender: 'male',
@@ -75,13 +83,13 @@ describe('Proving that blood group is not AB-', () => {
     lname: 'Smith',
     verySensitive: {
       email: 'carol.smith@example.com',
-      SSN: '233-456788-1',
+      SSN: '233-456788-1'
     },
     physical: {
       gender: 'female',
       bloodGroup: 'AB-'
     },
-    'user-id': 'user:764-xyz-#',
+    'user-id': 'user:764-xyz-#'
   };
 
   beforeAll(async () => {
@@ -258,4 +266,4 @@ describe('Proving that blood group is not AB-', () => {
 
     expect(proof.verify(proofSpecVerifier).verified).toEqual(false);
   });
-})
+});

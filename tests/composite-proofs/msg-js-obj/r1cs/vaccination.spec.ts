@@ -1,21 +1,33 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
-  BBSPlusPublicKeyG2, BBSPlusSecretKey,
-  CircomInputs, CompositeProofG1, createWitnessEqualityMetaStatement, EncodeFunc,
-  Encoder, encodeRevealedMsgs,
+  BBSPlusPublicKeyG2,
+  BBSPlusSecretKey,
+  CircomInputs,
+  CompositeProofG1,
+  createWitnessEqualityMetaStatement,
+  EncodeFunc,
+  Encoder,
+  encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
   KeypairG2,
   LegoProvingKeyUncompressed,
-  LegoVerifyingKeyUncompressed, MetaStatements,
-  ParsedR1CSFile, ProofSpecG1,
+  LegoVerifyingKeyUncompressed,
+  MetaStatements,
+  ParsedR1CSFile,
+  ProofSpecG1,
   R1CSSnarkSetup,
   SignatureParamsG1,
   SignedMessages,
-  signMessageObject, Statement, Statements,
-  verifyMessageObject, Witness, WitnessEqualityMetaStatement, Witnesses
+  signMessageObject,
+  Statement,
+  Statements,
+  verifyMessageObject,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../../../src';
 import { checkMapsEqual, defaultEncoder } from '../index';
 
@@ -28,11 +40,11 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
   let sigPk: BBSPlusPublicKeyG2;
   let sigSk: BBSPlusSecretKey;
 
-  const secondsInADay = 24*60*60;
+  const secondsInADay = 24 * 60 * 60;
   // Time in seconds as of now
   const now = 1663525800;
-  const time30DaysAgo = now - 30*secondsInADay;
-  const time2DaysAgo = now - 2*secondsInADay;
+  const time30DaysAgo = now - 30 * secondsInADay;
+  const time2DaysAgo = now - 2 * secondsInADay;
 
   let encodedNow: Uint8Array;
   let encodedTime30DaysAgo: Uint8Array;
@@ -48,12 +60,12 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     lname: undefined,
     sensitive: {
       email: undefined,
-      SSN: undefined,
+      SSN: undefined
     },
     vaccination: {
       date: undefined,
-      name: undefined,
-    },
+      name: undefined
+    }
   };
 
   const diseaseTestAttributesStruct = {
@@ -61,13 +73,13 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     lname: undefined,
     sensitive: {
       email: undefined,
-      SSN: undefined,
+      SSN: undefined
     },
     test: {
       date: undefined,
       type: undefined,
-      result: undefined,
-    },
+      result: undefined
+    }
   };
 
   const vaccinationAttributes = {
@@ -75,11 +87,11 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     lname: 'Smith',
     sensitive: {
       email: 'john.smith@example.com',
-      SSN: '123-456789-0',
+      SSN: '123-456789-0'
     },
     vaccination: {
       date: 1663525800,
-      name: 'Moderna',
+      name: 'Moderna'
     }
   };
 
@@ -88,18 +100,18 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     lname: 'Smith',
     sensitive: {
       email: 'john.smith@example.com',
-      SSN: '123-456789-0',
+      SSN: '123-456789-0'
     },
     test: {
       date: 1663525800,
       type: 'Antigen',
-      result: 'Negative',
+      result: 'Negative'
     }
   };
 
   function sign(vDays: number, tDays: number): [SignedMessages, SignedMessages] {
-    vaccinationAttributes.vaccination.date = now - (vDays * secondsInADay);
-    diseaseTestAttributes.test.date = now - (tDays * secondsInADay);
+    vaccinationAttributes.vaccination.date = now - vDays * secondsInADay;
+    diseaseTestAttributes.test.date = now - tDays * secondsInADay;
     const signedV = signMessageObject(vaccinationAttributes, sigSk, label, encoder);
     expect(verifyMessageObject(vaccinationAttributes, signedV.signature, sigPk, label, encoder)).toBe(true);
     const signedT = signMessageObject(diseaseTestAttributes, sigSk, label, encoder);
@@ -139,7 +151,11 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     verifyingKey = pk.getVerifyingKeyUncompressed();
   });
 
-  function check(vaccinationAttributesSigned: SignedMessages, testAttributesSigned: SignedMessages, checkShouldPass: boolean) {
+  function check(
+    vaccinationAttributesSigned: SignedMessages,
+    testAttributesSigned: SignedMessages,
+    checkShouldPass: boolean
+  ) {
     const revealedNamesV = new Set<string>();
     revealedNamesV.add('fname');
     revealedNamesV.add('vaccination.name');
@@ -150,7 +166,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
       revealedNamesV,
       encoder
     );
-    expect(revealedMsgsRawV).toEqual({ fname: 'John', vaccination: {name: 'Moderna'} });
+    expect(revealedMsgsRawV).toEqual({ fname: 'John', vaccination: { name: 'Moderna' } });
 
     const revealedNamesT = new Set<string>();
     revealedNamesT.add('fname');
@@ -163,7 +179,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
       revealedNamesT,
       encoder
     );
-    expect(revealedMsgsRawT).toEqual({ fname: 'John', test: {type: 'Antigen', result: 'Negative'} });
+    expect(revealedMsgsRawT).toEqual({ fname: 'John', test: { type: 'Antigen', result: 'Negative' } });
 
     const statement1 = Statement.bbsSignature(sigParamsV, sigPk, revealedMsgsV, false);
     const statement2 = Statement.bbsSignature(sigParamsT, sigPk, revealedMsgsT, false);
@@ -260,7 +276,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
 
   it('proof verifies when both vaccination and negative test are recent enough', () => {
     // Set both vaccination date and test date to 25 days and 1 day in the past respectively
-    const [vaccinationAttributesSigned, testAttributesSigned] = sign(25, 1)
+    const [vaccinationAttributesSigned, testAttributesSigned] = sign(25, 1);
     check(vaccinationAttributesSigned, testAttributesSigned, true);
   });
 

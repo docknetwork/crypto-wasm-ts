@@ -2,7 +2,8 @@ import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, stringToBytes } from '../../utils';
 import {
   BoundCheckSnarkSetup,
-  CompositeProofG1, encodeRevealedMsgs,
+  CompositeProofG1,
+  encodeRevealedMsgs,
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
@@ -11,7 +12,8 @@ import {
   QuasiProofSpecG1,
   SaverChunkedCommitmentGens,
   SaverDecryptor,
-  SaverEncryptionGens, SignatureG1,
+  SaverEncryptionGens,
+  SignatureG1,
   SignatureParamsG1,
   signMessageObject,
   Statement,

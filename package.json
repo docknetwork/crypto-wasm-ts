@@ -1,10 +1,10 @@
 {
   "name": "@docknetwork/crypto-wasm-ts",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Typescript abstractions over Dock's Rust crypto library's WASM wrapper",
   "homepage": "https://github.com/docknetwork/crypto-wasm-ts",
-  "main": "lib/crypto-wasm-ts/src/index.js",
-  "typings": "lib/crypto-wasm-ts/src/index.d.ts",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf lib/",
@@ -21,10 +21,11 @@
     "lib": "lib"
   },
   "dependencies": {
-    "@docknetwork/crypto-wasm": "0.13.0"
+    "@docknetwork/crypto-wasm": "0.13.0",
+    "flat": "^5.0.2",
+    "@types/flat": "^5.0.2"
   },
   "devDependencies": {
-    "@types/flat": "^5.0.2",
     "@types/jest": "24.0.18",
     "@types/node": "^16.11.6",
     "@typescript-eslint/eslint-plugin": "^5.3.0",
@@ -32,7 +33,6 @@
     "eslint": "^8.1.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.20.2",
-    "flat": "^5.0.2",
     "husky": "^7.0.4",
     "jest": "^27.3.0",
     "prettier": "2.7.1",

@@ -1,13 +1,25 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, stringToBytes } from '../../utils';
 import {
-  CompositeProofG1, createWitnessEqualityMetaStatement,
-  Encoder, encodeRevealedMsgs, getAdaptedSignatureParamsForMessages, getIndicesForMsgNames, getRevealedAndUnrevealed,
+  CompositeProofG1,
+  createWitnessEqualityMetaStatement,
+  Encoder,
+  encodeRevealedMsgs,
+  getAdaptedSignatureParamsForMessages,
+  getIndicesForMsgNames,
+  getRevealedAndUnrevealed,
   isValidMsgStructure,
-  KeypairG2, MetaStatements, ProofSpecG1,
+  KeypairG2,
+  MetaStatements,
+  ProofSpecG1,
   SignatureParamsG1,
-  signMessageObject, Statement, Statements,
-  verifyMessageObject, Witness, WitnessEqualityMetaStatement, Witnesses
+  signMessageObject,
+  Statement,
+  Statements,
+  verifyMessageObject,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../../src';
 import { attributes1, attributes1Struct, attributes2, attributes2Struct, attributes3, attributes3Struct } from './data';
 import { checkMapsEqual, defaultEncoder, signedToHex } from './index';

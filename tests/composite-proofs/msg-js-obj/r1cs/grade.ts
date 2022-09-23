@@ -2,20 +2,29 @@ import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/cry
 import { areUint8ArraysEqual, checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
   BBSPlusPublicKeyG2,
-  CircomInputs, CompositeProofG1,
-  Encoder, encodeRevealedMsgs,
+  CircomInputs,
+  CompositeProofG1,
+  Encoder,
+  encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
   KeypairG2,
   LegoProvingKeyUncompressed,
-  LegoVerifyingKeyUncompressed, MetaStatements,
-  ParsedR1CSFile, ProofSpecG1,
+  LegoVerifyingKeyUncompressed,
+  MetaStatements,
+  ParsedR1CSFile,
+  ProofSpecG1,
   R1CSSnarkSetup,
   SignatureParamsG1,
   SignedMessages,
-  signMessageObject, Statement, Statements,
-  verifyMessageObject, Witness, WitnessEqualityMetaStatement, Witnesses
+  signMessageObject,
+  Statement,
+  Statements,
+  verifyMessageObject,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../../../src';
 import { checkMapsEqual, defaultEncoder } from '../index';
 
@@ -30,7 +39,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
   let signed1: SignedMessages;
   let signed2: SignedMessages;
 
-  const allowedGrades = ['A+', 'A', 'B+', 'B', 'C']
+  const allowedGrades = ['A+', 'A', 'B+', 'B', 'C'];
   let encodedGrades: Uint8Array[];
   let r1cs: ParsedR1CSFile;
   let wasm: Uint8Array;
@@ -53,7 +62,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     email: 'john.smith@example.com',
     SSN: '123-456789-0',
     'user-id': 'user:123-xyz-#',
-    grade: 'B+',
+    grade: 'B+'
   };
 
   // 2nd attribute where grade is E and its not an acceptable grade so proof will fail
@@ -63,7 +72,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     email: 'carol.smith@example.com',
     SSN: '233-456788-1',
     'user-id': 'user:764-xyz-#',
-    grade: 'E',
+    grade: 'E'
   };
 
   beforeAll(async () => {
@@ -71,8 +80,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
 
     // Setup encoder
     encoder = new Encoder(undefined, defaultEncoder);
-    encodedGrades = allowedGrades.map((g: string) => encoder.encodeDefault(g))
-
+    encodedGrades = allowedGrades.map((g: string) => encoder.encodeDefault(g));
 
     // This should ideally be done by the verifier but the verifier can publish only the Circom program and
     // prover can check that the same R1CS and WASM are generated.

@@ -19,7 +19,8 @@ import {
   generateR1CSCircomProverStatement,
   generateR1CSCircomProverStatementFromParamRefs,
   generateR1CSCircomVerifierStatement,
-  generateR1CSCircomVerifierStatementFromParamRefs, R1CS
+  generateR1CSCircomVerifierStatementFromParamRefs,
+  R1CS
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
 import {
@@ -406,14 +407,38 @@ export class Statement {
     return Statement.pedersenCommitmentG1(b, pseudonym.value);
   }
 
-  static r1csCircomProver(r1cs: R1CS | ParsedR1CSFile, wasmBytes: Uint8Array, snarkPk: LegoProvingKeyUncompressed): Uint8Array {
+  static r1csCircomProver(
+    r1cs: R1CS | ParsedR1CSFile,
+    wasmBytes: Uint8Array,
+    snarkPk: LegoProvingKeyUncompressed
+  ): Uint8Array {
     let processedR1cs = getR1CS(r1cs);
-    return generateR1CSCircomProverStatement(processedR1cs.curveName, processedR1cs.numPublic, processedR1cs.numPrivate, processedR1cs.constraints, wasmBytes, snarkPk.value, true);
+    return generateR1CSCircomProverStatement(
+      processedR1cs.curveName,
+      processedR1cs.numPublic,
+      processedR1cs.numPrivate,
+      processedR1cs.constraints,
+      wasmBytes,
+      snarkPk.value,
+      true
+    );
   }
 
-  static r1csCircomProverFromCompressedParams(r1cs: R1CS | ParsedR1CSFile, wasmBytes: Uint8Array, snarkPk: LegoProvingKey): Uint8Array {
+  static r1csCircomProverFromCompressedParams(
+    r1cs: R1CS | ParsedR1CSFile,
+    wasmBytes: Uint8Array,
+    snarkPk: LegoProvingKey
+  ): Uint8Array {
     let processedR1cs = getR1CS(r1cs);
-    return generateR1CSCircomProverStatement(processedR1cs.curveName, processedR1cs.numPublic, processedR1cs.numPrivate, processedR1cs.constraints, wasmBytes, snarkPk.value, false);
+    return generateR1CSCircomProverStatement(
+      processedR1cs.curveName,
+      processedR1cs.numPublic,
+      processedR1cs.numPrivate,
+      processedR1cs.constraints,
+      wasmBytes,
+      snarkPk.value,
+      false
+    );
   }
 
   static r1csCircomProverFromSetupParamRefs(processedR1cs: number, wasmBytes: number, snarkPkRef: number): Uint8Array {

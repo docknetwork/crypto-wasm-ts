@@ -2,20 +2,30 @@ import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/cry
 import { getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
   BBSPlusPublicKeyG2,
-  CircomInputs, CompositeProofG1, EncodeFunc,
-  Encoder, encodeRevealedMsgs,
+  CircomInputs,
+  CompositeProofG1,
+  EncodeFunc,
+  Encoder,
+  encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
   KeypairG2,
   LegoProvingKeyUncompressed,
-  LegoVerifyingKeyUncompressed, MetaStatements,
-  ParsedR1CSFile, ProofSpecG1,
+  LegoVerifyingKeyUncompressed,
+  MetaStatements,
+  ParsedR1CSFile,
+  ProofSpecG1,
   R1CSSnarkSetup,
   SignatureParamsG1,
   SignedMessages,
-  signMessageObject, Statement, Statements,
-  verifyMessageObject, Witness, WitnessEqualityMetaStatement, Witnesses
+  signMessageObject,
+  Statement,
+  Statements,
+  verifyMessageObject,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../../../src';
 import { checkMapsEqual, defaultEncoder } from '../index';
 
@@ -42,10 +52,10 @@ describe('Proving that blood group is not AB-', () => {
     lname: undefined,
     sensitive: {
       email: undefined,
-      SSN: undefined,
+      SSN: undefined
     },
     verySensitive: {
-      publicKey: undefined  // public key will be a big-endian hex string
+      publicKey: undefined // public key will be a big-endian hex string
     }
   };
 
@@ -55,7 +65,7 @@ describe('Proving that blood group is not AB-', () => {
     lname: 'Smith',
     sensitive: {
       email: 'john.smith@example.com',
-      SSN: '123-456789-0',
+      SSN: '123-456789-0'
     },
     verySensitive: {
       publicKey: '4aad01ece9c61230791a0251b1bcb17e06614ed3a27f0e55c060cff7072afd70'
@@ -66,7 +76,7 @@ describe('Proving that blood group is not AB-', () => {
     lname: 'Smith',
     sensitive: {
       email: 'carol.smith@example.com',
-      SSN: '233-456788-1',
+      SSN: '233-456788-1'
     },
     verySensitive: {
       publicKey: '699201275c7b728a133a3cd9135f218aa951a2274432c9381fedd8a6ed7e497a'

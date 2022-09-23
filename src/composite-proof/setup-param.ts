@@ -12,7 +12,8 @@ import {
   generateSetupParamForSaverProvingKey,
   generateSetupParamForSaverVerifyingKey,
   generateSetupParamForLegoProvingKey,
-  generateSetupParamForLegoVerifyingKey, generateSetupParamForR1CS,
+  generateSetupParamForLegoVerifyingKey,
+  generateSetupParamForR1CS,
   R1CS,
   generateSetupParamForBytes,
   generateSetupParamForFieldElemVec
@@ -132,7 +133,14 @@ export class SetupParam extends BytearrayWrapper {
 
   static r1cs(r1cs: R1CS | ParsedR1CSFile): SetupParam {
     let processedR1cs = getR1CS(r1cs);
-    return new SetupParam(generateSetupParamForR1CS(processedR1cs.curveName, processedR1cs.numPublic, processedR1cs.numPrivate, processedR1cs.constraints));
+    return new SetupParam(
+      generateSetupParamForR1CS(
+        processedR1cs.curveName,
+        processedR1cs.numPublic,
+        processedR1cs.numPrivate,
+        processedR1cs.constraints
+      )
+    );
   }
 
   static bytes(b: Uint8Array): SetupParam {

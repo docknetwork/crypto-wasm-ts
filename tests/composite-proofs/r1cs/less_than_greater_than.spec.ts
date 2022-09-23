@@ -2,12 +2,24 @@ import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/cry
 import { checkResult, getRevealedUnrevealed, getWasmBytes, parseR1CSFile, stringToBytes } from '../../utils';
 import {
   BBSPlusPublicKeyG2,
-  BBSPlusSecretKey, CircomInputs, CompositeProofG1, KeypairG2,
+  BBSPlusSecretKey,
+  CircomInputs,
+  CompositeProofG1,
+  KeypairG2,
   LegoProvingKeyUncompressed,
-  LegoVerifyingKeyUncompressed, MetaStatement, MetaStatements,
-  ParsedR1CSFile, QuasiProofSpecG1,
-  R1CSSnarkSetup, SignatureG1,
-  SignatureParamsG1, Statement, Statements, Witness, WitnessEqualityMetaStatement, Witnesses
+  LegoVerifyingKeyUncompressed,
+  MetaStatement,
+  MetaStatements,
+  ParsedR1CSFile,
+  QuasiProofSpecG1,
+  R1CSSnarkSetup,
+  SignatureG1,
+  SignatureParamsG1,
+  Statement,
+  Statements,
+  Witness,
+  WitnessEqualityMetaStatement,
+  Witnesses
 } from '../../../src';
 
 describe('Proof with R1CS and Circom circuits: less than checks', () => {
@@ -201,5 +213,5 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
 
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec));
-  })
+  });
 });

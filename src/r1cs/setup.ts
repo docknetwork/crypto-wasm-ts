@@ -21,7 +21,14 @@ export class R1CSSnarkSetup {
   }
 
   static fromR1CS(processedR1cs: R1CS, commitWitnessCount: number): LegoProvingKey {
-    const pk = r1csSnarkSetup(processedR1cs.curveName, processedR1cs.numPublic, processedR1cs.numPrivate, processedR1cs.constraints as [], commitWitnessCount, false);
+    const pk = r1csSnarkSetup(
+      processedR1cs.curveName,
+      processedR1cs.numPublic,
+      processedR1cs.numPrivate,
+      processedR1cs.constraints as [],
+      commitWitnessCount,
+      false
+    );
     return new LegoProvingKey(pk);
   }
 }

@@ -3,7 +3,8 @@ import {
   EncodeFunc,
   Encoder,
   flattenObjectToKeyValuesList,
-  getSigParamsOfRequiredSize, SignatureG1,
+  getSigParamsOfRequiredSize,
+  SignatureG1,
   SignatureParamsG1,
   SigParamsGetter
 } from '../../../src';
