@@ -114,7 +114,7 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
         id: 'e-123-987-1-22-' + (i + 1).toString(), // Unique id for each receipt
         date: minDate + 1000*(i+1),
         posId: '1234567',
-        amount: minAmount + Math.floor(Math.random() * 100),
+        amount: minAmount + Math.ceil(Math.random() * 100),
         otherDetails: Math.random().toString(36).slice(2, 20),  // https://stackoverflow.com/a/38622545
       });
       signed.push(signMessageObject(receiptsAttributes[i], sk, label, encoder));
@@ -123,13 +123,18 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
   });
 
   it('proof verifies when all receipt ids are different', () => {
-    // Check that receipt ids are indeed different
     const ids = new Set<string>();
     for (let i = 0; i < numReceipts; i++) {
       // @ts-ignore
       ids.add(receiptsAttributes[i].id);
+      //
+      expect(receiptsAttributes[i]['amount'] > minAmount);
+      expect(receiptsAttributes[i]['date'] > minDate);
     }
+    // Check that receipt ids are indeed different
     expect(ids.size).toEqual(numReceipts);
+
+
 
     // Reveal "posId" attribute in all 10 receipts
 
