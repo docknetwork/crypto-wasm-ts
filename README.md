@@ -1259,6 +1259,7 @@ See some of the following tests for Circom usage:
 3. [The blood group is not AB-](./tests/composite-proofs/msg-js-obj/r1cs/blood-group.spec.ts)
 4. [The grade is either A+, A, B+, B or C but nothing else.](./tests/composite-proofs/msg-js-obj/r1cs/grade.ts)
 5. [Either vaccinated less than 30 days ago OR last checked negative less than 2 days ago](./tests/composite-proofs/msg-js-obj/r1cs/vaccination.spec.ts)
-6. [Certain attribute is the preimage of an MiMC hash](./tests/composite-proofs/msg-js-obj/r1cs/mimc-hash.spec.ts)
+6. [All receipts (used as credentials) have different receipt (credential) ids](./tests/composite-proofs/msg-js-obj/r1cs/all_receipts_different.spec.ts). This test shows using multiple circuits in a single proof.
+7. [Certain attribute is the preimage of an MiMC hash](./tests/composite-proofs/msg-js-obj/r1cs/mimc-hash.spec.ts)
 
 The Circom programs and corresponding R1CS and WASM files for the tests are [here](./tests/circom).

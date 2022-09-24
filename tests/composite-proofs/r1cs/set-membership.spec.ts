@@ -84,7 +84,7 @@ describe('Proof with R1CS and Circom circuits: set membership check', () => {
     witnessEq1.addWitnessRef(1, 0);
 
     const metaStatements = new MetaStatements();
-    // metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
+    metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
 
     const proofSpecProver = new ProofSpecG1(proverStatements, metaStatements);
     expect(proofSpecProver.isValid()).toEqual(true);

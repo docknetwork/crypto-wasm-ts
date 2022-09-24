@@ -114,7 +114,7 @@ describe('Proving that blood group is not AB-', () => {
 
   it('signers signs attributes', () => {
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParamsG1.generate(1, label);
+    const params = SignatureParamsG1.generate(1, label);
     const keypair = KeypairG2.generate(params);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
