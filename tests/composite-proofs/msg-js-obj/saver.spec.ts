@@ -168,7 +168,7 @@ describe('Verifiable encryption using SAVER', () => {
     ).toEqual(true);
 
     // Message can be successfully decoded to the original string
-    const decoded = SignatureG1.reversibleDecodeStringMessageForSigning(signed.encodedMessages['SSN']);
+    const decoded = SignatureG1.reversibleDecodeStringForSigning(signed.encodedMessages['SSN']);
     expect(decoded).toEqual(attributes1['SSN']);
   });
 });

@@ -103,8 +103,8 @@ describe('Verifiable encryption of signed messages', () => {
     messages1 = [];
     messages2 = [];
     for (let i = 0; i < messageCount; i++) {
-      messages1.push(SignatureG1.reversibleEncodeStringMessageForSigning(messages1AsStrings[i]));
-      messages2.push(SignatureG1.reversibleEncodeStringMessageForSigning(messages2AsStrings[i]));
+      messages1.push(SignatureG1.reversibleEncodeStringForSigning(messages1AsStrings[i]));
+      messages2.push(SignatureG1.reversibleEncodeStringForSigning(messages2AsStrings[i]));
     }
 
     sigParams1 = SignatureParamsG1.generate(messageCount);
@@ -185,7 +185,7 @@ describe('Verifiable encryption of signed messages', () => {
     decryptAndVerify(proof, 1, messages[encMsgIdx]);
 
     // Message can be successfully decoded to the original string
-    const decoded = SignatureG1.reversibleDecodeStringMessageForSigning(messages[encMsgIdx]);
+    const decoded = SignatureG1.reversibleDecodeStringForSigning(messages[encMsgIdx]);
     expect(decoded).toEqual(messagesAsStrings[encMsgIdx]);
   }
 

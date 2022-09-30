@@ -212,7 +212,7 @@ export function encodeRevealedMsgs(
   encoder: Encoder
 ): Map<number, Uint8Array> {
   const revealed = new Map<number, Uint8Array>();
-  const names = Object.keys(flatten(msgStructure) as object).sort();
+  const names = Object.keys(flatten(msgStructure)).sort();
   const flattenedRevealed = flatten(revealedMsgsRaw) as object;
   Object.entries(flattenedRevealed).forEach(([n, v]) => {
     const i = names.indexOf(n);
@@ -297,7 +297,7 @@ export function blindSignMessageObject(
   labelOrParams: Uint8Array | SignatureParamsG1,
   encoder: Encoder
 ): BlindSignedMessages {
-  const flattenedAllNames = Object.keys(flatten(msgStructure) as object).sort();
+  const flattenedAllNames = Object.keys(flatten(msgStructure)).sort();
   const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
 
   const knownMessagesEncoded = new Map<number, Uint8Array>();

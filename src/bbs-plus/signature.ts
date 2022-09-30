@@ -12,8 +12,14 @@ import {
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
+import LZUTF8 from 'lzutf8';
 
 export abstract class Signature extends BytearrayWrapper {
+  // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
+  static readonly maxEncodedLength = 32;
+  static readonly textEncoder = new TextEncoder();
+  static readonly textDecoder = new TextDecoder();
+
   /**
    * This is an irreversible encoding as a hash function is used to convert a message of
    * arbitrary length to a fixed length encoding.
@@ -39,18 +45,18 @@ export abstract class Signature extends BytearrayWrapper {
    * decryption and thus the decryptor must be able to decrypt it independently. This is different from selective disclosure
    * where the verifier can check that the revealed message is same as the encoded one before even verifying the proof.
    * @param message - utf-8 string of at most 32 bytes
+   * @param compress - whether to compress the text before encoding to bytes. Compression might not always help as things
+   * like public keys, DIDs, UUIDs, etc. are designed to be random and thus won't be compressed
    */
-  static reversibleEncodeStringMessageForSigning(message: string): Uint8Array {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(message);
-    const maxLength = 32;
-    if (bytes.length > maxLength) {
-      throw new Error(`Expects a string with at most ${maxLength} bytes`);
+  static reversibleEncodeStringForSigning(message: string, compress = false): Uint8Array {
+    const bytes = compress ? LZUTF8.compress(message) : Signature.textEncoder.encode(message);
+    if (bytes.length > Signature.maxEncodedLength) {
+      throw new Error(`Expects a string with at most ${Signature.maxEncodedLength} bytes`);
     }
     // Create a little-endian representation
-    const fieldElementBytes = new Uint8Array(maxLength);
+    const fieldElementBytes = new Uint8Array(Signature.maxEncodedLength);
     fieldElementBytes.set(bytes);
-    fieldElementBytes.set(new Uint8Array(maxLength - bytes.length), bytes.length);
+    fieldElementBytes.set(new Uint8Array(Signature.maxEncodedLength - bytes.length), bytes.length);
     return fieldElementAsBytes(fieldElementBytes, true);
   }
 
@@ -60,23 +66,33 @@ export abstract class Signature extends BytearrayWrapper {
    * occurrence of a null characters (UTF-16 code unit 0) so if the encoded (using `this.reversibleEncodeStringMessageForSigning`)
    * string also had a null then the decoded string will be different from it.
    * @param message
+   * @param decompress - whether to decompress the bytes before converting to a string
    */
-  static reversibleDecodeStringMessageForSigning(message: Uint8Array): string {
-    const maxLength = 32;
-    if (message.length > maxLength) {
-      throw new Error(`Expects a message with at most ${maxLength} bytes`);
+  static reversibleDecodeStringForSigning(message: Uint8Array, decompress = false): string {
+    if (message.length > Signature.maxEncodedLength) {
+      throw new Error(`Expects a message with at most ${Signature.maxEncodedLength} bytes`);
     }
-    const decoder = new TextDecoder();
-    const decoded = decoder.decode(message);
-    const chars: string[] = [];
-    for (let i = 0; i < maxLength; i++) {
-      // If a null character found then stop looking further
-      if (decoded.charCodeAt(i) == 0) {
-        break;
+    if (decompress) {
+      const strippedMsg = message.slice(0, message.indexOf(0));
+      const str = LZUTF8.decompress(strippedMsg) as string;
+      if (str.length > Signature.maxEncodedLength) {
+        throw new Error(
+          `Expects a message that can be decompressed to at most ${Signature.maxEncodedLength} bytes but decompressed size was ${str.length}`
+        );
       }
-      chars.push(decoded.charAt(i));
+      return str;
+    } else {
+      const decoded = Signature.textDecoder.decode(message);
+      const chars: string[] = [];
+      for (let i = 0; i < Signature.maxEncodedLength; i++) {
+        // If a null character found then stop looking further
+        if (decoded.charCodeAt(i) == 0) {
+          break;
+        }
+        chars.push(decoded.charAt(i));
+      }
+      return chars.join('');
     }
-    return chars.join('');
   }
 }
 

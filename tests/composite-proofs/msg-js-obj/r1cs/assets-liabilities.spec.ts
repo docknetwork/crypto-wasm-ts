@@ -206,6 +206,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     const sigParamsAssets = getSigParamsForMsgStructure(assetAttributesStruct, label);
     const sigParamsLiabilities = getSigParamsForMsgStructure(liabilitiesAttributesStruct, label);
 
+    console.time('Proof generate');
     // Prepare revealed and unrevealed attributes
     const revealedMsgs: Map<number, Uint8Array>[] = [];
     const unrevealedMsgs: Map<number, Uint8Array>[] = [];
@@ -345,7 +346,9 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     witnesses.add(Witness.r1csCircomWitness(inputs));
 
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proofSpecProver, witnesses);
+    console.timeEnd('Proof generate');
 
+    console.time('Proof verify');
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier: Map<number, Uint8Array>[] = [];
     for (let i = 0; i < numAssetCredentials; i++) {
@@ -440,5 +443,6 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     const proofSpecVerifier = new QuasiProofSpecG1(statementsVerifier, metaStmtsVerifier, verifierSetupParams);
 
     checkResult(proof.verifyUsingQuasiProofSpec(proofSpecVerifier));
+    console.timeEnd('Proof verify');
   }, 120000);
 });

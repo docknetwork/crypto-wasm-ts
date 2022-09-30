@@ -861,10 +861,17 @@ export class UniversalAccumulator extends Accumulator {
     await this.ensureAbsenceOfBatch(nonMembers, state);
     const sk = this.getSecretKey(secretKey);
     const params_ = this.getParams(params);
-    const members = await state.elements();
+
+    // store multiple `d`s for each non-member, outer index of array is the non-member index
+    const dsForAll: Uint8Array[][] = new Array<Uint8Array[]>(nonMembers.length);
+    for (let i = 0; i < nonMembers.length; i++) {
+      dsForAll[i] = new Array<Uint8Array>();
+    }
+
     let currentBatch: Uint8Array[] = [];
-    // store multiple `d`s for each non-member
-    const dsForAll: Uint8Array[][] = new Array(nonMembers.length);
+
+    // Iterate over all members of the accumulator
+    const members = await state.elements();
     for (const member of members) {
       currentBatch.push(member);
       if (currentBatch.length == batchSize) {
@@ -875,12 +882,13 @@ export class UniversalAccumulator extends Accumulator {
         currentBatch = [];
       }
     }
+
     if (currentBatch.length > 0) {
       for (let i = 0; i < nonMembers.length; i++) {
         dsForAll[i].push(universalAccumulatorComputeD(nonMembers[i], currentBatch));
       }
     }
-    const ds: Uint8Array[] = new Array(nonMembers.length);
+    const ds: Uint8Array[] = new Array<Uint8Array>(nonMembers.length);
     for (let i = 0; i < nonMembers.length; i++) {
       // Combine `d`s corresponding to each non-member
       ds[i] = universalAccumulatorCombineMultipleD(dsForAll[i]);

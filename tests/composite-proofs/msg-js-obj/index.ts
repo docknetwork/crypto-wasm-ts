@@ -31,11 +31,11 @@ encoders.set('lessSensitive.department.location.geo.long', Encoder.decimalNumber
 
 encoders.set('SSN', (v: unknown) => {
   // @ts-ignore
-  return SignatureG1.reversibleEncodeStringMessageForSigning(v);
+  return SignatureG1.reversibleEncodeStringForSigning(v);
 });
 encoders.set('sensitive.SSN', (v: unknown) => {
   // @ts-ignore
-  return SignatureG1.reversibleEncodeStringMessageForSigning(v);
+  return SignatureG1.reversibleEncodeStringForSigning(v);
 });
 
 export const GlobalEncoder = new Encoder(encoders, defaultEncoder);

@@ -88,9 +88,13 @@ describe('Proving that yearly income calculated from monthly payslips is less th
   });
 
   it('verifier generates SNARk proving and verifying key', async () => {
+    console.time('Snark setup');
     const pk = R1CSSnarkSetup.fromParsedR1CSFile(r1cs, 12);
+    console.timeEnd('Snark setup');
+    console.time('Decompress keys');
     provingKey = pk.decompress();
     verifyingKey = pk.getVerifyingKeyUncompressed();
+    console.timeEnd('Decompress keys');
   });
 
   it('signers signs attributes', () => {
@@ -135,6 +139,7 @@ describe('Proving that yearly income calculated from monthly payslips is less th
 
     // Prove equality in zero knowledge of last name ("lname" attribute) and Social security number ("SSN" attribute) in all 12 payslips
 
+    console.time('Proof generate');
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
     revealedNames.add('salary.year');
@@ -220,7 +225,9 @@ describe('Proving that yearly income calculated from monthly payslips is less th
     witnesses.add(Witness.r1csCircomWitness(inputs));
 
     const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    console.timeEnd('Proof generate');
 
+    console.time('Proof verify');
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier: Map<number, Uint8Array>[] = [];
     for (let i = 0; i < numPayslips; i++) {
@@ -284,5 +291,6 @@ describe('Proving that yearly income calculated from monthly payslips is less th
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
+    console.timeEnd('Proof verify');
   }, 40000);
 });

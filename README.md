@@ -899,8 +899,8 @@ should be used while encryption, decryption, proving and verification (as shown 
 For signers (issuers of credentials), it's important to encode attributes that need to be verifiably encoded using a reversible 
 encoding as the decryption might happen much later than the proof verification and thus the decryptor should be able to independently 
 recover the actual attributes. This situation is different from selective disclosure where the actual attributes are given to the 
-verifier who can then encode the attributes before verifying the proof. One such pair of functions are `Signature.reversibleEncodeStringMessageForSigning`
-and `Signature.reversibleDecodeStringMessageForSigning` and you can see its use in the above-mentioned test.  
+verifier who can then encode the attributes before verifying the proof. One such pair of functions are `Signature.reversibleEncodeStringForSigning`
+and `Signature.reversibleDecodeStringForSigning` and you can see its use in the above-mentioned test.  
 
 For creating the proof of knowledge of the BBS+ signature and verifiably encrypting an attribute, the prover creates the following 2 statements.
 
@@ -1228,9 +1228,37 @@ For complete example, see [these tests](./tests/composite-proofs/bound-check.spe
 
 ### Working with messages as JS objects
 
-The above interfaces have been found to be a bit difficult to work with when signing messages that are represented as JS objects. 
-[Here](./src/sign-verify-js-objs.ts) are some [utilities](./src/bbs-plus/encoder.ts) to make this task a bit easier. [The tests here](tests/composite-proofs/msg-js-obj) contain 
-plenty of examples.
+The above interfaces have been found to be a bit difficult to work with when signing messages/credentials that are represented as JS objects like
+
+```json
+{
+  "fname": "John",
+  "lname": "Smith",
+  "sensitive": {
+    "secret": "my-secret-that-wont-tell-anyone",
+    "email": "john.smith@example.com",
+    "SSN": "123-456789-0",
+    "user-id": "user:123-xyz-#"
+  },
+  "location": {
+    "country": "USA",
+    "city": "New York"
+  },
+  "timeOfBirth": 1662010849619,
+  "physical": {
+    "height": 181.5,
+    "weight": 210,
+    "BMI": 23.25
+  },
+  "score": -13.5
+}
+```
+
+[Here](./src/sign-verify-js-objs.ts) are some utilities to make this task a bit easier. The idea is to flatten the JSON, sort the keys alphabetically 
+to have a list with deterministic order and then use the [encoder](./src/bbs-plus/encoder.ts) to encode each value as a field element (a number between 0 and another large number).  
+The encoder can be configured to use different encoding functions for different keys to convert values from different types 
+like string, positive or negative integers or decimal numbers to field elements.  
+[The tests here](tests/composite-proofs/msg-js-obj) contain plenty of examples.
 
 
 ### Writing predicates in Circom

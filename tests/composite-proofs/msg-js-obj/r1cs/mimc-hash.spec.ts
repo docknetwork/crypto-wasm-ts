@@ -109,9 +109,13 @@ describe('Proving that blood group is not AB-', () => {
   });
 
   it('verifier generates SNARk proving and verifying key', async () => {
+    console.time('Snark setup');
     const pk = R1CSSnarkSetup.fromParsedR1CSFile(r1cs, 1);
+    console.timeEnd('Snark setup');
+    console.time('Decompress keys');
     provingKey = pk.decompress();
     verifyingKey = pk.getVerifyingKeyUncompressed();
+    console.timeEnd('Decompress keys');
   });
 
   it('signers signs attributes', () => {
@@ -148,6 +152,7 @@ describe('Proving that blood group is not AB-', () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'John' });
 
+    console.time('Proof generate');
     const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
@@ -178,7 +183,9 @@ describe('Proving that blood group is not AB-', () => {
     witnesses.add(witness2);
 
     const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    console.timeEnd('Proof generate');
 
+    console.time('Proof verify');
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
@@ -202,5 +209,6 @@ describe('Proving that blood group is not AB-', () => {
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     expect(proof.verify(proofSpecVerifier).verified).toEqual(doesCheckPass);
+    console.timeEnd('Proof verify');
   }
 });

@@ -69,7 +69,6 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
   const receiptsAttributes: object[] = [];
   const signed: SignedMessages[] = [];
 
-
   beforeAll(async () => {
     await initializeWasm();
 
@@ -112,10 +111,10 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     for (let i = 0; i < numReceipts; i++) {
       receiptsAttributes.push({
         id: 'e-123-987-1-22-' + (i + 1).toString(), // Unique id for each receipt
-        date: minDate + 1000*(i+1),
+        date: minDate + 1000 * (i + 1),
         posId: '1234567',
         amount: minAmount + Math.ceil(Math.random() * 100),
-        otherDetails: Math.random().toString(36).slice(2, 20),  // https://stackoverflow.com/a/38622545
+        otherDetails: Math.random().toString(36).slice(2, 20) // https://stackoverflow.com/a/38622545
       });
       signed.push(signMessageObject(receiptsAttributes[i], sk, label, encoder));
       expect(verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, label, encoder)).toBe(true);
@@ -134,10 +133,9 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     // Check that receipt ids are indeed different
     expect(ids.size).toEqual(numReceipts);
 
-
-
     // Reveal "posId" attribute in all 10 receipts
 
+    console.time('Proof generate');
     const revealedNames = new Set<string>();
     revealedNames.add('posId');
 
@@ -199,13 +197,13 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
       // The input to the greater than check circuit should match the signed "amount" attribute.
       const witnessEq2 = new WitnessEqualityMetaStatement();
       witnessEq2.addWitnessRef(sIdxs[i], getIndicesForMsgNames(['amount'], receiptAttributesStruct)[0]);
-      witnessEq2.addWitnessRef(sIdxs[numReceipts + (i * 2) + 1], 0);
+      witnessEq2.addWitnessRef(sIdxs[numReceipts + i * 2 + 1], 0);
       metaStmtsProver.addWitnessEquality(witnessEq2);
 
       // The input to the greater than check circuit should match the signed "date" attribute.
       const witnessEq3 = new WitnessEqualityMetaStatement();
       witnessEq3.addWitnessRef(sIdxs[i], getIndicesForMsgNames(['date'], receiptAttributesStruct)[0]);
-      witnessEq3.addWitnessRef(sIdxs[numReceipts + (i * 2) + 2], 0);
+      witnessEq3.addWitnessRef(sIdxs[numReceipts + i * 2 + 2], 0);
       metaStmtsProver.addWitnessEquality(witnessEq3);
     }
 
@@ -228,25 +226,21 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     for (let i = 0; i < numReceipts; i++) {
       const inputs2 = new CircomInputs();
       // Add each amount as the circuit input
-      inputs2.setPrivateInput(
-        'a',
-        signed[i].encodedMessages['amount']
-      );
+      inputs2.setPrivateInput('a', signed[i].encodedMessages['amount']);
       inputs2.setPublicInput('b', minAmountEncoded);
       witnesses.add(Witness.r1csCircomWitness(inputs2));
 
       const inputs3 = new CircomInputs();
       // Add each date as the circuit input
-      inputs3.setPrivateInput(
-        'a',
-        signed[i].encodedMessages['date']
-      );
+      inputs3.setPrivateInput('a', signed[i].encodedMessages['date']);
       inputs3.setPublicInput('b', minDateEncoded);
       witnesses.add(Witness.r1csCircomWitness(inputs3));
     }
 
     const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    console.timeEnd('Proof generate');
 
+    console.time('Proof verify');
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier: Map<number, Uint8Array>[] = [];
     for (let i = 0; i < numReceipts; i++) {
@@ -292,12 +286,12 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
 
       const witnessEq2 = new WitnessEqualityMetaStatement();
       witnessEq2.addWitnessRef(sIdxVs[i], getIndicesForMsgNames(['amount'], receiptAttributesStruct)[0]);
-      witnessEq2.addWitnessRef(sIdxVs[numReceipts + (i * 2) + 1], 0);
+      witnessEq2.addWitnessRef(sIdxVs[numReceipts + i * 2 + 1], 0);
       metaStmtsVerifier.addWitnessEquality(witnessEq2);
 
       const witnessEq3 = new WitnessEqualityMetaStatement();
       witnessEq3.addWitnessRef(sIdxVs[i], getIndicesForMsgNames(['date'], receiptAttributesStruct)[0]);
-      witnessEq3.addWitnessRef(sIdxVs[numReceipts + (i * 2) + 2], 0);
+      witnessEq3.addWitnessRef(sIdxVs[numReceipts + i * 2 + 2], 0);
       metaStmtsVerifier.addWitnessEquality(witnessEq3);
     }
 
@@ -305,5 +299,6 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
+    console.timeEnd('Proof verify');
   }, 60000);
 });

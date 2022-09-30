@@ -218,14 +218,35 @@ describe('Accumulators type', () => {
     const params = UniversalAccumulator.generateParams();
     const keypair = UniversalAccumulator.generateKeypair(params);
     const store = new InMemoryInitialElementsStore();
-    const accumulator1 = await UniversalAccumulator.initialize(20, params, keypair.secretKey, store);
+    const maxSize = 20;
+    const accumulator1 = await UniversalAccumulator.initialize(maxSize, params, keypair.secretKey, store);
 
     const fixed = UniversalAccumulator.fixedInitialElements();
-    expect(store.store.size).toEqual(20 + fixed.length + 1);
+    expect(store.store.size).toEqual(maxSize + fixed.length + 1);
     for (const i of fixed) {
       await expect(store.has(i)).resolves.toEqual(true);
     }
     const state1 = new InMemoryUniversalState();
     await runCommonTests(keypair, params, accumulator1, state1, store);
+
+    const nm1 = Accumulator.encodePositiveNumberAsAccumulatorMember(500);
+    const nm1Wit = await accumulator1.nonMembershipWitness(nm1, state1, keypair.secretKey, params, store, 2);
+
+    let tempAccumulator = getAccum(accumulator1) as UniversalAccumulator;
+    expect(tempAccumulator.verifyNonMembershipWitness(nm1, nm1Wit, keypair.publicKey, params)).toEqual(true);
+
+    const nm2 = Accumulator.encodePositiveNumberAsAccumulatorMember(501);
+    const nm3 = Accumulator.encodePositiveNumberAsAccumulatorMember(502);
+
+    const [nm2Wit, nm3Wit] = await accumulator1.nonMembershipWitnessesForBatch(
+      [nm2, nm3],
+      state1,
+      keypair.secretKey,
+      params,
+      store,
+      3
+    );
+    expect(tempAccumulator.verifyNonMembershipWitness(nm2, nm2Wit, keypair.publicKey, params)).toEqual(true);
+    expect(tempAccumulator.verifyNonMembershipWitness(nm3, nm3Wit, keypair.publicKey, params)).toEqual(true);
   });
 });
