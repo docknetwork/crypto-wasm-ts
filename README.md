@@ -1277,11 +1277,10 @@ The workflow is this:
 4. Use the R1CS and WASM files from step 2 and proving key from step 3 to create a LegoGroth16 proof.
 5. Use the verification key from step 3 to verify the LegoGroth16 proof.
 
-
-The steps 1-3 are done by the verifier and the result of these steps, i.e. R1CS file, WASM file, proving and verification key 
-are shared with any potential prover (published or shared P2P). Step 4 is done by the prover and step 5 again by the verifier.
+The steps 1-3 are done by the verifier and the result of these steps, i.e. the program (`.circom` file), R1CS (`.r1cs` file), WASM (`.wasm` file), proving and verification key are shared with any potential prover (published or shared P2P). Step 4 is done by the prover and step 5 again by the verifier.
 
 See some of the following tests for Circom usage:
+
 1. [The yearly income, calculate from monthly payslips is less/greater than certain amount.](./tests/composite-proofs/msg-js-obj/r1cs/yearly-income.spec.ts).
 2. [The sum of assets is greater than the sum of liabilities where are assets and liabilities are calculated from several credentials.](./tests/composite-proofs/msg-js-obj/r1cs/assets-liabilities.spec.ts)
 3. [The blood group is not AB-](./tests/composite-proofs/msg-js-obj/r1cs/blood-group.spec.ts)

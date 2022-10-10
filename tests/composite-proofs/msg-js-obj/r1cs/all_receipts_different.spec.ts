@@ -57,11 +57,11 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
 
   // Structure of receipt
   const receiptAttributesStruct = {
-    id: undefined,
-    date: undefined,
-    posId: undefined,
-    amount: undefined,
-    otherDetails: undefined
+    id: null,
+    date: null,
+    posId: null,
+    amount: null,
+    otherDetails: null
   };
 
   // There are 10 receipts in total

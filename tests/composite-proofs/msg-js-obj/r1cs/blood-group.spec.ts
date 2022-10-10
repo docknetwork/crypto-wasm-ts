@@ -49,17 +49,17 @@ describe('Proving that blood group is not AB-', () => {
 
   // Structure of credential that has the blood group attribute
   const attributesStruct = {
-    fname: undefined,
-    lname: undefined,
+    fname: null,
+    lname: null,
     verySensitive: {
-      email: undefined,
-      SSN: undefined
+      email: null,
+      SSN: null
     },
     physical: {
-      gender: undefined,
-      bloodGroup: undefined
+      gender: null,
+      bloodGroup: null
     },
-    'user-id': undefined
+    'user-id': null
   };
 
   // 1st credential where blood group is AB+ and a satisfactory proof can be created

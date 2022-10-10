@@ -46,36 +46,36 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
   // Structure of asset credential
   const assetAttributesStruct = {
-    fname: undefined,
-    lname: undefined,
+    fname: null,
+    lname: null,
     sensitive: {
-      email: undefined,
-      SSN: undefined
+      email: null,
+      SSN: null
     },
     assets: {
       // 5 different assets, number 5 is arbitrary
-      id1: undefined,
-      id2: undefined,
-      id3: undefined,
-      id4: undefined,
-      id5: undefined
+      id1: null,
+      id2: null,
+      id3: null,
+      id4: null,
+      id5: null
     }
   };
 
   // Structure of liability credential
   const liabilitiesAttributesStruct = {
-    fname: undefined,
-    lname: undefined,
+    fname: null,
+    lname: null,
     sensitive: {
-      email: undefined,
-      SSN: undefined
+      email: null,
+      SSN: null
     },
     liabilities: {
       // 4 different liabilities, number 4 is arbitrary
-      id1: undefined,
-      id2: undefined,
-      id3: undefined,
-      id4: undefined
+      id1: null,
+      id2: null,
+      id3: null,
+      id4: null
     }
   };
 

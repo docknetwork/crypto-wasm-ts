@@ -56,29 +56,29 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
   let provingKey: LegoProvingKeyUncompressed, verifyingKey: LegoVerifyingKeyUncompressed;
 
   const vaccinationAttributesStruct = {
-    fname: undefined,
-    lname: undefined,
+    fname: null,
+    lname: null,
     sensitive: {
-      email: undefined,
-      SSN: undefined
+      email: null,
+      SSN: null
     },
     vaccination: {
-      date: undefined,
-      name: undefined
+      date: null,
+      name: null
     }
   };
 
   const diseaseTestAttributesStruct = {
-    fname: undefined,
-    lname: undefined,
+    fname: null,
+    lname: null,
     sensitive: {
-      email: undefined,
-      SSN: undefined
+      email: null,
+      SSN: null
     },
     test: {
-      date: undefined,
-      type: undefined,
-      result: undefined
+      date: null,
+      type: null,
+      result: null
     }
   };
 

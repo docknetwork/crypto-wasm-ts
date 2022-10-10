@@ -47,12 +47,12 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
   let provingKey: LegoProvingKeyUncompressed, verifyingKey: LegoVerifyingKeyUncompressed;
 
   const attributesStruct = {
-    fname: undefined,
-    lname: undefined,
-    email: undefined,
-    SSN: undefined,
-    'user-id': undefined,
-    grade: undefined
+    fname: null,
+    lname: null,
+    email: null,
+    SSN: null,
+    'user-id': null,
+    grade: null
   };
 
   // 1st attribute where grade is B+ and a satisfactory proof can be created

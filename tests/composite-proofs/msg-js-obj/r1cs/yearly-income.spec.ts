@@ -45,19 +45,19 @@ describe('Proving that yearly income calculated from monthly payslips is less th
   let provingKey: LegoProvingKeyUncompressed, verifyingKey: LegoVerifyingKeyUncompressed;
 
   const payslipAttributesStruct = {
-    fname: undefined,
-    lname: undefined,
+    fname: null,
+    lname: null,
     sensitive: {
-      email: undefined,
-      SSN: undefined
+      email: null,
+      SSN: null
     },
-    employer: undefined,
-    empId: undefined,
+    employer: null,
+    empId: null,
     salary: {
-      paySlipId: undefined,
-      year: undefined,
-      month: undefined,
-      amount: undefined
+      paySlipId: null,
+      year: null,
+      month: null,
+      amount: null
     }
   };
 

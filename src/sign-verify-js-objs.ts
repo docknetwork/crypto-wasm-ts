@@ -15,12 +15,20 @@ import {
   WitnessEqualityMetaStatement
 } from './index';
 
+// The following `ts-ignore` shouldn't be necessary as per https://github.com/microsoft/TypeScript/pull/33050 but it still is (on TS 4.8)
+// @ts-ignore
+export type MessageStructure = Record<string, null | MessageStructure>;
+
+export function flattenMessageStructure(msgStructure: MessageStructure): object {
+  return flatten(msgStructure);
+}
+
 export function getAdaptedSignatureParamsForMessages(
   params: SignatureParamsG1,
-  msgStructure: object
+  msgStructure: MessageStructure
 ): SignatureParamsG1 {
-  const flattened = flatten(msgStructure);
-  return params.adapt(Object.keys(flattened as object).length);
+  const flattened = flattenMessageStructure(msgStructure);
+  return params.adapt(Object.keys(flattened).length);
 }
 
 export class SigParamsGetter {
@@ -83,11 +91,10 @@ export function getSigParamsOfRequiredSize(
 }
 
 export function getSigParamsForMsgStructure(
-  msgStructure: object,
+  msgStructure: MessageStructure,
   labelOrParams: Uint8Array | SignatureParamsG1
 ): SignatureParamsG1 {
-  const flattened = flatten(msgStructure);
-  const msgCount = Object.keys(flattened as object).length;
+  const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
   return getSigParamsOfRequiredSize(msgCount, labelOrParams);
 }
 
@@ -136,7 +143,7 @@ export function signMessageObject(
 
 /**
  * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
- * to signing and then verifies the sigature.
+ * to signing and then verifies the signature.
  * @param messages
  * @param signature
  * @param publicKey
@@ -208,11 +215,11 @@ export function getRevealedAndUnrevealed(
  */
 export function encodeRevealedMsgs(
   revealedMsgsRaw: object,
-  msgStructure: object,
+  msgStructure: MessageStructure,
   encoder: Encoder
 ): Map<number, Uint8Array> {
   const revealed = new Map<number, Uint8Array>();
-  const names = Object.keys(flatten(msgStructure)).sort();
+  const names = Object.keys(flattenMessageStructure(msgStructure)).sort();
   const flattenedRevealed = flatten(revealedMsgsRaw) as object;
   Object.entries(flattenedRevealed).forEach(([n, v]) => {
     const i = names.indexOf(n);
@@ -293,11 +300,11 @@ export function blindSignMessageObject(
   blindSigRequest: BlindSignatureRequest,
   knownMessages: object,
   secretKey: BBSPlusSecretKey,
-  msgStructure: object,
+  msgStructure: MessageStructure,
   labelOrParams: Uint8Array | SignatureParamsG1,
   encoder: Encoder
 ): BlindSignedMessages {
-  const flattenedAllNames = Object.keys(flatten(msgStructure)).sort();
+  const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
   const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
 
   const knownMessagesEncoded = new Map<number, Uint8Array>();
@@ -341,7 +348,7 @@ export function blindSignMessageObject(
  * that are to be proved equal and the message structure.
  */
 export function createWitnessEqualityMetaStatement(
-  equality: Map<number, [msgNames: string[], msgStructure: object]>
+  equality: Map<number, [msgNames: string[], msgStructure: MessageStructure]>
 ): WitnessEqualityMetaStatement {
   const ms = new WitnessEqualityMetaStatement();
   for (const [sIdx, [names, struct]] of equality.entries()) {

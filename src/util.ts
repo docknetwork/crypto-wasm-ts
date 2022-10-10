@@ -5,6 +5,7 @@
  */
 import { generateFieldElementFromBytes, generateRandomFieldElement } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
+import { flattenMessageStructure, MessageStructure } from './sign-verify-js-objs';
 
 export function jsonObjToUint8Array(json: string): Uint8Array {
   const obj = JSON.parse(json);
@@ -60,7 +61,8 @@ export function randomFieldElement(seed?: Uint8Array): Uint8Array {
 
 /**
  * Takes an object, nested or otherwise and flattens it to list. Returns 2 arrays, 1st array contains keys in alphabetical
- * sorted order and 2nd contains the values in the order of the keys. Both arrays have same size.
+ * sorted order and 2nd contains the values in the order of the keys. Both arrays have same size. Nested keys have their
+ * parent key name prefixed with a dot, eg for key `lat` in `{location: {lat: 25.01, long: 30.02} }`, it becomes `location.lat`
  * @param obj
  * @param flattenOptions
  */
@@ -77,8 +79,8 @@ export function flattenObjectToKeyValuesList(obj: object, flattenOptions = undef
  * @param messages
  * @param msgStructure
  */
-export function isValidMsgStructure(messages: object, msgStructure: object): boolean {
-  const namesInStruct = Object.keys(flatten(msgStructure) as object).sort();
+export function isValidMsgStructure(messages: object, msgStructure: MessageStructure): boolean {
+  const namesInStruct = Object.keys(flattenMessageStructure(msgStructure)).sort();
   const namesInMsgs = Object.keys(flatten(messages) as object).sort();
   return (
     namesInMsgs.length === namesInStruct.length &&
@@ -99,8 +101,8 @@ export function isValidMsgStructure(messages: object, msgStructure: object): boo
  * @param msgStructure
  * @returns Returns in same order as given names in `msgNames`
  */
-export function getIndicesForMsgNames(msgNames: string[], msgStructure: object): number[] {
-  const allNames = Object.keys(flatten(msgStructure) as object).sort();
+export function getIndicesForMsgNames(msgNames: string[], msgStructure: MessageStructure): number[] {
+  const allNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
   return msgNames.map((n) => {
     const i = allNames.indexOf(n);
     if (i === -1) {

@@ -48,14 +48,14 @@ describe('Proving that blood group is not AB-', () => {
   let provingKey: LegoProvingKeyUncompressed, verifyingKey: LegoVerifyingKeyUncompressed;
 
   const attributesStruct = {
-    fname: undefined,
-    lname: undefined,
+    fname: null,
+    lname: null,
     sensitive: {
-      email: undefined,
-      SSN: undefined
+      email: null,
+      SSN: null
     },
     verySensitive: {
-      publicKey: undefined // public key will be a big-endian hex string
+      publicKey: null // public key will be a big-endian hex string
     }
   };
 

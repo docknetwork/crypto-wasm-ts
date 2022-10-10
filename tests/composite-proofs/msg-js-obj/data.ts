@@ -1,7 +1,6 @@
-// 1st attribute set. This is a flat JS object.
-import { bytearrayToHex, SignatureG1, SignedMessages } from '../../../src';
-import { stringToBytes } from '../../utils';
+// Data used by various tests
 
+// 1st attribute set. This is a flat JS object.
 export const attributes1 = {
   fname: 'John',
   lname: 'Smith',
@@ -20,22 +19,22 @@ export const attributes1 = {
 
 // This is the structure of `attributes1`. This does not contain any attribute values but contains the names with the
 // same kind of nesting as `attributes1`. For any attribute set, this should be known to all system participants, i.e. signer,
-// prover and verifier. A similar alternative of defining the structure would be to replace the "undefined" value with a reference
+// prover and verifier. A similar alternative of defining the structure would be to replace the "null" value with a reference
 // to the encoding function for that field.
 export const attributes1Struct = {
-  fname: undefined,
-  lname: undefined,
-  email: undefined,
-  SSN: undefined,
-  'user-id': undefined,
-  country: undefined,
-  city: undefined,
-  timeOfBirth: undefined,
-  height: undefined,
-  weight: undefined,
-  BMI: undefined,
-  score: undefined,
-  secret: undefined
+  fname: null,
+  lname: null,
+  email: null,
+  SSN: null,
+  'user-id': null,
+  country: null,
+  city: null,
+  timeOfBirth: null,
+  height: null,
+  weight: null,
+  BMI: null,
+  score: null,
+  secret: null
 };
 
 // 2nd attribute set. This is a nested JS object with 1 level of nesting.
@@ -64,25 +63,25 @@ export const attributes2 = {
 // This is the structure of `attributes2`. Similar to `attributes1Struct`, does not contain attribute values but the names
 // and the structure of `attributes2`
 export const attributes2Struct = {
-  fname: undefined,
-  lname: undefined,
+  fname: null,
+  lname: null,
   sensitive: {
-    secret: undefined,
-    email: undefined,
-    SSN: undefined,
-    'user-id': undefined
+    secret: null,
+    email: null,
+    SSN: null,
+    'user-id': null
   },
   location: {
-    country: undefined,
-    city: undefined
+    country: null,
+    city: null
   },
-  timeOfBirth: undefined,
+  timeOfBirth: null,
   physical: {
-    height: undefined,
-    weight: undefined,
-    BMI: undefined
+    height: null,
+    weight: null,
+    BMI: null
   },
-  score: undefined
+  score: null
 };
 
 // 3rd attribute set. This is an even more nested JS object with many levels of nesting.
@@ -119,32 +118,32 @@ export const attributes3 = {
 
 // This is the structure of `attributes3`.
 export const attributes3Struct = {
-  fname: undefined,
-  lname: undefined,
+  fname: null,
+  lname: null,
   sensitive: {
     very: {
-      secret: undefined
+      secret: null
     },
-    email: undefined,
-    phone: undefined,
-    SSN: undefined,
-    'employee-id': undefined
+    email: null,
+    phone: null,
+    SSN: null,
+    'employee-id': null
   },
   lessSensitive: {
     location: {
-      country: undefined,
-      city: undefined
+      country: null,
+      city: null
     },
     department: {
-      name: undefined,
+      name: null,
       location: {
-        name: undefined,
+        name: null,
         geo: {
-          lat: undefined,
-          long: undefined
+          lat: null,
+          long: null
         }
       }
     }
   },
-  rank: undefined
+  rank: null
 };
