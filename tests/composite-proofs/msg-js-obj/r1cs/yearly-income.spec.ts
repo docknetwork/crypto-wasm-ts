@@ -29,7 +29,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual, defaultEncoder } from '../index';
+import { checkMapsEqual } from '../index';
+import { defaultEncoder } from '../data-and-encoder';
 
 // Test for a scenario where a user wants to prove that his yearly income is less than 25000 where his income comprises
 // of 12 payslip credentials, 1 for each month's.
@@ -122,7 +123,7 @@ describe('Proving that yearly income calculated from monthly payslips is less th
         }
       });
       signed.push(signMessageObject(payslipAttributes[i], sk, label, encoder));
-      expect(verifyMessageObject(payslipAttributes[i], signed[i].signature, sigPk, label, encoder)).toBe(true);
+      checkResult(verifyMessageObject(payslipAttributes[i], signed[i].signature, sigPk, label, encoder));
     }
   });
 

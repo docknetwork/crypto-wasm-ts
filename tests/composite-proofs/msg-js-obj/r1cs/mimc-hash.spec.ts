@@ -1,5 +1,5 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
   BBSPlusPublicKeyG2,
   CircomInputs,
@@ -27,7 +27,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual, defaultEncoder } from '../index';
+import { checkMapsEqual } from '../index';
+import { defaultEncoder } from '../data-and-encoder';
 
 // Test for a scenario where user wants to prove that certain attribute of his credential is the preimage of a public MiMC hash.
 describe('Proving that blood group is not AB-', () => {
@@ -126,10 +127,10 @@ describe('Proving that blood group is not AB-', () => {
     sigPk = keypair.publicKey;
 
     signed1 = signMessageObject(attributes1, sk, label, encoder);
-    expect(verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder));
 
     signed2 = signMessageObject(attributes2, sk, label, encoder);
-    expect(verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder));
   });
 
   it('proof verifies when public key hash matches the expected hash', () => {

@@ -7,13 +7,13 @@ import {
   BlindSignatureG1,
   BlindSignatureRequest,
   Encoder,
-  getIndicesForMsgNames,
   SignatureG1,
   SignatureParamsG1,
   Statement,
   Witness,
   WitnessEqualityMetaStatement
 } from './index';
+import { VerifyResult } from '@docknetwork/crypto-wasm';
 
 // The following `ts-ignore` shouldn't be necessary as per https://github.com/microsoft/TypeScript/pull/33050 but it still is (on TS 4.8)
 // @ts-ignore
@@ -156,13 +156,12 @@ export function verifyMessageObject(
   publicKey: BBSPlusPublicKeyG2,
   labelOrParams: Uint8Array | SignatureParamsG1,
   encoder: Encoder
-): boolean {
+): VerifyResult {
   const [_, encodedValues] = encoder.encodeMessageObject(messages);
   const msgCount = encodedValues.length;
 
   const sigParams = getSigParamsOfRequiredSize(msgCount, labelOrParams);
-  const result = signature.verify(encodedValues, publicKey, sigParams, false);
-  return result.verified;
+  return signature.verify(encodedValues, publicKey, sigParams, false);
 }
 
 /**
@@ -340,6 +339,44 @@ export function blindSignMessageObject(
     encodedMessages: encodedMessages,
     signature: blindSig
   };
+}
+
+/**
+ * Check if the given structure is compatible with the given messages object.
+ * @param messages
+ * @param msgStructure
+ */
+export function isValidMsgStructure(messages: object, msgStructure: MessageStructure): boolean {
+  const namesInStruct = Object.keys(flattenMessageStructure(msgStructure)).sort();
+  const namesInMsgs = Object.keys(flatten(messages) as object).sort();
+  return (
+    namesInMsgs.length === namesInStruct.length &&
+    (() => {
+      for (let i = 0; i <= namesInMsgs.length; i++) {
+        if (namesInStruct[i] !== namesInMsgs[i]) {
+          return false;
+        }
+      }
+      return true;
+    })()
+  );
+}
+
+/**
+ * Flattens the object `msgStructure` and returns the indices of names given in `msgNames`
+ * @param msgNames
+ * @param msgStructure
+ * @returns Returns in same order as given names in `msgNames`
+ */
+export function getIndicesForMsgNames(msgNames: string[], msgStructure: MessageStructure): number[] {
+  const allNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
+  return msgNames.map((n) => {
+    const i = allNames.indexOf(n);
+    if (i === -1) {
+      throw new Error(`Message name ${n} was not found`);
+    }
+    return i;
+  });
 }
 
 /**

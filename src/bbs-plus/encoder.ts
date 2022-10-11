@@ -154,6 +154,17 @@ export class Encoder {
   }
 
   /**
+   * Returns a reversible encoding function to be used on a string message. The output can of the `EncodeFunc` can be
+   * reversed.
+   * @param compress
+   */
+  static reversibleEncoderString(compress = false): EncodeFunc {
+    return (v: unknown) => {
+      return SignatureG1.reversibleEncodeStringForSigning(v as string, compress);
+    };
+  }
+
+  /**
    * Returns a function that can convert any number to a positive integer when its minimum negative value and maximum
    * decimal places are known. Does that by adding an offset of abs(minimum) and then multiplying it by 10^max_decimal_places
    * @param minimum
@@ -185,6 +196,17 @@ export class Encoder {
     const f = Encoder.decimalNumberToPositiveInt(minimum, maxDecimalPlaces);
     return (v: unknown) => {
       return SignatureG1.encodePositiveNumberForSigning(f(v));
+    };
+  }
+
+  /**
+   * Returns an encoding function to convert utf-8 string message. It might fail of the encoding target cannot be made a string
+   */
+  static defaultEncodeFunc(): EncodeFunc {
+    const te = new TextEncoder();
+    return (v: unknown) => {
+      // @ts-ignore
+      return SignatureG1.encodeMessageForSigning(te.encode(v.toString()));
     };
   }
 

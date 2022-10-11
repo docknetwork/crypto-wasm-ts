@@ -27,8 +27,8 @@ import {
 } from '../../../src';
 import { checkResult, stringToBytes } from '../../utils';
 import { InMemoryState } from '../../../src/accumulator/in-memory-persistence';
-import { attributes1, attributes1Struct, attributes2, attributes2Struct } from './data';
-import { checkMapsEqual, defaultEncoder } from './index';
+import { attributes1, attributes1Struct, attributes2, attributes2Struct, defaultEncoder } from './data-and-encoder';
+import { checkMapsEqual } from './index';
 
 describe('Accumulator', () => {
   beforeAll(async () => {
@@ -120,7 +120,7 @@ describe('Accumulator', () => {
       accumState1
     );
 
-    expect(verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator1 = PositiveAccumulator.fromAccumulated(accumulator1.accumulated);
@@ -143,7 +143,7 @@ describe('Accumulator', () => {
       accumState2
     );
 
-    expect(verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator2 = PositiveAccumulator.fromAccumulated(accumulator2.accumulated);

@@ -26,7 +26,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual, defaultEncoder } from '../index';
+import { checkMapsEqual } from '../index';
+import { defaultEncoder } from '../data-and-encoder';
 
 // Test for scenario where the user wants to prove that his grade belongs/does not belong to the given set.
 // Similar test can be written for other "set-membership" relations like user is not resident of certain cities
@@ -102,10 +103,10 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     sigPk = keypair.publicKey;
 
     signed1 = signMessageObject(attributes1, sk, label, encoder);
-    expect(verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder));
 
     signed2 = signMessageObject(attributes2, sk, label, encoder);
-    expect(verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder));
   });
 
   it('proof verifies when grade is either A+, A, B+, B or C', () => {

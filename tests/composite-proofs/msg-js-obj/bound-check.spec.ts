@@ -22,8 +22,16 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
-import { attributes1, attributes1Struct, attributes2, attributes2Struct, attributes3, attributes3Struct } from './data';
-import { checkMapsEqual, GlobalEncoder } from './index';
+import {
+  attributes1,
+  attributes1Struct,
+  attributes2,
+  attributes2Struct,
+  attributes3,
+  attributes3Struct,
+  GlobalEncoder
+} from './data-and-encoder';
+import { checkMapsEqual } from './index';
 
 describe('Range proof using LegoGroth16', () => {
   beforeAll(async () => {
@@ -63,13 +71,13 @@ describe('Range proof using LegoGroth16', () => {
 
     // Sign and verify all signatures
     const signed1 = signMessageObject(attributes1, sk1, label1, GlobalEncoder);
-    expect(verifyMessageObject(attributes1, signed1.signature, pk1, label1, GlobalEncoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes1, signed1.signature, pk1, label1, GlobalEncoder));
 
     const signed2 = signMessageObject(attributes2, sk2, label2, GlobalEncoder);
-    expect(verifyMessageObject(attributes2, signed2.signature, pk2, label2, GlobalEncoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes2, signed2.signature, pk2, label2, GlobalEncoder));
 
     const signed3 = signMessageObject(attributes3, sk3, label3, GlobalEncoder);
-    expect(verifyMessageObject(attributes3, signed3.signature, pk3, label3, GlobalEncoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes3, signed3.signature, pk3, label3, GlobalEncoder));
 
     // Verifier creates SNARK proving and verification key
     const pk = BoundCheckSnarkSetup();

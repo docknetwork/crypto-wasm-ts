@@ -29,7 +29,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual, defaultEncoder } from '../index';
+import { checkMapsEqual } from '../index';
+import { defaultEncoder } from '../data-and-encoder';
 
 // Test for a scenario where a user have 20 assets and liabilities, in different credentials (signed documents). The user
 // proves that the sum of his assets is greater than sum of liabilities by 10000 without revealing actual values of either.
@@ -152,7 +153,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
         }
       });
       signedAssets.push(signMessageObject(assetAttributes[i], sk, label, encoder));
-      expect(verifyMessageObject(assetAttributes[i], signedAssets[i].signature, sigPk, label, encoder)).toBe(true);
+      checkResult(verifyMessageObject(assetAttributes[i], signedAssets[i].signature, sigPk, label, encoder));
     }
 
     for (let i = 0; i < numLiabilityCredentials; i++) {
@@ -171,9 +172,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
         }
       });
       signedLiabilities.push(signMessageObject(liabilityAttributes[i], sk, label, encoder));
-      expect(verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, label, encoder)).toBe(
-        true
-      );
+      checkResult(verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, label, encoder));
     }
   });
 

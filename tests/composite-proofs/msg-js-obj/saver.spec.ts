@@ -23,8 +23,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
-import { attributes1, attributes1Struct } from './data';
-import { checkMapsEqual, GlobalEncoder } from './index';
+import { attributes1, attributes1Struct, GlobalEncoder } from './data-and-encoder';
+import { checkMapsEqual } from './index';
 
 describe('Verifiable encryption using SAVER', () => {
   beforeAll(async () => {
@@ -44,7 +44,7 @@ describe('Verifiable encryption using SAVER', () => {
     const pk = keypair.publicKey;
 
     const signed = signMessageObject(attributes1, sk, label, GlobalEncoder);
-    expect(verifyMessageObject(attributes1, signed.signature, pk, label, GlobalEncoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes1, signed.signature, pk, label, GlobalEncoder));
 
     // Setup for decryptor
     const chunkBitSize = 16;

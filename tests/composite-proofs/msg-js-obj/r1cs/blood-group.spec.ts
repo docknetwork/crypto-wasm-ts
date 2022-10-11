@@ -26,7 +26,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual, defaultEncoder } from '../index';
+import { checkMapsEqual } from '../index';
+import { defaultEncoder } from '../data-and-encoder';
 
 // Test for a scenario where a user wants to prove that his blood group is AB- without revealing the blood group.
 // Similar test can be written for other "not-equals" relations like user is not resident of certain city
@@ -120,10 +121,10 @@ describe('Proving that blood group is not AB-', () => {
     sigPk = keypair.publicKey;
 
     signed1 = signMessageObject(attributes1, sk, label, encoder);
-    expect(verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder));
 
     signed2 = signMessageObject(attributes2, sk, label, encoder);
-    expect(verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder));
   });
 
   it('proof verifies when blood groups is not AB-', () => {

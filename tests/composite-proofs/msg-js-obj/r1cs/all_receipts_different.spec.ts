@@ -28,7 +28,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual, defaultEncoder } from '../index';
+import { checkMapsEqual } from '../index';
+import { defaultEncoder } from '../data-and-encoder';
 
 // Test for a scenario where a user wants to prove that he has 10 receipts where:
 // 1. all are unique because they have different ids
@@ -117,7 +118,7 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
         otherDetails: Math.random().toString(36).slice(2, 20) // https://stackoverflow.com/a/38622545
       });
       signed.push(signMessageObject(receiptsAttributes[i], sk, label, encoder));
-      expect(verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, label, encoder)).toBe(true);
+      checkResult(verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, label, encoder));
     }
   });
 

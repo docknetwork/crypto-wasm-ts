@@ -1,6 +1,9 @@
 // Data used by various tests
 
 // 1st attribute set. This is a flat JS object.
+import { EncodeFunc, Encoder, SignatureG1 } from '../../../src';
+import { stringToBytes } from '../../utils';
+
 export const attributes1 = {
   fname: 'John',
   lname: 'Smith',
@@ -147,3 +150,46 @@ export const attributes3Struct = {
   },
   rank: null
 };
+
+// The default encoder
+export const defaultEncoder = (v: unknown) => {
+  // @ts-ignore
+  return SignatureG1.encodeMessageForSigning(stringToBytes(v.toString()));
+};
+
+// Create an encoder for attributes with various kinds of values.
+export const encoders = new Map<string, EncodeFunc>();
+
+encoders.set('timeOfBirth', Encoder.positiveIntegerEncoder());
+encoders.set('weight', Encoder.positiveIntegerEncoder());
+encoders.set('physical.weight', Encoder.positiveIntegerEncoder());
+
+// height contains at most 1 decimal place
+encoders.set('height', Encoder.positiveDecimalNumberEncoder(1));
+encoders.set('physical.height', Encoder.positiveDecimalNumberEncoder(1));
+
+// BMI contains at most 2 decimal place
+encoders.set('BMI', Encoder.positiveDecimalNumberEncoder(2));
+encoders.set('physical.BMI', Encoder.positiveDecimalNumberEncoder(2));
+
+// score contains at most 1 decimal place and its minimum value is -100
+encoders.set('score', Encoder.decimalNumberEncoder(-100, 1));
+
+// latitude contains at most 3 decimal places (in this example) and its minimum value is -90
+encoders.set('lessSensitive.department.location.geo.lat', Encoder.decimalNumberEncoder(-90, 3));
+
+// longitude contains at most 3 decimal places (in this example) and its minimum value is -180
+encoders.set('lessSensitive.department.location.geo.long', Encoder.decimalNumberEncoder(-180, 3));
+
+encoders.set('SSN', (v: unknown) => {
+  // @ts-ignore
+  return SignatureG1.reversibleEncodeStringForSigning(v);
+});
+encoders.set('sensitive.SSN', (v: unknown) => {
+  // @ts-ignore
+  return SignatureG1.reversibleEncodeStringForSigning(v);
+});
+
+encoders.set('rank', Encoder.positiveIntegerEncoder());
+
+export const GlobalEncoder = new Encoder(encoders, Encoder.defaultEncodeFunc());
