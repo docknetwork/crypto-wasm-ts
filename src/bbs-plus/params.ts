@@ -106,8 +106,18 @@ export class SignatureParamsG1 extends SignatureParams {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
-    // Possible optimization: if `newMsgCount` is smaller than current size, then WASM call can be avoided by dropping some `h`
-    const newParams = bbsAdaptSigParamsG1ForMsgCount(this.value, this.label, newMsgCount);
+    let newParams;
+
+    if (newMsgCount <= this.supportedMessageCount()) {
+      newParams = {
+        g1: this.value.g1,
+        g2: this.value.g2,
+        h_0: this.value.h_0,
+        h: this.value.h.slice(0, newMsgCount)
+      };
+    } else {
+      newParams = bbsAdaptSigParamsG1ForMsgCount(this.value, this.label, newMsgCount);
+    }
     return new SignatureParamsG1(newParams, this.label);
   }
 

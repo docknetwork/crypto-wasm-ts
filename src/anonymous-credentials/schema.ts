@@ -3,7 +3,7 @@ import { EncodeFunc, Encoder } from '../bbs-plus';
 import { isPositiveInteger } from '../util';
 import {
   CRED_VERSION_STR,
-  REGISTRY_ID_STR,
+  REGISTRY_ID_STR, REV_CHECK_STR,
   SCHEMA_STR,
   STATUS_STR,
   StringOrObject,
@@ -69,6 +69,7 @@ import { flatten } from 'flat';
   },
   $credentialStatus: {
     $registryId: {type: "string"},
+    $revocationCheck: {type: "string"},
     employeeId: {type: "string"}
   }
  }
@@ -102,6 +103,8 @@ export class CredentialSchema extends Versioned {
   encoder: Encoder;
 
   constructor(schema: StringOrObject) {
+    // This functions flattens schema object twice but the repetition can be avoid. Keeping this deliberately to keep
+    // the code clear.
     const schem = typeof schema === 'string' ? JSON.parse(schema) : schema;
     CredentialSchema.validate(schem);
 
@@ -144,7 +147,7 @@ export class CredentialSchema extends Versioned {
   }
 
   static validate(schema: object) {
-    // Following 2 fields could have been implicit but deliberately being explicit for clarity
+    // Following 2 fields could have been implicit but being explicit for clarity
     this.validateStringType(schema, CRED_VERSION_STR);
     this.validateStringType(schema, SCHEMA_STR);
 
@@ -155,6 +158,8 @@ export class CredentialSchema extends Versioned {
 
     if (schema[STATUS_STR] !== undefined) {
       this.validateStringType(schema[STATUS_STR], REGISTRY_ID_STR);
+      this.validateStringType(schema[STATUS_STR], REV_CHECK_STR);
+      // Not validating anything else as the field name denoting the registry member could be anything
     }
   }
 
@@ -206,11 +211,18 @@ export class CredentialSchema extends Versioned {
     }
   }
 
+  static bare(): object {
+    const schema = {};
+    schema[CRED_VERSION_STR] = {type: "string"};
+    schema[SCHEMA_STR] = {type: "string"};
+    return schema;
+  }
+
   toJSON(): string {
     return JSON.stringify({$version: this.version, ...this.schema})
   }
 
-  private static flattenSchema(schema: object): [string[], unknown[]] {
+  static flattenSchema(schema: object): [string[], unknown[]] {
     const flattened = {};
     const temp = flatten(schema) as object;
     for (const k of Object.keys(temp)) {

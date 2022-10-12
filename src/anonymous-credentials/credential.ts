@@ -3,8 +3,17 @@ import { signMessageObject, verifyMessageObject } from '../sign-verify-js-objs';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
-import { CRED_VERSION_STR, SCHEMA_STR, STATUS_STR, StringOrObject, SUBJECT_STR, VERSION_STR } from './globals';
+import {
+  CRED_VERSION_STR, MEM_CHECK_STR, NON_MEM_CHECK_STR,
+  REGISTRY_ID_STR, REV_CHECK_STR,
+  SCHEMA_STR,
+  STATUS_STR,
+  StringOrObject,
+  SUBJECT_STR,
+  VERSION_STR
+} from './globals';
 import b58 from 'bs58';
+import { set } from 'husky';
 
 export class Credential extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
@@ -18,7 +27,7 @@ export class Credential extends Versioned {
   _schema?: CredentialSchema;
   _subject?: object;
   _credStatus?: object;
-  _issuer?: StringOrObject;
+  _issuerPubKey?: StringOrObject;
   _encodedSubject?: { [key: string]: Uint8Array };
   _sig?: SignatureG1;
 
@@ -38,8 +47,27 @@ export class Credential extends Versioned {
     this._schema = schema;
   }
 
-  set issuer(issuer: StringOrObject) {
-    this._issuer = issuer;
+  // @ts-ignore
+  get schema(): CredentialSchema | undefined {
+    return this._schema;
+  }
+
+  set issuerPubKey(issuer: StringOrObject) {
+    this._issuerPubKey = issuer;
+  }
+
+  setCredentialStatus(registryId: string, revCheck: string, memberName: string, memberValue: unknown) {
+    if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR) {
+      throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} but was ${revCheck}`);
+    }
+    this._credStatus = {};
+    this._credStatus[REGISTRY_ID_STR] = registryId;
+    this._credStatus[REV_CHECK_STR] = revCheck;
+    this._credStatus[memberName] = memberValue;
+  }
+
+  get signature(): SignatureG1 | undefined {
+    return this._sig;
   }
 
   sign(secretKey: BBSPlusSecretKey) {
@@ -49,7 +77,7 @@ export class Credential extends Versioned {
     this._sig = signed.signature;
   }
 
-  // TODO: Set schema and validate that no reserved names are used, subject, status is as per schema, etc
+  // TODO: Set schema and validate that no reserved names are used, subject, status is as per schema, revocation check is either membership or non-membership, etc
 
   serializeForSigning() {
     const s = {};
@@ -76,6 +104,7 @@ export class Credential extends Versioned {
     if (this._credStatus !== undefined) {
       j['credentialStatus'] = this._credStatus;
     }
+    j['issuerPubKey'] = this._issuerPubKey;
     j['encodedCredentialSubject'] = Object.fromEntries(
       Object.entries(this._encodedSubject as object).map(
         ([k, v]) => [k, b58.encode(v)]

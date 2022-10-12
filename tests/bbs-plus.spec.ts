@@ -219,6 +219,13 @@ describe('BBS+ signature', () => {
 
     const sig2 = SignatureG1.generate(messages5, sk, params5, true);
     expect(sig2.verify(messages5, pk, params5, true).verified).toEqual(true);
+
+    const params10Again = params10.adapt(ten);
+    expect(params10Again.isValid()).toEqual(true);
+    expect(params10Again.supportedMessageCount()).toEqual(ten);
+
+    const sig3 = SignatureG1.generate(messages10, sk, params10Again, true);
+    expect(sig3.verify(messages10, pk, params10Again, true).verified).toEqual(true);
   });
 
   it('should support reversible encoding', () => {
