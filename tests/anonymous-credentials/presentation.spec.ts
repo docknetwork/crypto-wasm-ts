@@ -1,6 +1,13 @@
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { Credential, CredentialSchema, MEM_CHECK_STR, STATUS_STR, SUBJECT_STR } from '../../src/anonymous-credentials';
+import {
+  Credential,
+  CredentialSchema,
+  MEM_CHECK_STR,
+  PresentationBuilder, SIGNATURE_PARAMS_LABEL_BYTES,
+  STATUS_STR,
+  SUBJECT_STR
+} from '../../src/anonymous-credentials';
 import { checkResult } from '../utils';
 
 describe('Presentation creation and verification', () => {
@@ -14,7 +21,7 @@ describe('Presentation creation and verification', () => {
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParamsG1.generate(1, Credential.getLabelBytes());
+    const params = SignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
     const keypair1 = KeypairG2.generate(params);
     const keypair2 = KeypairG2.generate(params);
     const keypair3 = KeypairG2.generate(params);
@@ -188,7 +195,70 @@ describe('Presentation creation and verification', () => {
     // TODO: Create accumulator for above
   });
 
-  it('from a single credential', () => {
+  it('from a flat credential - `credential1`', () => {
+    const builder1 = new PresentationBuilder();
+    expect(builder1.addCredential(credential1, pk1)).toEqual(0);
+    builder1.markAttributesRevealed(0, new Set<string>(['fname', 'lname']));
+    const pres1 = builder1.finalize();
 
+    expect(pres1.spec.credentials.length).toEqual(1);
+    expect(pres1.spec.credentials[0].revealedAttributes).toEqual({
+      fname: 'John',
+      lname: 'Smith'
+    });
+    checkResult(pres1.verify([pk1]));
+  });
+
+  it('from a nested credential - `credential2`', () => {
+    const builder2 = new PresentationBuilder();
+    expect(builder2.addCredential(credential2, pk2)).toEqual(0);
+    builder2.markAttributesRevealed(0, new Set<string>(['fname', 'location.country', 'physical.BMI']));
+    const pres2 = builder2.finalize();
+
+    expect(pres2.spec.credentials.length).toEqual(1);
+    expect(pres2.spec.credentials[0].revealedAttributes).toEqual({
+      fname: 'John',
+      location: { country: 'USA' },
+      physical: { BMI: 23.25 },
+    });
+    checkResult(pres2.verify([pk2]));
+  });
+
+  it('from a nested credential with credential status - `credential3`', () => {
+    const builder3 = new PresentationBuilder();
+    expect(builder3.addCredential(credential3, pk3)).toEqual(0);
+    builder3.markAttributesRevealed(0, new Set<string>(['fname', 'lessSensitive.location.country', 'lessSensitive.department.location.name']));
+    // TODO:
+  });
+
+  it('from 2 credentials, `credential1` and `credential2`, and prove some attributes equal', () => {
+    const builder4 = new PresentationBuilder();
+    expect(builder4.addCredential(credential1, pk1)).toEqual(0);
+    expect(builder4.addCredential(credential2, pk2)).toEqual(1);
+
+    builder4.markAttributesRevealed(0, new Set<string>(['fname', 'lname']));
+    builder4.markAttributesRevealed(1, new Set<string>(['fname', 'location.country', 'physical.BMI']));
+
+    builder4.markAttributesEqual([0, 'SSN'], [1, 'sensitive.SSN']);
+    builder4.markAttributesEqual([0, 'city'], [1, 'location.city']);
+    builder4.markAttributesEqual([0, 'height'], [1, 'physical.height']);
+
+    const pres4 = builder4.finalize();
+
+    expect(pres4.spec.credentials.length).toEqual(2);
+    expect(pres4.spec.credentials[0].revealedAttributes).toEqual({
+      fname: 'John',
+      lname: 'Smith'
+    });
+    expect(pres4.spec.credentials[1].revealedAttributes).toEqual({
+      fname: 'John',
+      location: { country: 'USA' },
+      physical: { BMI: 23.25 },
+    });
+
+    // Public keys in wrong order
+    expect(pres4.verify([pk2, pk1]).verified).toEqual(false);
+
+    checkResult(pres4.verify([pk1, pk2]));
   });
 });

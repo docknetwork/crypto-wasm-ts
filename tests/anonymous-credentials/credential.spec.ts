@@ -1,7 +1,7 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   Credential,
-  CredentialSchema, MEM_CHECK_STR, STATUS_STR,
+  CredentialSchema, MEM_CHECK_STR, SIGNATURE_PARAMS_LABEL_BYTES, STATUS_STR,
   SUBJECT_STR
 } from '../../src/anonymous-credentials';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
@@ -12,7 +12,7 @@ describe('Credential signing and verification', () => {
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParamsG1.generate(1, Credential.getLabelBytes());
+    const params = SignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
     const keypair = KeypairG2.generate(params);
     sk = keypair.sk;
     pk = keypair.pk;

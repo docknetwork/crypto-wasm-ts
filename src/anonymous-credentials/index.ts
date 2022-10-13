@@ -1,7 +1,9 @@
 export * from './schema';
 export * from './credential';
 export * from './presentation-builder';
-export * from './globals';
+export * from './presentation-specification';
+export * from './types-and-consts';
+export * from './util';
 
 // TODO: blind credential issuance
 // TODO: creds without needing explicit schema where all fields are encoded using the same default schema

@@ -4,24 +4,22 @@ import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
-  CRED_VERSION_STR, MEM_CHECK_STR, NON_MEM_CHECK_STR,
-  REGISTRY_ID_STR, REV_CHECK_STR,
-  SCHEMA_STR,
+  CRED_VERSION_STR,
+  MEM_CHECK_STR,
+  NON_MEM_CHECK_STR,
+  REGISTRY_ID_STR,
+  REV_CHECK_STR,
+  SCHEMA_STR, SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
   StringOrObject,
-  SUBJECT_STR,
-  VERSION_STR
-} from './globals';
+  SUBJECT_STR
+} from './types-and-consts';
 import b58 from 'bs58';
-import { set } from 'husky';
 
 export class Credential extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
   static VERSION = '0.0.1';
-
-  // Label used for generating signature parameters
-  static SIGNATURE_PARAMS_LABEL = 'DockBBS+Signature2022';
 
   // Each credential references the schema which is included as an attribute
   _schema?: CredentialSchema;
@@ -56,6 +54,15 @@ export class Credential extends Versioned {
     this._issuerPubKey = issuer;
   }
 
+  // @ts-ignore
+  get issuerPubKey(): StringOrObject | undefined {
+    return this._issuerPubKey;
+  }
+
+  get credStatus(): object | undefined {
+    return this._credStatus;
+  }
+
   setCredentialStatus(registryId: string, revCheck: string, memberName: string, memberValue: unknown) {
     if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR) {
       throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} but was ${revCheck}`);
@@ -72,7 +79,12 @@ export class Credential extends Versioned {
 
   sign(secretKey: BBSPlusSecretKey) {
     const cred = this.serializeForSigning();
-    const signed = signMessageObject(cred, secretKey, Credential.getLabelBytes(), (this._schema as CredentialSchema).encoder);
+    const signed = signMessageObject(
+      cred,
+      secretKey,
+      SIGNATURE_PARAMS_LABEL_BYTES,
+      (this._schema as CredentialSchema).encoder
+    );
     this._encodedSubject = signed.encodedMessages;
     this._sig = signed.signature;
   }
@@ -87,42 +99,43 @@ export class Credential extends Versioned {
     if (this._credStatus !== undefined) {
       s[STATUS_STR] = this._credStatus;
     }
-    return s
+    return s;
   }
 
   verify(publicKey: BBSPlusPublicKeyG2): VerifyResult {
     const cred = this.serializeForSigning();
-    return verifyMessageObject(cred, this._sig as SignatureG1, publicKey, Credential.getLabelBytes(), (this._schema as CredentialSchema).encoder)
+    return verifyMessageObject(
+      cred,
+      this._sig as SignatureG1,
+      publicKey,
+      SIGNATURE_PARAMS_LABEL_BYTES,
+      (this._schema as CredentialSchema).encoder
+    );
   }
 
   // TODO: Add checks isReady, isSigned which check if necessary attributes are there.
   toJSON(): string {
     const j = {};
     j['version'] = this._version;
-    j['schema'] = this._schema?.toJSON();
+    j['schema'] = this._schema?.forCredential();
     j['credentialSubject'] = this._subject;
     if (this._credStatus !== undefined) {
       j['credentialStatus'] = this._credStatus;
     }
     j['issuerPubKey'] = this._issuerPubKey;
-    j['encodedCredentialSubject'] = Object.fromEntries(
-      Object.entries(this._encodedSubject as object).map(
-        ([k, v]) => [k, b58.encode(v)]
-      )
-    );
     j['proof'] = {
       type: 'Bls12381BBS+SignatureDock2022',
-      proofValue: b58.encode(this._sig?.bytes as Uint8Array)
-    }
+      proofValue: b58.encode((this._sig as SignatureG1).bytes)
+    };
+    // This is for debugging only and can be omitted
+    j['encodedCredentialSubject'] = Object.fromEntries(
+      Object.entries(this._encodedSubject as object).map(([k, v]) => [k, b58.encode(v)])
+    );
     return JSON.stringify(j);
   }
 
   static fromJSON(json: string): Credential {
     // TODO
-    return new Credential()
-  }
-
-  static getLabelBytes(): Uint8Array {
-    return (new TextEncoder()).encode(this.SIGNATURE_PARAMS_LABEL)
+    return new Credential();
   }
 }

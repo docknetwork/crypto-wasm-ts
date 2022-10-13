@@ -3,14 +3,16 @@ import { EncodeFunc, Encoder } from '../bbs-plus';
 import { isPositiveInteger } from '../util';
 import {
   CRED_VERSION_STR,
-  REGISTRY_ID_STR, REV_CHECK_STR,
+  REGISTRY_ID_STR,
+  REV_CHECK_STR,
   SCHEMA_STR,
   STATUS_STR,
   StringOrObject,
   SUBJECT_STR,
   VERSION_STR
-} from './globals';
+} from './types-and-consts';
 import { flatten } from 'flat';
+import b58 from 'bs58';
 
 /**
  Some example schemas
@@ -116,7 +118,7 @@ export class CredentialSchema extends Versioned {
   initEncoder() {
     const defaultEncoder = Encoder.defaultEncodeFunc();
     const encoders = new Map<string, EncodeFunc>();
-    const [names, values] = CredentialSchema.flattenSchema(this.schema);
+    const [names, values] = this.flatten();
     for (let i = 0; i < names.length; i++) {
       const value = values[i] as object;
       let f: EncodeFunc;
@@ -146,15 +148,33 @@ export class CredentialSchema extends Versioned {
     this.encoder = new Encoder(encoders);
   }
 
+  /**
+   * Encode a sub-structure of the subject
+   * @param subject
+   */
+  encodeSubject(subject: object): Map<number, Uint8Array> {
+    const encoded = new Map<number, Uint8Array>();
+    const [names] = CredentialSchema.flattenSchemaObj(this.schema);
+    Object.entries(flatten(subject) as object).forEach(([k, v]) => {
+      const n = `${SUBJECT_STR}.${k}`;
+      const i = names.indexOf(n);
+      if (i === -1) {
+        throw new Error(`Attribute name ${n} not found in schema`);
+      }
+      encoded.set(i, this.encoder.encodeMessage(n, v));
+    });
+    return encoded;
+  }
+
   static validate(schema: object) {
     // Following 2 fields could have been implicit but being explicit for clarity
     this.validateStringType(schema, CRED_VERSION_STR);
     this.validateStringType(schema, SCHEMA_STR);
 
     if (schema[SUBJECT_STR] === undefined) {
-      throw new Error(`Schema did not contain top level key ${SUBJECT_STR}`)
+      throw new Error(`Schema did not contain top level key ${SUBJECT_STR}`);
     }
-    this.validateGeneric(schema[SUBJECT_STR])
+    this.validateGeneric(schema[SUBJECT_STR]);
 
     if (schema[STATUS_STR] !== undefined) {
       this.validateStringType(schema[STATUS_STR], REGISTRY_ID_STR);
@@ -164,7 +184,7 @@ export class CredentialSchema extends Versioned {
   }
 
   static validateGeneric(schema: object) {
-    const [names, values] = this.flattenSchema(schema);
+    const [names, values] = this.flattenSchemaObj(schema);
     for (let i = 0; i < names.length; i++) {
       if (typeof values[i] !== 'object') {
         throw new Error(`Schema value for ${names[i]} should have been an object type but was ${typeof values[i]}`);
@@ -213,27 +233,43 @@ export class CredentialSchema extends Versioned {
 
   static bare(): object {
     const schema = {};
-    schema[CRED_VERSION_STR] = {type: "string"};
-    schema[SCHEMA_STR] = {type: "string"};
+    schema[CRED_VERSION_STR] = { type: 'string' };
+    schema[SCHEMA_STR] = { type: 'string' };
     return schema;
   }
 
-  toJSON(): string {
-    return JSON.stringify({$version: this.version, ...this.schema})
+  forCredential(): object {
+    return { $version: this.version, ...this.schema };
   }
 
-  static flattenSchema(schema: object): [string[], unknown[]] {
+  flatten(): [string[], unknown[]] {
+    return CredentialSchema.flattenSchemaObj(this.schema);
+  }
+
+  toJSON(): string {
+    return JSON.stringify(this.forCredential());
+  }
+
+  static fromJSON(j: string): CredentialSchema {
+    const { $version, ...schema } = JSON.parse(j);
+    const credSchema = new CredentialSchema(schema);
+    // TODO: Add a test for this condition - version should be whats in JSON and not whats in class
+    credSchema.version = $version;
+    return credSchema;
+  }
+
+  static flattenSchemaObj(schema: object): [string[], unknown[]] {
     const flattened = {};
     const temp = flatten(schema) as object;
     for (const k of Object.keys(temp)) {
       // taken from https://stackoverflow.com/a/5555607
-      const name = k.substring(0, k.lastIndexOf("."));
-      const t = k.substring(k.lastIndexOf(".") + 1, k.length);
+      const name = k.substring(0, k.lastIndexOf('.'));
+      const t = k.substring(k.lastIndexOf('.') + 1, k.length);
 
       if (flattened[name] === undefined) {
         flattened[name] = {};
       }
-      flattened[name][t] = temp[k]
+      flattened[name][t] = temp[k];
     }
     const keys = Object.keys(flattened).sort();
     // @ts-ignore
