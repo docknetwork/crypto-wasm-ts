@@ -4,7 +4,7 @@ import { isPositiveInteger } from '../util';
 import {
   CRED_VERSION_STR,
   REGISTRY_ID_STR,
-  REV_CHECK_STR,
+  REV_CHECK_STR, REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
   StringOrObject,
@@ -72,7 +72,7 @@ import b58 from 'bs58';
   $credentialStatus: {
     $registryId: {type: "string"},
     $revocationCheck: {type: "string"},
-    employeeId: {type: "string"}
+    $revocationId: {type: "string"},
   }
  }
  */
@@ -179,6 +179,7 @@ export class CredentialSchema extends Versioned {
     if (schema[STATUS_STR] !== undefined) {
       this.validateStringType(schema[STATUS_STR], REGISTRY_ID_STR);
       this.validateStringType(schema[STATUS_STR], REV_CHECK_STR);
+      this.validateStringType(schema[STATUS_STR], REV_ID_STR);
       // Not validating anything else as the field name denoting the registry member could be anything
     }
   }
@@ -253,7 +254,6 @@ export class CredentialSchema extends Versioned {
   static fromJSON(j: string): CredentialSchema {
     const { $version, ...schema } = JSON.parse(j);
     const credSchema = new CredentialSchema(schema);
-    // TODO: Add a test for this condition - version should be whats in JSON and not whats in class
     credSchema.version = $version;
     return credSchema;
   }

@@ -9,6 +9,7 @@ export const SUBJECT_STR = '$credentialSubject';
 export const STATUS_STR = '$credentialStatus';
 export const REGISTRY_ID_STR = '$registryId';
 export const REV_CHECK_STR = '$revocationCheck';
+export const REV_ID_STR = '$revocationId';
 export const MEM_CHECK_STR = 'membership';
 export const NON_MEM_CHECK_STR = 'non-membership';
 

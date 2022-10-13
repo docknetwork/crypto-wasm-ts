@@ -17,9 +17,12 @@ import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
   CRED_VERSION_STR,
+  MEM_CHECK_STR,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
-  SCHEMA_STR, SIGNATURE_PARAMS_LABEL_BYTES,
+  REV_ID_STR,
+  SCHEMA_STR,
+  SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
   StringOrObject,
   SUBJECT_STR
@@ -27,7 +30,8 @@ import {
 import { PresentationSpecification } from './presentation-specification';
 import b58 from 'bs58';
 import { Presentation } from './presentation';
-import { AccumulatorWitness } from '../accumulator';
+import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
+import { dockAccumulatorMemProvingKey, dockAccumulatorNonMemProvingKey, dockAccumulatorParams } from './util';
 
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
@@ -44,12 +48,15 @@ export class PresentationBuilder extends Versioned {
   credentials: [Credential, BBSPlusPublicKeyG2][];
   revealedAttributes: Map<number, Set<string>>;
   attributeEqualities: AttributeEquality[];
+  // Each credential has only one accumulator for status
+  credStatuses: Map<number, [AccumulatorWitness, Uint8Array, AccumulatorPublicKey, object]>;
 
   constructor() {
     super(PresentationBuilder.VERSION);
     this.credentials = [];
     this.revealedAttributes = new Map();
     this.attributeEqualities = [];
+    this.credStatuses = new Map();
     this.spec = new PresentationSpecification();
   }
 
@@ -61,9 +68,7 @@ export class PresentationBuilder extends Versioned {
   // NOTE: This and several methods below expect nested attributes names with "dot"s as separators. Passing the nested structure is also
   // possible but will need more parsing and thus can be handled later.
   markAttributesRevealed(credIdx: number, attributeNames: Set<string>) {
-    if (credIdx >= this.credentials.length) {
-      throw new Error(`Invalid credential index ${credIdx}. Number of credentials is ${this.credentials.length}`);
-    }
+    this.validateCredIndex(credIdx);
     let revealed = this.revealedAttributes.get(credIdx);
     if (revealed === undefined) {
       revealed = new Set<string>();
@@ -76,15 +81,20 @@ export class PresentationBuilder extends Versioned {
 
   markAttributesEqual(...equality: AttributeEquality) {
     for (const aRef of equality) {
-      if (aRef[0] >= this.credentials.length) {
-        throw new Error(`Invalid attribute reference because of credential index ${aRef[0]}`);
-      }
+      this.validateCredIndex(aRef[0]);
     }
     this.attributeEqualities.push(equality);
   }
 
-  addAccumInfoForCredStatus(credIdx: number, accumWitness: AccumulatorWitness, accumulated: Uint8Array, extra: object = {}) {
-    // TODO:
+  addAccumInfoForCredStatus(
+    credIdx: number,
+    accumWitness: AccumulatorWitness,
+    accumulated: Uint8Array,
+    accumPublicKey: AccumulatorPublicKey,
+    extra: object = {}
+  ) {
+    this.validateCredIndex(credIdx);
+    this.credStatuses.set(credIdx, [accumWitness, accumulated, accumPublicKey, extra]);
   }
 
   enforceBounds(
@@ -102,7 +112,6 @@ export class PresentationBuilder extends Versioned {
   }
 
   finalize(): Presentation {
-    // TODO:
     const numCreds = this.credentials.length;
     let maxAttribs = 2; // version and schema
     let sigParams = SignatureParamsG1.generate(maxAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
@@ -112,6 +121,9 @@ export class PresentationBuilder extends Versioned {
     const witnesses = new Witnesses();
 
     const flattenedSchemas: [string[], unknown[]][] = [];
+
+    // For credentials with status, i.e. using accumulators, type is [credIndex, revCheckType, encoded (non)member]
+    const credStatusAux: [number, string, Uint8Array][] = [];
 
     for (let i = 0; i < numCreds; i++) {
       const cred = this.credentials[i][0];
@@ -132,6 +144,7 @@ export class PresentationBuilder extends Versioned {
       revealedNames.add(CRED_VERSION_STR);
       revealedNames.add(SCHEMA_STR);
       if (cred.credStatus !== undefined) {
+        // TODO: Input validation
         revealedNames.add(`${STATUS_STR}.${REGISTRY_ID_STR}`);
         revealedNames.add(`${STATUS_STR}.${REV_CHECK_STR}`);
       }
@@ -150,14 +163,68 @@ export class PresentationBuilder extends Versioned {
       const witness = Witness.bbsSignature(cred.signature as SignatureG1, unrevealedMsgs, false);
       statements.add(statement);
       witnesses.add(witness);
+
+      let presentedStatus: object | undefined;
+      if (cred.credStatus !== undefined) {
+        presentedStatus = {};
+        presentedStatus[REGISTRY_ID_STR] = cred.credStatus[REGISTRY_ID_STR];
+        presentedStatus[REV_CHECK_STR] = cred.credStatus[REV_CHECK_STR];
+        const s = this.credStatuses.get(i);
+        if (s === undefined) {
+          throw new Error(`No status details found for credential index ${i}`);
+        }
+        presentedStatus['accumulated'] = s[1];
+        presentedStatus['extra'] = s[3];
+        credStatusAux.push([
+          i,
+          cred.credStatus[REV_CHECK_STR],
+          schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credStatus[REV_ID_STR])
+        ]);
+      }
+
       this.spec.addPresentedCredential(
         revealedMsgsRaw[CRED_VERSION_STR],
         revealedMsgsRaw[SCHEMA_STR],
         cred.issuerPubKey as StringOrObject,
-        revealedMsgsRaw[SUBJECT_STR]
+        revealedMsgsRaw[SUBJECT_STR],
+        presentedStatus
       );
       flattenedSchemas.push(flattenedSchema);
     }
+
+    credStatusAux.forEach(([i, t, value]) => {
+      const s = this.credStatuses.get(i);
+      if (s === undefined) {
+        throw new Error(`No status details found for credential index ${i}`);
+      }
+      const [wit, acc, pk] = s;
+      let statement, witness;
+      if (t === MEM_CHECK_STR) {
+        if (!(wit instanceof MembershipWitness)) {
+          throw new Error(`Expected membership witness but got non-membership witness for credential index ${i}`);
+        }
+        statement = Statement.accumulatorMembership(dockAccumulatorParams(), pk, dockAccumulatorMemProvingKey(), acc);
+        witness = Witness.accumulatorMembership(value, wit);
+      } else {
+        if (!(wit instanceof NonMembershipWitness)) {
+          throw new Error(`Expected non-membership witness but got membership witness for credential index ${i}`);
+        }
+        statement = Statement.accumulatorNonMembership(
+          dockAccumulatorParams(),
+          pk,
+          dockAccumulatorNonMemProvingKey(),
+          acc
+        );
+        witness = Witness.accumulatorNonMembership(value, wit);
+      }
+      const sIdx = statements.add(statement);
+      witnesses.add(witness);
+
+      const witnessEq = new WitnessEqualityMetaStatement();
+      witnessEq.addWitnessRef(i, flattenedSchemas[i][0].indexOf(`${STATUS_STR}.${REV_ID_STR}`));
+      witnessEq.addWitnessRef(sIdx, 0);
+      metaStatements.addWitnessEquality(witnessEq);
+    });
 
     for (const eql of this.attributeEqualities) {
       const witnessEq = new WitnessEqualityMetaStatement();
@@ -193,6 +260,12 @@ export class PresentationBuilder extends Versioned {
 
   set nonce(nonce: Uint8Array | undefined) {
     this._nonce = nonce;
+  }
+
+  validateCredIndex(credIdx: number) {
+    if (credIdx >= this.credentials.length) {
+      throw new Error(`Invalid credential index ${credIdx}. Number of credentials is ${this.credentials.length}`);
+    }
   }
 
   toJSON(): string {
