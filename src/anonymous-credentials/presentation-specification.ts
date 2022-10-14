@@ -6,12 +6,13 @@ export interface IPresentedCredential {
   issuer: StringOrObject;
   revealedAttributes: object;
   status?: object;
-  // Bounds proved of any attribute
+  // Bounds proved of any attribute(s)
   bounds?: object;
+  verifiableEncryption?: object;
 }
 
 /**
- * Specifies what the presentation is proving like what credentials, whats being revealed, which attributes are being proven
+ * Specifies what the presentation is proving like what credentials, what's being revealed, which attributes are being proven
  * equal, bounds being enforced, etc
  */
 export class PresentationSpecification {
@@ -28,7 +29,8 @@ export class PresentationSpecification {
     schema: string,
     issuer: StringOrObject,
     revealedAttributes: object,
-    status?: object
+    status?: object,
+    bounds?: object
   ) {
     const ps = {
       version,
@@ -38,6 +40,9 @@ export class PresentationSpecification {
     };
     if (status !== undefined) {
       ps['status'] = status;
+    }
+    if (bounds !== undefined) {
+      ps['bounds'] = bounds;
     }
     this.credentials.push(ps);
   }

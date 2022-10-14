@@ -3,7 +3,7 @@ import {
   AccumulatorPublicKey,
   AccumulatorSecretKey,
   BBSPlusPublicKeyG2,
-  BBSPlusSecretKey,
+  BBSPlusSecretKey, BoundCheckSnarkSetup,
   IAccumulatorState,
   KeypairG2,
   MembershipWitness,
@@ -370,6 +370,8 @@ describe('Presentation creation and verification', () => {
       fname: 'John',
       lname: 'Smith'
     });
+    expect(pres1.spec.credentials[0].status).not.toBeDefined();
+
     checkResult(pres1.verify([pk1]));
   });
 
@@ -385,6 +387,8 @@ describe('Presentation creation and verification', () => {
       location: { country: 'USA' },
       physical: { BMI: 23.25 }
     });
+    expect(pres2.spec.credentials[0].status).not.toBeDefined();
+
     checkResult(pres2.verify([pk2]));
   });
 
@@ -403,11 +407,19 @@ describe('Presentation creation and verification', () => {
       fname: 'John',
       lessSensitive: { location: { country: 'USA' }, department: { location: { name: 'Somewhere' } } }
     });
+    expect(pres3.spec.credentials[0].status).toEqual({
+      $registryId: 'dock:accumulator:accumId123',
+      $revocationCheck: 'membership',
+      accumulated: accumulator3.accumulated,
+      extra: { blockNo: 2010334 }
+    });
 
     const acc = new Map();
     acc.set(0, [accumulator3.accumulated, accumulator3Pk]);
     checkResult(pres3.verify([pk3], acc));
   });
+
+  // TODO: Check presentationSpec returned in presentation as well
 
   it('from 2 credentials, `credential1` and `credential2`, and prove some attributes equal', () => {
     const builder4 = new PresentationBuilder();
@@ -474,6 +486,18 @@ describe('Presentation creation and verification', () => {
     expect(pres5.spec.credentials[1].revealedAttributes).toEqual({
       education: { university: { name: 'Example University', registrationNumber: 'XYZ-123-789' } }
     });
+    expect(pres5.spec.credentials[0].status).toEqual({
+      $registryId: 'dock:accumulator:accumId123',
+      $revocationCheck: 'membership',
+      accumulated: accumulator3.accumulated,
+      extra: { blockNo: 2010334 }
+    });
+    expect(pres5.spec.credentials[1].status).toEqual({
+      $registryId: 'dock:accumulator:accumId124',
+      $revocationCheck: 'membership',
+      accumulated: accumulator4.accumulated,
+      extra: { blockNo: 2010340 }
+    });
 
     const acc = new Map();
     acc.set(0, [accumulator3.accumulated, accumulator3Pk]);
@@ -537,4 +561,55 @@ describe('Presentation creation and verification', () => {
     acc.set(3, [accumulator4.accumulated, accumulator4Pk]);
     checkResult(pres6.verify([pk1, pk2, pk3, pk4], acc));
   });
+
+  it('from 1 credential and proving bounds on attributes', () => {
+    const pk = BoundCheckSnarkSetup();
+    const snarkProvingKey = pk.decompress();
+    const snarkVerifyingKey = pk.getVerifyingKeyUncompressed();
+    const pkId = 'random';
+
+    const builder7 = new PresentationBuilder();
+    expect(builder7.addCredential(credential1, pk1)).toEqual(0);
+
+    builder7.markAttributesRevealed(0, new Set<string>(['fname', 'lname']));
+
+    const [minTime, maxTime] = [1662010838000, 1662010856123];
+    // @ts-ignore
+    expect(minTime).toBeLessThan(credential1.subject['timeOfBirth']);
+    // @ts-ignore
+    expect(maxTime).toBeGreaterThan(credential1.subject['timeOfBirth']);
+    // TODO: Uncomment this. There is a bug where multiple bounds can't be enforced because order of statements changes in proving and verification
+    // builder7.enforceBounds(0, 'timeOfBirth', minTime, maxTime, pkId, snarkProvingKey);
+
+    const [minBMI, maxBMI] = [10, 40];
+    // @ts-ignore
+    expect(minBMI).toBeLessThan(credential1.subject['BMI']);
+    // @ts-ignore
+    expect(maxBMI).toBeGreaterThan(credential1.subject['BMI']);
+    builder7.enforceBounds(0, 'BMI', minBMI, maxBMI, pkId, snarkProvingKey);
+
+    const pres1 = builder7.finalize();
+
+    expect(pres1.spec.credentials.length).toEqual(1);
+    expect(pres1.spec.credentials[0].revealedAttributes).toEqual({
+      fname: 'John',
+      lname: 'Smith'
+    });
+    expect(pres1.spec.credentials[0].bounds).toEqual({
+      // timeOfBirth: {
+      //   min: minTime,
+      //   max: maxTime,
+      //   paramId: pkId,
+      // },
+      BMI: {
+        min: minBMI,
+        max: maxBMI,
+        paramId: pkId,
+      }
+    });
+
+    const pp = new Map();
+    pp.set(pkId, snarkVerifyingKey);
+    checkResult(pres1.verify([pk1], undefined, pp));
+  })
 });

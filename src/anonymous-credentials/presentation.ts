@@ -8,13 +8,13 @@ import {
   Statements,
   WitnessEqualityMetaStatement
 } from '../composite-proof';
-import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, Encoder, SignatureParamsG1 } from '../bbs-plus';
 import { CredentialSchema } from './schema';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 import {
   CRED_VERSION_STR,
-  MEM_CHECK_STR,
+  MEM_CHECK_STR, PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
@@ -24,7 +24,13 @@ import {
   SUBJECT_STR
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
-import { dockAccumulatorMemProvingKey, dockAccumulatorNonMemProvingKey, dockAccumulatorParams } from './util';
+import {
+  dockAccumulatorMemProvingKey,
+  dockAccumulatorNonMemProvingKey,
+  dockAccumulatorParams,
+  flattenTill2ndLastKey
+} from './util';
+import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 
 export class Presentation extends Versioned {
   spec: PresentationSpecification;
@@ -47,9 +53,16 @@ export class Presentation extends Versioned {
   }
 
   // TODO: This can be improved, figure out to use `SetupParams`
+  /**
+   *
+   * @param publicKeys - Array of keys in the order of credentials in the presentation.
+   * @param accumulatorValueAndPublicKeys - Mapping credential index -> (accumulator value, accumulator public key)
+   * @param predicateParams
+   */
   verify(
     publicKeys: BBSPlusPublicKeyG2[],
-    accumulatorValueAndPublicKeys?: Map<number, [Uint8Array, AccumulatorPublicKey]>
+    accumulatorValueAndPublicKeys?: Map<number, [Uint8Array, AccumulatorPublicKey]>,
+    predicateParams?: Map<string, PredicateParamType>
   ): VerifyResult {
     const numCreds = this.spec.credentials.length;
     if (publicKeys.length != numCreds) {
@@ -67,6 +80,8 @@ export class Presentation extends Versioned {
     // For credentials with status, i.e. using accumulators, type is [credIndex, revCheckType, accumulator]
     const credStatusAux: [number, string, Uint8Array][] = [];
 
+    const boundsAux: [number, object][] = [];
+
     for (let i = 0; i < this.spec.credentials.length; i++) {
       const presentedCred = this.spec.credentials[i];
       const presentedCredSchema = CredentialSchema.fromJSON(presentedCred.schema);
@@ -82,9 +97,14 @@ export class Presentation extends Versioned {
       const statement = Statement.bbsSignature(sigParams.adapt(numAttribs), publicKeys[i], revealedEncoded, false);
       statements.add(statement);
       flattenedSchemas.push(flattenedSchema);
+
       if (presentedCred.status !== undefined) {
         // TODO: Input validation
         credStatusAux.push([i, presentedCred.status[REV_CHECK_STR], presentedCred.status['accumulated']]);
+      }
+
+      if (presentedCred.bounds !== undefined) {
+        boundsAux.push([i, presentedCred.bounds]);
       }
     }
 
@@ -123,6 +143,53 @@ export class Presentation extends Versioned {
       }
       metaStatements.addWitnessEquality(witnessEq);
     }
+
+    boundsAux.forEach(([i, b]) => {
+      const bounds = flattenTill2ndLastKey(b) as object;
+      bounds[0].forEach((k, j) => {
+        const name = `${SUBJECT_STR}.${k}`;
+        const nameIdx = flattenedSchemas[i][0].indexOf(name);
+        const typ = flattenedSchemas[i][1][nameIdx] as object;
+        const paramId = bounds[1][j]['paramId'];
+        const param = predicateParams?.get(paramId);
+        let statement, transformedMin, transformedMax;
+        // TODO: Duplicate code
+        const [min, max] = [bounds[1][j]['min'], bounds[1][j]['max']];
+        switch (typ['type']) {
+          case CredentialSchema.POSITIVE_INT_TYPE:
+            transformedMin = min;
+            transformedMax = max;
+            break;
+          case CredentialSchema.INT_TYPE:
+            transformedMin = Encoder.integerToPositiveInt(typ['minimum'])(min);
+            transformedMax = Encoder.integerToPositiveInt(typ['minimum'])(max);
+            break;
+          case CredentialSchema.POSITIVE_NUM_TYPE:
+            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(min);
+            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(max);
+            break;
+          case CredentialSchema.NUM_TYPE:
+            transformedMin = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(min);
+            transformedMax = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(max);
+            break;
+          default:
+            throw new Error(`${name} should be of numeric type as per schema but was ${flattenedSchemas[i][1][nameIdx]}`)
+        }
+
+        if (param instanceof LegoVerifyingKey) {
+          statement = Statement.boundCheckVerifierFromCompressedParams(transformedMin, transformedMax, param);
+        } else if (param instanceof LegoVerifyingKeyUncompressed) {
+          statement = Statement.boundCheckVerifier(transformedMin, transformedMax, param);
+        } else {
+          throw new Error(`Predicate param id ${paramId} was expected to be a Legosnark verifying key but was ${param}`);
+        }
+        const sIdx = statements.add(statement);
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(i, nameIdx);
+        witnessEq.addWitnessRef(sIdx, 0);
+        metaStatements.addWitnessEquality(witnessEq);
+      });
+    });
 
     // TODO: Fix context calc.
     const proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], this.context);

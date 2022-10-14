@@ -354,6 +354,7 @@ describe('Credential Schema', () => {
         // @ts-ignore
         JSON.stringify(Array.from(cs.encoder.encoders?.keys())) === JSON.stringify(Array.from(recreatedCs.encoder.encoders?.keys()))
       ).toEqual(true);
+      // TODO: Test encoding functions are same as well, this can be done in the credentials suite by using a deserialized schema
     }
 
     // version should match what was in JSON and not whats in `CredentialSchema` class

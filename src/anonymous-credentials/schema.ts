@@ -13,6 +13,7 @@ import {
 } from './types-and-consts';
 import { flatten } from 'flat';
 import b58 from 'bs58';
+import { flattenTill2ndLastKey } from './util';
 
 /**
  Some example schemas
@@ -83,10 +84,10 @@ export class CredentialSchema extends Versioned {
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
-  private static readonly POSITIVE_INT_TYPE = 'positiveInteger';
-  private static readonly INT_TYPE = 'integer';
-  private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
-  private static readonly NUM_TYPE = 'decimalNumber';
+  static readonly POSITIVE_INT_TYPE = 'positiveInteger';
+  static readonly INT_TYPE = 'integer';
+  static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
+  static readonly NUM_TYPE = 'decimalNumber';
 
   // Credential subject/claims cannot have any of these names
   static RESERVED_NAMES = [CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR];
@@ -105,8 +106,7 @@ export class CredentialSchema extends Versioned {
   encoder: Encoder;
 
   constructor(schema: StringOrObject) {
-    // This functions flattens schema object twice but the repetition can be avoid. Keeping this deliberately to keep
-    // the code clear.
+    // This functions flattens schema object twice but the repetition can be avoid. Keeping this deliberately for code clarity.
     const schem = typeof schema === 'string' ? JSON.parse(schema) : schema;
     CredentialSchema.validate(schem);
 
@@ -151,10 +151,11 @@ export class CredentialSchema extends Versioned {
   /**
    * Encode a sub-structure of the subject
    * @param subject
+   * @param flattenedSchema
    */
-  encodeSubject(subject: object): Map<number, Uint8Array> {
+  encodeSubject(subject: object, flattenedSchema?: [string[], unknown[]]): Map<number, Uint8Array> {
     const encoded = new Map<number, Uint8Array>();
-    const [names] = CredentialSchema.flattenSchemaObj(this.schema);
+    const [names] = flattenedSchema === undefined ? this.flatten() : flattenedSchema[0];
     Object.entries(flatten(subject) as object).forEach(([k, v]) => {
       const n = `${SUBJECT_STR}.${k}`;
       const i = names.indexOf(n);
@@ -171,17 +172,17 @@ export class CredentialSchema extends Versioned {
     this.validateStringType(schema, CRED_VERSION_STR);
     this.validateStringType(schema, SCHEMA_STR);
 
-    if (schema[SUBJECT_STR] === undefined) {
-      throw new Error(`Schema did not contain top level key ${SUBJECT_STR}`);
-    }
-    this.validateGeneric(schema[SUBJECT_STR]);
-
     if (schema[STATUS_STR] !== undefined) {
       this.validateStringType(schema[STATUS_STR], REGISTRY_ID_STR);
       this.validateStringType(schema[STATUS_STR], REV_CHECK_STR);
       this.validateStringType(schema[STATUS_STR], REV_ID_STR);
       // Not validating anything else as the field name denoting the registry member could be anything
     }
+
+    if (schema[SUBJECT_STR] === undefined) {
+      throw new Error(`Schema did not contain top level key ${SUBJECT_STR}`);
+    }
+    this.validateGeneric(schema[SUBJECT_STR]);
   }
 
   static validateGeneric(schema: object) {
@@ -259,12 +260,13 @@ export class CredentialSchema extends Versioned {
   }
 
   static flattenSchemaObj(schema: object): [string[], unknown[]] {
-    const flattened = {};
+    /*const flattened = {};
     const temp = flatten(schema) as object;
     for (const k of Object.keys(temp)) {
       // taken from https://stackoverflow.com/a/5555607
-      const name = k.substring(0, k.lastIndexOf('.'));
-      const t = k.substring(k.lastIndexOf('.') + 1, k.length);
+      const pos = k.lastIndexOf('.');
+      const name = k.substring(0, pos);
+      const t = k.substring(pos + 1);
 
       if (flattened[name] === undefined) {
         flattened[name] = {};
@@ -274,7 +276,8 @@ export class CredentialSchema extends Versioned {
     const keys = Object.keys(flattened).sort();
     // @ts-ignore
     const values = keys.map((k) => flattened[k]);
-    return [keys, values];
+    return [keys, values];*/
+    return flattenTill2ndLastKey(schema);
   }
 
   private static validateStringType(schema, fieldName) {

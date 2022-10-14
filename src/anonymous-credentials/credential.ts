@@ -43,6 +43,11 @@ export class Credential extends Versioned {
     this._subject = subject;
   }
 
+  // @ts-ignore
+  get subject(): object | undefined {
+    return this._subject;
+  }
+
   set schema(schema: CredentialSchema) {
     this._schema = schema;
   }

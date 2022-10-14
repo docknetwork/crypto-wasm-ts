@@ -1,6 +1,6 @@
 import { Versioned } from './versioned';
 import { Credential } from './credential';
-import { BBSPlusPublicKeyG2, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, Encoder, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
 import {
   CompositeProofG1,
   MetaStatements,
@@ -17,7 +17,7 @@ import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
   CRED_VERSION_STR,
-  MEM_CHECK_STR,
+  MEM_CHECK_STR, PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
@@ -32,6 +32,14 @@ import b58 from 'bs58';
 import { Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
 import { dockAccumulatorMemProvingKey, dockAccumulatorNonMemProvingKey, dockAccumulatorParams } from './util';
+import {
+  SaverChunkedCommitmentGens,
+  SaverChunkedCommitmentGensUncompressed,
+  SaverEncryptionKey, SaverEncryptionKeyUncompressed,
+  SaverProvingKey,
+  SaverProvingKeyUncompressed
+} from '../saver';
+import { unflatten } from 'flat';
 
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
@@ -46,10 +54,23 @@ export class PresentationBuilder extends Versioned {
   spec: PresentationSpecification;
 
   credentials: [Credential, BBSPlusPublicKeyG2][];
+
+  // Attributes revealed from each credential, key of the map is the credential index
   revealedAttributes: Map<number, Set<string>>;
+
+  // Attributes proved equal in zero knowledge
   attributeEqualities: AttributeEquality[];
+
   // Each credential has only one accumulator for status
   credStatuses: Map<number, [AccumulatorWitness, Uint8Array, AccumulatorPublicKey, object]>;
+
+  // Bounds on attribute. The key of the map is the string denoting credential and attribute as "<credIdx>:<attrName>" and value of map denotes [min, max, an identifier of the snark proving key which the verifier knows as well to use corresponding verifying key]
+  bounds: Map<string, [number, number, string]>;
+
+  verifEnc: Map<string, [number, string, string, string]>;
+
+  // Parameters for predicates like snark proving key for bound check, verifiable encryption, Circom program
+  predicateParams: Map<string, PredicateParamType>;
 
   constructor() {
     super(PresentationBuilder.VERSION);
@@ -57,6 +78,9 @@ export class PresentationBuilder extends Versioned {
     this.revealedAttributes = new Map();
     this.attributeEqualities = [];
     this.credStatuses = new Map();
+    this.bounds = new Map();
+    this.verifEnc = new Map();
+    this.predicateParams = new Map();
     this.spec = new PresentationSpecification();
   }
 
@@ -102,13 +126,38 @@ export class PresentationBuilder extends Versioned {
     attributeName: string,
     min: number,
     max: number,
-    provingKey: LegoProvingKey | LegoProvingKeyUncompressed
+    provingKeyId: string,
+    provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
   ) {
-    // TODO:
+    if (min >= max) {
+      throw new Error(`Invalid bounds min=${min}, max=${max}`);
+    }
+    this.validateCredIndex(credIdx);
+    /*if (provingKey !== undefined) {
+      if (this.predicateParams.has(provingKeyId)) {
+        throw new Error(`Predicate params already exists for id ${provingKeyId}`)
+      }
+      this.predicateParams.set(provingKeyId, provingKey);
+    }*/
+    this.updatePredicateParams(provingKeyId, provingKey);
+    this.bounds.set(`${credIdx}:${attributeName}`, [min, max, provingKeyId]);
   }
 
-  verifiablyEncrypt(credIdx: number, attributeName: string) {
-    // TODO:
+  verifiablyEncrypt(credIdx: number, attributeName: string, chunkBitSize: number, commGensId: string, encryptionKeyId: string, snarkPkId: string, commGens?: SaverChunkedCommitmentGens | SaverChunkedCommitmentGensUncompressed, encryptionKey?: SaverEncryptionKey | SaverEncryptionKeyUncompressed, snarkPk?: SaverProvingKey | SaverProvingKeyUncompressed) {
+    if ((chunkBitSize !== 8) && (chunkBitSize !== 16)) {
+      throw new Error(`Only 8 and 16 supported for chunkBitSize but given ${chunkBitSize}`);
+    }
+    this.validateCredIndex(credIdx);
+    /*if (commGens !== undefined) {
+      if (this.predicateParams.has(commGensId)) {
+        throw new Error(`Predicate params already exists for id ${commGensId}`)
+      }
+      this.predicateParams.set(commGensId, commGens);
+    }*/
+    this.updatePredicateParams(commGensId, commGens);
+    this.updatePredicateParams(encryptionKeyId, encryptionKey);
+    this.updatePredicateParams(snarkPkId, snarkPk);
+    this.verifEnc.set(`${credIdx}:${attributeName}`, [chunkBitSize, commGensId, encryptionKeyId, snarkPkId]);
   }
 
   finalize(): Presentation {
@@ -121,10 +170,13 @@ export class PresentationBuilder extends Versioned {
     const witnesses = new Witnesses();
 
     const flattenedSchemas: [string[], unknown[]][] = [];
+    // TODO: This can be made to store only needed values but then need to check which attributes are bounded.
+    const unrevealedMsgsAll: Map<number, Uint8Array>[] = []
 
     // For credentials with status, i.e. using accumulators, type is [credIndex, revCheckType, encoded (non)member]
     const credStatusAux: [number, string, Uint8Array][] = [];
 
+    // Create statements and witnesses for proving possession of each credential, i.e. proof of knowledge of BBS+ sigs
     for (let i = 0; i < numCreds; i++) {
       const cred = this.credentials[i][0];
       const schema = cred.schema as CredentialSchema;
@@ -182,16 +234,36 @@ export class PresentationBuilder extends Versioned {
         ]);
       }
 
+      let attributeBounds: object | undefined;
+      for (const [k, [min, max, paramId]] of this.bounds.entries()) {
+        const pos = k.indexOf(':');
+        const cId = parseInt(k.substring(0, pos));
+        if (cId === i) {
+          if (attributeBounds === undefined) {
+            attributeBounds = {};
+          }
+          const name = k.substring(pos + 1);
+          attributeBounds[name] = {min, max, paramId};
+        }
+      }
+      if (attributeBounds !== undefined) {
+        attributeBounds = unflatten(attributeBounds);
+      }
+
       this.spec.addPresentedCredential(
         revealedMsgsRaw[CRED_VERSION_STR],
         revealedMsgsRaw[SCHEMA_STR],
         cred.issuerPubKey as StringOrObject,
         revealedMsgsRaw[SUBJECT_STR],
-        presentedStatus
+        presentedStatus,
+        attributeBounds
       );
+
       flattenedSchemas.push(flattenedSchema);
+      unrevealedMsgsAll.push(unrevealedMsgs);
     }
 
+    // Create statements and witnesses for accumulators used in credential status
     credStatusAux.forEach(([i, t, value]) => {
       const s = this.credStatuses.get(i);
       if (s === undefined) {
@@ -226,6 +298,7 @@ export class PresentationBuilder extends Versioned {
       metaStatements.addWitnessEquality(witnessEq);
     });
 
+    // For enforcing attribute equalities
     for (const eql of this.attributeEqualities) {
       const witnessEq = new WitnessEqualityMetaStatement();
       for (const [cIdx, name] of eql) {
@@ -237,6 +310,55 @@ export class PresentationBuilder extends Versioned {
       }
       metaStatements.addWitnessEquality(witnessEq);
       this.spec.attributeEqualities.push(eql);
+    }
+
+    // For enforcing attribute bounds
+    for (const [k, [min, max, paramId]] of this.bounds.entries()) {
+      const param = this.predicateParams.get(paramId);
+      const pos = k.indexOf(':');
+      const cId = parseInt(k.substring(0, pos));
+      const name = k.substring(pos + 1);
+      const qualifiedName = `${SUBJECT_STR}.${name}`;
+      const nameIdx = flattenedSchemas[cId][0].indexOf(qualifiedName);
+      const typ = flattenedSchemas[cId][1][nameIdx] as object;
+      const encodedAttrVal = unrevealedMsgsAll[cId].get(nameIdx) as Uint8Array;
+      let statement, transformedMin, transformedMax;
+      switch (typ['type']) {
+        case CredentialSchema.POSITIVE_INT_TYPE:
+          transformedMin = min;
+          transformedMax = max;
+          break;
+        case CredentialSchema.INT_TYPE:
+          transformedMin = Encoder.integerToPositiveInt(typ['minimum'])(min);
+          transformedMax = Encoder.integerToPositiveInt(typ['minimum'])(max);
+          break;
+        case CredentialSchema.POSITIVE_NUM_TYPE:
+          transformedMin = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(min);
+          transformedMax = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(max);
+          break;
+        case CredentialSchema.NUM_TYPE:
+          transformedMin = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(min);
+          transformedMax = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(max);
+          break;
+        default:
+          throw new Error(`${name} should be of numeric type as per schema but was ${flattenedSchemas[cId][1][nameIdx]}`)
+      }
+
+      if (param instanceof LegoProvingKey) {
+        statement = Statement.boundCheckProverFromCompressedParams(transformedMin, transformedMax, param);
+      } else if (param instanceof LegoProvingKeyUncompressed) {
+        statement = Statement.boundCheckProver(transformedMin, transformedMax, param);
+      } else {
+        throw new Error(`Predicate param id ${paramId} was expected to be a Legosnark proving key but was ${param}`);
+      }
+
+      const sIdx = statements.add(statement);
+      witnesses.add(Witness.boundCheckLegoGroth16(encodedAttrVal));
+
+      const witnessEq = new WitnessEqualityMetaStatement();
+      witnessEq.addWitnessRef(cId, nameIdx);
+      witnessEq.addWitnessRef(sIdx, 0);
+      metaStatements.addWitnessEquality(witnessEq);
     }
 
     // TODO: Include version and spec in context
@@ -277,5 +399,14 @@ export class PresentationBuilder extends Versioned {
       spec: this.spec.forPresentation(),
       proof: b58.encode((this.proof as CompositeProofG1).bytes)
     });
+  }
+
+  private updatePredicateParams(id: string, val?: PredicateParamType) {
+    if (val !== undefined) {
+      if (this.predicateParams.has(id)) {
+        throw new Error(`Predicate params already exists for id ${id}`)
+      }
+      this.predicateParams.set(id, val);
+    }
   }
 }
