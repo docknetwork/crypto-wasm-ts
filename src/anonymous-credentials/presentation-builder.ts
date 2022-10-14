@@ -64,10 +64,10 @@ export class PresentationBuilder extends Versioned {
   // Each credential has only one accumulator for status
   credStatuses: Map<number, [AccumulatorWitness, Uint8Array, AccumulatorPublicKey, object]>;
 
-  // Bounds on attribute. The key of the map is the string denoting credential and attribute as "<credIdx>:<attrName>" and value of map denotes [min, max, an identifier of the snark proving key which the verifier knows as well to use corresponding verifying key]
-  bounds: Map<string, [number, number, string]>;
+  // Bounds on attribute. The key of the map is the credential index and for the inner map is the attribute and value of map denotes [min, max, an identifier of the snark proving key which the verifier knows as well to use corresponding verifying key]
+  bounds: Map<number, Map<string, [number, number, string]>>;
 
-  verifEnc: Map<string, [number, string, string, string]>;
+  verifEnc: Map<number, Map<string, [number, string, string, string]>>;
 
   // Parameters for predicates like snark proving key for bound check, verifiable encryption, Circom program
   predicateParams: Map<string, PredicateParamType>;
@@ -133,31 +133,39 @@ export class PresentationBuilder extends Versioned {
       throw new Error(`Invalid bounds min=${min}, max=${max}`);
     }
     this.validateCredIndex(credIdx);
-    /*if (provingKey !== undefined) {
-      if (this.predicateParams.has(provingKeyId)) {
-        throw new Error(`Predicate params already exists for id ${provingKeyId}`)
+    let b = this.bounds.get(credIdx);
+    if (b !== undefined) {
+      if (b.get(attributeName) !== undefined) {
+        throw new Error(`Already enforced bounds on credential index ${credIdx} and attribute name ${attributeName}`);
       }
-      this.predicateParams.set(provingKeyId, provingKey);
-    }*/
+    } else {
+      b = new Map();
+    }
     this.updatePredicateParams(provingKeyId, provingKey);
-    this.bounds.set(`${credIdx}:${attributeName}`, [min, max, provingKeyId]);
+    b.set(attributeName, [min, max, provingKeyId])
+    this.bounds.set(credIdx, b);
   }
 
+  // TODO: Should check if all compressed or all uncompressed
   verifiablyEncrypt(credIdx: number, attributeName: string, chunkBitSize: number, commGensId: string, encryptionKeyId: string, snarkPkId: string, commGens?: SaverChunkedCommitmentGens | SaverChunkedCommitmentGensUncompressed, encryptionKey?: SaverEncryptionKey | SaverEncryptionKeyUncompressed, snarkPk?: SaverProvingKey | SaverProvingKeyUncompressed) {
     if ((chunkBitSize !== 8) && (chunkBitSize !== 16)) {
       throw new Error(`Only 8 and 16 supported for chunkBitSize but given ${chunkBitSize}`);
     }
     this.validateCredIndex(credIdx);
-    /*if (commGens !== undefined) {
-      if (this.predicateParams.has(commGensId)) {
-        throw new Error(`Predicate params already exists for id ${commGensId}`)
+    let v = this.verifEnc.get(credIdx);
+    if (v !== undefined) {
+      if (v.get(attributeName) !== undefined) {
+        throw new Error(`Already enforced verifiable encryption on credential index ${credIdx} and attribute name ${attributeName}`);
       }
-      this.predicateParams.set(commGensId, commGens);
-    }*/
+    } else {
+      v = new Map();
+    }
+
     this.updatePredicateParams(commGensId, commGens);
     this.updatePredicateParams(encryptionKeyId, encryptionKey);
     this.updatePredicateParams(snarkPkId, snarkPk);
-    this.verifEnc.set(`${credIdx}:${attributeName}`, [chunkBitSize, commGensId, encryptionKeyId, snarkPkId]);
+    v.set(attributeName, [chunkBitSize, commGensId, encryptionKeyId, snarkPkId]);
+    this.verifEnc.set(credIdx, v);
   }
 
   finalize(): Presentation {
@@ -170,8 +178,9 @@ export class PresentationBuilder extends Versioned {
     const witnesses = new Witnesses();
 
     const flattenedSchemas: [string[], unknown[]][] = [];
-    // TODO: This can be made to store only needed values but then need to check which attributes are bounded.
-    const unrevealedMsgsAll: Map<number, Uint8Array>[] = []
+
+    // Store only needed encoded values of names and their indices. Maps cred index -> attribute index in schema -> attr value
+    const unrevealedMsgsEncoded = new Map<number, Map<number, Uint8Array>>();
 
     // For credentials with status, i.e. using accumulators, type is [credIndex, revCheckType, encoded (non)member]
     const credStatusAux: [number, string, Uint8Array][] = [];
@@ -235,19 +244,17 @@ export class PresentationBuilder extends Versioned {
       }
 
       let attributeBounds: object | undefined;
-      for (const [k, [min, max, paramId]] of this.bounds.entries()) {
-        const pos = k.indexOf(':');
-        const cId = parseInt(k.substring(0, pos));
-        if (cId === i) {
-          if (attributeBounds === undefined) {
-            attributeBounds = {};
-          }
-          const name = k.substring(pos + 1);
+      const bounds = this.bounds.get(i);
+      if (bounds !== undefined && bounds.size > 0) {
+        attributeBounds = {};
+        const encodedAttrs = new Map<number, Uint8Array>();
+        for (const [name, [min, max, paramId]] of bounds.entries()) {
           attributeBounds[name] = {min, max, paramId};
+          const nameIdx = flattenedSchema[0].indexOf(`${SUBJECT_STR}.${name}`);
+          encodedAttrs.set(nameIdx, unrevealedMsgs.get(nameIdx) as Uint8Array);
         }
-      }
-      if (attributeBounds !== undefined) {
         attributeBounds = unflatten(attributeBounds);
+        unrevealedMsgsEncoded.set(i, encodedAttrs)
       }
 
       this.spec.addPresentedCredential(
@@ -260,7 +267,6 @@ export class PresentationBuilder extends Versioned {
       );
 
       flattenedSchemas.push(flattenedSchema);
-      unrevealedMsgsAll.push(unrevealedMsgs);
     }
 
     // Create statements and witnesses for accumulators used in credential status
@@ -313,52 +319,58 @@ export class PresentationBuilder extends Versioned {
     }
 
     // For enforcing attribute bounds
-    for (const [k, [min, max, paramId]] of this.bounds.entries()) {
-      const param = this.predicateParams.get(paramId);
-      const pos = k.indexOf(':');
-      const cId = parseInt(k.substring(0, pos));
-      const name = k.substring(pos + 1);
-      const qualifiedName = `${SUBJECT_STR}.${name}`;
-      const nameIdx = flattenedSchemas[cId][0].indexOf(qualifiedName);
-      const typ = flattenedSchemas[cId][1][nameIdx] as object;
-      const encodedAttrVal = unrevealedMsgsAll[cId].get(nameIdx) as Uint8Array;
-      let statement, transformedMin, transformedMax;
-      switch (typ['type']) {
-        case CredentialSchema.POSITIVE_INT_TYPE:
-          transformedMin = min;
-          transformedMax = max;
-          break;
-        case CredentialSchema.INT_TYPE:
-          transformedMin = Encoder.integerToPositiveInt(typ['minimum'])(min);
-          transformedMax = Encoder.integerToPositiveInt(typ['minimum'])(max);
-          break;
-        case CredentialSchema.POSITIVE_NUM_TYPE:
-          transformedMin = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(min);
-          transformedMax = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(max);
-          break;
-        case CredentialSchema.NUM_TYPE:
-          transformedMin = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(min);
-          transformedMax = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(max);
-          break;
-        default:
-          throw new Error(`${name} should be of numeric type as per schema but was ${flattenedSchemas[cId][1][nameIdx]}`)
+    for (const [cId, bounds] of this.bounds.entries()) {
+      const dataSortedByNameIdx: [number, string, number, number, string][] = [];
+      for (const [name, [min, max, paramId]] of bounds.entries()) {
+        const qualifiedName = `${SUBJECT_STR}.${name}`;
+        const nameIdx = flattenedSchemas[cId][0].indexOf(qualifiedName);
+        dataSortedByNameIdx.push([nameIdx, name, min, max, paramId]);
       }
+      dataSortedByNameIdx.sort(function(a, b) {
+        return a[0] - b[0];
+      });
+      dataSortedByNameIdx.forEach(([nameIdx, name, min, max, paramId]) => {
+        const param = this.predicateParams.get(paramId);
+        const typ = flattenedSchemas[cId][1][nameIdx] as object;
+        let statement, transformedMin, transformedMax;
+        switch (typ['type']) {
+          case CredentialSchema.POSITIVE_INT_TYPE:
+            transformedMin = min;
+            transformedMax = max;
+            break;
+          case CredentialSchema.INT_TYPE:
+            transformedMin = Encoder.integerToPositiveInt(typ['minimum'])(min);
+            transformedMax = Encoder.integerToPositiveInt(typ['minimum'])(max);
+            break;
+          case CredentialSchema.POSITIVE_NUM_TYPE:
+            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(min);
+            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(max);
+            break;
+          case CredentialSchema.NUM_TYPE:
+            transformedMin = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(min);
+            transformedMax = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(max);
+            break;
+          default:
+            throw new Error(`${name} should be of numeric type as per schema but was ${flattenedSchemas[cId][1][nameIdx]}`)
+        }
 
-      if (param instanceof LegoProvingKey) {
-        statement = Statement.boundCheckProverFromCompressedParams(transformedMin, transformedMax, param);
-      } else if (param instanceof LegoProvingKeyUncompressed) {
-        statement = Statement.boundCheckProver(transformedMin, transformedMax, param);
-      } else {
-        throw new Error(`Predicate param id ${paramId} was expected to be a Legosnark proving key but was ${param}`);
-      }
+        if (param instanceof LegoProvingKey) {
+          statement = Statement.boundCheckProverFromCompressedParams(transformedMin, transformedMax, param);
+        } else if (param instanceof LegoProvingKeyUncompressed) {
+          statement = Statement.boundCheckProver(transformedMin, transformedMax, param);
+        } else {
+          throw new Error(`Predicate param id ${paramId} was expected to be a Legosnark proving key but was ${param}`);
+        }
 
-      const sIdx = statements.add(statement);
-      witnesses.add(Witness.boundCheckLegoGroth16(encodedAttrVal));
+        const encodedAttrVal = unrevealedMsgsEncoded.get(cId)?.get(nameIdx) as Uint8Array;
+        witnesses.add(Witness.boundCheckLegoGroth16(encodedAttrVal));
 
-      const witnessEq = new WitnessEqualityMetaStatement();
-      witnessEq.addWitnessRef(cId, nameIdx);
-      witnessEq.addWitnessRef(sIdx, 0);
-      metaStatements.addWitnessEquality(witnessEq);
+        const sIdx = statements.add(statement);
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(cId, nameIdx);
+        witnessEq.addWitnessRef(sIdx, 0);
+        metaStatements.addWitnessEquality(witnessEq);
+      });
     }
 
     // TODO: Include version and spec in context

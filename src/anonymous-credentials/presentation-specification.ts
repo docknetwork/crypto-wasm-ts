@@ -7,8 +7,8 @@ export interface IPresentedCredential {
   revealedAttributes: object;
   status?: object;
   // Bounds proved of any attribute(s)
-  bounds?: object;
-  verifiableEncryption?: object;
+  bounds?: object;  // {min, max, paramsId}
+  verifiableEncryption?: object;  // {commGensId, ekId, pkId, ciphertext}
 }
 
 /**

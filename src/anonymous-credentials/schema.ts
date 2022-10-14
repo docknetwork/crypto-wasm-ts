@@ -260,23 +260,6 @@ export class CredentialSchema extends Versioned {
   }
 
   static flattenSchemaObj(schema: object): [string[], unknown[]] {
-    /*const flattened = {};
-    const temp = flatten(schema) as object;
-    for (const k of Object.keys(temp)) {
-      // taken from https://stackoverflow.com/a/5555607
-      const pos = k.lastIndexOf('.');
-      const name = k.substring(0, pos);
-      const t = k.substring(pos + 1);
-
-      if (flattened[name] === undefined) {
-        flattened[name] = {};
-      }
-      flattened[name][t] = temp[k];
-    }
-    const keys = Object.keys(flattened).sort();
-    // @ts-ignore
-    const values = keys.map((k) => flattened[k]);
-    return [keys, values];*/
     return flattenTill2ndLastKey(schema);
   }
 
