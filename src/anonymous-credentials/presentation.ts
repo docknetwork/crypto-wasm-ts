@@ -27,10 +27,16 @@ import { AccumulatorPublicKey } from '../accumulator';
 import {
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
-  dockAccumulatorParams,
+  dockAccumulatorParams, dockSaverEncryptionGens, dockSaverEncryptionGensUncompressed,
   flattenTill2ndLastKey
 } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
+import {
+  SaverChunkedCommitmentGens,
+  SaverChunkedCommitmentGensUncompressed, SaverEncryptionKey,
+  SaverEncryptionKeyUncompressed, SaverProvingKey,
+  SaverProvingKeyUncompressed, SaverVerifyingKey, SaverVerifyingKeyUncompressed
+} from '../saver';
 
 export class Presentation extends Versioned {
   spec: PresentationSpecification;
@@ -81,6 +87,7 @@ export class Presentation extends Versioned {
     const credStatusAux: [number, string, Uint8Array][] = [];
 
     const boundsAux: [number, object][] = [];
+    const verEncAux: [number, object][] = [];
 
     for (let i = 0; i < this.spec.credentials.length; i++) {
       const presentedCred = this.spec.credentials[i];
@@ -105,6 +112,9 @@ export class Presentation extends Versioned {
 
       if (presentedCred.bounds !== undefined) {
         boundsAux.push([i, presentedCred.bounds]);
+      }
+      if (presentedCred.verifiableEncryptions !== undefined) {
+        verEncAux.push([i, presentedCred.verifiableEncryptions]);
       }
     }
 
@@ -189,6 +199,43 @@ export class Presentation extends Versioned {
         witnessEq.addWitnessRef(sIdx, 0);
         metaStatements.addWitnessEquality(witnessEq);
       });
+    });
+
+    verEncAux.forEach(([i, v]) => {
+      const verEnc = flattenTill2ndLastKey(v) as object;
+      verEnc[0].forEach((k, j) => {
+        const name = `${SUBJECT_STR}.${k}`;
+        const nameIdx = flattenedSchemas[i][0].indexOf(name);
+        const commGensId = verEnc[1][j]['commitmentGensId'];
+        if (commGensId === undefined) {
+          throw new Error(`Commitment gens id not found for ${name}`);
+        }
+        const commGens = predicateParams?.get(commGensId);
+        const encKeyId = verEnc[1][j]['encryptionKeyId'];
+        if (encKeyId === undefined) {
+          throw new Error(`Encryption key id not found for ${name}`);
+        }
+        const encKey = predicateParams?.get(encKeyId);
+        const snarkVkId = verEnc[1][j]['snarkKeyId'];
+        if (snarkVkId === undefined) {
+          throw new Error(`Snark verification key id not found for ${name}`);
+        }
+        const snarkVk = predicateParams?.get(snarkVkId);
+        const chunkBitSize = verEnc[1][j]['chunkBitSize'];
+        let statement;
+        if (commGens instanceof SaverChunkedCommitmentGensUncompressed && encKey instanceof SaverEncryptionKeyUncompressed && snarkVk instanceof SaverVerifyingKeyUncompressed) {
+          statement = Statement.saverVerifier(dockSaverEncryptionGensUncompressed(), commGens, encKey, snarkVk, chunkBitSize);
+        } else if (commGens instanceof SaverChunkedCommitmentGens && encKey instanceof SaverEncryptionKey && snarkVk instanceof SaverVerifyingKey) {
+          statement = Statement.saverVerifierFromCompressedParams(dockSaverEncryptionGens(), commGens, encKey, snarkVk, chunkBitSize);
+        } else {
+          throw new Error('All SAVER parameters should either be compressed in uncompressed');
+        }
+        const sIdx = statements.add(statement);
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(i, nameIdx);
+        witnessEq.addWitnessRef(sIdx, 0);
+        metaStatements.addWitnessEquality(witnessEq);
+      })
     });
 
     // TODO: Fix context calc.

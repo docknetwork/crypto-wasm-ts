@@ -31,7 +31,12 @@ import { PresentationSpecification } from './presentation-specification';
 import b58 from 'bs58';
 import { Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
-import { dockAccumulatorMemProvingKey, dockAccumulatorNonMemProvingKey, dockAccumulatorParams } from './util';
+import {
+  dockAccumulatorMemProvingKey,
+  dockAccumulatorNonMemProvingKey,
+  dockAccumulatorParams,
+  dockSaverEncryptionGens, dockSaverEncryptionGensUncompressed
+} from './util';
 import {
   SaverChunkedCommitmentGens,
   SaverChunkedCommitmentGensUncompressed,
@@ -147,6 +152,7 @@ export class PresentationBuilder extends Versioned {
   }
 
   // TODO: Should check if all compressed or all uncompressed
+  // TODO: Should check that the attribute's encoding is reversible as per schema
   verifiablyEncrypt(credIdx: number, attributeName: string, chunkBitSize: number, commGensId: string, encryptionKeyId: string, snarkPkId: string, commGens?: SaverChunkedCommitmentGens | SaverChunkedCommitmentGensUncompressed, encryptionKey?: SaverEncryptionKey | SaverEncryptionKeyUncompressed, snarkPk?: SaverProvingKey | SaverProvingKeyUncompressed) {
     if ((chunkBitSize !== 8) && (chunkBitSize !== 16)) {
       throw new Error(`Only 8 and 16 supported for chunkBitSize but given ${chunkBitSize}`);
@@ -247,14 +253,28 @@ export class PresentationBuilder extends Versioned {
       const bounds = this.bounds.get(i);
       if (bounds !== undefined && bounds.size > 0) {
         attributeBounds = {};
-        const encodedAttrs = new Map<number, Uint8Array>();
+        const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
         for (const [name, [min, max, paramId]] of bounds.entries()) {
           attributeBounds[name] = {min, max, paramId};
           const nameIdx = flattenedSchema[0].indexOf(`${SUBJECT_STR}.${name}`);
           encodedAttrs.set(nameIdx, unrevealedMsgs.get(nameIdx) as Uint8Array);
         }
         attributeBounds = unflatten(attributeBounds);
-        unrevealedMsgsEncoded.set(i, encodedAttrs)
+        unrevealedMsgsEncoded.set(i, encodedAttrs);
+      }
+
+      let attributeEncs: object | undefined;
+      const encs = this.verifEnc.get(i);
+      if (encs !== undefined && encs.size > 0) {
+        attributeEncs = {};
+        const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
+        for (const [name, [chunkBitSize, commGenId, encId, pkId]] of encs.entries()) {
+          attributeEncs[name] = {chunkBitSize, commitmentGensId: commGenId, encryptionKeyId: encId, snarkKeyId: pkId};
+          const nameIdx = flattenedSchema[0].indexOf(`${SUBJECT_STR}.${name}`);
+          encodedAttrs.set(nameIdx, unrevealedMsgs.get(nameIdx) as Uint8Array);
+        }
+        attributeEncs = unflatten(attributeEncs);
+        unrevealedMsgsEncoded.set(i, encodedAttrs);
       }
 
       this.spec.addPresentedCredential(
@@ -263,7 +283,8 @@ export class PresentationBuilder extends Versioned {
         cred.issuerPubKey as StringOrObject,
         revealedMsgsRaw[SUBJECT_STR],
         presentedStatus,
-        attributeBounds
+        attributeBounds,
+        attributeEncs
       );
 
       flattenedSchemas.push(flattenedSchema);
@@ -364,6 +385,50 @@ export class PresentationBuilder extends Versioned {
 
         const encodedAttrVal = unrevealedMsgsEncoded.get(cId)?.get(nameIdx) as Uint8Array;
         witnesses.add(Witness.boundCheckLegoGroth16(encodedAttrVal));
+
+        const sIdx = statements.add(statement);
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(cId, nameIdx);
+        witnessEq.addWitnessRef(sIdx, 0);
+        metaStatements.addWitnessEquality(witnessEq);
+      });
+    }
+
+    // For enforcing attribute encryption
+    for (const [cId, verEnc] of this.verifEnc.entries()) {
+      const dataSortedByNameIdx: [number, string, number, string, string, string][] = [];
+      for (const [name, [chunkBitSize, commGensId, encKeyId, snarkPkId]] of verEnc.entries()) {
+        const qualifiedName = `${SUBJECT_STR}.${name}`;
+        const nameIdx = flattenedSchemas[cId][0].indexOf(qualifiedName);
+        dataSortedByNameIdx.push([nameIdx, name, chunkBitSize, commGensId, encKeyId, snarkPkId]);
+      }
+      dataSortedByNameIdx.sort(function(a, b) {
+        return a[0] - b[0];
+      });
+      dataSortedByNameIdx.forEach(([nameIdx, name, chunkBitSize, commGensId, encKeyId, snarkPkId]) => {
+        const commGens = this.predicateParams.get(commGensId);
+        if (commGens === undefined) {
+          throw new Error(`Predicate param id ${commGensId} not found`);
+        }
+        const encKey = this.predicateParams.get(encKeyId);
+        if (encKey === undefined) {
+          throw new Error(`Predicate param id ${encKeyId} not found`);
+        }
+        const snarkPk = this.predicateParams.get(snarkPkId);
+        if (snarkPk === undefined) {
+          throw new Error(`Predicate param id ${snarkPkId} not found`);
+        }
+        let statement;
+        if (commGens instanceof SaverChunkedCommitmentGensUncompressed && encKey instanceof SaverEncryptionKeyUncompressed && snarkPk instanceof SaverProvingKeyUncompressed) {
+          statement = Statement.saverProver(dockSaverEncryptionGensUncompressed(), commGens, encKey, snarkPk, chunkBitSize);
+        } else if (commGens instanceof SaverChunkedCommitmentGens && encKey instanceof SaverEncryptionKey && snarkPk instanceof SaverProvingKey) {
+          statement = Statement.saverProverFromCompressedParams(dockSaverEncryptionGens(), commGens, encKey, snarkPk, chunkBitSize);
+        } else {
+          throw new Error('All SAVER parameters should either be compressed in uncompressed');
+        }
+
+        const encodedAttrVal = unrevealedMsgsEncoded.get(cId)?.get(nameIdx) as Uint8Array;
+        witnesses.add(Witness.saver(encodedAttrVal));
 
         const sIdx = statements.add(statement);
         const witnessEq = new WitnessEqualityMetaStatement();

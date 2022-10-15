@@ -4,7 +4,7 @@ import {
   ACCUMULATOR_PROVING_KEY_LABEL_BYTES,
   SAVER_ENCRYPTION_GENS_BYTES
 } from './types-and-consts';
-import { SaverEncryptionGens } from '../saver';
+import { SaverEncryptionGens, SaverEncryptionGensUncompressed } from '../saver';
 import { flatten } from 'flat';
 
 export function dockAccumulatorParams(): AccumulatorParams {
@@ -21,6 +21,10 @@ export function dockAccumulatorNonMemProvingKey(): NonMembershipProvingKey {
 
 export function dockSaverEncryptionGens(): SaverEncryptionGens {
   return SaverEncryptionGens.generate(SAVER_ENCRYPTION_GENS_BYTES);
+}
+
+export function dockSaverEncryptionGensUncompressed(): SaverEncryptionGensUncompressed {
+  return SaverEncryptionGens.generate(SAVER_ENCRYPTION_GENS_BYTES).decompress();
 }
 
 export function flattenTill2ndLastKey(obj: object): [string[], unknown[]] {

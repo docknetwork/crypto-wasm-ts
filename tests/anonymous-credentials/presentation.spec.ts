@@ -419,8 +419,6 @@ describe('Presentation creation and verification', () => {
     checkResult(pres3.verify([pk3], acc));
   });
 
-  // TODO: Check presentationSpec returned in presentation as well
-
   it('from 2 credentials, `credential1` and `credential2`, and prove some attributes equal', () => {
     const builder4 = new PresentationBuilder();
     expect(builder4.addCredential(credential1, pk1)).toEqual(0);
@@ -667,6 +665,45 @@ describe('Presentation creation and verification', () => {
 
     const pres2 = builder8.finalize();
 
+    expect(pres2.spec.credentials[0].bounds).toEqual({
+      timeOfBirth: {
+        min: minTime,
+        max: maxTime,
+        paramId: pkId,
+      },
+      BMI: {
+        min: minBMI,
+        max: maxBMI,
+        paramId: pkId,
+      },
+      score: {
+        min: minScore,
+        max: maxScore,
+        paramId: pkId,
+      }
+    });
+
+    expect(pres2.spec.credentials[2].bounds).toEqual({
+      lessSensitive: {
+        department: {
+          location: {
+            geo: {
+              lat: {
+                min: minLat,
+                max: maxLat,
+                paramId: pkId,
+              },
+              long: {
+                min: minLong,
+                max: maxLong,
+                paramId: pkId,
+              }
+            },
+          }
+        }
+      },
+    });
+
     const acc = new Map();
     acc.set(2, [accumulator3.accumulated, accumulator3Pk]);
 
@@ -681,11 +718,12 @@ describe('Presentation creation and verification', () => {
     const encGens = dockSaverEncryptionGens();
     const [saverSnarkPk, saverSk, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
 
-    const saverEncGens = encGens.decompress();
     const saverProvingKey = saverSnarkPk.decompress();
     const saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
     const saverEk = encryptionKey.decompress();
     const saverDk = decryptionKey.decompress();
+
+    // ------------------- Presentation with 1 credential -----------------------------------------
 
     const gens = SaverChunkedCommitmentGens.generate(stringToBytes('some nonce'));
     const commGens = gens.decompress();
@@ -701,5 +739,77 @@ describe('Presentation creation and verification', () => {
     builder9.verifiablyEncrypt(0, 'SSN', chunkBitSize, commGensId, ekId, snarkPkId, commGens, saverEk, saverProvingKey);
 
     const pres1 = builder9.finalize();
+
+    expect(pres1.spec.credentials[0].verifiableEncryptions).toEqual({
+      SSN: {
+        chunkBitSize,
+        commitmentGensId: commGensId,
+        encryptionKeyId: ekId,
+        snarkKeyId: snarkPkId,
+      }
+    });
+    const pp = new Map();
+    pp.set(commGensId, commGens);
+    pp.set(ekId, saverEk);
+    pp.set(snarkPkId, saverVerifyingKey);
+    checkResult(pres1.verify([pk1], undefined, pp));
+
+    // ---------------------------------- Presentation with 3 credentials ---------------------------------
+
+    const gensNew = SaverChunkedCommitmentGens.generate(stringToBytes('another nonce'));
+    const commGensNew = gensNew.decompress();
+
+    const builder10 = new PresentationBuilder();
+    expect(builder10.addCredential(credential1, pk1)).toEqual(0);
+    expect(builder10.addCredential(credential2, pk2)).toEqual(1);
+    expect(builder10.addCredential(credential3, pk3)).toEqual(2);
+
+    builder10.markAttributesRevealed(0, new Set<string>(['fname', 'lname']));
+    builder10.markAttributesRevealed(1, new Set<string>(['fname', 'location.country']));
+    builder10.markAttributesRevealed(
+      2,
+      new Set<string>(['fname', 'lessSensitive.location.country', 'lessSensitive.department.location.name'])
+    );
+
+    builder10.markAttributesEqual([0, 'SSN'], [1, 'sensitive.SSN'], [2, 'sensitive.SSN']);
+    builder10.markAttributesEqual([0, 'userId'], [1, 'sensitive.userId']);
+
+    builder10.addAccumInfoForCredStatus(2, accumulator3Witness, accumulator3.accumulated, accumulator3Pk, {
+      blockNo: 2010334
+    });
+
+    builder10.verifiablyEncrypt(0, 'SSN', chunkBitSize, commGensId, ekId, snarkPkId, commGensNew, saverEk, saverProvingKey);
+    builder10.verifiablyEncrypt(1, 'sensitive.userId', chunkBitSize, commGensId, ekId, snarkPkId);
+
+    const pres2 = builder10.finalize();
+
+    expect(pres2.spec.credentials[0].verifiableEncryptions).toEqual({
+      SSN: {
+        chunkBitSize,
+        commitmentGensId: commGensId,
+        encryptionKeyId: ekId,
+        snarkKeyId: snarkPkId,
+      }
+    });
+    expect(pres2.spec.credentials[1].verifiableEncryptions).toEqual({
+      sensitive: {
+        userId: {
+          chunkBitSize,
+          commitmentGensId: commGensId,
+          encryptionKeyId: ekId,
+          snarkKeyId: snarkPkId,
+        }
+      }
+    });
+
+    const acc = new Map();
+    acc.set(2, [accumulator3.accumulated, accumulator3Pk]);
+
+    const pp1 = new Map();
+    pp1.set(commGensId, commGensNew);
+    pp1.set(ekId, saverEk);
+    pp1.set(snarkPkId, saverVerifyingKey);
+
+    checkResult(pres2.verify([pk1, pk2, pk3], acc, pp1));
   });
 });

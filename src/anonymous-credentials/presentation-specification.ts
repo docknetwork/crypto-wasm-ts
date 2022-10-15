@@ -8,7 +8,7 @@ export interface IPresentedCredential {
   status?: object;
   // Bounds proved of any attribute(s)
   bounds?: object;  // {min, max, paramsId}
-  verifiableEncryption?: object;  // {commGensId, ekId, pkId, ciphertext}
+  verifiableEncryptions?: object;  // {commGensId, ekId, pkId, ciphertext}
 }
 
 /**
@@ -30,7 +30,8 @@ export class PresentationSpecification {
     issuer: StringOrObject,
     revealedAttributes: object,
     status?: object,
-    bounds?: object
+    bounds?: object,
+    verifiableEncryptions?: object,
   ) {
     const ps = {
       version,
@@ -43,6 +44,9 @@ export class PresentationSpecification {
     }
     if (bounds !== undefined) {
       ps['bounds'] = bounds;
+    }
+    if (verifiableEncryptions !== undefined) {
+      ps['verifiableEncryptions'] = verifiableEncryptions;
     }
     this.credentials.push(ps);
   }
