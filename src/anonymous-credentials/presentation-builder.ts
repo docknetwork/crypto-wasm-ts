@@ -12,12 +12,13 @@ import {
   Witnesses
 } from '../composite-proof';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
-import { CredentialSchema } from './schema';
+import { CredentialSchema, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
-  CRED_VERSION_STR,
-  MEM_CHECK_STR, PredicateParamType,
+  CRED_VERSION_STR, FlattenedSchema,
+  MEM_CHECK_STR,
+  PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
@@ -35,12 +36,14 @@ import {
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
-  dockSaverEncryptionGens, dockSaverEncryptionGensUncompressed
+  dockSaverEncryptionGens,
+  dockSaverEncryptionGensUncompressed
 } from './util';
 import {
   SaverChunkedCommitmentGens,
   SaverChunkedCommitmentGensUncompressed,
-  SaverEncryptionKey, SaverEncryptionKeyUncompressed,
+  SaverEncryptionKey,
+  SaverEncryptionKeyUncompressed,
   SaverProvingKey,
   SaverProvingKeyUncompressed
 } from '../saver';
@@ -147,21 +150,33 @@ export class PresentationBuilder extends Versioned {
       b = new Map();
     }
     this.updatePredicateParams(provingKeyId, provingKey);
-    b.set(attributeName, [min, max, provingKeyId])
+    b.set(attributeName, [min, max, provingKeyId]);
     this.bounds.set(credIdx, b);
   }
 
   // TODO: Should check if all compressed or all uncompressed
   // TODO: Should check that the attribute's encoding is reversible as per schema
-  verifiablyEncrypt(credIdx: number, attributeName: string, chunkBitSize: number, commGensId: string, encryptionKeyId: string, snarkPkId: string, commGens?: SaverChunkedCommitmentGens | SaverChunkedCommitmentGensUncompressed, encryptionKey?: SaverEncryptionKey | SaverEncryptionKeyUncompressed, snarkPk?: SaverProvingKey | SaverProvingKeyUncompressed) {
-    if ((chunkBitSize !== 8) && (chunkBitSize !== 16)) {
+  verifiablyEncrypt(
+    credIdx: number,
+    attributeName: string,
+    chunkBitSize: number,
+    commGensId: string,
+    encryptionKeyId: string,
+    snarkPkId: string,
+    commGens?: SaverChunkedCommitmentGens | SaverChunkedCommitmentGensUncompressed,
+    encryptionKey?: SaverEncryptionKey | SaverEncryptionKeyUncompressed,
+    snarkPk?: SaverProvingKey | SaverProvingKeyUncompressed
+  ) {
+    if (chunkBitSize !== 8 && chunkBitSize !== 16) {
       throw new Error(`Only 8 and 16 supported for chunkBitSize but given ${chunkBitSize}`);
     }
     this.validateCredIndex(credIdx);
     let v = this.verifEnc.get(credIdx);
     if (v !== undefined) {
       if (v.get(attributeName) !== undefined) {
-        throw new Error(`Already enforced verifiable encryption on credential index ${credIdx} and attribute name ${attributeName}`);
+        throw new Error(
+          `Already enforced verifiable encryption on credential index ${credIdx} and attribute name ${attributeName}`
+        );
       }
     } else {
       v = new Map();
@@ -183,7 +198,7 @@ export class PresentationBuilder extends Versioned {
     const metaStatements = new MetaStatements();
     const witnesses = new Witnesses();
 
-    const flattenedSchemas: [string[], unknown[]][] = [];
+    const flattenedSchemas: FlattenedSchema[] = [];
 
     // Store only needed encoded values of names and their indices. Maps cred index -> attribute index in schema -> attr value
     const unrevealedMsgsEncoded = new Map<number, Map<number, Uint8Array>>();
@@ -255,7 +270,7 @@ export class PresentationBuilder extends Versioned {
         attributeBounds = {};
         const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
         for (const [name, [min, max, paramId]] of bounds.entries()) {
-          attributeBounds[name] = {min, max, paramId};
+          attributeBounds[name] = { min, max, paramId };
           const nameIdx = flattenedSchema[0].indexOf(`${SUBJECT_STR}.${name}`);
           encodedAttrs.set(nameIdx, unrevealedMsgs.get(nameIdx) as Uint8Array);
         }
@@ -269,8 +284,12 @@ export class PresentationBuilder extends Versioned {
         attributeEncs = {};
         const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
         for (const [name, [chunkBitSize, commGenId, encId, pkId]] of encs.entries()) {
-          attributeEncs[name] = {chunkBitSize, commitmentGensId: commGenId, encryptionKeyId: encId, snarkKeyId: pkId};
           const nameIdx = flattenedSchema[0].indexOf(`${SUBJECT_STR}.${name}`);
+          const valTyp = schema.typeOfName(`${SUBJECT_STR}.${name}`, flattenedSchema);
+          if (valTyp.type !== ValueType.RevStr) {
+            throw new Error(`Attribute name ${`${SUBJECT_STR}.${name}`} of credential index ${i} should be a reversible string type but was ${valTyp}`);
+          }
+          attributeEncs[name] = { chunkBitSize, commitmentGensId: commGenId, encryptionKeyId: encId, snarkKeyId: pkId };
           encodedAttrs.set(nameIdx, unrevealedMsgs.get(nameIdx) as Uint8Array);
         }
         attributeEncs = unflatten(attributeEncs);
@@ -345,36 +364,38 @@ export class PresentationBuilder extends Versioned {
       for (const [name, [min, max, paramId]] of bounds.entries()) {
         const qualifiedName = `${SUBJECT_STR}.${name}`;
         const nameIdx = flattenedSchemas[cId][0].indexOf(qualifiedName);
-        dataSortedByNameIdx.push([nameIdx, name, min, max, paramId]);
+        dataSortedByNameIdx.push([nameIdx, qualifiedName, min, max, paramId]);
       }
-      dataSortedByNameIdx.sort(function(a, b) {
+      dataSortedByNameIdx.sort(function (a, b) {
         return a[0] - b[0];
       });
-      dataSortedByNameIdx.forEach(([nameIdx, name, min, max, paramId]) => {
-        const param = this.predicateParams.get(paramId);
-        const typ = flattenedSchemas[cId][1][nameIdx] as object;
+      dataSortedByNameIdx.forEach(([nameIdx, qualifiedName, min, max, paramId]) => {
         let statement, transformedMin, transformedMax;
-        switch (typ['type']) {
-          case CredentialSchema.POSITIVE_INT_TYPE:
+        const valTyp = CredentialSchema.typeOfName(qualifiedName, flattenedSchemas[cId]);
+        switch (valTyp.type) {
+          case ValueType.PositiveInteger:
             transformedMin = min;
             transformedMax = max;
             break;
-          case CredentialSchema.INT_TYPE:
-            transformedMin = Encoder.integerToPositiveInt(typ['minimum'])(min);
-            transformedMax = Encoder.integerToPositiveInt(typ['minimum'])(max);
+          case ValueType.Integer:
+            transformedMin = Encoder.integerToPositiveInt(valTyp.minimum)(min);
+            transformedMax = Encoder.integerToPositiveInt(valTyp.minimum)(max);
             break;
-          case CredentialSchema.POSITIVE_NUM_TYPE:
-            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(min);
-            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(max);
+          case ValueType.PositiveNumber:
+            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(min);
+            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(max);
             break;
-          case CredentialSchema.NUM_TYPE:
-            transformedMin = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(min);
-            transformedMax = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(max);
+          case ValueType.Number:
+            transformedMin = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(min);
+            transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
             break;
           default:
-            throw new Error(`${name} should be of numeric type as per schema but was ${flattenedSchemas[cId][1][nameIdx]}`)
+            throw new Error(
+              `${qualifiedName} should be of numeric type as per schema but was ${valTyp}`
+            );
         }
 
+        const param = this.predicateParams.get(paramId);
         if (param instanceof LegoProvingKey) {
           statement = Statement.boundCheckProverFromCompressedParams(transformedMin, transformedMax, param);
         } else if (param instanceof LegoProvingKeyUncompressed) {
@@ -402,7 +423,7 @@ export class PresentationBuilder extends Versioned {
         const nameIdx = flattenedSchemas[cId][0].indexOf(qualifiedName);
         dataSortedByNameIdx.push([nameIdx, name, chunkBitSize, commGensId, encKeyId, snarkPkId]);
       }
-      dataSortedByNameIdx.sort(function(a, b) {
+      dataSortedByNameIdx.sort(function (a, b) {
         return a[0] - b[0];
       });
       dataSortedByNameIdx.forEach(([nameIdx, name, chunkBitSize, commGensId, encKeyId, snarkPkId]) => {
@@ -419,10 +440,30 @@ export class PresentationBuilder extends Versioned {
           throw new Error(`Predicate param id ${snarkPkId} not found`);
         }
         let statement;
-        if (commGens instanceof SaverChunkedCommitmentGensUncompressed && encKey instanceof SaverEncryptionKeyUncompressed && snarkPk instanceof SaverProvingKeyUncompressed) {
-          statement = Statement.saverProver(dockSaverEncryptionGensUncompressed(), commGens, encKey, snarkPk, chunkBitSize);
-        } else if (commGens instanceof SaverChunkedCommitmentGens && encKey instanceof SaverEncryptionKey && snarkPk instanceof SaverProvingKey) {
-          statement = Statement.saverProverFromCompressedParams(dockSaverEncryptionGens(), commGens, encKey, snarkPk, chunkBitSize);
+        if (
+          commGens instanceof SaverChunkedCommitmentGensUncompressed &&
+          encKey instanceof SaverEncryptionKeyUncompressed &&
+          snarkPk instanceof SaverProvingKeyUncompressed
+        ) {
+          statement = Statement.saverProver(
+            dockSaverEncryptionGensUncompressed(),
+            commGens,
+            encKey,
+            snarkPk,
+            chunkBitSize
+          );
+        } else if (
+          commGens instanceof SaverChunkedCommitmentGens &&
+          encKey instanceof SaverEncryptionKey &&
+          snarkPk instanceof SaverProvingKey
+        ) {
+          statement = Statement.saverProverFromCompressedParams(
+            dockSaverEncryptionGens(),
+            commGens,
+            encKey,
+            snarkPk,
+            chunkBitSize
+          );
         } else {
           throw new Error('All SAVER parameters should either be compressed in uncompressed');
         }
@@ -481,7 +522,7 @@ export class PresentationBuilder extends Versioned {
   private updatePredicateParams(id: string, val?: PredicateParamType) {
     if (val !== undefined) {
       if (this.predicateParams.has(id)) {
-        throw new Error(`Predicate params already exists for id ${id}`)
+        throw new Error(`Predicate params already exists for id ${id}`);
       }
       this.predicateParams.set(id, val);
     }

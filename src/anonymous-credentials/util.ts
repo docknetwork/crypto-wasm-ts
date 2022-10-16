@@ -27,7 +27,7 @@ export function dockSaverEncryptionGensUncompressed(): SaverEncryptionGensUncomp
   return SaverEncryptionGens.generate(SAVER_ENCRYPTION_GENS_BYTES).decompress();
 }
 
-export function flattenTill2ndLastKey(obj: object): [string[], unknown[]] {
+export function flattenTill2ndLastKey(obj: object): [string[], object[]] {
   const flattened = {};
   const temp = flatten(obj) as object;
   for (const k of Object.keys(temp)) {

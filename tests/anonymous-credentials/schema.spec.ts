@@ -7,7 +7,7 @@ import {
   REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
-  SUBJECT_STR,
+  SUBJECT_STR, ValueType,
   VERSION_STR
 } from '../../src/anonymous-credentials';
 
@@ -365,4 +365,28 @@ describe('Credential Schema', () => {
     expect(recreatedCs1.version).toEqual('91.329.68');
     expect(recreatedCs1.version).not.toEqual(CredentialSchema.VERSION);
   });
+
+  it('check type', () => {
+    const schema = CredentialSchema.bare();
+    schema[SUBJECT_STR] = {
+      fname: { type: 'string' },
+      SSN: { type: 'stringReversible', compress: false },
+      userId: { type: 'stringReversible', compress: true },
+      timeOfBirth: { type: 'positiveInteger' },
+      xyz: { type: 'integer', minimum: -10 },
+      BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
+      score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
+    };
+    const cs = new CredentialSchema(schema);
+
+    expect(() => cs.typeOfName(`${SUBJECT_STR}.x`)).toThrow();
+    expect(() => cs.typeOfName('fname')).toThrow();
+    expect(cs.typeOfName(`${SUBJECT_STR}.fname`)).toEqual({type: ValueType.Str});
+    expect(cs.typeOfName(`${SUBJECT_STR}.SSN`)).toEqual({type: ValueType.RevStr, compress: false});
+    expect(cs.typeOfName(`${SUBJECT_STR}.userId`)).toEqual({type: ValueType.RevStr, compress: true});
+    expect(cs.typeOfName(`${SUBJECT_STR}.timeOfBirth`)).toEqual({type: ValueType.PositiveInteger});
+    expect(cs.typeOfName(`${SUBJECT_STR}.xyz`)).toEqual({type: ValueType.Integer, minimum: -10});
+    expect(cs.typeOfName(`${SUBJECT_STR}.BMI`)).toEqual({type: ValueType.PositiveNumber, decimalPlaces: 2});
+    expect(cs.typeOfName(`${SUBJECT_STR}.score`)).toEqual({type: ValueType.Number, minimum: -100, decimalPlaces: 1});
+  })
 });

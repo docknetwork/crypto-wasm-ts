@@ -3,11 +3,18 @@ import {
   AccumulatorPublicKey,
   AccumulatorSecretKey,
   BBSPlusPublicKeyG2,
-  BBSPlusSecretKey, BoundCheckSnarkSetup,
+  BBSPlusSecretKey,
+  BoundCheckSnarkSetup,
   IAccumulatorState,
   KeypairG2,
+  LegoProvingKeyUncompressed,
+  LegoVerifyingKeyUncompressed,
   MembershipWitness,
-  PositiveAccumulator, SaverChunkedCommitmentGens, SaverDecryptor,
+  PositiveAccumulator,
+  SaverChunkedCommitmentGens, SaverDecryptionKeyUncompressed,
+  SaverDecryptor, SaverEncryptionKeyUncompressed,
+  SaverProvingKeyUncompressed,
+  SaverVerifyingKeyUncompressed,
   SignatureParamsG1
 } from '../../src';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
@@ -65,6 +72,35 @@ describe('Presentation creation and verification', () => {
   let accumulator4: PositiveAccumulator;
   let accumulator4Pk: AccumulatorPublicKey;
   let accumulator4Witness: MembershipWitness;
+
+  let boundCheckProvingKey: LegoProvingKeyUncompressed;
+  let boundCheckVerifyingKey: LegoVerifyingKeyUncompressed;
+
+  const chunkBitSize = 16;
+  let saverProvingKey: SaverProvingKeyUncompressed;
+  let saverVerifyingKey: SaverVerifyingKeyUncompressed;
+  let saverEk: SaverEncryptionKeyUncompressed;
+  let saverDk: SaverDecryptionKeyUncompressed;
+
+  function setupBoundCheck() {
+    if (boundCheckProvingKey === undefined) {
+      const pk = BoundCheckSnarkSetup();
+      boundCheckProvingKey = pk.decompress();
+      boundCheckVerifyingKey = pk.getVerifyingKeyUncompressed();
+    }
+  }
+
+  function setupSaver() {
+    if (saverProvingKey === undefined) {
+      const encGens = dockSaverEncryptionGens();
+      const [saverSnarkPk, saverSk, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
+
+      saverProvingKey = saverSnarkPk.decompress();
+      saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
+      saverEk = encryptionKey.decompress();
+      saverDk = decryptionKey.decompress();
+    }
+  }
 
   beforeAll(async () => {
     await initializeWasm();
@@ -561,9 +597,8 @@ describe('Presentation creation and verification', () => {
   });
 
   it('from credentials and proving bounds on attributes', () => {
-    const pk = BoundCheckSnarkSetup();
-    const snarkProvingKey = pk.decompress();
-    const snarkVerifyingKey = pk.getVerifyingKeyUncompressed();
+    setupBoundCheck();
+
     const pkId = 'random';
 
     // ------------------- Presentation with 1 credential -----------------------------------------
@@ -577,7 +612,7 @@ describe('Presentation creation and verification', () => {
     expect(minTime).toBeLessThan(credential1.subject['timeOfBirth']);
     // @ts-ignore
     expect(maxTime).toBeGreaterThan(credential1.subject['timeOfBirth']);
-    builder7.enforceBounds(0, 'timeOfBirth', minTime, maxTime, pkId, snarkProvingKey);
+    builder7.enforceBounds(0, 'timeOfBirth', minTime, maxTime, pkId, boundCheckProvingKey);
 
     const [minBMI, maxBMI] = [10, 40];
     // @ts-ignore
@@ -619,7 +654,7 @@ describe('Presentation creation and verification', () => {
     });
 
     const pp = new Map();
-    pp.set(pkId, snarkVerifyingKey);
+    pp.set(pkId, boundCheckVerifyingKey);
     checkResult(pres1.verify([pk1], undefined, pp));
 
     // ---------------------------------- Presentation with 3 credentials ---------------------------------
@@ -645,7 +680,7 @@ describe('Presentation creation and verification', () => {
       blockNo: 2010334
     });
 
-    builder8.enforceBounds(0, 'timeOfBirth', minTime, maxTime, pkId, snarkProvingKey);
+    builder8.enforceBounds(0, 'timeOfBirth', minTime, maxTime, pkId, boundCheckProvingKey);
     builder8.enforceBounds(0, 'BMI', minBMI, maxBMI, pkId);
     builder8.enforceBounds(0, 'score', minScore, maxScore, pkId);
 
@@ -703,25 +738,24 @@ describe('Presentation creation and verification', () => {
         }
       },
     });
+    expect(pres2.spec.credentials[2].status).toEqual({
+      $registryId: 'dock:accumulator:accumId123',
+      $revocationCheck: 'membership',
+      accumulated: accumulator3.accumulated,
+      extra: { blockNo: 2010334 }
+    });
 
     const acc = new Map();
     acc.set(2, [accumulator3.accumulated, accumulator3Pk]);
 
     const pp1 = new Map();
-    pp1.set(pkId, snarkVerifyingKey);
+    pp1.set(pkId, boundCheckVerifyingKey);
     checkResult(pres2.verify([pk1, pk2, pk3], acc, pp1));
   });
 
   it('from credentials and encryption of attributes', () => {
     // Setup for decryptor
-    const chunkBitSize = 16;
-    const encGens = dockSaverEncryptionGens();
-    const [saverSnarkPk, saverSk, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
-
-    const saverProvingKey = saverSnarkPk.decompress();
-    const saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
-    const saverEk = encryptionKey.decompress();
-    const saverDk = decryptionKey.decompress();
+    setupSaver()
 
     // ------------------- Presentation with 1 credential -----------------------------------------
 
@@ -801,6 +835,12 @@ describe('Presentation creation and verification', () => {
         }
       }
     });
+    expect(pres2.spec.credentials[2].status).toEqual({
+      $registryId: 'dock:accumulator:accumId123',
+      $revocationCheck: 'membership',
+      accumulated: accumulator3.accumulated,
+      extra: { blockNo: 2010334 }
+    });
 
     const acc = new Map();
     acc.set(2, [accumulator3.accumulated, accumulator3Pk]);
@@ -811,5 +851,153 @@ describe('Presentation creation and verification', () => {
     pp1.set(snarkPkId, saverVerifyingKey);
 
     checkResult(pres2.verify([pk1, pk2, pk3], acc, pp1));
+  });
+
+  it('from credentials with proving bounds on attributes and encryption of some attributes', () => {
+    setupBoundCheck();
+    setupSaver();
+
+    const boundCheckSnarkId = 'random';
+    const commGensId = 'random-1';
+    const ekId = 'random-2';
+    const snarkPkId = 'random-3';
+
+    const gens = SaverChunkedCommitmentGens.generate(stringToBytes('a new nonce'));
+    const commGens = gens.decompress();
+
+    const builder11 = new PresentationBuilder();
+    expect(builder11.addCredential(credential1, pk1)).toEqual(0);
+    expect(builder11.addCredential(credential2, pk2)).toEqual(1);
+    expect(builder11.addCredential(credential3, pk3)).toEqual(2);
+
+    builder11.markAttributesRevealed(0, new Set<string>(['fname', 'lname']));
+    builder11.markAttributesRevealed(1, new Set<string>(['fname', 'location.country']));
+    builder11.markAttributesRevealed(
+      2,
+      new Set<string>(['fname', 'lessSensitive.location.country', 'lessSensitive.department.location.name'])
+    );
+
+    builder11.markAttributesEqual([0, 'SSN'], [1, 'sensitive.SSN'], [2, 'sensitive.SSN']);
+    builder11.markAttributesEqual([0, 'timeOfBirth'], [1, 'timeOfBirth']);
+    builder11.markAttributesEqual([0, 'BMI'], [1, 'physical.BMI']);
+    builder11.markAttributesEqual([0, 'score'], [1, 'score']);
+    builder11.markAttributesEqual([0, 'userId'], [1, 'sensitive.userId']);
+
+    builder11.addAccumInfoForCredStatus(2, accumulator3Witness, accumulator3.accumulated, accumulator3Pk, {
+      blockNo: 2010334
+    });
+
+    const [minTime, maxTime] = [1662010838000, 1662010856123];
+    // @ts-ignore
+    expect(minTime).toBeLessThan(credential1.subject['timeOfBirth']);
+    // @ts-ignore
+    expect(maxTime).toBeGreaterThan(credential1.subject['timeOfBirth']);
+    builder11.enforceBounds(0, 'timeOfBirth', minTime, maxTime, boundCheckSnarkId, boundCheckProvingKey);
+
+    const [minBMI, maxBMI] = [10, 40];
+    // @ts-ignore
+    expect(minBMI).toBeLessThan(credential1.subject['BMI']);
+    // @ts-ignore
+    expect(maxBMI).toBeGreaterThan(credential1.subject['BMI']);
+    builder11.enforceBounds(0, 'BMI', minBMI, maxBMI, boundCheckSnarkId);
+
+    const [minScore, maxScore] = [-40.5, 60.7];
+    // @ts-ignore
+    expect(minScore).toBeLessThan(credential1.subject['score']);
+    // @ts-ignore
+    expect(maxScore).toBeGreaterThan(credential1.subject['score']);
+    builder11.enforceBounds(0, 'score', minScore, maxScore, boundCheckSnarkId);
+
+    const [minLat, maxLat] = [-30, 50];
+    // @ts-ignore
+    expect(minLat).toBeLessThan(credential3.subject.lessSensitive.department.location.geo.lat);
+    // @ts-ignore
+    expect(maxLat).toBeGreaterThan(credential3.subject.lessSensitive.department.location.geo.lat);
+    builder11.enforceBounds(2, 'lessSensitive.department.location.geo.lat', minLat, maxLat, boundCheckSnarkId);
+
+    const [minLong, maxLong] = [-10, 85];
+    // @ts-ignore
+    expect(minLong).toBeLessThan(credential3.subject.lessSensitive.department.location.geo.long);
+    // @ts-ignore
+    expect(maxLong).toBeGreaterThan(credential3.subject.lessSensitive.department.location.geo.long);
+    builder11.enforceBounds(2, 'lessSensitive.department.location.geo.long', minLong, maxLong, boundCheckSnarkId);
+
+    builder11.verifiablyEncrypt(0, 'SSN', chunkBitSize, commGensId, ekId, snarkPkId, commGens, saverEk, saverProvingKey);
+    builder11.verifiablyEncrypt(1, 'sensitive.userId', chunkBitSize, commGensId, ekId, snarkPkId);
+
+    const pres1 = builder11.finalize();
+
+    expect(pres1.spec.credentials[0].bounds).toEqual({
+      timeOfBirth: {
+        min: minTime,
+        max: maxTime,
+        paramId: boundCheckSnarkId,
+      },
+      BMI: {
+        min: minBMI,
+        max: maxBMI,
+        paramId: boundCheckSnarkId,
+      },
+      score: {
+        min: minScore,
+        max: maxScore,
+        paramId: boundCheckSnarkId,
+      }
+    });
+    expect(pres1.spec.credentials[0].verifiableEncryptions).toEqual({
+      SSN: {
+        chunkBitSize,
+        commitmentGensId: commGensId,
+        encryptionKeyId: ekId,
+        snarkKeyId: snarkPkId,
+      }
+    });
+
+    expect(pres1.spec.credentials[2].bounds).toEqual({
+      lessSensitive: {
+        department: {
+          location: {
+            geo: {
+              lat: {
+                min: minLat,
+                max: maxLat,
+                paramId: boundCheckSnarkId,
+              },
+              long: {
+                min: minLong,
+                max: maxLong,
+                paramId: boundCheckSnarkId,
+              }
+            },
+          }
+        }
+      },
+    });
+    expect(pres1.spec.credentials[1].verifiableEncryptions).toEqual({
+      sensitive: {
+        userId: {
+          chunkBitSize,
+          commitmentGensId: commGensId,
+          encryptionKeyId: ekId,
+          snarkKeyId: snarkPkId,
+        }
+      }
+    });
+    expect(pres1.spec.credentials[2].status).toEqual({
+      $registryId: 'dock:accumulator:accumId123',
+      $revocationCheck: 'membership',
+      accumulated: accumulator3.accumulated,
+      extra: { blockNo: 2010334 }
+    });
+
+    const acc = new Map();
+    acc.set(2, [accumulator3.accumulated, accumulator3Pk]);
+
+    const pp = new Map();
+    pp.set(boundCheckSnarkId, boundCheckVerifyingKey);
+    pp.set(commGensId, commGens);
+    pp.set(ekId, saverEk);
+    pp.set(snarkPkId, saverVerifyingKey);
+    checkResult(pres1.verify([pk1, pk2, pk3], acc, pp));
   });
 });

@@ -6,7 +6,15 @@ export type StringOrObject = string | object;
 export type AttributeRef = [number, string];
 // Array of references to attributes that are equal
 export type AttributeEquality = AttributeRef[];
-export type PredicateParamType = LegoProvingKey | LegoProvingKeyUncompressed | SaverProvingKey | SaverProvingKeyUncompressed | SaverEncryptionKey | SaverChunkedCommitmentGens;
+export type PredicateParamType =
+  | LegoProvingKey
+  | LegoProvingKeyUncompressed
+  | SaverProvingKey
+  | SaverProvingKeyUncompressed
+  | SaverEncryptionKey
+  | SaverChunkedCommitmentGens;
+
+export type FlattenedSchema = [string[], object[]];
 
 export const VERSION_STR = '$version';
 export const CRED_VERSION_STR = '$credentialVersion';

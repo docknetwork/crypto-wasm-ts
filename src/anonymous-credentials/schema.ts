@@ -2,9 +2,10 @@ import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../bbs-plus';
 import { isPositiveInteger } from '../util';
 import {
-  CRED_VERSION_STR,
+  CRED_VERSION_STR, FlattenedSchema,
   REGISTRY_ID_STR,
-  REV_CHECK_STR, REV_ID_STR,
+  REV_CHECK_STR,
+  REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
   StringOrObject,
@@ -77,6 +78,47 @@ import { flattenTill2ndLastKey } from './util';
   }
  }
  */
+
+export enum ValueType {
+  Str,
+  RevStr,
+  PositiveInteger,
+  Integer,
+  PositiveNumber,
+  Number
+}
+
+export interface StringType {
+  type: ValueType.Str
+}
+
+export interface ReversibleStringType {
+  type: ValueType.RevStr,
+  compress: boolean
+}
+
+export interface PositiveIntegerType {
+  type: ValueType.PositiveInteger
+}
+
+export interface IntegerType {
+  type: ValueType.Integer,
+  minimum: number
+}
+
+export interface PositiveNumberType {
+  type: ValueType.PositiveNumber,
+  decimalPlaces: number,
+}
+
+export interface NumberType {
+  type: ValueType.Number,
+  minimum: number,
+  decimalPlaces: number,
+}
+
+export type ValueTypes = StringType | ReversibleStringType | PositiveIntegerType | IntegerType | PositiveNumberType | NumberType;
+
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
@@ -106,7 +148,7 @@ export class CredentialSchema extends Versioned {
   encoder: Encoder;
 
   constructor(schema: StringOrObject) {
-    // This functions flattens schema object twice but the repetition can be avoid. Keeping this deliberately for code clarity.
+    // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
     const schem = typeof schema === 'string' ? JSON.parse(schema) : schema;
     CredentialSchema.validate(schem);
 
@@ -233,6 +275,32 @@ export class CredentialSchema extends Versioned {
     }
   }
 
+  typeOfName(name: string, flattenedSchema?: FlattenedSchema): ValueTypes {
+    return CredentialSchema.typeOfName(name, flattenedSchema === undefined ? this.flatten() : flattenedSchema);
+  }
+
+  static typeOfName(name: string, flattenedSchema: FlattenedSchema): ValueTypes {
+    const [names, values] = flattenedSchema;
+    const nameIdx = names.indexOf(name);
+    const typ = values[nameIdx]['type'];
+    switch (typ) {
+      case CredentialSchema.STR_TYPE:
+        return {type: ValueType.Str};
+      case CredentialSchema.STR_REV_TYPE:
+        return {type: ValueType.RevStr, compress: values[nameIdx]['compress']};
+      case CredentialSchema.POSITIVE_INT_TYPE:
+        return {type: ValueType.PositiveInteger};
+      case CredentialSchema.INT_TYPE:
+        return {type: ValueType.Integer, minimum: values[nameIdx]['minimum']};
+      case CredentialSchema.POSITIVE_NUM_TYPE:
+        return {type: ValueType.PositiveNumber, decimalPlaces: values[nameIdx]['decimalPlaces']};
+      case CredentialSchema.NUM_TYPE:
+        return {type: ValueType.Number, minimum: values[nameIdx]['minimum'], decimalPlaces: values[nameIdx]['decimalPlaces']};
+      default:
+        throw new Error(`Unknown type for name ${name}: ${typ}`);
+    }
+  }
+
   static bare(): object {
     const schema = {};
     schema[CRED_VERSION_STR] = { type: 'string' };
@@ -244,7 +312,7 @@ export class CredentialSchema extends Versioned {
     return { $version: this.version, ...this.schema };
   }
 
-  flatten(): [string[], unknown[]] {
+  flatten(): FlattenedSchema {
     return CredentialSchema.flattenSchemaObj(this.schema);
   }
 
@@ -259,7 +327,7 @@ export class CredentialSchema extends Versioned {
     return credSchema;
   }
 
-  static flattenSchemaObj(schema: object): [string[], unknown[]] {
+  static flattenSchemaObj(schema: object): FlattenedSchema {
     return flattenTill2ndLastKey(schema);
   }
 

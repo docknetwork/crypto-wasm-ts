@@ -7,8 +7,8 @@ export interface IPresentedCredential {
   revealedAttributes: object;
   status?: object;
   // Bounds proved of any attribute(s)
-  bounds?: object;  // {min, max, paramsId}
-  verifiableEncryptions?: object;  // {commGensId, ekId, pkId, ciphertext}
+  bounds?: object; // {min, max, paramsId}
+  verifiableEncryptions?: object; // {commGensId, ekId, pkId, ciphertext}
 }
 
 /**
@@ -31,7 +31,7 @@ export class PresentationSpecification {
     revealedAttributes: object,
     status?: object,
     bounds?: object,
-    verifiableEncryptions?: object,
+    verifiableEncryptions?: object
   ) {
     const ps = {
       version,

@@ -9,12 +9,13 @@ import {
   WitnessEqualityMetaStatement
 } from '../composite-proof';
 import { BBSPlusPublicKeyG2, Encoder, SignatureParamsG1 } from '../bbs-plus';
-import { CredentialSchema } from './schema';
+import { CredentialSchema, ValueType } from './schema';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 import {
-  CRED_VERSION_STR,
-  MEM_CHECK_STR, PredicateParamType,
+  CRED_VERSION_STR, FlattenedSchema,
+  MEM_CHECK_STR,
+  PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
@@ -27,15 +28,21 @@ import { AccumulatorPublicKey } from '../accumulator';
 import {
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
-  dockAccumulatorParams, dockSaverEncryptionGens, dockSaverEncryptionGensUncompressed,
+  dockAccumulatorParams,
+  dockSaverEncryptionGens,
+  dockSaverEncryptionGensUncompressed,
   flattenTill2ndLastKey
 } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import {
   SaverChunkedCommitmentGens,
-  SaverChunkedCommitmentGensUncompressed, SaverEncryptionKey,
-  SaverEncryptionKeyUncompressed, SaverProvingKey,
-  SaverProvingKeyUncompressed, SaverVerifyingKey, SaverVerifyingKeyUncompressed
+  SaverChunkedCommitmentGensUncompressed,
+  SaverEncryptionKey,
+  SaverEncryptionKeyUncompressed,
+  SaverProvingKey,
+  SaverProvingKeyUncompressed,
+  SaverVerifyingKey,
+  SaverVerifyingKeyUncompressed
 } from '../saver';
 
 export class Presentation extends Versioned {
@@ -81,7 +88,7 @@ export class Presentation extends Versioned {
     const statements = new Statements();
     const metaStatements = new MetaStatements();
 
-    const flattenedSchemas: [string[], unknown[]][] = [];
+    const flattenedSchemas: FlattenedSchema[] = [];
 
     // For credentials with status, i.e. using accumulators, type is [credIndex, revCheckType, accumulator]
     const credStatusAux: [number, string, Uint8Array][] = [];
@@ -159,39 +166,44 @@ export class Presentation extends Versioned {
       bounds[0].forEach((k, j) => {
         const name = `${SUBJECT_STR}.${k}`;
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
-        const typ = flattenedSchemas[i][1][nameIdx] as object;
-        const paramId = bounds[1][j]['paramId'];
-        const param = predicateParams?.get(paramId);
+        // const typ = flattenedSchemas[i][1][nameIdx] as object;
+        const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
         let statement, transformedMin, transformedMax;
         // TODO: Duplicate code
         const [min, max] = [bounds[1][j]['min'], bounds[1][j]['max']];
-        switch (typ['type']) {
-          case CredentialSchema.POSITIVE_INT_TYPE:
+        switch (valTyp.type) {
+          case ValueType.PositiveInteger:
             transformedMin = min;
             transformedMax = max;
             break;
-          case CredentialSchema.INT_TYPE:
-            transformedMin = Encoder.integerToPositiveInt(typ['minimum'])(min);
-            transformedMax = Encoder.integerToPositiveInt(typ['minimum'])(max);
+          case ValueType.Integer:
+            transformedMin = Encoder.integerToPositiveInt(valTyp.minimum)(min);
+            transformedMax = Encoder.integerToPositiveInt(valTyp.minimum)(max);
             break;
-          case CredentialSchema.POSITIVE_NUM_TYPE:
-            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(min);
-            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(typ['decimalPlaces'])(max);
+          case ValueType.PositiveNumber:
+            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(min);
+            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(max);
             break;
-          case CredentialSchema.NUM_TYPE:
-            transformedMin = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(min);
-            transformedMax = Encoder.decimalNumberToPositiveInt(typ['minimum'], typ['decimalPlaces'])(max);
+          case ValueType.Number:
+            transformedMin = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(min);
+            transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
             break;
           default:
-            throw new Error(`${name} should be of numeric type as per schema but was ${flattenedSchemas[i][1][nameIdx]}`)
+            throw new Error(
+              `${name} should be of numeric type as per schema but was ${valTyp}`
+            );
         }
 
+        const paramId = bounds[1][j]['paramId'];
+        const param = predicateParams?.get(paramId);
         if (param instanceof LegoVerifyingKey) {
           statement = Statement.boundCheckVerifierFromCompressedParams(transformedMin, transformedMax, param);
         } else if (param instanceof LegoVerifyingKeyUncompressed) {
           statement = Statement.boundCheckVerifier(transformedMin, transformedMax, param);
         } else {
-          throw new Error(`Predicate param id ${paramId} was expected to be a Legosnark verifying key but was ${param}`);
+          throw new Error(
+            `Predicate param id ${paramId} was expected to be a Legosnark verifying key but was ${param}`
+          );
         }
         const sIdx = statements.add(statement);
         const witnessEq = new WitnessEqualityMetaStatement();
@@ -205,6 +217,10 @@ export class Presentation extends Versioned {
       const verEnc = flattenTill2ndLastKey(v) as object;
       verEnc[0].forEach((k, j) => {
         const name = `${SUBJECT_STR}.${k}`;
+        const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
+        if (valTyp.type !== ValueType.RevStr) {
+          throw new Error(`Attribute name ${`${SUBJECT_STR}.${name}`} of credential index ${i} should be a reversible string type but was ${valTyp}`);
+        }
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
         const commGensId = verEnc[1][j]['commitmentGensId'];
         if (commGensId === undefined) {
@@ -223,10 +239,30 @@ export class Presentation extends Versioned {
         const snarkVk = predicateParams?.get(snarkVkId);
         const chunkBitSize = verEnc[1][j]['chunkBitSize'];
         let statement;
-        if (commGens instanceof SaverChunkedCommitmentGensUncompressed && encKey instanceof SaverEncryptionKeyUncompressed && snarkVk instanceof SaverVerifyingKeyUncompressed) {
-          statement = Statement.saverVerifier(dockSaverEncryptionGensUncompressed(), commGens, encKey, snarkVk, chunkBitSize);
-        } else if (commGens instanceof SaverChunkedCommitmentGens && encKey instanceof SaverEncryptionKey && snarkVk instanceof SaverVerifyingKey) {
-          statement = Statement.saverVerifierFromCompressedParams(dockSaverEncryptionGens(), commGens, encKey, snarkVk, chunkBitSize);
+        if (
+          commGens instanceof SaverChunkedCommitmentGensUncompressed &&
+          encKey instanceof SaverEncryptionKeyUncompressed &&
+          snarkVk instanceof SaverVerifyingKeyUncompressed
+        ) {
+          statement = Statement.saverVerifier(
+            dockSaverEncryptionGensUncompressed(),
+            commGens,
+            encKey,
+            snarkVk,
+            chunkBitSize
+          );
+        } else if (
+          commGens instanceof SaverChunkedCommitmentGens &&
+          encKey instanceof SaverEncryptionKey &&
+          snarkVk instanceof SaverVerifyingKey
+        ) {
+          statement = Statement.saverVerifierFromCompressedParams(
+            dockSaverEncryptionGens(),
+            commGens,
+            encKey,
+            snarkVk,
+            chunkBitSize
+          );
         } else {
           throw new Error('All SAVER parameters should either be compressed in uncompressed');
         }
@@ -235,7 +271,7 @@ export class Presentation extends Versioned {
         witnessEq.addWitnessRef(i, nameIdx);
         witnessEq.addWitnessRef(sIdx, 0);
         metaStatements.addWitnessEquality(witnessEq);
-      })
+      });
     });
 
     // TODO: Fix context calc.
