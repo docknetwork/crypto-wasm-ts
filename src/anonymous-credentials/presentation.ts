@@ -13,7 +13,9 @@ import { CredentialSchema, ValueType } from './schema';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 import {
-  CRED_VERSION_STR, FlattenedSchema,
+  AttributeCiphertexts,
+  CRED_VERSION_STR,
+  FlattenedSchema,
   MEM_CHECK_STR,
   PredicateParamType,
   REGISTRY_ID_STR,
@@ -39,8 +41,6 @@ import {
   SaverChunkedCommitmentGensUncompressed,
   SaverEncryptionKey,
   SaverEncryptionKeyUncompressed,
-  SaverProvingKey,
-  SaverProvingKeyUncompressed,
   SaverVerifyingKey,
   SaverVerifyingKeyUncompressed
 } from '../saver';
@@ -48,6 +48,10 @@ import {
 export class Presentation extends Versioned {
   spec: PresentationSpecification;
   proof: CompositeProofG1;
+  // Ciphertexts for the verifiable encryption of required attributes. The key of the map is the credential index.
+  // This is intentionally not part of presentation specification as this is created as part of the proof generation,
+  // not before.
+  attributeCiphertexts?: Map<number, AttributeCiphertexts>;
   context?: Uint8Array;
   nonce?: Uint8Array;
 
@@ -55,12 +59,14 @@ export class Presentation extends Versioned {
     version: string,
     spec: PresentationSpecification,
     proof: CompositeProofG1,
+    attributeCiphertexts?: Map<number, AttributeCiphertexts>,
     context?: Uint8Array,
     nonce?: Uint8Array
   ) {
     super(version);
     this.spec = spec;
     this.proof = proof;
+    this.attributeCiphertexts = attributeCiphertexts;
     this.context = context;
     this.nonce = nonce;
   }
@@ -166,7 +172,6 @@ export class Presentation extends Versioned {
       bounds[0].forEach((k, j) => {
         const name = `${SUBJECT_STR}.${k}`;
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
-        // const typ = flattenedSchemas[i][1][nameIdx] as object;
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
         let statement, transformedMin, transformedMax;
         // TODO: Duplicate code
@@ -189,9 +194,7 @@ export class Presentation extends Versioned {
             transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
             break;
           default:
-            throw new Error(
-              `${name} should be of numeric type as per schema but was ${valTyp}`
-            );
+            throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
         }
 
         const paramId = bounds[1][j]['paramId'];
@@ -219,7 +222,9 @@ export class Presentation extends Versioned {
         const name = `${SUBJECT_STR}.${k}`;
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
         if (valTyp.type !== ValueType.RevStr) {
-          throw new Error(`Attribute name ${`${SUBJECT_STR}.${name}`} of credential index ${i} should be a reversible string type but was ${valTyp}`);
+          throw new Error(
+            `Attribute name ${`${SUBJECT_STR}.${name}`} of credential index ${i} should be a reversible string type but was ${valTyp}`
+          );
         }
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
         const commGensId = verEnc[1][j]['commitmentGensId'];

@@ -16,7 +16,8 @@ import { CredentialSchema, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
-  CRED_VERSION_STR, FlattenedSchema,
+  CRED_VERSION_STR,
+  FlattenedSchema,
   MEM_CHECK_STR,
   PredicateParamType,
   REGISTRY_ID_STR,
@@ -287,7 +288,9 @@ export class PresentationBuilder extends Versioned {
           const nameIdx = flattenedSchema[0].indexOf(`${SUBJECT_STR}.${name}`);
           const valTyp = schema.typeOfName(`${SUBJECT_STR}.${name}`, flattenedSchema);
           if (valTyp.type !== ValueType.RevStr) {
-            throw new Error(`Attribute name ${`${SUBJECT_STR}.${name}`} of credential index ${i} should be a reversible string type but was ${valTyp}`);
+            throw new Error(
+              `Attribute name ${`${SUBJECT_STR}.${name}`} of credential index ${i} should be a reversible string type but was ${valTyp}`
+            );
           }
           attributeEncs[name] = { chunkBitSize, commitmentGensId: commGenId, encryptionKeyId: encId, snarkKeyId: pkId };
           encodedAttrs.set(nameIdx, unrevealedMsgs.get(nameIdx) as Uint8Array);
@@ -390,9 +393,7 @@ export class PresentationBuilder extends Versioned {
             transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
             break;
           default:
-            throw new Error(
-              `${qualifiedName} should be of numeric type as per schema but was ${valTyp}`
-            );
+            throw new Error(`${qualifiedName} should be of numeric type as per schema but was ${valTyp}`);
         }
 
         const param = this.predicateParams.get(paramId);
@@ -415,6 +416,9 @@ export class PresentationBuilder extends Versioned {
       });
     }
 
+    // For adding ciphertexts corresponding to verifiably encrypted attributes in the presentation
+    const credAttrToSId = new Map<number, Map<string, number>>();
+
     // For enforcing attribute encryption
     for (const [cId, verEnc] of this.verifEnc.entries()) {
       const dataSortedByNameIdx: [number, string, number, string, string, string][] = [];
@@ -426,6 +430,7 @@ export class PresentationBuilder extends Versioned {
       dataSortedByNameIdx.sort(function (a, b) {
         return a[0] - b[0];
       });
+      const attrToSid = new Map<string, number>();
       dataSortedByNameIdx.forEach(([nameIdx, name, chunkBitSize, commGensId, encKeyId, snarkPkId]) => {
         const commGens = this.predicateParams.get(commGensId);
         if (commGens === undefined) {
@@ -476,13 +481,51 @@ export class PresentationBuilder extends Versioned {
         witnessEq.addWitnessRef(cId, nameIdx);
         witnessEq.addWitnessRef(sIdx, 0);
         metaStatements.addWitnessEquality(witnessEq);
+        attrToSid.set(name, sIdx);
       });
+      if (attrToSid.size > 0) {
+        credAttrToSId.set(cId, attrToSid);
+      }
     }
 
     // TODO: Include version and spec in context
     this._proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], this._context);
     this.proof = CompositeProofG1.generateUsingQuasiProofSpec(this._proofSpec, witnesses, this._nonce);
-    return new Presentation(this.version, this.spec, this.proof, this._context, this._nonce);
+
+    let attributeCiphertexts;
+    if (credAttrToSId.size > 0) {
+      const allSIds: number[] = [];
+      for (const v of credAttrToSId.values()) {
+        for (const sId of v.values()) {
+          allSIds.push(sId);
+        }
+      }
+      const ciphertexts = this.proof.getSaverCiphertexts(allSIds);
+      attributeCiphertexts = new Map();
+      for (const [i, v] of credAttrToSId.entries()) {
+        const m = {};
+        let curM = {};
+        for (const [name, sId] of v.entries()) {
+          // name is a flattened name, like $credentialSubject.nesting1.nesting2.name
+          const nameParts = name.split('.');
+          if (nameParts.length > 1) {
+            // If a nested name
+            for (let j = 0; j < nameParts.length - 1; j++) {
+              if (m[nameParts[j]] === undefined) {
+                m[nameParts[j]] = {};
+              }
+              // `curM` refers to this inner object of `m`
+              curM = m[nameParts[j]];
+            }
+            curM[nameParts[nameParts.length - 1]] = ciphertexts[allSIds.indexOf(sId)];
+          } else {
+            m[name] = ciphertexts[allSIds.indexOf(sId)];
+          }
+        }
+        attributeCiphertexts.set(i, m);
+      }
+    }
+    return new Presentation(this.version, this.spec, this.proof, attributeCiphertexts, this._context, this._nonce);
   }
 
   get context(): Uint8Array | undefined {

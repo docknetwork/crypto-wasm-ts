@@ -11,8 +11,11 @@ import {
   LegoVerifyingKeyUncompressed,
   MembershipWitness,
   PositiveAccumulator,
-  SaverChunkedCommitmentGens, SaverDecryptionKeyUncompressed,
-  SaverDecryptor, SaverEncryptionKeyUncompressed,
+  SaverChunkedCommitmentGens,
+  SaverCiphertext,
+  SaverDecryptionKeyUncompressed,
+  SaverDecryptor,
+  SaverEncryptionKeyUncompressed,
   SaverProvingKeyUncompressed,
   SaverVerifyingKeyUncompressed,
   SignatureParamsG1
@@ -21,7 +24,9 @@ import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   Credential,
   CredentialSchema,
-  dockAccumulatorParams, dockSaverEncryptionGens,
+  dockAccumulatorParams,
+  dockSaverEncryptionGens,
+  dockSaverEncryptionGensUncompressed,
   MEM_CHECK_STR,
   PresentationBuilder,
   REV_ID_STR,
@@ -77,6 +82,7 @@ describe('Presentation creation and verification', () => {
   let boundCheckVerifyingKey: LegoVerifyingKeyUncompressed;
 
   const chunkBitSize = 16;
+  let saverSk: SaverProvingKeyUncompressed;
   let saverProvingKey: SaverProvingKeyUncompressed;
   let saverVerifyingKey: SaverVerifyingKeyUncompressed;
   let saverEk: SaverEncryptionKeyUncompressed;
@@ -93,8 +99,8 @@ describe('Presentation creation and verification', () => {
   function setupSaver() {
     if (saverProvingKey === undefined) {
       const encGens = dockSaverEncryptionGens();
-      const [saverSnarkPk, saverSk, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
-
+      const [saverSnarkPk, saverSec, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
+      saverSk = saverSec;
       saverProvingKey = saverSnarkPk.decompress();
       saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
       saverEk = encryptionKey.decompress();
@@ -639,17 +645,17 @@ describe('Presentation creation and verification', () => {
       timeOfBirth: {
         min: minTime,
         max: maxTime,
-        paramId: pkId,
+        paramId: pkId
       },
       BMI: {
         min: minBMI,
         max: maxBMI,
-        paramId: pkId,
+        paramId: pkId
       },
       score: {
         min: minScore,
         max: maxScore,
-        paramId: pkId,
+        paramId: pkId
       }
     });
 
@@ -704,17 +710,17 @@ describe('Presentation creation and verification', () => {
       timeOfBirth: {
         min: minTime,
         max: maxTime,
-        paramId: pkId,
+        paramId: pkId
       },
       BMI: {
         min: minBMI,
         max: maxBMI,
-        paramId: pkId,
+        paramId: pkId
       },
       score: {
         min: minScore,
         max: maxScore,
-        paramId: pkId,
+        paramId: pkId
       }
     });
 
@@ -726,17 +732,17 @@ describe('Presentation creation and verification', () => {
               lat: {
                 min: minLat,
                 max: maxLat,
-                paramId: pkId,
+                paramId: pkId
               },
               long: {
                 min: minLong,
                 max: maxLong,
-                paramId: pkId,
+                paramId: pkId
               }
-            },
+            }
           }
         }
-      },
+      }
     });
     expect(pres2.spec.credentials[2].status).toEqual({
       $registryId: 'dock:accumulator:accumId123',
@@ -755,7 +761,7 @@ describe('Presentation creation and verification', () => {
 
   it('from credentials and encryption of attributes', () => {
     // Setup for decryptor
-    setupSaver()
+    setupSaver();
 
     // ------------------- Presentation with 1 credential -----------------------------------------
 
@@ -779,14 +785,39 @@ describe('Presentation creation and verification', () => {
         chunkBitSize,
         commitmentGensId: commGensId,
         encryptionKeyId: ekId,
-        snarkKeyId: snarkPkId,
+        snarkKeyId: snarkPkId
       }
     });
+
+    // @ts-ignore
+    expect(pres1.attributeCiphertexts.size).toEqual(1);
+    // @ts-ignore
+    expect(pres1.attributeCiphertexts.get(0)).toBeDefined();
+
     const pp = new Map();
     pp.set(commGensId, commGens);
     pp.set(ekId, saverEk);
     pp.set(snarkPkId, saverVerifyingKey);
     checkResult(pres1.verify([pk1], undefined, pp));
+
+    // Decryptor gets the ciphertext from the verifier and decrypts it
+    const ciphertext = pres1.attributeCiphertexts?.get(0)?.SSN as SaverCiphertext;
+    const decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, saverVerifyingKey, chunkBitSize);
+    expect(decrypted.message).toEqual(
+      // @ts-ignore
+      credential1.schema?.encoder.encodeMessage(`${SUBJECT_STR}.SSN`, credential1.subject['SSN'])
+    );
+
+    // Decryptor shares the decryption result with verifier which the verifier can check for correctness.
+    expect(
+      ciphertext.verifyDecryption(
+        decrypted,
+        saverDk,
+        saverVerifyingKey,
+        dockSaverEncryptionGensUncompressed(),
+        chunkBitSize
+      ).verified
+    ).toEqual(true);
 
     // ---------------------------------- Presentation with 3 credentials ---------------------------------
 
@@ -812,7 +843,17 @@ describe('Presentation creation and verification', () => {
       blockNo: 2010334
     });
 
-    builder10.verifiablyEncrypt(0, 'SSN', chunkBitSize, commGensId, ekId, snarkPkId, commGensNew, saverEk, saverProvingKey);
+    builder10.verifiablyEncrypt(
+      0,
+      'SSN',
+      chunkBitSize,
+      commGensId,
+      ekId,
+      snarkPkId,
+      commGensNew,
+      saverEk,
+      saverProvingKey
+    );
     builder10.verifiablyEncrypt(1, 'sensitive.userId', chunkBitSize, commGensId, ekId, snarkPkId);
 
     const pres2 = builder10.finalize();
@@ -822,7 +863,7 @@ describe('Presentation creation and verification', () => {
         chunkBitSize,
         commitmentGensId: commGensId,
         encryptionKeyId: ekId,
-        snarkKeyId: snarkPkId,
+        snarkKeyId: snarkPkId
       }
     });
     expect(pres2.spec.credentials[1].verifiableEncryptions).toEqual({
@@ -831,7 +872,7 @@ describe('Presentation creation and verification', () => {
           chunkBitSize,
           commitmentGensId: commGensId,
           encryptionKeyId: ekId,
-          snarkKeyId: snarkPkId,
+          snarkKeyId: snarkPkId
         }
       }
     });
@@ -851,6 +892,53 @@ describe('Presentation creation and verification', () => {
     pp1.set(snarkPkId, saverVerifyingKey);
 
     checkResult(pres2.verify([pk1, pk2, pk3], acc, pp1));
+
+    // @ts-ignore
+    expect(pres2.attributeCiphertexts.size).toEqual(2);
+    // @ts-ignore
+    expect(pres2.attributeCiphertexts.get(0)).toBeDefined();
+    // @ts-ignore
+    expect(pres2.attributeCiphertexts.get(1)).toBeDefined();
+
+    const ciphertext1 = pres2.attributeCiphertexts?.get(0)?.SSN as SaverCiphertext;
+    const decrypted1 = SaverDecryptor.decryptCiphertext(ciphertext1, saverSk, saverDk, saverVerifyingKey, chunkBitSize);
+    expect(decrypted1.message).toEqual(
+      // @ts-ignore
+      credential1.schema?.encoder.encodeMessage(`${SUBJECT_STR}.SSN`, credential1.subject['SSN'])
+    );
+
+    // Decryptor shares the decryption result with verifier which the verifier can check for correctness.
+    expect(
+      ciphertext1.verifyDecryption(
+        decrypted1,
+        saverDk,
+        saverVerifyingKey,
+        dockSaverEncryptionGensUncompressed(),
+        chunkBitSize
+      ).verified
+    ).toEqual(true);
+
+    // @ts-ignore
+    const ciphertext2 = pres2.attributeCiphertexts?.get(1).sensitive.userId as SaverCiphertext;
+    const decrypted2 = SaverDecryptor.decryptCiphertext(ciphertext2, saverSk, saverDk, saverVerifyingKey, chunkBitSize);
+    expect(decrypted2.message).toEqual(
+      credential2.schema?.encoder.encodeMessage(
+        `${SUBJECT_STR}.sensitive.userId`,
+        // @ts-ignore
+        credential2.subject['sensitive']['userId']
+      )
+    );
+
+    // Decryptor shares the decryption result with verifier which the verifier can check for correctness.
+    expect(
+      ciphertext2.verifyDecryption(
+        decrypted2,
+        saverDk,
+        saverVerifyingKey,
+        dockSaverEncryptionGensUncompressed(),
+        chunkBitSize
+      ).verified
+    ).toEqual(true);
   });
 
   it('from credentials with proving bounds on attributes and encryption of some attributes', () => {
@@ -922,7 +1010,17 @@ describe('Presentation creation and verification', () => {
     expect(maxLong).toBeGreaterThan(credential3.subject.lessSensitive.department.location.geo.long);
     builder11.enforceBounds(2, 'lessSensitive.department.location.geo.long', minLong, maxLong, boundCheckSnarkId);
 
-    builder11.verifiablyEncrypt(0, 'SSN', chunkBitSize, commGensId, ekId, snarkPkId, commGens, saverEk, saverProvingKey);
+    builder11.verifiablyEncrypt(
+      0,
+      'SSN',
+      chunkBitSize,
+      commGensId,
+      ekId,
+      snarkPkId,
+      commGens,
+      saverEk,
+      saverProvingKey
+    );
     builder11.verifiablyEncrypt(1, 'sensitive.userId', chunkBitSize, commGensId, ekId, snarkPkId);
 
     const pres1 = builder11.finalize();
@@ -931,17 +1029,17 @@ describe('Presentation creation and verification', () => {
       timeOfBirth: {
         min: minTime,
         max: maxTime,
-        paramId: boundCheckSnarkId,
+        paramId: boundCheckSnarkId
       },
       BMI: {
         min: minBMI,
         max: maxBMI,
-        paramId: boundCheckSnarkId,
+        paramId: boundCheckSnarkId
       },
       score: {
         min: minScore,
         max: maxScore,
-        paramId: boundCheckSnarkId,
+        paramId: boundCheckSnarkId
       }
     });
     expect(pres1.spec.credentials[0].verifiableEncryptions).toEqual({
@@ -949,7 +1047,7 @@ describe('Presentation creation and verification', () => {
         chunkBitSize,
         commitmentGensId: commGensId,
         encryptionKeyId: ekId,
-        snarkKeyId: snarkPkId,
+        snarkKeyId: snarkPkId
       }
     });
 
@@ -961,17 +1059,17 @@ describe('Presentation creation and verification', () => {
               lat: {
                 min: minLat,
                 max: maxLat,
-                paramId: boundCheckSnarkId,
+                paramId: boundCheckSnarkId
               },
               long: {
                 min: minLong,
                 max: maxLong,
-                paramId: boundCheckSnarkId,
+                paramId: boundCheckSnarkId
               }
-            },
+            }
           }
         }
-      },
+      }
     });
     expect(pres1.spec.credentials[1].verifiableEncryptions).toEqual({
       sensitive: {
@@ -979,7 +1077,7 @@ describe('Presentation creation and verification', () => {
           chunkBitSize,
           commitmentGensId: commGensId,
           encryptionKeyId: ekId,
-          snarkKeyId: snarkPkId,
+          snarkKeyId: snarkPkId
         }
       }
     });

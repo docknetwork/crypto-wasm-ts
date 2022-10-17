@@ -7,7 +7,8 @@ import {
   REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
-  SUBJECT_STR, ValueType,
+  SUBJECT_STR,
+  ValueType,
   VERSION_STR
 } from '../../src/anonymous-credentials';
 
@@ -352,7 +353,9 @@ describe('Credential Schema', () => {
       expect(cs.schema).toEqual(recreatedCs.schema);
       expect(
         // @ts-ignore
-        JSON.stringify(Array.from(cs.encoder.encoders?.keys())) === JSON.stringify(Array.from(recreatedCs.encoder.encoders?.keys()))
+        JSON.stringify(Array.from(cs.encoder.encoders?.keys())) ===
+        // @ts-ignore
+          JSON.stringify(Array.from(recreatedCs.encoder.encoders?.keys()))
       ).toEqual(true);
       // TODO: Test encoding functions are same as well, this can be done in the credentials suite by using a deserialized schema
     }
@@ -375,18 +378,18 @@ describe('Credential Schema', () => {
       timeOfBirth: { type: 'positiveInteger' },
       xyz: { type: 'integer', minimum: -10 },
       BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-      score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
+      score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 }
     };
     const cs = new CredentialSchema(schema);
 
     expect(() => cs.typeOfName(`${SUBJECT_STR}.x`)).toThrow();
     expect(() => cs.typeOfName('fname')).toThrow();
-    expect(cs.typeOfName(`${SUBJECT_STR}.fname`)).toEqual({type: ValueType.Str});
-    expect(cs.typeOfName(`${SUBJECT_STR}.SSN`)).toEqual({type: ValueType.RevStr, compress: false});
-    expect(cs.typeOfName(`${SUBJECT_STR}.userId`)).toEqual({type: ValueType.RevStr, compress: true});
-    expect(cs.typeOfName(`${SUBJECT_STR}.timeOfBirth`)).toEqual({type: ValueType.PositiveInteger});
-    expect(cs.typeOfName(`${SUBJECT_STR}.xyz`)).toEqual({type: ValueType.Integer, minimum: -10});
-    expect(cs.typeOfName(`${SUBJECT_STR}.BMI`)).toEqual({type: ValueType.PositiveNumber, decimalPlaces: 2});
-    expect(cs.typeOfName(`${SUBJECT_STR}.score`)).toEqual({type: ValueType.Number, minimum: -100, decimalPlaces: 1});
-  })
+    expect(cs.typeOfName(`${SUBJECT_STR}.fname`)).toEqual({ type: ValueType.Str });
+    expect(cs.typeOfName(`${SUBJECT_STR}.SSN`)).toEqual({ type: ValueType.RevStr, compress: false });
+    expect(cs.typeOfName(`${SUBJECT_STR}.userId`)).toEqual({ type: ValueType.RevStr, compress: true });
+    expect(cs.typeOfName(`${SUBJECT_STR}.timeOfBirth`)).toEqual({ type: ValueType.PositiveInteger });
+    expect(cs.typeOfName(`${SUBJECT_STR}.xyz`)).toEqual({ type: ValueType.Integer, minimum: -10 });
+    expect(cs.typeOfName(`${SUBJECT_STR}.BMI`)).toEqual({ type: ValueType.PositiveNumber, decimalPlaces: 2 });
+    expect(cs.typeOfName(`${SUBJECT_STR}.score`)).toEqual({ type: ValueType.Number, minimum: -100, decimalPlaces: 1 });
+  });
 });

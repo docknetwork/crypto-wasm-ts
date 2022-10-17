@@ -25,7 +25,7 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
-import { getRevealedUnrevealed, stringToBytes } from '../utils';
+import { areUint8ArraysEqual, getRevealedUnrevealed, stringToBytes } from '../utils';
 
 describe('Verifiable encryption of signed messages', () => {
   const chunkBitSize = 16;
@@ -126,6 +126,8 @@ describe('Verifiable encryption of signed messages', () => {
   function decryptAndVerify(proof: CompositeProofG1, statementIndex: number, message: Uint8Array) {
     // Verifier extracts the ciphertext
     const ciphertext = proof.getSaverCiphertext(statementIndex);
+    const ciphertext1 = proof.getSaverCiphertexts([statementIndex]);
+    expect(areUint8ArraysEqual(ciphertext.bytes, ciphertext1[0].bytes)).toEqual(true);
 
     // Decryptor gets the ciphertext from the verifier and decrypts it
     const decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, snarkVerifyingKey, chunkBitSize);

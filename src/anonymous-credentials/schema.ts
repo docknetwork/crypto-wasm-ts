@@ -2,7 +2,8 @@ import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../bbs-plus';
 import { isPositiveInteger } from '../util';
 import {
-  CRED_VERSION_STR, FlattenedSchema,
+  CRED_VERSION_STR,
+  FlattenedSchema,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
@@ -89,35 +90,41 @@ export enum ValueType {
 }
 
 export interface StringType {
-  type: ValueType.Str
+  type: ValueType.Str;
 }
 
 export interface ReversibleStringType {
-  type: ValueType.RevStr,
-  compress: boolean
+  type: ValueType.RevStr;
+  compress: boolean;
 }
 
 export interface PositiveIntegerType {
-  type: ValueType.PositiveInteger
+  type: ValueType.PositiveInteger;
 }
 
 export interface IntegerType {
-  type: ValueType.Integer,
-  minimum: number
+  type: ValueType.Integer;
+  minimum: number;
 }
 
 export interface PositiveNumberType {
-  type: ValueType.PositiveNumber,
-  decimalPlaces: number,
+  type: ValueType.PositiveNumber;
+  decimalPlaces: number;
 }
 
 export interface NumberType {
-  type: ValueType.Number,
-  minimum: number,
-  decimalPlaces: number,
+  type: ValueType.Number;
+  minimum: number;
+  decimalPlaces: number;
 }
 
-export type ValueTypes = StringType | ReversibleStringType | PositiveIntegerType | IntegerType | PositiveNumberType | NumberType;
+export type ValueTypes =
+  | StringType
+  | ReversibleStringType
+  | PositiveIntegerType
+  | IntegerType
+  | PositiveNumberType
+  | NumberType;
 
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
@@ -126,10 +133,10 @@ export class CredentialSchema extends Versioned {
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
-  static readonly POSITIVE_INT_TYPE = 'positiveInteger';
-  static readonly INT_TYPE = 'integer';
-  static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
-  static readonly NUM_TYPE = 'decimalNumber';
+  private static readonly POSITIVE_INT_TYPE = 'positiveInteger';
+  private static readonly INT_TYPE = 'integer';
+  private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
+  private static readonly NUM_TYPE = 'decimalNumber';
 
   // Credential subject/claims cannot have any of these names
   static RESERVED_NAMES = [CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR];
@@ -162,7 +169,7 @@ export class CredentialSchema extends Versioned {
     const encoders = new Map<string, EncodeFunc>();
     const [names, values] = this.flatten();
     for (let i = 0; i < names.length; i++) {
-      const value = values[i] as object;
+      const value = values[i];
       let f: EncodeFunc;
       switch (value['type']) {
         case CredentialSchema.STR_REV_TYPE:
@@ -234,7 +241,7 @@ export class CredentialSchema extends Versioned {
         throw new Error(`Schema value for ${names[i]} should have been an object type but was ${typeof values[i]}`);
       }
 
-      const value = values[i] as object;
+      const value = values[i];
       const objKeys = Object.keys(value);
 
       if (objKeys.indexOf('type') < 0) {
@@ -285,17 +292,21 @@ export class CredentialSchema extends Versioned {
     const typ = values[nameIdx]['type'];
     switch (typ) {
       case CredentialSchema.STR_TYPE:
-        return {type: ValueType.Str};
+        return { type: ValueType.Str };
       case CredentialSchema.STR_REV_TYPE:
-        return {type: ValueType.RevStr, compress: values[nameIdx]['compress']};
+        return { type: ValueType.RevStr, compress: values[nameIdx]['compress'] };
       case CredentialSchema.POSITIVE_INT_TYPE:
-        return {type: ValueType.PositiveInteger};
+        return { type: ValueType.PositiveInteger };
       case CredentialSchema.INT_TYPE:
-        return {type: ValueType.Integer, minimum: values[nameIdx]['minimum']};
+        return { type: ValueType.Integer, minimum: values[nameIdx]['minimum'] };
       case CredentialSchema.POSITIVE_NUM_TYPE:
-        return {type: ValueType.PositiveNumber, decimalPlaces: values[nameIdx]['decimalPlaces']};
+        return { type: ValueType.PositiveNumber, decimalPlaces: values[nameIdx]['decimalPlaces'] };
       case CredentialSchema.NUM_TYPE:
-        return {type: ValueType.Number, minimum: values[nameIdx]['minimum'], decimalPlaces: values[nameIdx]['decimalPlaces']};
+        return {
+          type: ValueType.Number,
+          minimum: values[nameIdx]['minimum'],
+          decimalPlaces: values[nameIdx]['decimalPlaces']
+        };
       default:
         throw new Error(`Unknown type for name ${name}: ${typ}`);
     }
