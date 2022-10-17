@@ -10,7 +10,7 @@
     "clean": "rm -rf lib/",
     "prepare": "husky install",
     "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "test": "jest",
+    "test": "jest ./tests/anonymous-credentials/credential.spec.ts",
     "buildAndPublish": "yarn clean && yarn build && yarn publish"
   },
   "license": "Apache-2.0",

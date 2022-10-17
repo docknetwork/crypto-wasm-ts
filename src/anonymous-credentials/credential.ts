@@ -125,12 +125,16 @@ export class Credential extends Versioned {
     j['issuerPubKey'] = this._issuerPubKey;
     j['proof'] = {
       type: 'Bls12381BBS+SignatureDock2022',
-      proofValue: b58.encode((this._sig as SignatureG1).bytes)
     };
-    // This is for debugging only and can be omitted
-    j['encodedCredentialSubject'] = Object.fromEntries(
-      Object.entries(this._encodedSubject as object).map(([k, v]) => [k, b58.encode(v)])
-    );
+
+    if (this._sig) {
+      j['proof'].proofValue =  b58.encode((this._sig as SignatureG1).bytes);
+    }
+
+    // // This is for debugging only and can be omitted
+    // j['encodedCredentialSubject'] = Object.fromEntries(
+    //   Object.entries(this._encodedSubject as object).map(([k, v]) => [k, b58.encode(v)])
+    // );
     return JSON.stringify(j);
   }
 
