@@ -401,10 +401,10 @@ export class CredentialSchema extends Versioned {
   }
 
   static bare(): object {
-    const schema = {};
-    schema[CRED_VERSION_STR] = { type: 'string' };
-    schema[SCHEMA_STR] = { type: 'string' };
-    return schema;
+    return {
+      [CRED_VERSION_STR]: { type: 'string' },
+      [SCHEMA_STR]: { type: 'string' }
+    };
   }
 
   forCredential(): object {

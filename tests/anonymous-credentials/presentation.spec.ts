@@ -36,6 +36,7 @@ import {
 } from '../../src/anonymous-credentials';
 import { checkResult, stringToBytes } from '../utils';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
+import { getExampleSchema } from './utils';
 
 // Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
 async function prefillAccumulator(
@@ -126,22 +127,7 @@ describe('Presentation creation and verification', () => {
     sk4 = keypair4.sk;
     pk4 = keypair4.pk;
 
-    const schema1 = CredentialSchema.bare();
-    schema1[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' },
-      email: { type: 'string' },
-      SSN: { type: 'stringReversible', compress: false },
-      userId: { type: 'stringReversible', compress: true },
-      country: { type: 'string' },
-      city: { type: 'string' },
-      timeOfBirth: { type: 'positiveInteger' },
-      height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-      weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-      BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-      score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
-      secret: { type: 'string' }
-    };
+    const schema1 = getExampleSchema(9);
     const credSchema1 = new CredentialSchema(schema1);
     credential1 = new Credential();
     credential1.schema = credSchema1;
@@ -164,28 +150,7 @@ describe('Presentation creation and verification', () => {
     credential1.sign(sk1);
     checkResult(credential1.verify(pk1));
 
-    const schema2 = CredentialSchema.bare();
-    schema2[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' },
-      sensitive: {
-        secret: { type: 'string' },
-        email: { type: 'string' },
-        SSN: { type: 'stringReversible', compress: false },
-        userId: { type: 'stringReversible', compress: true }
-      },
-      location: {
-        country: { type: 'string' },
-        city: { type: 'string' }
-      },
-      timeOfBirth: { type: 'positiveInteger' },
-      physical: {
-        height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-        weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-        BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
-      },
-      score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 }
-    };
+    const schema2 = getExampleSchema(11);
     const credSchema2 = new CredentialSchema(schema2);
     credential2 = new Credential();
     credential2.schema = credSchema2;
@@ -214,41 +179,7 @@ describe('Presentation creation and verification', () => {
     credential2.sign(sk2);
     checkResult(credential2.verify(pk2));
 
-    const schema3 = CredentialSchema.bare();
-    schema3[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' },
-      sensitive: {
-        very: {
-          secret: { type: 'string' }
-        },
-        email: { type: 'string' },
-        phone: { type: 'string' },
-        SSN: { type: 'stringReversible', compress: false }
-      },
-      lessSensitive: {
-        location: {
-          country: { type: 'string' },
-          city: { type: 'string' }
-        },
-        department: {
-          name: { type: 'string' },
-          location: {
-            name: { type: 'string' },
-            geo: {
-              lat: { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
-              long: { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 }
-            }
-          }
-        }
-      },
-      rank: { type: 'positiveInteger' }
-    };
-    schema3[STATUS_STR] = {
-      $registryId: { type: 'string' },
-      $revocationCheck: { type: 'string' },
-      $revocationId: { type: 'string' }
-    };
+    const schema3 = getExampleSchema(5);
 
     const credSchema3 = new CredentialSchema(schema3);
     credential3 = new Credential();
@@ -311,38 +242,7 @@ describe('Presentation creation and verification', () => {
       )
     ).toEqual(true);
 
-    const schema4 = CredentialSchema.bare();
-    schema4[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' },
-      sensitive: {
-        email: { type: 'string' },
-        SSN: { type: 'stringReversible', compress: false }
-      },
-      education: {
-        studentId: { type: 'string' },
-        university: {
-          name: { type: 'string' },
-          registrationNumber: { type: 'string' }
-        },
-        transcript: {
-          rank: { type: 'positiveInteger' },
-          CGPA: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-          scores: {
-            english: { type: 'positiveInteger' },
-            mathematics: { type: 'positiveInteger' },
-            science: { type: 'positiveInteger' },
-            history: { type: 'positiveInteger' },
-            geography: { type: 'positiveInteger' }
-          }
-        }
-      }
-    };
-    schema4[STATUS_STR] = {
-      $registryId: { type: 'string' },
-      $revocationCheck: { type: 'string' },
-      $revocationId: { type: 'string' }
-    };
+    const schema4 = getExampleSchema(10);
 
     const credSchema4 = new CredentialSchema(schema4);
     credential4 = new Credential();

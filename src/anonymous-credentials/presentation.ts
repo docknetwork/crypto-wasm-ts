@@ -297,9 +297,10 @@ export class Presentation extends Versioned {
     revealedRaw[SCHEMA_STR] = presentedCred.schema;
     if (presentedCred.status !== undefined) {
       // TODO: Check that keys present in `presentedCred`
-      revealedRaw[STATUS_STR] = {};
-      revealedRaw[STATUS_STR][REGISTRY_ID_STR] = presentedCred.status[REGISTRY_ID_STR];
-      revealedRaw[STATUS_STR][REV_CHECK_STR] = presentedCred.status[REV_CHECK_STR];
+      revealedRaw[STATUS_STR] = {
+        [REGISTRY_ID_STR]: presentedCred.status[REGISTRY_ID_STR],
+        [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR],
+      };
     }
 
     const encoded = new Map<number, Uint8Array>();

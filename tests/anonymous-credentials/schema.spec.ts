@@ -12,6 +12,8 @@ import {
   VERSION_STR
 } from '../../src/anonymous-credentials';
 import { flatten } from 'flat';
+import { getExampleSchema } from './utils';
+import { set } from 'husky';
 
 describe('Credential Schema', () => {
   beforeAll(async () => {
@@ -139,209 +141,28 @@ describe('Credential Schema', () => {
     expect(cs5.schema[SUBJECT_STR]).toEqual(schema5[SUBJECT_STR]);
     expect(cs5.schema[STATUS_STR]).not.toBeDefined();
 
-    const schema6 = CredentialSchema.bare();
-    schema6[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' },
-      sensitive: {
-        very: {
-          secret: { type: 'string' }
-        },
-        email: { type: 'string' },
-        phone: { type: 'string' },
-        SSN: { type: 'stringReversible', compress: false }
-      },
-      lessSensitive: {
-        location: {
-          country: { type: 'string' },
-          city: { type: 'string' }
-        },
-        department: {
-          name: { type: 'string' },
-          location: {
-            name: { type: 'string' },
-            geo: {
-              lat: { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
-              long: { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 }
-            }
-          }
-        }
-      },
-      rank: { type: 'positiveInteger' }
-    };
-    schema6[STATUS_STR] = {
-      $registryId: { type: 'string' },
-      $revocationCheck: { type: 'string' },
-      $revocationId: { type: 'string' }
-    };
+    const schema6 = getExampleSchema(5);
 
     const cs6 = new CredentialSchema(schema6);
     expect(cs6.schema[SUBJECT_STR]).toEqual(schema6[SUBJECT_STR]);
     expect(cs6.schema[STATUS_STR]).toEqual(schema6[STATUS_STR]);
   });
 
-  function getSchema(num) {
-    const schema = {};
-    schema[CRED_VERSION_STR] = { type: 'string' };
-    schema[SCHEMA_STR] = { type: 'string' };
-    switch (num) {
-      case 1:
-        schema[SUBJECT_STR] = {
-          fname: { type: 'string' }
-        };
-        break;
-      case 2:
-        schema[SUBJECT_STR] = {
-          fname: { type: 'string' },
-          score: { type: 'integer', minimum: -100 }
-        };
-        break;
-      case 3:
-        schema[SUBJECT_STR] = {
-          fname: { type: 'string' },
-          score: { type: 'integer', minimum: -100 },
-          long: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
-        };
-        break;
-      case 4:
-        schema[SUBJECT_STR] = {
-          fname: { type: 'string' },
-          score: { type: 'integer', minimum: -100 }
-        };
-        schema[STATUS_STR] = {};
-        schema[STATUS_STR][REGISTRY_ID_STR] = { type: 'string' };
-        schema[STATUS_STR][REV_CHECK_STR] = { type: 'string' };
-        schema[STATUS_STR][REV_ID_STR] = { type: 'string' };
-        break;
-      case 5:
-        schema[SUBJECT_STR] = {
-          fname: { type: 'string' },
-          lname: { type: 'string' },
-          sensitive: {
-            very: {
-              secret: { type: 'string' }
-            },
-            email: { type: 'string' },
-            phone: { type: 'string' },
-            SSN: { type: 'stringReversible', compress: false }
-          },
-          lessSensitive: {
-            location: {
-              country: { type: 'string' },
-              city: { type: 'string' }
-            },
-            department: {
-              name: { type: 'string' },
-              location: {
-                name: { type: 'string' },
-                geo: {
-                  lat: { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
-                  long: { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 }
-                }
-              }
-            }
-          },
-          rank: { type: 'positiveInteger' }
-        };
-        schema[STATUS_STR] = {
-          $registryId: { type: 'string' },
-          $revocationCheck: { type: 'string' },
-          $revocationId: { type: 'string' }
-        };
-        break;
-      case 6:
-        schema[SUBJECT_STR] = [
-          {
-            name: {type: "string"},
-            location: {
-              name: {type: "string"},
-              geo: {
-                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-              }
-            }
-          },
-          {
-            name: {type: "string"},
-            location: {
-              name: {type: "string"},
-              geo: {
-                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-              }
-            }
-          },
-          {
-            name: {type: "string"},
-            location: {
-              name: {type: "string"},
-              geo: {
-                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-              }
-            }
-          }
-        ];
-        break;
-      case 7:
-        schema[SUBJECT_STR] = [
-          {
-            name: {type: "string"},
-            location: {
-              name: {type: "string"},
-              geo: {
-                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-              }
-            }
-          },
-          {
-            name: {type: "string"},
-            location: {
-              name: {type: "string"},
-              geo: {
-                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-              }
-            }
-          },
-          {
-            name: {type: "string"},
-            location: {
-              name: {type: "string"},
-              geo: {
-                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-              }
-            }
-          }
-        ];
-        schema['issuer'] = {
-          name: {type: "string"},
-          desc: {type: "string"},
-          logo: {type: "string"}
-        };
-        schema['issuanceDate'] = {type: "positiveInteger"};
-        schema['expirationDate'] = {type: "positiveInteger"};
-        break;
-    }
-    return schema;
-  }
 
   it('flattening', () => {
-    const cs1 = new CredentialSchema(getSchema(1));
+    const cs1 = new CredentialSchema(getExampleSchema(1));
     expect(cs1.flatten()).toEqual([
       [SCHEMA_STR, `${SUBJECT_STR}.fname`, CRED_VERSION_STR],
       [{ type: 'string' }, { type: 'string' }, { type: 'string' }]
     ]);
 
-    const cs2 = new CredentialSchema(getSchema(2));
+    const cs2 = new CredentialSchema(getExampleSchema(2));
     expect(cs2.flatten()).toEqual([
       [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.score`, CRED_VERSION_STR],
       [{ type: 'string' }, { type: 'string' }, { type: 'integer', minimum: -100 }, { type: 'string' }]
     ]);
 
-    const cs3 = new CredentialSchema(getSchema(3));
+    const cs3 = new CredentialSchema(getExampleSchema(3));
     expect(cs3.flatten()).toEqual([
       [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.long`, `${SUBJECT_STR}.score`, CRED_VERSION_STR],
       [
@@ -353,7 +174,7 @@ describe('Credential Schema', () => {
       ]
     ]);
 
-    const cs4 = new CredentialSchema(getSchema(4));
+    const cs4 = new CredentialSchema(getExampleSchema(4));
     expect(cs4.flatten()).toEqual([
       [
         SCHEMA_STR,
@@ -375,7 +196,7 @@ describe('Credential Schema', () => {
       ]
     ]);
 
-    const cs5 = new CredentialSchema(getSchema(5));
+    const cs5 = new CredentialSchema(getExampleSchema(5));
     expect(cs5.flatten()).toEqual([
       [
         SCHEMA_STR,
@@ -422,7 +243,7 @@ describe('Credential Schema', () => {
 
   it('to and from JSON', () => {
     for (let i = 1; i <= 5; i++) {
-      const cs = new CredentialSchema(getSchema(i));
+      const cs = new CredentialSchema(getExampleSchema(i));
       const j = cs.toJSON();
       const recreatedCs = CredentialSchema.fromJSON(j);
       expect(cs.version).toEqual(recreatedCs.version);
@@ -437,7 +258,7 @@ describe('Credential Schema', () => {
     }
 
     // version should match what was in JSON and not whats in `CredentialSchema` class
-    const cs1 = new CredentialSchema(getSchema(1));
+    const cs1 = new CredentialSchema(getExampleSchema(1));
     const j1 = JSON.parse(cs1.toJSON());
     j1[VERSION_STR] = '91.329.68';
     const recreatedCs1 = CredentialSchema.fromJSON(JSON.stringify(j1));
@@ -470,7 +291,7 @@ describe('Credential Schema', () => {
   });
 
   it('subject as an array', () => {
-    const schema6 = getSchema(6);
+    const schema6 = getExampleSchema(6);
     const cs6 = new CredentialSchema(schema6);
     expect(cs6.schema[SUBJECT_STR]).toEqual(schema6[SUBJECT_STR]);
 
@@ -511,7 +332,7 @@ describe('Credential Schema', () => {
   });
 
   it('custom top level fields', () => {
-    const schema7 = getSchema(7);
+    const schema7 = getExampleSchema(7);
     const cs7 = new CredentialSchema(schema7);
     expect(cs7.schema[SUBJECT_STR]).toEqual(schema7[SUBJECT_STR]);
     expect(cs7.schema['issuer']).toEqual(schema7['issuer']);

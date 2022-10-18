@@ -76,10 +76,11 @@ export class Credential extends Versioned {
     if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR) {
       throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} but was ${revCheck}`);
     }
-    this._credStatus = {};
-    this._credStatus[REGISTRY_ID_STR] = registryId;
-    this._credStatus[REV_CHECK_STR] = revCheck;
-    this._credStatus[REV_ID_STR] = memberValue;
+    this._credStatus = {
+      [REGISTRY_ID_STR]: registryId,
+      [REV_CHECK_STR]: revCheck,
+      [REV_ID_STR]: memberValue,
+    };
   }
 
   get signature(): SignatureG1 | undefined {
@@ -113,10 +114,11 @@ export class Credential extends Versioned {
   // TODO: Set schema and validate that no reserved names are used, subject, status is as per schema, revocation check is either membership or non-membership, etc
 
   serializeForSigning() {
-    const s = {};
-    s[CRED_VERSION_STR] = this._version;
-    s[SCHEMA_STR] = this._schema?.toJSON();
-    s[SUBJECT_STR] = this._subject;
+    const s = {
+      [CRED_VERSION_STR]: this._version,
+      [SCHEMA_STR]: this._schema?.toJSON(),
+      [SUBJECT_STR]: this._subject
+    };
     for (const [k, v] of this._topLevelFields.entries()) {
       s[k] = v;
     }

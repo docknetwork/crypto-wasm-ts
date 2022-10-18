@@ -9,6 +9,7 @@ import {
 } from '../../src/anonymous-credentials';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
+import { getExampleSchema } from './utils';
 
 describe('Credential signing and verification', () => {
   let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
@@ -88,22 +89,7 @@ describe('Credential signing and verification', () => {
   });
 
   it('for credential with numeric fields', () => {
-    const schema = CredentialSchema.bare();
-    schema[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' },
-      sensitive: {
-        email: { type: 'string' },
-        phone: { type: 'string' },
-        SSN: { type: 'stringReversible', compress: false }
-      },
-      timeOfBirth: { type: 'positiveInteger' },
-      physical: {
-        height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-        weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-        BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
-      }
-    };
+    const schema = getExampleSchema(8);
     const credSchema = new CredentialSchema(schema);
 
     const cred = new Credential();
@@ -144,41 +130,7 @@ describe('Credential signing and verification', () => {
   });
 
   it('for credential with credential status', () => {
-    const schema = CredentialSchema.bare();
-    schema[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' },
-      sensitive: {
-        very: {
-          secret: { type: 'string' }
-        },
-        email: { type: 'string' },
-        phone: { type: 'string' },
-        SSN: { type: 'stringReversible', compress: false }
-      },
-      lessSensitive: {
-        location: {
-          country: { type: 'string' },
-          city: { type: 'string' }
-        },
-        department: {
-          name: { type: 'string' },
-          location: {
-            name: { type: 'string' },
-            geo: {
-              lat: { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
-              long: { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 }
-            }
-          }
-        }
-      },
-      rank: { type: 'positiveInteger' }
-    };
-    schema[STATUS_STR] = {
-      $registryId: { type: 'string' },
-      $revocationCheck: { type: 'string' },
-      $revocationId: { type: 'string' }
-    };
+    const schema = getExampleSchema(5);
     const credSchema = new CredentialSchema(schema);
 
     const cred = new Credential();
@@ -223,47 +175,7 @@ describe('Credential signing and verification', () => {
   });
 
   it('for credential with top level fields', () => {
-    const schema = CredentialSchema.bare();
-    schema[SUBJECT_STR] = [
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      }
-    ];
-    schema['issuer'] = {
-      name: {type: "string"},
-      desc: {type: "string"},
-      logo: {type: "string"}
-    };
-    schema['issuanceDate'] = {type: "positiveInteger"};
-    schema['expirationDate'] = {type: "positiveInteger"};
-
+    const schema = getExampleSchema(7);
     const credSchema = new CredentialSchema(schema);
 
     const cred = new Credential();
@@ -313,7 +225,5 @@ describe('Credential signing and verification', () => {
     cred.sign(sk);
 
     checkResult(cred.verify(pk));
-
-    console.log(cred.toJSON());
   })
 });

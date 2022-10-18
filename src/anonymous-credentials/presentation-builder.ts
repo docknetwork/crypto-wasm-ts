@@ -250,9 +250,10 @@ export class PresentationBuilder extends Versioned {
 
       let presentedStatus: object | undefined;
       if (cred.credStatus !== undefined) {
-        presentedStatus = {};
-        presentedStatus[REGISTRY_ID_STR] = cred.credStatus[REGISTRY_ID_STR];
-        presentedStatus[REV_CHECK_STR] = cred.credStatus[REV_CHECK_STR];
+        presentedStatus = {
+          [REGISTRY_ID_STR]: cred.credStatus[REGISTRY_ID_STR],
+          [REV_CHECK_STR]: cred.credStatus[REV_CHECK_STR]
+        };
         const s = this.credStatuses.get(i);
         if (s === undefined) {
           throw new Error(`No status details found for credential index ${i}`);
@@ -508,23 +509,18 @@ export class PresentationBuilder extends Versioned {
       attributeCiphertexts = new Map();
       for (const [i, v] of credAttrToSId.entries()) {
         const m = {};
-        let curM = {};
         for (const [name, sId] of v.entries()) {
+          let curM = m;
           // name is a flattened name, like credentialSubject.nesting1.nesting2.name
           const nameParts = name.split('.');
-          if (nameParts.length > 1) {
-            // If a nested name
-            for (let j = 0; j < nameParts.length - 1; j++) {
-              if (m[nameParts[j]] === undefined) {
-                m[nameParts[j]] = {};
-              }
-              // `curM` refers to this inner object of `m`
-              curM = m[nameParts[j]];
+          for (let j = 0; j < nameParts.length - 1; j++) {
+            if (curM[nameParts[j]] === undefined) {
+              curM[nameParts[j]] = {};
             }
-            curM[nameParts[nameParts.length - 1]] = ciphertexts[allSIds.indexOf(sId)];
-          } else {
-            m[name] = ciphertexts[allSIds.indexOf(sId)];
+            // `curM` refers to this inner object of `m`
+            curM = curM[nameParts[j]];
           }
+          curM[nameParts[nameParts.length - 1]] = ciphertexts[allSIds.indexOf(sId)];
         }
         attributeCiphertexts.set(i, m);
       }
