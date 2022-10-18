@@ -18,12 +18,17 @@ import b58 from 'bs58';
 import { flattenTill2ndLastKey } from './util';
 
 /**
+ * Rules
+ * 1. Schema must define a top level `credentialSubject` field for the subject, and it can be an array of object
+ * 2. Schema must define a top level `credentialSchema` field.
+ * 3. Credential status if defined must be present as `credentialStatus` field.
+ * 4. Any top level keys in the schema JSON can be created
  Some example schemas
 
  {
-  $credentialVersion: {type: "string"},
-  $credentialSchema: {type: "string"},
-  $credentialSubject: {
+  credentialVersion: {type: "string"},
+  credentialSchema: {type: "string"},
+  credentialSubject: {
     fname: {type: "string"},
     lname: {type: "string"},
     email: {type: "string"},
@@ -41,9 +46,9 @@ import { flattenTill2ndLastKey } from './util';
  }
 
  {
-  $credentialVersion: {type: "string"},
-  $credentialSchema: {type: "string"},
-  $credentialSubject: {
+  credentialVersion: {type: "string"},
+  credentialSchema: {type: "string"},
+  credentialSubject: {
     fname: {type: "string"},
     lname: {type: "string"},
     sensitive: {
@@ -72,11 +77,91 @@ import { flattenTill2ndLastKey } from './util';
     },
     rank: {type: "positiveInteger"}
   },
-  $credentialStatus: {
+  credentialStatus: {
     $registryId: {type: "string"},
     $revocationCheck: {type: "string"},
     $revocationId: {type: "string"},
   }
+
+  {
+  credentialVersion: {type: "string"},
+  credentialSchema: {type: "string"},
+  credentialSubject: [
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    },
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    },
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    }
+  ]
+ }
+
+ {
+  credentialVersion: {type: "string"},
+  credentialSchema: {type: "string"},
+  credentialSubject: [
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    },
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    },
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    }
+  ],
+  issuer: {
+    name: {type: "string"},
+    desc: {type: "string"},
+    logo: {type: "string"}
+  },
+  issuanceDate: {type: "positiveInteger"},
+  expirationDate: {type: "positiveInteger"},
  }
  */
 
@@ -139,7 +224,7 @@ export class CredentialSchema extends Versioned {
   private static readonly NUM_TYPE = 'decimalNumber';
 
   // Credential subject/claims cannot have any of these names
-  static RESERVED_NAMES = [CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR];
+  static RESERVED_NAMES = new Set([CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
 
   static POSSIBLE_TYPES = new Set<string>([
     this.STR_TYPE,
@@ -232,6 +317,9 @@ export class CredentialSchema extends Versioned {
       throw new Error(`Schema did not contain top level key ${SUBJECT_STR}`);
     }
     this.validateGeneric(schema[SUBJECT_STR]);
+    for (const k of this.getCustomTopLevelKeys(schema)) {
+      this.validateGeneric(schema[k]);
+    }
   }
 
   static validateGeneric(schema: object) {
@@ -325,6 +413,21 @@ export class CredentialSchema extends Versioned {
 
   flatten(): FlattenedSchema {
     return CredentialSchema.flattenSchemaObj(this.schema);
+  }
+
+  getCustomTopLevelKeys(): string[] {
+    return CredentialSchema.getCustomTopLevelKeys(this.schema)
+  }
+
+  static getCustomTopLevelKeys(schema: object): string[] {
+    const keys: string[] = [];
+    for (const k of Object.keys(schema)) {
+      if (CredentialSchema.RESERVED_NAMES.has(k)) {
+        continue
+      }
+      keys.push(k);
+    }
+    return keys;
   }
 
   toJSON(): string {

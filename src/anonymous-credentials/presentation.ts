@@ -111,7 +111,6 @@ export class Presentation extends Versioned {
       const revealedEncoded = Presentation.encodeRevealed(presentedCred, presentedCredSchema, flattenedSchema[0]);
 
       if (maxAttribs < numAttribs) {
-        sigParams.adapt(numAttribs);
         maxAttribs = numAttribs;
       }
       const statement = Statement.bbsSignature(sigParams.adapt(numAttribs), publicKeys[i], revealedEncoded, false);
@@ -158,7 +157,7 @@ export class Presentation extends Versioned {
     for (const eql of this.spec.attributeEqualities) {
       const witnessEq = new WitnessEqualityMetaStatement();
       for (const [cIdx, name] of eql) {
-        const i = flattenedSchemas[cIdx][0].indexOf(`${SUBJECT_STR}.${name}`);
+        const i = flattenedSchemas[cIdx][0].indexOf(name);
         if (i === -1) {
           throw new Error(`Attribute name ${name} was not found`);
         }
@@ -169,8 +168,7 @@ export class Presentation extends Versioned {
 
     boundsAux.forEach(([i, b]) => {
       const bounds = flattenTill2ndLastKey(b) as object;
-      bounds[0].forEach((k, j) => {
-        const name = `${SUBJECT_STR}.${k}`;
+      bounds[0].forEach((name, j) => {
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
         let statement, transformedMin, transformedMax;
@@ -218,12 +216,11 @@ export class Presentation extends Versioned {
 
     verEncAux.forEach(([i, v]) => {
       const verEnc = flattenTill2ndLastKey(v) as object;
-      verEnc[0].forEach((k, j) => {
-        const name = `${SUBJECT_STR}.${k}`;
+      verEnc[0].forEach((name, j) => {
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
         if (valTyp.type !== ValueType.RevStr) {
           throw new Error(
-            `Attribute name ${`${SUBJECT_STR}.${name}`} of credential index ${i} should be a reversible string type but was ${valTyp}`
+            `Attribute name ${name} of credential index ${i} should be a reversible string type but was ${valTyp}`
           );
         }
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
@@ -295,14 +292,14 @@ export class Presentation extends Versioned {
     presentedCredSchema: CredentialSchema,
     flattenedNames: string[]
   ): Map<number, Uint8Array> {
-    const revealedRaw = {};
+    const revealedRaw = presentedCred.revealedAttributes;
     revealedRaw[CRED_VERSION_STR] = presentedCred.version;
     revealedRaw[SCHEMA_STR] = presentedCred.schema;
-    revealedRaw[SUBJECT_STR] = presentedCred.revealedAttributes;
     if (presentedCred.status !== undefined) {
       // TODO: Check that keys present in `presentedCred`
-      revealedRaw[`${STATUS_STR}.${REGISTRY_ID_STR}`] = presentedCred.status[REGISTRY_ID_STR];
-      revealedRaw[`${STATUS_STR}.${REV_CHECK_STR}`] = presentedCred.status[REV_CHECK_STR];
+      revealedRaw[STATUS_STR] = {};
+      revealedRaw[STATUS_STR][REGISTRY_ID_STR] = presentedCred.status[REGISTRY_ID_STR];
+      revealedRaw[STATUS_STR][REV_CHECK_STR] = presentedCred.status[REV_CHECK_STR];
     }
 
     const encoded = new Map<number, Uint8Array>();

@@ -221,4 +221,99 @@ describe('Credential signing and verification', () => {
 
     // In practice there will be an accumulator as well
   });
+
+  it('for credential with top level fields', () => {
+    const schema = CredentialSchema.bare();
+    schema[SUBJECT_STR] = [
+      {
+        name: {type: "string"},
+        location: {
+          name: {type: "string"},
+          geo: {
+            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          }
+        }
+      },
+      {
+        name: {type: "string"},
+        location: {
+          name: {type: "string"},
+          geo: {
+            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          }
+        }
+      },
+      {
+        name: {type: "string"},
+        location: {
+          name: {type: "string"},
+          geo: {
+            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          }
+        }
+      }
+    ];
+    schema['issuer'] = {
+      name: {type: "string"},
+      desc: {type: "string"},
+      logo: {type: "string"}
+    };
+    schema['issuanceDate'] = {type: "positiveInteger"};
+    schema['expirationDate'] = {type: "positiveInteger"};
+
+    const credSchema = new CredentialSchema(schema);
+
+    const cred = new Credential();
+    cred.schema = credSchema;
+    cred.issuerPubKey = 'did:dock:some-issuer-did-123';
+
+    cred.subject = [
+      {
+        name: 'Random',
+        location: {
+          name: 'Somewhere',
+          geo: {
+            lat: -23.658,
+            long: 2.556
+          }
+        }
+      },
+      {
+        name: 'Random-1',
+        location: {
+          name: 'Somewhere-1',
+          geo: {
+            lat: 35.01,
+            long: -40.987
+          }
+        }
+      },
+      {
+        name: 'Random-2',
+        location: {
+          name: 'Somewhere-2',
+          geo: {
+            lat: -67.0,
+            long: -10.12
+          }
+        }
+      }
+    ];
+    cred.setTopLevelField('issuer', {
+      name: "An issuer",
+      desc: "Just an issuer",
+      logo: "https://images.example-issuer.com/logo.png"
+    });
+    cred.setTopLevelField('issuanceDate', 1662010849700);
+    cred.setTopLevelField('expirationDate', 1662011950934);
+
+    cred.sign(sk);
+
+    checkResult(cred.verify(pk));
+
+    console.log(cred.toJSON());
+  })
 });

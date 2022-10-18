@@ -11,6 +11,7 @@ import {
   ValueType,
   VERSION_STR
 } from '../../src/anonymous-credentials';
+import { flatten } from 'flat';
 
 describe('Credential Schema', () => {
   beforeAll(async () => {
@@ -248,6 +249,81 @@ describe('Credential Schema', () => {
           $revocationId: { type: 'string' }
         };
         break;
+      case 6:
+        schema[SUBJECT_STR] = [
+          {
+            name: {type: "string"},
+            location: {
+              name: {type: "string"},
+              geo: {
+                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+              }
+            }
+          },
+          {
+            name: {type: "string"},
+            location: {
+              name: {type: "string"},
+              geo: {
+                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+              }
+            }
+          },
+          {
+            name: {type: "string"},
+            location: {
+              name: {type: "string"},
+              geo: {
+                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+              }
+            }
+          }
+        ];
+        break;
+      case 7:
+        schema[SUBJECT_STR] = [
+          {
+            name: {type: "string"},
+            location: {
+              name: {type: "string"},
+              geo: {
+                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+              }
+            }
+          },
+          {
+            name: {type: "string"},
+            location: {
+              name: {type: "string"},
+              geo: {
+                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+              }
+            }
+          },
+          {
+            name: {type: "string"},
+            location: {
+              name: {type: "string"},
+              geo: {
+                lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+                long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+              }
+            }
+          }
+        ];
+        schema['issuer'] = {
+          name: {type: "string"},
+          desc: {type: "string"},
+          logo: {type: "string"}
+        };
+        schema['issuanceDate'] = {type: "positiveInteger"};
+        schema['expirationDate'] = {type: "positiveInteger"};
+        break;
     }
     return schema;
   }
@@ -391,5 +467,100 @@ describe('Credential Schema', () => {
     expect(cs.typeOfName(`${SUBJECT_STR}.xyz`)).toEqual({ type: ValueType.Integer, minimum: -10 });
     expect(cs.typeOfName(`${SUBJECT_STR}.BMI`)).toEqual({ type: ValueType.PositiveNumber, decimalPlaces: 2 });
     expect(cs.typeOfName(`${SUBJECT_STR}.score`)).toEqual({ type: ValueType.Number, minimum: -100, decimalPlaces: 1 });
+  });
+
+  it('subject as an array', () => {
+    const schema6 = getSchema(6);
+    const cs6 = new CredentialSchema(schema6);
+    expect(cs6.schema[SUBJECT_STR]).toEqual(schema6[SUBJECT_STR]);
+
+    expect(cs6.flatten()).toEqual([
+      [
+        SCHEMA_STR,
+        `${SUBJECT_STR}.0.location.geo.lat`,
+        `${SUBJECT_STR}.0.location.geo.long`,
+        `${SUBJECT_STR}.0.location.name`,
+        `${SUBJECT_STR}.0.name`,
+        `${SUBJECT_STR}.1.location.geo.lat`,
+        `${SUBJECT_STR}.1.location.geo.long`,
+        `${SUBJECT_STR}.1.location.name`,
+        `${SUBJECT_STR}.1.name`,
+        `${SUBJECT_STR}.2.location.geo.lat`,
+        `${SUBJECT_STR}.2.location.geo.long`,
+        `${SUBJECT_STR}.2.location.name`,
+        `${SUBJECT_STR}.2.name`,
+        CRED_VERSION_STR
+      ],
+      [
+        { type: 'string' },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 },
+        { type: 'string' },
+        { type: 'string' },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 },
+        { type: 'string' },
+        { type: 'string' },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 },
+        { type: 'string' },
+        { type: 'string' },
+        { type: 'string' }
+      ]
+    ]);
+  });
+
+  it('custom top level fields', () => {
+    const schema7 = getSchema(7);
+    const cs7 = new CredentialSchema(schema7);
+    expect(cs7.schema[SUBJECT_STR]).toEqual(schema7[SUBJECT_STR]);
+    expect(cs7.schema['issuer']).toEqual(schema7['issuer']);
+    expect(cs7.schema['issuanceDate']).toEqual(schema7['issuanceDate']);
+    expect(cs7.schema['expirationDate']).toEqual(schema7['expirationDate']);
+
+    expect(cs7.flatten()).toEqual([
+      [
+        SCHEMA_STR,
+        `${SUBJECT_STR}.0.location.geo.lat`,
+        `${SUBJECT_STR}.0.location.geo.long`,
+        `${SUBJECT_STR}.0.location.name`,
+        `${SUBJECT_STR}.0.name`,
+        `${SUBJECT_STR}.1.location.geo.lat`,
+        `${SUBJECT_STR}.1.location.geo.long`,
+        `${SUBJECT_STR}.1.location.name`,
+        `${SUBJECT_STR}.1.name`,
+        `${SUBJECT_STR}.2.location.geo.lat`,
+        `${SUBJECT_STR}.2.location.geo.long`,
+        `${SUBJECT_STR}.2.location.name`,
+        `${SUBJECT_STR}.2.name`,
+        CRED_VERSION_STR,
+        'expirationDate',
+        'issuanceDate',
+        'issuer.desc',
+        'issuer.logo',
+        'issuer.name'
+      ],
+      [
+        { type: 'string' },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 },
+        { type: 'string' },
+        { type: 'string' },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 },
+        { type: 'string' },
+        { type: 'string' },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
+        { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 },
+        { type: 'string' },
+        { type: 'string' },
+        { type: 'string' },
+        { type: 'positiveInteger' },
+        { type: 'positiveInteger' },
+        { type: 'string' },
+        { type: 'string' },
+        { type: 'string' }
+      ]
+    ]);
   });
 });
