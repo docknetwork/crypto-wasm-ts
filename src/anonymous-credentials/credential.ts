@@ -9,7 +9,9 @@ import {
   NON_MEM_CHECK_STR,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
-  SCHEMA_STR, SIGNATURE_PARAMS_LABEL_BYTES,
+  REV_ID_STR,
+  SCHEMA_STR,
+  SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
   StringOrObject,
   SUBJECT_STR
@@ -41,6 +43,11 @@ export class Credential extends Versioned {
     this._subject = subject;
   }
 
+  // @ts-ignore
+  get subject(): object | undefined {
+    return this._subject;
+  }
+
   set schema(schema: CredentialSchema) {
     this._schema = schema;
   }
@@ -63,14 +70,14 @@ export class Credential extends Versioned {
     return this._credStatus;
   }
 
-  setCredentialStatus(registryId: string, revCheck: string, memberName: string, memberValue: unknown) {
+  setCredentialStatus(registryId: string, revCheck: string, memberValue: unknown) {
     if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR) {
       throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} but was ${revCheck}`);
     }
     this._credStatus = {};
     this._credStatus[REGISTRY_ID_STR] = registryId;
     this._credStatus[REV_CHECK_STR] = revCheck;
-    this._credStatus[memberName] = memberValue;
+    this._credStatus[REV_ID_STR] = memberValue;
   }
 
   get signature(): SignatureG1 | undefined {
