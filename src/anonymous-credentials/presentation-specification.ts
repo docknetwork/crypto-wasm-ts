@@ -3,12 +3,15 @@ import { AttributeEquality, StringOrObject } from './types-and-consts';
 export interface IPresentedCredential {
   version: string;
   schema: string;
-  issuer: StringOrObject;
+  issuerPk: StringOrObject;
   revealedAttributes: object;
   status?: object;
   // Bounds proved of any attribute(s)
-  bounds?: object; // {min, max, paramsId}
-  verifiableEncryptions?: object; // {commGensId, ekId, pkId, ciphertext}
+  // {min, max, paramsId}
+  bounds?: object;
+  // Verifiable encryption of any attributes
+  // {commGensId, ekId, pkId, ciphertext}
+  verifiableEncryptions?: object;
 }
 
 /**
@@ -27,7 +30,7 @@ export class PresentationSpecification {
   addPresentedCredential(
     version: string,
     schema: string,
-    issuer: StringOrObject,
+    issuerPk: StringOrObject,
     revealedAttributes: object,
     status?: object,
     bounds?: object,
@@ -36,7 +39,7 @@ export class PresentationSpecification {
     const ps = {
       version,
       schema,
-      issuer,
+      issuerPk,
       revealedAttributes
     };
     if (status !== undefined) {

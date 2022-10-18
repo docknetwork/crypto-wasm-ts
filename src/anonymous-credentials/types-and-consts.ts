@@ -1,5 +1,11 @@
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
-import { SaverChunkedCommitmentGens, SaverEncryptionKey, SaverProvingKey, SaverProvingKeyUncompressed } from '../saver';
+import {
+  SaverChunkedCommitmentGens,
+  SaverCiphertext,
+  SaverEncryptionKey,
+  SaverProvingKey,
+  SaverProvingKeyUncompressed
+} from '../saver';
 
 export type StringOrObject = string | object;
 // Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation.
@@ -15,12 +21,13 @@ export type PredicateParamType =
   | SaverChunkedCommitmentGens;
 
 export type FlattenedSchema = [string[], object[]];
+export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext };
 
 export const VERSION_STR = '$version';
-export const CRED_VERSION_STR = '$credentialVersion';
-export const SCHEMA_STR = '$credentialSchema';
+export const CRED_VERSION_STR = 'credentialVersion';
+export const SCHEMA_STR = 'credentialSchema';
 export const SUBJECT_STR = 'credentialSubject';
-export const STATUS_STR = '$credentialStatus';
+export const STATUS_STR = 'credentialStatus';
 export const REGISTRY_ID_STR = '$registryId';
 export const REV_CHECK_STR = '$revocationCheck';
 export const REV_ID_STR = '$revocationId';

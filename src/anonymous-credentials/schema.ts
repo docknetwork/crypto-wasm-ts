@@ -2,7 +2,8 @@ import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../bbs-plus';
 import { isPositiveInteger } from '../util';
 import {
-  CRED_VERSION_STR, FlattenedSchema,
+  CRED_VERSION_STR,
+  FlattenedSchema,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
@@ -16,6 +17,154 @@ import { flatten } from 'flat';
 import b58 from 'bs58';
 import { flattenTill2ndLastKey } from './util';
 
+/**
+ * Rules
+ * 1. Schema must define a top level `credentialSubject` field for the subject, and it can be an array of object
+ * 2. Schema must define a top level `credentialSchema` field.
+ * 3. Credential status if defined must be present as `credentialStatus` field.
+ * 4. Any top level keys in the schema JSON can be created
+ Some example schemas
+
+ {
+  credentialVersion: {type: "string"},
+  credentialSchema: {type: "string"},
+  credentialSubject: {
+    fname: {type: "string"},
+    lname: {type: "string"},
+    email: {type: "string"},
+    SSN: {type: "stringReversible", compress: false},
+    userId: {type: "stringReversible", compress: true},
+    country: {type: "string"},
+    city: {type: "string"},
+    timeOfBirth: {type: "positiveInteger"},
+    height: {type: "positiveDecimalNumber", decimalPlaces: 1},
+    weight: {type: "positiveDecimalNumber", decimalPlaces: 1},
+    BMI: {type: "positiveDecimalNumber", decimalPlaces: 2},
+    score: {type: "decimalNumber", decimalPlaces: 1, minimum: -100},
+    secret: {type: "string"}
+  }
+ }
+
+ {
+  credentialVersion: {type: "string"},
+  credentialSchema: {type: "string"},
+  credentialSubject: {
+    fname: {type: "string"},
+    lname: {type: "string"},
+    sensitive: {
+      very: {
+        secret: {type: "string"}
+      },
+      email: {type: "string"},
+      phone: {type: "string"},
+      SSN: {type: "stringReversible", compress: false},
+    },
+    lessSensitive: {
+      location: {
+        country: {type: "string"},
+        city: {type: "string"}
+      },
+      department: {
+        name: {type: "string"},
+        location: {
+          name: {type: "string"},
+          geo: {
+            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          }
+        }
+      }
+    },
+    rank: {type: "positiveInteger"}
+  },
+  credentialStatus: {
+    $registryId: {type: "string"},
+    $revocationCheck: {type: "string"},
+    $revocationId: {type: "string"},
+  }
+
+  {
+  credentialVersion: {type: "string"},
+  credentialSchema: {type: "string"},
+  credentialSubject: [
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    },
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    },
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    }
+  ]
+ }
+
+ {
+  credentialVersion: {type: "string"},
+  credentialSchema: {type: "string"},
+  credentialSubject: [
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    },
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    },
+    {
+      name: {type: "string"},
+      location: {
+        name: {type: "string"},
+        geo: {
+          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+        }
+      }
+    }
+  ],
+  issuer: {
+    name: {type: "string"},
+    desc: {type: "string"},
+    logo: {type: "string"}
+  },
+  issuanceDate: {type: "positiveInteger"},
+  expirationDate: {type: "positiveInteger"},
+ }
+ */
+
 export enum ValueType {
   Str,
   RevStr,
@@ -26,35 +175,41 @@ export enum ValueType {
 }
 
 export interface StringType {
-  type: ValueType.Str
+  type: ValueType.Str;
 }
 
 export interface ReversibleStringType {
-  type: ValueType.RevStr,
-  compress: boolean
+  type: ValueType.RevStr;
+  compress: boolean;
 }
 
 export interface PositiveIntegerType {
-  type: ValueType.PositiveInteger
+  type: ValueType.PositiveInteger;
 }
 
 export interface IntegerType {
-  type: ValueType.Integer,
-  minimum: number
+  type: ValueType.Integer;
+  minimum: number;
 }
 
 export interface PositiveNumberType {
-  type: ValueType.PositiveNumber,
-  decimalPlaces: number,
+  type: ValueType.PositiveNumber;
+  decimalPlaces: number;
 }
 
 export interface NumberType {
-  type: ValueType.Number,
-  minimum: number,
-  decimalPlaces: number,
+  type: ValueType.Number;
+  minimum: number;
+  decimalPlaces: number;
 }
 
-export type ValueTypes = StringType | ReversibleStringType | PositiveIntegerType | IntegerType | PositiveNumberType | NumberType;
+export type ValueTypes =
+  | StringType
+  | ReversibleStringType
+  | PositiveIntegerType
+  | IntegerType
+  | PositiveNumberType
+  | NumberType;
 
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
@@ -63,13 +218,13 @@ export class CredentialSchema extends Versioned {
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
-  static readonly POSITIVE_INT_TYPE = 'positiveInteger';
-  static readonly INT_TYPE = 'integer';
-  static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
-  static readonly NUM_TYPE = 'decimalNumber';
+  private static readonly POSITIVE_INT_TYPE = 'positiveInteger';
+  private static readonly INT_TYPE = 'integer';
+  private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
+  private static readonly NUM_TYPE = 'decimalNumber';
 
   // Credential subject/claims cannot have any of these names
-  static RESERVED_NAMES = [CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR];
+  static RESERVED_NAMES = new Set([CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
 
   static POSSIBLE_TYPES = new Set<string>([
     this.STR_TYPE,
@@ -101,7 +256,7 @@ export class CredentialSchema extends Versioned {
     const encoders = new Map<string, EncodeFunc>();
     const [names, values] = this.flatten();
     for (let i = 0; i < names.length; i++) {
-      const value = values[i] as object;
+      const value = values[i];
       let f: EncodeFunc;
       switch (value['type']) {
         case CredentialSchema.STR_REV_TYPE:
@@ -167,6 +322,10 @@ export class CredentialSchema extends Versioned {
       throw new Error(`Schema properties did not contain top level key ${SUBJECT_STR}`);
     }
     this.validateGeneric(schema.properties[SUBJECT_STR]);
+    // TODO: restore
+    // for (const k of this.getCustomTopLevelKeys(schema)) {
+    //   this.validateGeneric(schema[k]);
+    // }
   }
 
   static validateGeneric(schema: object) {
@@ -175,8 +334,8 @@ export class CredentialSchema extends Versioned {
       if (typeof values[i] !== 'object') {
         throw new Error(`Schema value for ${names[i]} should have been an object type but was ${typeof values[i]}`);
       }
-
-      const value: any = values[i] as object;
+      
+      const value: any = values[i];
 
       if (typeof value.type === 'undefined') {
         throw new Error(`Schema value for ${names[i]} should have a "type" field`);
@@ -231,17 +390,21 @@ export class CredentialSchema extends Versioned {
     const typ = values[nameIdx]['type'];
     switch (typ) {
       case CredentialSchema.STR_TYPE:
-        return {type: ValueType.Str};
+        return { type: ValueType.Str };
       case CredentialSchema.STR_REV_TYPE:
-        return {type: ValueType.RevStr, compress: values[nameIdx]['compress']};
+        return { type: ValueType.RevStr, compress: values[nameIdx]['compress'] };
       case CredentialSchema.POSITIVE_INT_TYPE:
-        return {type: ValueType.PositiveInteger};
+        return { type: ValueType.PositiveInteger };
       case CredentialSchema.INT_TYPE:
-        return {type: ValueType.Integer, minimum: values[nameIdx]['minimum']};
+        return { type: ValueType.Integer, minimum: values[nameIdx]['minimum'] };
       case CredentialSchema.POSITIVE_NUM_TYPE:
-        return {type: ValueType.PositiveNumber, decimalPlaces: values[nameIdx]['decimalPlaces']};
+        return { type: ValueType.PositiveNumber, decimalPlaces: values[nameIdx]['decimalPlaces'] };
       case CredentialSchema.NUM_TYPE:
-        return {type: ValueType.Number, minimum: values[nameIdx]['minimum'], decimalPlaces: values[nameIdx]['decimalPlaces']};
+        return {
+          type: ValueType.Number,
+          minimum: values[nameIdx]['minimum'],
+          decimalPlaces: values[nameIdx]['decimalPlaces']
+        };
       default:
         throw new Error(`Unknown type for name ${name}: ${typ}`);
     }
@@ -267,6 +430,21 @@ export class CredentialSchema extends Versioned {
 
   flatten(): FlattenedSchema {
     return CredentialSchema.flattenSchemaObj(this.schema);
+  }
+
+  getCustomTopLevelKeys(): string[] {
+    return CredentialSchema.getCustomTopLevelKeys(this.schema)
+  }
+
+  static getCustomTopLevelKeys(schema: object): string[] {
+    const keys: string[] = [];
+    for (const k of Object.keys(schema)) {
+      if (CredentialSchema.RESERVED_NAMES.has(k)) {
+        continue
+      }
+      keys.push(k);
+    }
+    return keys;
   }
 
   toJSON(): string {

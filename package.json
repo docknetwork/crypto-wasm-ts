@@ -22,7 +22,7 @@
     "lib": "lib"
   },
   "dependencies": {
-    "@docknetwork/crypto-wasm": "0.15.0",
+    "@docknetwork/crypto-wasm": "0.16.0",
     "@types/flat": "^5.0.2",
     "flat": "^5.0.2",
     "lzutf8": "^0.6.3",

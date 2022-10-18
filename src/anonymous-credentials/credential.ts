@@ -28,23 +28,25 @@ export class Credential extends Versioned {
   _subject?: object;
   _credStatus?: object;
   _issuerPubKey?: StringOrObject;
-  _encodedSubject?: { [key: string]: Uint8Array };
+  _encodedAttributes?: { [key: string]: Uint8Array };
+  _topLevelFields: Map<string, unknown>;
   _sig?: SignatureG1;
 
   constructor() {
     super(Credential.VERSION);
+    this._topLevelFields = new Map();
   }
 
   /**
    * Currently supports only 1 subject. Nothing tricky in supporting more but more parsing and serialization work
    * @param subject
    */
-  set subject(subject: object) {
+  set subject(subject: object | object[]) {
     this._subject = subject;
   }
 
   // @ts-ignore
-  get subject(): object | undefined {
+  get subject(): object | object[] | undefined {
     return this._subject;
   }
 
@@ -74,14 +76,27 @@ export class Credential extends Versioned {
     if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR) {
       throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} but was ${revCheck}`);
     }
-    this._credStatus = {};
-    this._credStatus[REGISTRY_ID_STR] = registryId;
-    this._credStatus[REV_CHECK_STR] = revCheck;
-    this._credStatus[REV_ID_STR] = memberValue;
+    this._credStatus = {
+      [REGISTRY_ID_STR]: registryId,
+      [REV_CHECK_STR]: revCheck,
+      [REV_ID_STR]: memberValue,
+    };
   }
 
   get signature(): SignatureG1 | undefined {
     return this._sig;
+  }
+
+  setTopLevelField(name: string, value: unknown) {
+    this._topLevelFields.set(name, value)
+  }
+
+  getTopLevelField(name: string): unknown {
+    const v = this._topLevelFields.get(name);
+    if (v === undefined) {
+      throw new Error(`Top level field ${name} is absent`);
+    }
+    return v;
   }
 
   sign(secretKey: BBSPlusSecretKey) {
@@ -92,17 +107,21 @@ export class Credential extends Versioned {
       SIGNATURE_PARAMS_LABEL_BYTES,
       (this._schema as CredentialSchema).encoder
     );
-    this._encodedSubject = signed.encodedMessages;
+    this._encodedAttributes = signed.encodedMessages;
     this._sig = signed.signature;
   }
 
   // TODO: Set schema and validate that no reserved names are used, subject, status is as per schema, revocation check is either membership or non-membership, etc
 
   serializeForSigning() {
-    const s = {};
-    s[CRED_VERSION_STR] = this._version;
-    s[SCHEMA_STR] = this._schema?.toJSON();
-    s[SUBJECT_STR] = this._subject;
+    const s = {
+      [CRED_VERSION_STR]: this._version,
+      [SCHEMA_STR]: this._schema?.toJSON(),
+      [SUBJECT_STR]: this._subject
+    };
+    for (const [k, v] of this._topLevelFields.entries()) {
+      s[k] = v;
+    }
     if (this._credStatus !== undefined) {
       s[STATUS_STR] = this._credStatus;
     }
@@ -129,6 +148,9 @@ export class Credential extends Versioned {
     if (this._credStatus !== undefined) {
       j['credentialStatus'] = this._credStatus;
     }
+    for (const [k, v] of this._topLevelFields.entries()) {
+      j[k] = v;
+    }
     j['issuerPubKey'] = this._issuerPubKey;
     j['proof'] = {
       type: 'Bls12381BBS+SignatureDock2022',
@@ -139,8 +161,8 @@ export class Credential extends Versioned {
     }
 
     // // This is for debugging only and can be omitted
-    // j['encodedCredentialSubject'] = Object.fromEntries(
-    //   Object.entries(this._encodedSubject as object).map(([k, v]) => [k, b58.encode(v)])
+    // j['encodedAttributes'] = Object.fromEntries(
+    //   Object.entries(this._encodedAttributes as object).map(([k, v]) => [k, b58.encode(v)])
     // );
     return JSON.stringify(j);
   }

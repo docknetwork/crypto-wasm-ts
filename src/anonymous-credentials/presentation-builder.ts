@@ -16,7 +16,8 @@ import { CredentialSchema, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
-  CRED_VERSION_STR, FlattenedSchema,
+  CRED_VERSION_STR,
+  FlattenedSchema,
   MEM_CHECK_STR,
   PredicateParamType,
   REGISTRY_ID_STR,
@@ -97,6 +98,8 @@ export class PresentationBuilder extends Versioned {
     return this.credentials.length - 1;
   }
 
+  // TODO: Since all attr names below will have the full name (incl. top level attrib, check that no predicate on revealed attrs)
+
   // NOTE: This and several methods below expect nested attributes names with "dot"s as separators. Passing the nested structure is also
   // possible but will need more parsing and thus can be handled later.
   markAttributesRevealed(credIdx: number, attributeNames: Set<string>) {
@@ -106,7 +109,7 @@ export class PresentationBuilder extends Versioned {
       revealed = new Set<string>();
     }
     for (const a of attributeNames) {
-      revealed.add(`${SUBJECT_STR}.${a}`);
+      revealed.add(a);
     }
     this.revealedAttributes.set(credIdx, revealed);
   }
@@ -213,7 +216,6 @@ export class PresentationBuilder extends Versioned {
       const flattenedSchema = schema.flatten();
       const numAttribs = flattenedSchema[0].length;
       if (maxAttribs < numAttribs) {
-        sigParams.adapt(numAttribs);
         maxAttribs = numAttribs;
       }
       let revealedNames = this.revealedAttributes.get(i);
@@ -231,7 +233,7 @@ export class PresentationBuilder extends Versioned {
         revealedNames.add(`${STATUS_STR}.${REV_CHECK_STR}`);
       }
 
-      const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
+      const [revealedAttrsEncoded, unrevealedAttrsEncoded, revealedAtts] = getRevealedAndUnrevealed(
         cred.serializeForSigning(),
         revealedNames,
         schema.encoder
@@ -239,18 +241,19 @@ export class PresentationBuilder extends Versioned {
       const statement = Statement.bbsSignature(
         sigParams.adapt(numAttribs),
         this.credentials[i][1],
-        revealedMsgs,
+        revealedAttrsEncoded,
         false
       );
-      const witness = Witness.bbsSignature(cred.signature as SignatureG1, unrevealedMsgs, false);
+      const witness = Witness.bbsSignature(cred.signature as SignatureG1, unrevealedAttrsEncoded, false);
       statements.add(statement);
       witnesses.add(witness);
 
       let presentedStatus: object | undefined;
       if (cred.credStatus !== undefined) {
-        presentedStatus = {};
-        presentedStatus[REGISTRY_ID_STR] = cred.credStatus[REGISTRY_ID_STR];
-        presentedStatus[REV_CHECK_STR] = cred.credStatus[REV_CHECK_STR];
+        presentedStatus = {
+          [REGISTRY_ID_STR]: cred.credStatus[REGISTRY_ID_STR],
+          [REV_CHECK_STR]: cred.credStatus[REV_CHECK_STR]
+        };
         const s = this.credStatuses.get(i);
         if (s === undefined) {
           throw new Error(`No status details found for credential index ${i}`);
@@ -271,8 +274,8 @@ export class PresentationBuilder extends Versioned {
         const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
         for (const [name, [min, max, paramId]] of bounds.entries()) {
           attributeBounds[name] = { min, max, paramId };
-          const nameIdx = flattenedSchema[0].indexOf(`${SUBJECT_STR}.${name}`);
-          encodedAttrs.set(nameIdx, unrevealedMsgs.get(nameIdx) as Uint8Array);
+          const nameIdx = flattenedSchema[0].indexOf(name);
+          encodedAttrs.set(nameIdx, unrevealedAttrsEncoded.get(nameIdx) as Uint8Array);
         }
         attributeBounds = unflatten(attributeBounds);
         unrevealedMsgsEncoded.set(i, encodedAttrs);
@@ -284,23 +287,30 @@ export class PresentationBuilder extends Versioned {
         attributeEncs = {};
         const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
         for (const [name, [chunkBitSize, commGenId, encId, pkId]] of encs.entries()) {
-          const nameIdx = flattenedSchema[0].indexOf(`${SUBJECT_STR}.${name}`);
-          const valTyp = schema.typeOfName(`${SUBJECT_STR}.${name}`, flattenedSchema);
+          const nameIdx = flattenedSchema[0].indexOf(name);
+          const valTyp = schema.typeOfName(name, flattenedSchema);
           if (valTyp.type !== ValueType.RevStr) {
-            throw new Error(`Attribute name ${`${SUBJECT_STR}.${name}`} of credential index ${i} should be a reversible string type but was ${valTyp}`);
+            throw new Error(
+              `Attribute name ${name} of credential index ${i} should be a reversible string type but was ${valTyp}`
+            );
           }
           attributeEncs[name] = { chunkBitSize, commitmentGensId: commGenId, encryptionKeyId: encId, snarkKeyId: pkId };
-          encodedAttrs.set(nameIdx, unrevealedMsgs.get(nameIdx) as Uint8Array);
+          encodedAttrs.set(nameIdx, unrevealedAttrsEncoded.get(nameIdx) as Uint8Array);
         }
         attributeEncs = unflatten(attributeEncs);
         unrevealedMsgsEncoded.set(i, encodedAttrs);
       }
 
+      const ver = revealedAtts[CRED_VERSION_STR];
+      const sch = revealedAtts[SCHEMA_STR];
+      delete revealedAtts[CRED_VERSION_STR];
+      delete revealedAtts[SCHEMA_STR];
+      delete revealedAtts[STATUS_STR];
       this.spec.addPresentedCredential(
-        revealedMsgsRaw[CRED_VERSION_STR],
-        revealedMsgsRaw[SCHEMA_STR],
+        ver,
+        sch,
         cred.issuerPubKey as StringOrObject,
-        revealedMsgsRaw[SUBJECT_STR],
+        revealedAtts,
         presentedStatus,
         attributeBounds,
         attributeEncs
@@ -348,7 +358,7 @@ export class PresentationBuilder extends Versioned {
     for (const eql of this.attributeEqualities) {
       const witnessEq = new WitnessEqualityMetaStatement();
       for (const [cIdx, name] of eql) {
-        const i = flattenedSchemas[cIdx][0].indexOf(`${SUBJECT_STR}.${name}`);
+        const i = flattenedSchemas[cIdx][0].indexOf(name);
         if (i === -1) {
           throw new Error(`Attribute name ${name} was not found`);
         }
@@ -362,16 +372,15 @@ export class PresentationBuilder extends Versioned {
     for (const [cId, bounds] of this.bounds.entries()) {
       const dataSortedByNameIdx: [number, string, number, number, string][] = [];
       for (const [name, [min, max, paramId]] of bounds.entries()) {
-        const qualifiedName = `${SUBJECT_STR}.${name}`;
-        const nameIdx = flattenedSchemas[cId][0].indexOf(qualifiedName);
-        dataSortedByNameIdx.push([nameIdx, qualifiedName, min, max, paramId]);
+        const nameIdx = flattenedSchemas[cId][0].indexOf(name);
+        dataSortedByNameIdx.push([nameIdx, name, min, max, paramId]);
       }
       dataSortedByNameIdx.sort(function (a, b) {
         return a[0] - b[0];
       });
-      dataSortedByNameIdx.forEach(([nameIdx, qualifiedName, min, max, paramId]) => {
+      dataSortedByNameIdx.forEach(([nameIdx, name, min, max, paramId]) => {
         let statement, transformedMin, transformedMax;
-        const valTyp = CredentialSchema.typeOfName(qualifiedName, flattenedSchemas[cId]);
+        const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[cId]);
         switch (valTyp.type) {
           case ValueType.PositiveInteger:
             transformedMin = min;
@@ -390,9 +399,7 @@ export class PresentationBuilder extends Versioned {
             transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
             break;
           default:
-            throw new Error(
-              `${qualifiedName} should be of numeric type as per schema but was ${valTyp}`
-            );
+            throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
         }
 
         const param = this.predicateParams.get(paramId);
@@ -401,7 +408,7 @@ export class PresentationBuilder extends Versioned {
         } else if (param instanceof LegoProvingKeyUncompressed) {
           statement = Statement.boundCheckProver(transformedMin, transformedMax, param);
         } else {
-          throw new Error(`Predicate param id ${paramId} was expected to be a Legosnark proving key but was ${param}`);
+          throw new Error(`Predicate param id ${paramId} (for credential index ${cId}) was expected to be a Legosnark proving key but was ${param}`);
         }
 
         const encodedAttrVal = unrevealedMsgsEncoded.get(cId)?.get(nameIdx) as Uint8Array;
@@ -415,17 +422,20 @@ export class PresentationBuilder extends Versioned {
       });
     }
 
+    // For adding ciphertexts corresponding to verifiably encrypted attributes in the presentation
+    const credAttrToSId = new Map<number, Map<string, number>>();
+
     // For enforcing attribute encryption
     for (const [cId, verEnc] of this.verifEnc.entries()) {
       const dataSortedByNameIdx: [number, string, number, string, string, string][] = [];
       for (const [name, [chunkBitSize, commGensId, encKeyId, snarkPkId]] of verEnc.entries()) {
-        const qualifiedName = `${SUBJECT_STR}.${name}`;
-        const nameIdx = flattenedSchemas[cId][0].indexOf(qualifiedName);
+        const nameIdx = flattenedSchemas[cId][0].indexOf(name);
         dataSortedByNameIdx.push([nameIdx, name, chunkBitSize, commGensId, encKeyId, snarkPkId]);
       }
       dataSortedByNameIdx.sort(function (a, b) {
         return a[0] - b[0];
       });
+      const attrToSid = new Map<string, number>();
       dataSortedByNameIdx.forEach(([nameIdx, name, chunkBitSize, commGensId, encKeyId, snarkPkId]) => {
         const commGens = this.predicateParams.get(commGensId);
         if (commGens === undefined) {
@@ -476,13 +486,46 @@ export class PresentationBuilder extends Versioned {
         witnessEq.addWitnessRef(cId, nameIdx);
         witnessEq.addWitnessRef(sIdx, 0);
         metaStatements.addWitnessEquality(witnessEq);
+        attrToSid.set(name, sIdx);
       });
+      if (attrToSid.size > 0) {
+        credAttrToSId.set(cId, attrToSid);
+      }
     }
 
     // TODO: Include version and spec in context
     this._proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], this._context);
     this.proof = CompositeProofG1.generateUsingQuasiProofSpec(this._proofSpec, witnesses, this._nonce);
-    return new Presentation(this.version, this.spec, this.proof, this._context, this._nonce);
+
+    let attributeCiphertexts;
+    if (credAttrToSId.size > 0) {
+      const allSIds: number[] = [];
+      for (const v of credAttrToSId.values()) {
+        for (const sId of v.values()) {
+          allSIds.push(sId);
+        }
+      }
+      const ciphertexts = this.proof.getSaverCiphertexts(allSIds);
+      attributeCiphertexts = new Map();
+      for (const [i, v] of credAttrToSId.entries()) {
+        const m = {};
+        for (const [name, sId] of v.entries()) {
+          let curM = m;
+          // name is a flattened name, like credentialSubject.nesting1.nesting2.name
+          const nameParts = name.split('.');
+          for (let j = 0; j < nameParts.length - 1; j++) {
+            if (curM[nameParts[j]] === undefined) {
+              curM[nameParts[j]] = {};
+            }
+            // `curM` refers to this inner object of `m`
+            curM = curM[nameParts[j]];
+          }
+          curM[nameParts[nameParts.length - 1]] = ciphertexts[allSIds.indexOf(sId)];
+        }
+        attributeCiphertexts.set(i, m);
+      }
+    }
+    return new Presentation(this.version, this.spec, this.proof, attributeCiphertexts, this._context, this._nonce);
   }
 
   get context(): Uint8Array | undefined {
