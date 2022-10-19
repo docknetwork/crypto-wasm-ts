@@ -1,17 +1,35 @@
-import { AttributeEquality, StringOrObject } from './types-and-consts';
+import { AttributeEquality, REGISTRY_ID_STR, REV_CHECK_STR, StringOrObject } from './types-and-consts';
+import b58 from 'bs58';
+
+export interface IPresentedStatus {
+  [REGISTRY_ID_STR]: string;
+  [REV_CHECK_STR]: string;
+  accumulated: Uint8Array;
+  extra: object;
+}
+
+export interface IPresentedAttributeBounds {
+  min: number;
+  max: number;
+  paramId: string;
+}
+
+export interface IPresentedAttributeVE {
+  chunkBitSize: number;
+  commitmentGensId: string;
+  encryptionKeyId: string;
+  snarkKeyId: string;
+}
 
 export interface IPresentedCredential {
   version: string;
   schema: string;
-  issuerPk: StringOrObject;
   revealedAttributes: object;
-  status?: object;
+  status?: IPresentedStatus;
   // Bounds proved of any attribute(s)
-  // {min, max, paramsId}
-  bounds?: object;
+  bounds?: { [key: string]: string | IPresentedAttributeBounds };
   // Verifiable encryption of any attributes
-  // {commGensId, ekId, pkId, ciphertext}
-  verifiableEncryptions?: object;
+  verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE };
 }
 
 /**
@@ -30,16 +48,14 @@ export class PresentationSpecification {
   addPresentedCredential(
     version: string,
     schema: string,
-    issuerPk: StringOrObject,
     revealedAttributes: object,
-    status?: object,
-    bounds?: object,
-    verifiableEncryptions?: object
+    status?: IPresentedStatus,
+    bounds?: { [key: string]: string | IPresentedAttributeBounds },
+    verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE }
   ) {
     const ps = {
       version,
       schema,
-      issuerPk,
       revealedAttributes
     };
     if (status !== undefined) {
@@ -54,9 +70,38 @@ export class PresentationSpecification {
     this.credentials.push(ps);
   }
 
-  forPresentation(): object {
-    return {
-      credentials: this.credentials
+  getStatus(credIndex: number): IPresentedStatus | undefined {
+    if (credIndex >= this.credentials.length) {
+      throw new Error(`Invalid credential index ${credIndex}`);
+    }
+    return this.credentials[credIndex].status;
+  }
+
+  toJSON(): string {
+    const j = {
+      credentials: [],
+      attributeEqualities: this.attributeEqualities
     };
+
+    for (const pc of this.credentials) {
+      const curJ = {
+        version: pc.version,
+        schema: pc.schema,
+        revealedAttributes: pc.revealedAttributes
+      };
+      if (pc.status !== undefined) {
+        curJ['status'] = { ...pc.status };
+        curJ['status'].accumulated = b58.encode(pc.status.accumulated);
+      }
+      if (pc.bounds !== undefined) {
+        curJ['bounds'] = pc.bounds;
+      }
+      if (pc.verifiableEncryptions !== undefined) {
+        curJ['verifiableEncryptions'] = pc.verifiableEncryptions;
+      }
+      // @ts-ignore
+      j.credentials.push(curJ);
+    }
+    return JSON.stringify(j);
   }
 }

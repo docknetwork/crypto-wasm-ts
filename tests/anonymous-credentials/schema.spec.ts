@@ -11,11 +11,9 @@ import {
   ValueType,
   VERSION_STR
 } from '../../src/anonymous-credentials';
-import { flatten } from 'flat';
 import { getExampleSchema } from './utils';
-import { set } from 'husky';
 
-describe('Credential Schema', () => {
+describe('CredentialBuilder Schema', () => {
   beforeAll(async () => {
     await initializeWasm();
   });
@@ -42,22 +40,24 @@ describe('Credential Schema', () => {
   });
 
   it('validation of numeric types', () => {
-    const schema2: any = CredentialSchema.bare();
-    schema2.properties[SUBJECT_STR] = {
+    const schema2 = CredentialSchema.essential();
+    schema2[SUBJECT_STR] = {
       type: 'object',
       properties: {
         fname: { type: 'string' },
-        score: { type: 'random string' },
-      },
+        score: { type: 'random string' }
+      }
     };
     expect(() => new CredentialSchema(schema2)).toThrow();
 
-    schema2.properties[SUBJECT_STR] = {
+    expect(() => CredentialSchema.typeOfName('score', [['fname', 'score'], [{ type: 'string' }, { type: 'random string' }]])).toThrow();
+
+    schema2[SUBJECT_STR] = {
       type: 'object',
       properties: {
         fname: { type: 'string' },
         score: { type: 'integer' }
-      },
+      }
     };
     expect(() => new CredentialSchema(schema2)).toThrow();
 
@@ -118,75 +118,46 @@ describe('Credential Schema', () => {
     });
   });
 
+  it('validation of credential status', () => {
+    const schema4 = CredentialSchema.essential();
+    schema4.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer', minimum: -100 }
+      }
+    };
+
+    schema4.properties[STATUS_STR] = {
+      type: 'object',
+      properties: {
+        [REGISTRY_ID_STR]: { type: 'integer', minimum: -100 },
+      }
+    };
+
+    expect(() => new CredentialSchema(schema4)).toThrow();
+
+    schema4.properties[STATUS_STR].properties[REGISTRY_ID_STR] = { type: 'string' };
+    schema4.properties[STATUS_STR].properties[REV_CHECK_STR] = { type: 'string' };
+    expect(() => new CredentialSchema(schema4)).toThrow();
+
+    schema4.properties[STATUS_STR].properties[REV_ID_STR] = { type: 'string' };
+    const cs4 = new CredentialSchema(schema4);
+    expect(cs4.properties[STATUS_STR].properties[REGISTRY_ID_STR]).toEqual({ type: 'string' });
+    expect(cs4.properties[STATUS_STR].properties[REV_CHECK_STR]).toEqual({ type: 'string' });
+    expect(cs4.properties[STATUS_STR].properties[REV_ID_STR]).toEqual({ type: 'string' });
+  });
+
   it('validation of some more schemas', () => {
-    const schema5: any = CredentialSchema.bare();
-    schema5.properties[SUBJECT_STR] = {
-      type: 'object',
-      properties: {
-        fname: { type: 'string' },
-        lname: { type: 'string' },
-        email: { type: 'string' },
-        SSN: { type: 'stringReversible', compress: false },
-        userId: { type: 'stringReversible', compress: true },
-        country: { type: 'string' },
-        city: { type: 'string' },
-        timeOfBirth: { type: 'positiveInteger' },
-        height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-        weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-        BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-        score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
-        secret: { type: 'string' }
-      },
-    };
+    const schema5 = getExampleSchema(9);
     const cs5 = new CredentialSchema(schema5);
-    expect(cs5.schema.properties[SUBJECT_STR]).toEqual(schema5.properties[SUBJECT_STR]);
-    expect(cs5.schema.properties[STATUS_STR]).not.toBeDefined();
+    expect(cs5.properties[SUBJECT_STR]).toEqual(schema5.properties[SUBJECT_STR]);
+    expect(cs5.properties[STATUS_STR]).not.toBeDefined();
 
-    const schema6: any = CredentialSchema.bare();
-    schema6.properties[SUBJECT_STR] = {
-      type: 'object',
-      properties: {
-        fname: { type: 'string' },
-        lname: { type: 'string' },
-        sensitive: {
-          very: {
-            secret: { type: 'string' }
-          },
-          email: { type: 'string' },
-          phone: { type: 'string' },
-          SSN: { type: 'stringReversible', compress: false }
-        },
-        lessSensitive: {
-          location: {
-            country: { type: 'string' },
-            city: { type: 'string' }
-          },
-          department: {
-            name: { type: 'string' },
-            location: {
-              name: { type: 'string' },
-              geo: {
-                lat: { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
-                long: { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 }
-              }
-            }
-          }
-        },
-        rank: { type: 'positiveInteger' }
-      }
-    };
-    schema6.properties[STATUS_STR] = {
-      type: 'object',
-      properties: {
-        $registryId: { type: 'string' },
-        $revocationCheck: { type: 'string' },
-        $revocationId: { type: 'string' }
-      }
-    };
-
+    const schema6 = getExampleSchema(5);
     const cs6 = new CredentialSchema(schema6);
-    expect(cs6.schema.properties[SUBJECT_STR]).toEqual(schema6.properties[SUBJECT_STR]);
-    expect(cs6.schema.properties[STATUS_STR]).toEqual(schema6.properties[STATUS_STR]);
+    expect(cs6.properties[SUBJECT_STR]).toEqual(schema6.properties[SUBJECT_STR]);
+    expect(cs6.properties[STATUS_STR]).toEqual(schema6.properties[STATUS_STR]);
   });
 
   it('flattening', () => {
@@ -307,7 +278,7 @@ describe('Credential Schema', () => {
   });
 
   it('check type', () => {
-    const schema: any = CredentialSchema.bare();
+    const schema = CredentialSchema.essential();
     schema.properties[SUBJECT_STR] = {
       type: 'object',
       properties: {
@@ -317,8 +288,8 @@ describe('Credential Schema', () => {
         timeOfBirth: { type: 'positiveInteger' },
         xyz: { type: 'integer', minimum: -10 },
         BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-        score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
-      }
+        score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 }
+      },
     };
     const cs = new CredentialSchema(schema);
 
@@ -426,5 +397,118 @@ describe('Credential Schema', () => {
         { type: 'string' }
       ]
     ]);
+  });
+
+  it('creating JSON-LD context', () => {
+    const schema9 = getExampleSchema(9);
+    const cs9 = new CredentialSchema(schema9);
+    const ctx9 = cs9.getJsonLdContext();
+    expect(ctx9['@context'][0]).toEqual({ '@version': 1.1 });
+    expect(ctx9['@context'][1]).toEqual({
+      schema: "http://schema.org/",
+      [CRED_VERSION_STR]: 'schema:Text',
+      [SCHEMA_STR]: 'schema:Text',
+      [SUBJECT_STR]: {
+        fname: 'schema:Text',
+        lname: 'schema:Text',
+        secret: 'schema:Text',
+        userId: 'schema:Text',
+        SSN: 'schema:Text',
+        email: 'schema:Text',
+        country: 'schema:Text',
+        city: 'schema:Text',
+        BMI: 'schema:Number',
+        height: 'schema:Number',
+        weight: 'schema:Number',
+        timeOfBirth: 'schema:Integer',
+        score: 'schema:Number'
+      }
+    });
+
+    const schema5 = getExampleSchema(5);
+    const cs5 = new CredentialSchema(schema5);
+    const ctx5 = cs5.getJsonLdContext();
+    expect(ctx5['@context'][0]).toEqual({ '@version': 1.1 });
+    expect(ctx5['@context'][1]).toEqual({
+      schema: "http://schema.org/",
+      [CRED_VERSION_STR]: 'schema:Text',
+      [SCHEMA_STR]: 'schema:Text',
+      [STATUS_STR]: {
+        [REGISTRY_ID_STR]: 'schema:Text',
+        [REV_CHECK_STR]: 'schema:Text',
+        [REV_ID_STR]: 'schema:Text',
+      },
+      [SUBJECT_STR]: {
+        fname: 'schema:Text',
+        lname: 'schema:Text',
+        sensitive: {
+          SSN: 'schema:Text',
+          email: 'schema:Text',
+          phone: 'schema:Text',
+          very: {
+            secret: 'schema:Text',
+          }
+        },
+        lessSensitive: {
+          department: {
+            name: 'schema:Text',
+            location: {
+              name: 'schema:Text',
+              geo: {
+                lat: 'schema:Number',
+                long: 'schema:Number',
+              }
+            }
+          },
+          location: {
+            country: 'schema:Text',
+            city: 'schema:Text',
+          }
+        },
+        rank: 'schema:Integer'
+      }
+    });
+
+    const schema7 = getExampleSchema(7);
+    const cs7 = new CredentialSchema(schema7);
+    const ctx7 = cs7.getJsonLdContext();
+    expect(ctx7['@context'][0]).toEqual({ '@version': 1.1 });
+    expect(ctx7['@context'][1].issuanceDate).toEqual('schema:Integer');
+    expect(ctx7['@context'][1].expirationDate).toEqual('schema:Integer');
+    expect(ctx7['@context'][1].issuer).toEqual({
+      desc: 'schema:Text',
+      logo: 'schema:Text',
+      name: 'schema:Text'
+    });
+    expect(ctx7['@context'][1].credentialSubject['0']).toEqual({
+      name: 'schema:Text',
+      location: {
+        name: 'schema:Text',
+        geo: {
+          lat: 'schema:Number',
+          long: 'schema:Number',
+        }
+      }
+    });
+    expect(ctx7['@context'][1].credentialSubject['1']).toEqual({
+      name: 'schema:Text',
+      location: {
+        name: 'schema:Text',
+        geo: {
+          lat: 'schema:Number',
+          long: 'schema:Number',
+        }
+      }
+    });
+    expect(ctx7['@context'][1].credentialSubject['2']).toEqual({
+      name: 'schema:Text',
+      location: {
+        name: 'schema:Text',
+        geo: {
+          lat: 'schema:Number',
+          long: 'schema:Number',
+        }
+      }
+    });
   });
 });

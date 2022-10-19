@@ -11,17 +11,15 @@ import {
   STATUS_STR,
   StringOrObject,
   SUBJECT_STR,
-  VERSION_STR
 } from './types-and-consts';
 import { flatten } from 'flat';
-import b58 from 'bs58';
 import { flattenTill2ndLastKey } from './util';
 
 /**
  * Rules
  * 1. Schema must define a top level `credentialSubject` field for the subject, and it can be an array of object
  * 2. Schema must define a top level `credentialSchema` field.
- * 3. Credential status if defined must be present as `credentialStatus` field.
+ * 3. CredentialBuilder status if defined must be present as `credentialStatus` field.
  * 4. Any top level keys in the schema JSON can be created
  Some example schemas
 
@@ -223,7 +221,7 @@ export class CredentialSchema extends Versioned {
   private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
   private static readonly NUM_TYPE = 'decimalNumber';
 
-  // Credential subject/claims cannot have any of these names
+  // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
 
   static POSSIBLE_TYPES = new Set<string>([
@@ -307,12 +305,12 @@ export class CredentialSchema extends Versioned {
     // this.validateStringType(schema, CRED_VERSION_STR);
     // this.validateStringType(schema, SCHEMA_STR);
 
-    // if (schema[STATUS_STR] !== undefined) {
-    //   this.validateStringType(schema[STATUS_STR], REGISTRY_ID_STR);
-    //   this.validateStringType(schema[STATUS_STR], REV_CHECK_STR);
-    //   this.validateStringType(schema[STATUS_STR], REV_ID_STR);
-    //   // Not validating anything else as the field name denoting the registry member could be anything
-    // }
+    const schemaStatus = schema.properties[STATUS_STR];
+    if (schemaStatus !== undefined) {
+      this.validateStringType(schemaStatus.properties, REGISTRY_ID_STR);
+      this.validateStringType(schemaStatus.properties, REV_CHECK_STR);
+      this.validateStringType(schemaStatus.properties, REV_ID_STR);
+    }
 
     if (typeof schema.properties !== 'object') {
       throw new Error(`Schema must have top level properties object`);
@@ -387,41 +385,51 @@ export class CredentialSchema extends Versioned {
   static typeOfName(name: string, flattenedSchema: FlattenedSchema): ValueTypes {
     const [names, values] = flattenedSchema;
     const nameIdx = names.indexOf(name);
-    const typ = values[nameIdx]['type'];
+    try {
+      return this.typeOfValue(values[nameIdx]);
+    } catch (e) {
+      // @ts-ignore
+      throw new Error(`${e.message} for name ${name}`);
+    }
+  }
+
+  static typeOfValue(value: object): ValueTypes {
+    const typ = value['type'];
     switch (typ) {
       case CredentialSchema.STR_TYPE:
         return { type: ValueType.Str };
       case CredentialSchema.STR_REV_TYPE:
-        return { type: ValueType.RevStr, compress: values[nameIdx]['compress'] };
+        return { type: ValueType.RevStr, compress: value['compress'] };
       case CredentialSchema.POSITIVE_INT_TYPE:
         return { type: ValueType.PositiveInteger };
       case CredentialSchema.INT_TYPE:
-        return { type: ValueType.Integer, minimum: values[nameIdx]['minimum'] };
+        return { type: ValueType.Integer, minimum: value['minimum'] };
       case CredentialSchema.POSITIVE_NUM_TYPE:
-        return { type: ValueType.PositiveNumber, decimalPlaces: values[nameIdx]['decimalPlaces'] };
+        return { type: ValueType.PositiveNumber, decimalPlaces: value['decimalPlaces'] };
       case CredentialSchema.NUM_TYPE:
         return {
           type: ValueType.Number,
-          minimum: values[nameIdx]['minimum'],
-          decimalPlaces: values[nameIdx]['decimalPlaces']
+          minimum: value['minimum'],
+          decimalPlaces: value['decimalPlaces']
         };
       default:
-        throw new Error(`Unknown type for name ${name}: ${typ}`);
+        throw new Error(`Unknown type ${typ}`);
     }
   }
 
-  static bare(): object {
-    const schema = {
+  // TODO: proper typedef for root schema instead of any
+  static essential(): any {
+    return {
       $schema: 'http://json-schema.org/draft-07/schema#',
       $metadata: {
         version: 1
       },
       type: 'object',
-      properties: {}
+      properties: {
+        [CRED_VERSION_STR]: { type: 'string' },
+        [SCHEMA_STR]: { type: 'string' }
+      }
     };
-    schema.properties[CRED_VERSION_STR] = { type: 'string' };
-    schema.properties[SCHEMA_STR] = { type: 'string' };
-    return schema;
   }
 
   forCredential(): object {
@@ -447,6 +455,10 @@ export class CredentialSchema extends Versioned {
     return keys;
   }
 
+  hasStatus(): boolean {
+    return this.properties[STATUS_STR] !== undefined;
+  }
+
   toJSON(): string {
     return JSON.stringify(this.forCredential());
   }
@@ -458,6 +470,77 @@ export class CredentialSchema extends Versioned {
     return credSchema;
   }
 
+  getJsonLdContext(): object {
+    const txt = 'schema:Text';
+    const num = 'schema:Number';
+    const int = 'schema:Integer';
+
+    let ctx = {
+      schema: 'http://schema.org/',
+      [CRED_VERSION_STR]: txt,   // Since our version is per semver
+      [SCHEMA_STR]: txt,
+    };
+
+    if (this.hasStatus()) {
+      ctx = {...ctx, ...{
+          [STATUS_STR]: {
+            [REGISTRY_ID_STR]: txt,
+            [REV_CHECK_STR]: txt,
+            [REV_ID_STR]: txt,
+          },
+        }};
+    }
+
+    const flattened = this.flatten();
+
+    const seen = new Set<string>();
+    seen.add(SCHEMA_STR);
+    seen.add(CRED_VERSION_STR);
+
+    for (const name of flattened[0]) {
+      if ([SCHEMA_STR, CRED_VERSION_STR, `${STATUS_STR}.${REGISTRY_ID_STR}`, `${STATUS_STR}.${REV_CHECK_STR}`, `${STATUS_STR}.${REV_ID_STR}`].indexOf(name) > 0) {
+        continue
+      }
+      let current = ctx;
+      const nameParts = name.split('.');
+      for (let j = 0; j < nameParts.length - 1; j++) {
+        if (current[nameParts[j]] === undefined) {
+          current[nameParts[j]] = {};
+        }
+        current = current[nameParts[j]];
+      }
+      switch (this.typeOfName(name, flattened).type) {
+        case ValueType.Str:
+          current[nameParts[nameParts.length - 1]] = txt
+          break;
+        case ValueType.RevStr:
+          current[nameParts[nameParts.length - 1]] = txt
+          break;
+        case ValueType.PositiveInteger:
+          current[nameParts[nameParts.length - 1]] = int
+          break;
+        case ValueType.Integer:
+          current[nameParts[nameParts.length - 1]] = int
+          break;
+        case ValueType.PositiveNumber:
+          current[nameParts[nameParts.length - 1]] = num
+          break;
+        case ValueType.Number:
+          current[nameParts[nameParts.length - 1]] = num
+          break;
+      }
+    }
+
+    return {
+      "@context": [
+        {
+          "@version": 1.1
+        },
+        ctx
+      ]
+    };
+  }
+  
   static processSchemaObject(node: any) {
     if (typeof node.properties !== 'undefined') {
       const result: object = {};

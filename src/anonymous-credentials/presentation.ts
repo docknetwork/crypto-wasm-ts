@@ -16,7 +16,7 @@ import {
   AttributeCiphertexts,
   CRED_VERSION_STR,
   FlattenedSchema,
-  MEM_CHECK_STR,
+  MEM_CHECK_STR, NON_MEM_CHECK_STR,
   PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
@@ -28,12 +28,13 @@ import {
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
+  buildContextForProof, createWitEq,
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
   dockSaverEncryptionGensUncompressed,
-  flattenTill2ndLastKey
+  flattenTill2ndLastKey, getTransformedMinMax
 } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import {
@@ -52,7 +53,7 @@ export class Presentation extends Versioned {
   // This is intentionally not part of presentation specification as this is created as part of the proof generation,
   // not before.
   attributeCiphertexts?: Map<number, AttributeCiphertexts>;
-  context?: Uint8Array;
+  context?: string | Uint8Array;
   nonce?: Uint8Array;
 
   constructor(
@@ -60,7 +61,7 @@ export class Presentation extends Versioned {
     spec: PresentationSpecification,
     proof: CompositeProofG1,
     attributeCiphertexts?: Map<number, AttributeCiphertexts>,
-    context?: Uint8Array,
+    context?: string | Uint8Array,
     nonce?: Uint8Array
   ) {
     super(version);
@@ -71,16 +72,17 @@ export class Presentation extends Versioned {
     this.nonce = nonce;
   }
 
-  // TODO: This can be improved, figure out to use `SetupParams`
+  // TODO: This can be made more efficient (mostly saving serialization cost) by using `SetupParams`s. Repeated use of the
+  //  same param id can be detected and then finally `SetupParams`s can be created for them.
   /**
    *
    * @param publicKeys - Array of keys in the order of credentials in the presentation.
-   * @param accumulatorValueAndPublicKeys - Mapping credential index -> (accumulator value, accumulator public key)
+   * @param accumulatorPublicKeys - Mapping credential index -> accumulator public key
    * @param predicateParams
    */
   verify(
     publicKeys: BBSPlusPublicKeyG2[],
-    accumulatorValueAndPublicKeys?: Map<number, [Uint8Array, AccumulatorPublicKey]>,
+    accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
     predicateParams?: Map<string, PredicateParamType>
   ): VerifyResult {
     const numCreds = this.spec.credentials.length;
@@ -108,9 +110,10 @@ export class Presentation extends Versioned {
       const flattenedSchema = presentedCredSchema.flatten();
       const numAttribs = flattenedSchema[0].length;
 
-      const revealedEncoded = Presentation.encodeRevealed(presentedCred, presentedCredSchema, flattenedSchema[0]);
+      const revealedEncoded = Presentation.encodeRevealed(i, presentedCred, presentedCredSchema, flattenedSchema[0]);
 
       if (maxAttribs < numAttribs) {
+        sigParams = sigParams.adapt(numAttribs);
         maxAttribs = numAttribs;
       }
       const statement = Statement.bbsSignature(sigParams.adapt(numAttribs), publicKeys[i], revealedEncoded, false);
@@ -118,8 +121,8 @@ export class Presentation extends Versioned {
       flattenedSchemas.push(flattenedSchema);
 
       if (presentedCred.status !== undefined) {
-        // TODO: Input validation
-        credStatusAux.push([i, presentedCred.status[REV_CHECK_STR], presentedCred.status['accumulated']]);
+        // The input validation and security checks for these have been done as part of encoding revealed attributes
+        credStatusAux.push([i, presentedCred.status[REV_CHECK_STR], presentedCred.status.accumulated]);
       }
 
       if (presentedCred.bounds !== undefined) {
@@ -130,21 +133,20 @@ export class Presentation extends Versioned {
       }
     }
 
-    credStatusAux.forEach(([i, t, name]) => {
+    credStatusAux.forEach(([i, t, accum]) => {
       let statement;
-      const a = accumulatorValueAndPublicKeys?.get(i);
-      if (a === undefined) {
-        throw new Error(`Accumulator wasn't provided for credential index ${i}`);
+      const pk = accumulatorPublicKeys?.get(i);
+      if (pk === undefined) {
+        throw new Error(`Accumulator public key wasn't provided for credential index ${i}`);
       }
-      const [acc, pk] = a;
       if (t === MEM_CHECK_STR) {
-        statement = Statement.accumulatorMembership(dockAccumulatorParams(), pk, dockAccumulatorMemProvingKey(), acc);
+        statement = Statement.accumulatorMembership(dockAccumulatorParams(), pk, dockAccumulatorMemProvingKey(), accum);
       } else {
         statement = Statement.accumulatorNonMembership(
           dockAccumulatorParams(),
           pk,
           dockAccumulatorNonMemProvingKey(),
-          acc
+          accum
         );
       }
       const sIdx = statements.add(statement);
@@ -155,15 +157,7 @@ export class Presentation extends Versioned {
     });
 
     for (const eql of this.spec.attributeEqualities) {
-      const witnessEq = new WitnessEqualityMetaStatement();
-      for (const [cIdx, name] of eql) {
-        const i = flattenedSchemas[cIdx][0].indexOf(name);
-        if (i === -1) {
-          throw new Error(`Attribute name ${name} was not found`);
-        }
-        witnessEq.addWitnessRef(cIdx, i);
-      }
-      metaStatements.addWitnessEquality(witnessEq);
+      metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
     }
 
     boundsAux.forEach(([i, b]) => {
@@ -171,29 +165,9 @@ export class Presentation extends Versioned {
       bounds[0].forEach((name, j) => {
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
-        let statement, transformedMin, transformedMax;
-        // TODO: Duplicate code
+        let statement;
         const [min, max] = [bounds[1][j]['min'], bounds[1][j]['max']];
-        switch (valTyp.type) {
-          case ValueType.PositiveInteger:
-            transformedMin = min;
-            transformedMax = max;
-            break;
-          case ValueType.Integer:
-            transformedMin = Encoder.integerToPositiveInt(valTyp.minimum)(min);
-            transformedMax = Encoder.integerToPositiveInt(valTyp.minimum)(max);
-            break;
-          case ValueType.PositiveNumber:
-            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(min);
-            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(max);
-            break;
-          case ValueType.Number:
-            transformedMin = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(min);
-            transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
-            break;
-          default:
-            throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
-        }
+        const [transformedMin, transformedMax] = getTransformedMinMax(valTyp, min, max);
 
         const paramId = bounds[1][j]['paramId'];
         const param = predicateParams?.get(paramId);
@@ -276,33 +250,41 @@ export class Presentation extends Versioned {
       });
     });
 
-    // TODO: Fix context calc.
-    const proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], this.context);
+    const ctx = buildContextForProof(this.version, this.spec, this.context);
+    const proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], ctx);
     return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce);
   }
 
   /**
    * Encode the revealed attributes of the presented credential
+   * @param credIdx
    * @param presentedCred
    * @param presentedCredSchema
    * @param flattenedNames
    */
   private static encodeRevealed(
+    credIdx: number,
     presentedCred: IPresentedCredential,
     presentedCredSchema: CredentialSchema,
     flattenedNames: string[]
   ): Map<number, Uint8Array> {
-    const revealedRaw = presentedCred.revealedAttributes;
+    const revealedRaw = JSON.parse(JSON.stringify(presentedCred.revealedAttributes));
     revealedRaw[CRED_VERSION_STR] = presentedCred.version;
     revealedRaw[SCHEMA_STR] = presentedCred.schema;
-    if (presentedCred.status !== undefined) {
-      // TODO: Check that keys present in `presentedCred`
+    if (presentedCredSchema.hasStatus()) {
+      // To guard against a malicious holder not proving the credential status when required.
+      if (presentedCred.status === undefined) {
+        throw new Error(`Schema for the credential index ${credIdx} required a status but wasn't provided`);
+      }
+      if (presentedCred.status[REGISTRY_ID_STR] === undefined || (presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_STR && presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_STR)) {
+        throw new Error(`Presented credential for ${credIdx} has invalid status ${presentedCred.status}`)
+      }
+      // Following will also ensure that holder (prover) cannot change the registry (accumulator) id or the type of check
       revealedRaw[STATUS_STR] = {
         [REGISTRY_ID_STR]: presentedCred.status[REGISTRY_ID_STR],
         [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR]
       };
     }
-
     const encoded = new Map<number, Uint8Array>();
     Object.entries(flatten(revealedRaw) as object).forEach(([k, v]) => {
       const i = flattenedNames.indexOf(k);

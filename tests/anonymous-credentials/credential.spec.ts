@@ -1,6 +1,6 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
-  Credential,
+  CredentialBuilder,
   CredentialSchema,
   MEM_CHECK_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
@@ -11,7 +11,7 @@ import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } fr
 import { checkResult } from '../utils';
 import { getExampleSchema } from './utils';
 
-describe('Credential signing and verification', () => {
+describe('CredentialBuilder signing and verification', () => {
   let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
 
   beforeAll(async () => {
@@ -23,39 +23,21 @@ describe('Credential signing and verification', () => {
   });
 
   it('for a flat (no-nesting) credential', () => {
-    const credSchema = CredentialSchema.fromJSON(JSON.stringify({
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "$metadata": {
-        "version": 1
-      },
-      "$id": "test",
-      "type": "object",
-      "properties": {
-        "credentialSubject": {
-          "type": "object",
-          "properties": {
-            "fname": {
-              "type": "string"
-            },
-            "lname": {
-              "type": "string"
-            }
-          },
-          "required": []
-        }
-      }
-    }));
+sconst schema = CredentialSchema.essential();
+    schema[SUBJECT_STR] = {
+      fname: { type: 'string' },
+      lname: { type: 'string' }
+    };
+    const credSchema = new CredentialSchema(schema);
 
-    const cred = new Credential();
-    cred.schema = credSchema;
-    cred.issuerPubKey = 'did:dock:some-issuer-did-123';
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
 
-    // TODO: restore
-    // cred.subject = { fname: 'John', lastName: 'Smith' };
-    // expect(() => cred.sign(sk)).toThrow();
+    builder.subject = { fname: 'John', lastName: 'Smith' };
+    expect(() => builder.sign(sk)).toThrow();
 
-    cred.subject = { fname: 'John', lname: 'Smith' };
-    cred.sign(sk);
+    builder.subject = { fname: 'John', lname: 'Smith' };
+    const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
 
@@ -63,58 +45,32 @@ describe('Credential signing and verification', () => {
   });
 
   it('for credential with nesting', () => {
-    const credSchema = CredentialSchema.fromJSON(JSON.stringify({
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "$id": "test",
-      "type": "object",
-      "properties": {
-        "credentialSubject": {
-          "type": "object",
-          "properties": {
-            "fname": {
-              "type": "string"
-            },
-            "lname": {
-              "type": "string"
-            },
-            "sensitive": {
-              "type": "object",
-              "properties": {
-                "email": {
-                  "type": "string"
-                },
-                "phone": {
-                  "type": "string"
-                },
-                "SSN": {
-                  "type": "stringReversible",
-                  "compress": false
-                }
-              }
-            }
-          },
-          "required": []
-        }
+    const schema = CredentialSchema.essential();
+    schema[SUBJECT_STR] = {
+      fname: { type: 'string' },
+      lname: { type: 'string' },
+      sensitive: {
+        email: { type: 'string' },
+        phone: { type: 'string' },
+        SSN: { type: 'stringReversible', compress: false }
       }
     }));
 
-    const cred = new Credential();
-    cred.schema = credSchema;
-    cred.issuerPubKey = 'did:dock:some-issuer-did-123';
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
 
-    // TODO: fixme when theres actual json schema validation instead of just checking for property names
-    // cred.subject = {
-    //   fname: 'John',
-    //   lname: 'Smith',
-    //   sensitive: {
-    //     secret: 'my-secret-that-wont-tell-anyone',
-    //     email: 'john.smith@example.com',
-    //     SSN: '123-456789-0'
-    //   }
-    // };
-    // expect(() => cred.sign(sk)).toThrow();
+    builder.subject = {
+      fname: 'John',
+      lname: 'Smith',
+      sensitive: {
+        secret: 'my-secret-that-wont-tell-anyone',
+        email: 'john.smith@example.com',
+        SSN: '123-456789-0'
+      }
+    };
+    expect(() => builder.sign(sk)).toThrow();
 
-    cred.subject = {
+    builder.subject = {
       fname: 'John',
       lname: 'Smith',
       sensitive: {
@@ -123,7 +79,7 @@ describe('Credential signing and verification', () => {
         SSN: '123-456789-0'
       }
     };
-    cred.sign(sk);
+    const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
   });
@@ -176,11 +132,10 @@ describe('Credential signing and verification', () => {
       }
     }));
 
-    const cred = new Credential();
-    cred.schema = credSchema;
-    cred.issuerPubKey = 'did:dock:some-issuer-did-123';
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
 
-    cred.subject = {
+    builder.subject = {
       fname: 'John',
       lname: 'Smith',
       sensitive: {
@@ -191,9 +146,9 @@ describe('Credential signing and verification', () => {
       timeOfBirth: 1662010849619
     };
     // TODO: Fix me by checking conformity to schema
-    // expect(() => cred.sign(sk)).toThrow();
+    // expect(() => builder.sign(sk)).toThrow();
 
-    cred.subject = {
+    builder.subject = {
       fname: 'John',
       lname: 'Smith',
       sensitive: {
@@ -208,13 +163,13 @@ describe('Credential signing and verification', () => {
         BMI: 23.25
       }
     };
-    cred.sign(sk);
+    const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
   });
 
   it('for credential with credential status', () => {
-    const schema: any = CredentialSchema.bare();
+    const schema: any = CredentialSchema.essential();
     schema.properties[SUBJECT_STR] = {
       type: 'object',
       properties: {
@@ -275,11 +230,10 @@ describe('Credential signing and verification', () => {
     };
     const credSchema = new CredentialSchema(schema);
 
-    const cred = new Credential();
-    cred.schema = credSchema;
-    cred.issuerPubKey = 'did:dock:some-issuer-did-123';
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
 
-    cred.subject = {
+    builder.subject = {
       fname: 'John',
       lname: 'Smith',
       sensitive: {
@@ -308,8 +262,8 @@ describe('Credential signing and verification', () => {
       },
       rank: 6
     };
-    cred.setCredentialStatus('dock:accumulator:accumId123', MEM_CHECK_STR, 'user:A-123');
-    cred.sign(sk);
+    builder.setCredentialStatus('dock:accumulator:accumId123', MEM_CHECK_STR, 'user:A-123');
+    const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
 
@@ -320,11 +274,10 @@ describe('Credential signing and verification', () => {
     const schema = getExampleSchema(7);
     const credSchema = new CredentialSchema(schema);
 
-    const cred = new Credential();
-    cred.schema = credSchema;
-    cred.issuerPubKey = 'did:dock:some-issuer-did-123';
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
 
-    cred.subject = [
+    builder.subject = [
       {
         name: 'Random',
         location: {
@@ -356,15 +309,15 @@ describe('Credential signing and verification', () => {
         }
       }
     ];
-    cred.setTopLevelField('issuer', {
+    builder.setTopLevelField('issuer', {
       name: "An issuer",
       desc: "Just an issuer",
       logo: "https://images.example-issuer.com/logo.png"
     });
-    cred.setTopLevelField('issuanceDate', 1662010849700);
-    cred.setTopLevelField('expirationDate', 1662011950934);
+    builder.setTopLevelField('issuanceDate', 1662010849700);
+    builder.setTopLevelField('expirationDate', 1662011950934);
 
-    cred.sign(sk);
+    const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
   })

@@ -18,7 +18,7 @@ import {
   AttributeEquality,
   CRED_VERSION_STR,
   FlattenedSchema,
-  MEM_CHECK_STR,
+  MEM_CHECK_STR, NON_MEM_CHECK_STR,
   PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
@@ -26,19 +26,24 @@ import {
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  StringOrObject,
-  SUBJECT_STR
+  StringOrObject
 } from './types-and-consts';
-import { PresentationSpecification } from './presentation-specification';
+import {
+  IPresentedAttributeBounds,
+  IPresentedAttributeVE,
+  IPresentedStatus,
+  PresentationSpecification
+} from './presentation-specification';
 import b58 from 'bs58';
 import { Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
 import {
+  buildContextForProof, createWitEq,
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
-  dockSaverEncryptionGensUncompressed
+  dockSaverEncryptionGensUncompressed, getTransformedMinMax
 } from './util';
 import {
   SaverChunkedCommitmentGens,
@@ -55,7 +60,7 @@ export class PresentationBuilder extends Versioned {
   // underlying crypto changes.
   static VERSION = '0.0.1';
 
-  _context?: Uint8Array;
+  _context?: string | Uint8Array;
   _nonce?: Uint8Array;
   proof?: CompositeProofG1;
   // Just for debugging
@@ -157,8 +162,6 @@ export class PresentationBuilder extends Versioned {
     this.bounds.set(credIdx, b);
   }
 
-  // TODO: Should check if all compressed or all uncompressed
-  // TODO: Should check that the attribute's encoding is reversible as per schema
   verifiablyEncrypt(
     credIdx: number,
     attributeName: string,
@@ -192,6 +195,11 @@ export class PresentationBuilder extends Versioned {
     this.verifEnc.set(credIdx, v);
   }
 
+  // TODO: This can be made more efficient (mostly saving serialization cost) by using `SetupParams`s. Repeated use of the
+  //  same param id can be detected and then finally `SetupParams`s can be created for them.
+  /**
+   * Create a presentation
+   */
   finalize(): Presentation {
     const numCreds = this.credentials.length;
     let maxAttribs = 2; // version and schema
@@ -216,6 +224,7 @@ export class PresentationBuilder extends Versioned {
       const flattenedSchema = schema.flatten();
       const numAttribs = flattenedSchema[0].length;
       if (maxAttribs < numAttribs) {
+        sigParams = sigParams.adapt(numAttribs);
         maxAttribs = numAttribs;
       }
       let revealedNames = this.revealedAttributes.get(i);
@@ -223,12 +232,14 @@ export class PresentationBuilder extends Versioned {
         revealedNames = new Set();
       }
 
-      // Credential version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
+      // CredentialBuilder version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
       // type, i.e. "membership" or "non-membership" are always revealed.
       revealedNames.add(CRED_VERSION_STR);
       revealedNames.add(SCHEMA_STR);
-      if (cred.credStatus !== undefined) {
-        // TODO: Input validation
+      if (cred.credentialStatus !== undefined) {
+        if (cred.credentialStatus[REGISTRY_ID_STR] === undefined || (cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_STR && cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_STR)) {
+          throw new Error(`Credential for ${i} has invalid status ${cred.credentialStatus}`)
+        }
         revealedNames.add(`${STATUS_STR}.${REGISTRY_ID_STR}`);
         revealedNames.add(`${STATUS_STR}.${REV_CHECK_STR}`);
       }
@@ -248,26 +259,26 @@ export class PresentationBuilder extends Versioned {
       statements.add(statement);
       witnesses.add(witness);
 
-      let presentedStatus: object | undefined;
-      if (cred.credStatus !== undefined) {
-        presentedStatus = {
-          [REGISTRY_ID_STR]: cred.credStatus[REGISTRY_ID_STR],
-          [REV_CHECK_STR]: cred.credStatus[REV_CHECK_STR]
-        };
+      let presentedStatus: IPresentedStatus | undefined;
+      if (cred.credentialStatus !== undefined) {
         const s = this.credStatuses.get(i);
         if (s === undefined) {
           throw new Error(`No status details found for credential index ${i}`);
         }
-        presentedStatus['accumulated'] = s[1];
-        presentedStatus['extra'] = s[3];
+        presentedStatus = {
+          [REGISTRY_ID_STR]: cred.credentialStatus[REGISTRY_ID_STR],
+          [REV_CHECK_STR]: cred.credentialStatus[REV_CHECK_STR],
+          accumulated: s[1],
+          extra: s[3]
+        };
         credStatusAux.push([
           i,
-          cred.credStatus[REV_CHECK_STR],
-          schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credStatus[REV_ID_STR])
+          cred.credentialStatus[REV_CHECK_STR],
+          schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR])
         ]);
       }
 
-      let attributeBounds: object | undefined;
+      let attributeBounds: { [key: string]: string | IPresentedAttributeBounds } | undefined;
       const bounds = this.bounds.get(i);
       if (bounds !== undefined && bounds.size > 0) {
         attributeBounds = {};
@@ -281,7 +292,7 @@ export class PresentationBuilder extends Versioned {
         unrevealedMsgsEncoded.set(i, encodedAttrs);
       }
 
-      let attributeEncs: object | undefined;
+      let attributeEncs: { [key: string]: string | IPresentedAttributeVE } | undefined;
       const encs = this.verifEnc.get(i);
       if (encs !== undefined && encs.size > 0) {
         attributeEncs = {};
@@ -309,7 +320,6 @@ export class PresentationBuilder extends Versioned {
       this.spec.addPresentedCredential(
         ver,
         sch,
-        cred.issuerPubKey as StringOrObject,
         revealedAtts,
         presentedStatus,
         attributeBounds,
@@ -356,15 +366,7 @@ export class PresentationBuilder extends Versioned {
 
     // For enforcing attribute equalities
     for (const eql of this.attributeEqualities) {
-      const witnessEq = new WitnessEqualityMetaStatement();
-      for (const [cIdx, name] of eql) {
-        const i = flattenedSchemas[cIdx][0].indexOf(name);
-        if (i === -1) {
-          throw new Error(`Attribute name ${name} was not found`);
-        }
-        witnessEq.addWitnessRef(cIdx, i);
-      }
-      metaStatements.addWitnessEquality(witnessEq);
+      metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
       this.spec.attributeEqualities.push(eql);
     }
 
@@ -379,28 +381,9 @@ export class PresentationBuilder extends Versioned {
         return a[0] - b[0];
       });
       dataSortedByNameIdx.forEach(([nameIdx, name, min, max, paramId]) => {
-        let statement, transformedMin, transformedMax;
+        let statement;
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[cId]);
-        switch (valTyp.type) {
-          case ValueType.PositiveInteger:
-            transformedMin = min;
-            transformedMax = max;
-            break;
-          case ValueType.Integer:
-            transformedMin = Encoder.integerToPositiveInt(valTyp.minimum)(min);
-            transformedMax = Encoder.integerToPositiveInt(valTyp.minimum)(max);
-            break;
-          case ValueType.PositiveNumber:
-            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(min);
-            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(max);
-            break;
-          case ValueType.Number:
-            transformedMin = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(min);
-            transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
-            break;
-          default:
-            throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
-        }
+        const [transformedMin, transformedMax] = getTransformedMinMax(valTyp, min, max);
 
         const param = this.predicateParams.get(paramId);
         if (param instanceof LegoProvingKey) {
@@ -495,8 +478,9 @@ export class PresentationBuilder extends Versioned {
       }
     }
 
-    // TODO: Include version and spec in context
-    this._proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], this._context);
+    // The version and spec are also added to the proof thus binding these to the proof cryptographically.
+    const ctx = buildContextForProof(this.version, this.spec, this._context);
+    this._proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], ctx);
     this.proof = CompositeProofG1.generateUsingQuasiProofSpec(this._proofSpec, witnesses, this._nonce);
 
     let attributeCiphertexts;
@@ -530,12 +514,11 @@ export class PresentationBuilder extends Versioned {
     return new Presentation(this.version, this.spec, this.proof, attributeCiphertexts, this._context, this._nonce);
   }
 
-  get context(): Uint8Array | undefined {
+  get context(): string | Uint8Array | undefined {
     return this._context;
   }
 
-  // TODO: Context can be string as well.
-  set context(context: Uint8Array | undefined) {
+  set context(context: string | Uint8Array | undefined) {
     this._context = context;
   }
 
@@ -557,9 +540,12 @@ export class PresentationBuilder extends Versioned {
     // TODO:
     return JSON.stringify({
       version: this.version,
-      context: this._context ? b58.encode(this._context) : null,
+      context: this._context ? (typeof this._context === 'string' ? this._context : b58.encode(this._context)) : null,
       nonce: this._nonce ? b58.encode(this._nonce) : null,
-      spec: this.spec.forPresentation(),
+      spec: {
+        credentials: this.spec.credentials,
+        attributeEqualities: this.spec.attributeEqualities
+      },
       proof: b58.encode((this.proof as CompositeProofG1).bytes)
     });
   }

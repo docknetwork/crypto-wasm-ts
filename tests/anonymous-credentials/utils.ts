@@ -1,5 +1,5 @@
 import {
-  CRED_VERSION_STR,
+  CRED_VERSION_STR, PresentationSpecification,
   REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
@@ -8,7 +8,7 @@ import {
 } from '../../src/anonymous-credentials';
 
 export function getExampleSchema(num) {
-  const schema: any = CredentialSchema.bare();
+  const schema: any = CredentialSchema.essential();
   schema.properties[CRED_VERSION_STR] = { type: 'string' };
   schema.properties[SCHEMA_STR] = { type: 'string' };
   switch (num) {
@@ -47,10 +47,14 @@ export function getExampleSchema(num) {
           score: { type: 'integer', minimum: -100 }
         }
       };
-      schema.properties[STATUS_STR] = {};
-      schema.properties[STATUS_STR][REGISTRY_ID_STR] = { type: 'string' };
-      schema.properties[STATUS_STR][REV_CHECK_STR] = { type: 'string' };
-      schema.properties[STATUS_STR][REV_ID_STR] = { type: 'string' };
+      schema.properties[STATUS_STR] = {
+        type: 'object',
+        properties: {
+          [REGISTRY_ID_STR]: { type: 'string' },
+          [REV_CHECK_STR]: { type: 'string' },
+          [REV_ID_STR]: { type: 'string' },
+        },
+      };
       break;
     case 5:
       schema.properties[SUBJECT_STR] = {
