@@ -16,7 +16,7 @@ import {
   AttributeCiphertexts,
   CRED_VERSION_STR,
   FlattenedSchema,
-  MEM_CHECK_STR,
+  MEM_CHECK_STR, NON_MEM_CHECK_STR,
   PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
@@ -28,6 +28,7 @@ import {
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
+  buildContextForProof,
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
@@ -52,7 +53,7 @@ export class Presentation extends Versioned {
   // This is intentionally not part of presentation specification as this is created as part of the proof generation,
   // not before.
   attributeCiphertexts?: Map<number, AttributeCiphertexts>;
-  context?: Uint8Array;
+  context?: string | Uint8Array;
   nonce?: Uint8Array;
 
   constructor(
@@ -60,7 +61,7 @@ export class Presentation extends Versioned {
     spec: PresentationSpecification,
     proof: CompositeProofG1,
     attributeCiphertexts?: Map<number, AttributeCiphertexts>,
-    context?: Uint8Array,
+    context?: string | Uint8Array,
     nonce?: Uint8Array
   ) {
     super(version);
@@ -75,12 +76,12 @@ export class Presentation extends Versioned {
   /**
    *
    * @param publicKeys - Array of keys in the order of credentials in the presentation.
-   * @param accumulatorValueAndPublicKeys - Mapping credential index -> (accumulator value, accumulator public key)
+   * @param accumulatorPublicKeys - Mapping credential index -> accumulator public key
    * @param predicateParams
    */
   verify(
     publicKeys: BBSPlusPublicKeyG2[],
-    accumulatorValueAndPublicKeys?: Map<number, [Uint8Array, AccumulatorPublicKey]>,
+    accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
     predicateParams?: Map<string, PredicateParamType>
   ): VerifyResult {
     const numCreds = this.spec.credentials.length;
@@ -108,7 +109,7 @@ export class Presentation extends Versioned {
       const flattenedSchema = presentedCredSchema.flatten();
       const numAttribs = flattenedSchema[0].length;
 
-      const revealedEncoded = Presentation.encodeRevealed(presentedCred, presentedCredSchema, flattenedSchema[0]);
+      const revealedEncoded = Presentation.encodeRevealed(i, presentedCred, presentedCredSchema, flattenedSchema[0]);
 
       if (maxAttribs < numAttribs) {
         maxAttribs = numAttribs;
@@ -118,8 +119,8 @@ export class Presentation extends Versioned {
       flattenedSchemas.push(flattenedSchema);
 
       if (presentedCred.status !== undefined) {
-        // TODO: Input validation
-        credStatusAux.push([i, presentedCred.status[REV_CHECK_STR], presentedCred.status['accumulated']]);
+        // The input validation and security checks for these have been done as part of encoding revealed attributes
+        credStatusAux.push([i, presentedCred.status[REV_CHECK_STR], presentedCred.status.accumulated]);
       }
 
       if (presentedCred.bounds !== undefined) {
@@ -130,21 +131,21 @@ export class Presentation extends Versioned {
       }
     }
 
-    credStatusAux.forEach(([i, t, name]) => {
+    credStatusAux.forEach(([i, t, accum]) => {
       let statement;
-      const a = accumulatorValueAndPublicKeys?.get(i);
-      if (a === undefined) {
-        throw new Error(`Accumulator wasn't provided for credential index ${i}`);
+      const pk = accumulatorPublicKeys?.get(i);
+      if (pk === undefined) {
+        throw new Error(`Accumulator public key wasn't provided for credential index ${i}`);
       }
-      const [acc, pk] = a;
+      // TODO: Check if accum in pres spec matches the provided accum or check the accum in spec matches what verifier expects
       if (t === MEM_CHECK_STR) {
-        statement = Statement.accumulatorMembership(dockAccumulatorParams(), pk, dockAccumulatorMemProvingKey(), acc);
+        statement = Statement.accumulatorMembership(dockAccumulatorParams(), pk, dockAccumulatorMemProvingKey(), accum);
       } else {
         statement = Statement.accumulatorNonMembership(
           dockAccumulatorParams(),
           pk,
           dockAccumulatorNonMemProvingKey(),
-          acc
+          accum
         );
       }
       const sIdx = statements.add(statement);
@@ -276,33 +277,41 @@ export class Presentation extends Versioned {
       });
     });
 
-    // TODO: Fix context calc.
-    const proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], this.context);
+    const ctx = buildContextForProof(this.version, this.spec, this.context);
+    const proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], ctx);
     return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce);
   }
 
   /**
    * Encode the revealed attributes of the presented credential
+   * @param credIdx
    * @param presentedCred
    * @param presentedCredSchema
    * @param flattenedNames
    */
   private static encodeRevealed(
+    credIdx: number,
     presentedCred: IPresentedCredential,
     presentedCredSchema: CredentialSchema,
     flattenedNames: string[]
   ): Map<number, Uint8Array> {
-    const revealedRaw = presentedCred.revealedAttributes;
+    const revealedRaw = JSON.parse(JSON.stringify(presentedCred.revealedAttributes));
     revealedRaw[CRED_VERSION_STR] = presentedCred.version;
     revealedRaw[SCHEMA_STR] = presentedCred.schema;
-    if (presentedCred.status !== undefined) {
-      // TODO: Check that keys present in `presentedCred`
+    if (presentedCredSchema.hasStatus()) {
+      // To guard against a malicious holder not proving the credential status when required.
+      if (presentedCred.status === undefined) {
+        throw new Error(`Schema for the credential index ${credIdx} required a status but wasn't provided`);
+      }
+      if (presentedCred.status[REGISTRY_ID_STR] === undefined || (presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_STR && presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_STR)) {
+        throw new Error(`Presented credential for ${credIdx} has invalid status ${presentedCred.status}`)
+      }
+      // Following will also ensure that holder (prover) cannot change the registry (accumulator) id or the type of check
       revealedRaw[STATUS_STR] = {
         [REGISTRY_ID_STR]: presentedCred.status[REGISTRY_ID_STR],
-        [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR],
+        [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR]
       };
     }
-
     const encoded = new Map<number, Uint8Array>();
     Object.entries(flatten(revealedRaw) as object).forEach(([k, v]) => {
       const i = flattenedNames.indexOf(k);

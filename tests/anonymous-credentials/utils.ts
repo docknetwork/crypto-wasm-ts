@@ -1,12 +1,12 @@
 import {
-  CRED_VERSION_STR,
+  CRED_VERSION_STR, PresentationSpecification,
   REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
   SUBJECT_STR
 } from '../../src/anonymous-credentials';
 
-export function getExampleSchema(num) {
+export function getExampleSchema(num): object {
   const schema = {};
   schema[CRED_VERSION_STR] = { type: 'string' };
   schema[SCHEMA_STR] = { type: 'string' };

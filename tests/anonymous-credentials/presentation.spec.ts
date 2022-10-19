@@ -10,9 +10,7 @@ import {
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MembershipWitness,
-  PositiveAccumulator,
-  SaverChunkedCommitmentGens,
-  SaverCiphertext,
+  PositiveAccumulator, SaverChunkedCommitmentGens,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
   SaverEncryptionKeyUncompressed,
@@ -22,17 +20,17 @@ import {
 } from '../../src';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  CredentialBuilder,
   Credential,
   CredentialSchema,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
-  dockSaverEncryptionGensUncompressed,
   MEM_CHECK_STR,
   PresentationBuilder,
   REV_ID_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  SUBJECT_STR
+  SUBJECT_STR, dockSaverEncryptionGensUncompressed
 } from '../../src/anonymous-credentials';
 import { checkResult, stringToBytes } from '../utils';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
@@ -129,10 +127,10 @@ describe('Presentation creation and verification', () => {
 
     const schema1 = getExampleSchema(9);
     const credSchema1 = new CredentialSchema(schema1);
-    credential1 = new Credential();
-    credential1.schema = credSchema1;
-    credential1.issuerPubKey = 'did:dock:some-issuer-did-123';
-    credential1.subject = {
+    const builder1 = new CredentialBuilder();
+    builder1.schema = credSchema1;
+    builder1.issuerPubKey = 'did:dock:some-issuer-did-123';
+    builder1.subject = {
       fname: 'John',
       lname: 'Smith',
       email: 'john.smith@example.com',
@@ -147,15 +145,15 @@ describe('Presentation creation and verification', () => {
       score: -13.5,
       secret: 'my-secret-that-wont-tell-anyone'
     };
-    credential1.sign(sk1);
+    credential1 = builder1.sign(sk1);
     checkResult(credential1.verify(pk1));
 
     const schema2 = getExampleSchema(11);
     const credSchema2 = new CredentialSchema(schema2);
-    credential2 = new Credential();
-    credential2.schema = credSchema2;
-    credential2.issuerPubKey = 'did:dock:some-issuer-did-124';
-    credential2.subject = {
+    const builder2 = new CredentialBuilder();
+    builder2.schema = credSchema2;
+    builder2.issuerPubKey = 'did:dock:some-issuer-did-124';
+    builder2.subject = {
       fname: 'John',
       lname: 'Smith',
       sensitive: {
@@ -176,16 +174,16 @@ describe('Presentation creation and verification', () => {
       },
       score: -13.5
     };
-    credential2.sign(sk2);
+    credential2 = builder2.sign(sk2);
     checkResult(credential2.verify(pk2));
 
     const schema3 = getExampleSchema(5);
 
     const credSchema3 = new CredentialSchema(schema3);
-    credential3 = new Credential();
-    credential3.schema = credSchema3;
-    credential3.issuerPubKey = 'did:dock:some-issuer-did-125';
-    credential3.subject = {
+    const builder3 = new CredentialBuilder();
+    builder3.schema = credSchema3;
+    builder3.issuerPubKey = 'did:dock:some-issuer-did-125';
+    builder3.subject = {
       fname: 'John',
       lname: 'Smith',
       sensitive: {
@@ -214,8 +212,8 @@ describe('Presentation creation and verification', () => {
       },
       rank: 6
     };
-    credential3.setCredentialStatus('dock:accumulator:accumId123', MEM_CHECK_STR, 'user:A-123');
-    credential3.sign(sk3);
+    builder3.setCredentialStatus('dock:accumulator:accumId123', MEM_CHECK_STR, 'user:A-123');
+    credential3 = builder3.sign(sk3);
     checkResult(credential3.verify(pk3));
 
     const accumKeypair3 = PositiveAccumulator.generateKeypair(dockAccumulatorParams());
@@ -245,10 +243,10 @@ describe('Presentation creation and verification', () => {
     const schema4 = getExampleSchema(10);
 
     const credSchema4 = new CredentialSchema(schema4);
-    credential4 = new Credential();
-    credential4.schema = credSchema4;
-    credential4.issuerPubKey = 'did:dock:some-issuer-did-126';
-    credential4.subject = {
+    const builder4 = new CredentialBuilder();
+    builder4.schema = credSchema4;
+    builder4.issuerPubKey = 'did:dock:some-issuer-did-126';
+    builder4.subject = {
       fname: 'John',
       lname: 'Smith',
       sensitive: {
@@ -274,8 +272,8 @@ describe('Presentation creation and verification', () => {
         }
       }
     };
-    credential4.setCredentialStatus('dock:accumulator:accumId124', MEM_CHECK_STR, 'tran:2022-YZ4-250');
-    credential4.sign(sk4);
+    builder4.setCredentialStatus('dock:accumulator:accumId124', MEM_CHECK_STR, 'tran:2022-YZ4-250');
+    credential4 = builder4.sign(sk4);
     checkResult(credential4.verify(pk4));
 
     const accumKeypair4 = PositiveAccumulator.generateKeypair(dockAccumulatorParams());
@@ -336,10 +334,10 @@ describe('Presentation creation and verification', () => {
       }
     ];
     const credSchema5 = new CredentialSchema(schema5);
-    credential5 = new Credential();
-    credential5.schema = credSchema5;
-    credential5.issuerPubKey = 'did:dock:some-issuer-did-123';
-    credential5.subject = [
+    const builder5 = new CredentialBuilder();
+    builder5.schema = credSchema5;
+    builder5.issuerPubKey = 'did:dock:some-issuer-did-123';
+    builder5.subject = [
       {
         name: 'Random',
         location: {
@@ -371,7 +369,7 @@ describe('Presentation creation and verification', () => {
         }
       }
     ];
-    credential5.sign(sk1);
+    credential5 = builder5.sign(sk1);
     checkResult(credential5.verify(pk1));
 
     const schema6 = CredentialSchema.bare();
@@ -416,10 +414,10 @@ describe('Presentation creation and verification', () => {
     schema6['expirationDate'] = {type: "positiveInteger"};
 
     const credSchema6 = new CredentialSchema(schema6);
-    credential6 = new Credential();
-    credential6.schema = credSchema6;
-    credential6.issuerPubKey = 'did:dock:some-issuer-did-123';
-    credential6.subject = [
+    const builder6 = new CredentialBuilder();
+    builder6.schema = credSchema6;
+    builder6.issuerPubKey = 'did:dock:some-issuer-did-123';
+    builder6.subject = [
       {
         name: 'Random',
         location: {
@@ -451,14 +449,14 @@ describe('Presentation creation and verification', () => {
         }
       }
     ];
-    credential6.setTopLevelField('issuer', {
+    builder6.setTopLevelField('issuer', {
       name: "An issuer",
       desc: "Just an issuer",
       logo: "https://images.example-issuer.com/logo.png"
     });
-    credential6.setTopLevelField('issuanceDate', 1662010849700);
-    credential6.setTopLevelField('expirationDate', 1662011950934);
-    credential6.sign(sk1);
+    builder6.setTopLevelField('issuanceDate', 1662010849700);
+    builder6.setTopLevelField('expirationDate', 1662011950934);
+    credential6 = builder6.sign(sk1);
     checkResult(credential6.verify(pk1));
   });
 
@@ -516,7 +514,7 @@ describe('Presentation creation and verification', () => {
         lessSensitive: { location: { country: 'USA' }, department: { location: { name: 'Somewhere' } } }
       }
     });
-    expect(pres3.spec.credentials[0].status).toEqual({
+    expect(pres3.spec.getStatus(0)).toEqual({
       $registryId: 'dock:accumulator:accumId123',
       $revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
@@ -524,8 +522,9 @@ describe('Presentation creation and verification', () => {
     });
 
     const acc = new Map();
-    acc.set(0, [accumulator3.accumulated, accumulator3Pk]);
+    acc.set(0, accumulator3Pk);
     checkResult(pres3.verify([pk3], acc));
+    console.log(pres3.spec.toJSON());
   });
 
   it('from 2 credentials, `credential1` and `credential2`, and prove some attributes equal', () => {
@@ -601,13 +600,13 @@ describe('Presentation creation and verification', () => {
         education: { university: { name: 'Example University', registrationNumber: 'XYZ-123-789' } }
       }
     });
-    expect(pres5.spec.credentials[0].status).toEqual({
+    expect(pres5.spec.getStatus(0)).toEqual({
       $registryId: 'dock:accumulator:accumId123',
       $revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
     });
-    expect(pres5.spec.credentials[1].status).toEqual({
+    expect(pres5.spec.getStatus(1)).toEqual({
       $registryId: 'dock:accumulator:accumId124',
       $revocationCheck: 'membership',
       accumulated: accumulator4.accumulated,
@@ -615,8 +614,8 @@ describe('Presentation creation and verification', () => {
     });
 
     const acc = new Map();
-    acc.set(0, [accumulator3.accumulated, accumulator3Pk]);
-    acc.set(1, [accumulator4.accumulated, accumulator4Pk]);
+    acc.set(0, accumulator3Pk);
+    acc.set(1, accumulator4Pk);
     checkResult(pres5.verify([pk3, pk4], acc));
   });
 
@@ -679,9 +678,22 @@ describe('Presentation creation and verification', () => {
       }
     });
 
+    expect(pres6.spec.getStatus(2)).toEqual({
+      $registryId: 'dock:accumulator:accumId123',
+      $revocationCheck: 'membership',
+      accumulated: accumulator3.accumulated,
+      extra: { blockNo: 2010334 }
+    });
+    expect(pres6.spec.getStatus(3)).toEqual({
+      $registryId: 'dock:accumulator:accumId124',
+      $revocationCheck: 'membership',
+      accumulated: accumulator4.accumulated,
+      extra: { blockNo: 2010340 }
+    });
+
     const acc = new Map();
-    acc.set(2, [accumulator3.accumulated, accumulator3Pk]);
-    acc.set(3, [accumulator4.accumulated, accumulator4Pk]);
+    acc.set(2, accumulator3Pk);
+    acc.set(3, accumulator4Pk);
     checkResult(pres6.verify([pk1, pk2, pk3, pk4], acc));
   });
 
@@ -835,7 +847,7 @@ describe('Presentation creation and verification', () => {
         }
       }
     });
-    expect(pres2.spec.credentials[2].status).toEqual({
+    expect(pres2.spec.getStatus(2)).toEqual({
       $registryId: 'dock:accumulator:accumId123',
       $revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
@@ -843,7 +855,7 @@ describe('Presentation creation and verification', () => {
     });
 
     const acc = new Map();
-    acc.set(2, [accumulator3.accumulated, accumulator3Pk]);
+    acc.set(2, accumulator3Pk);
 
     const pp1 = new Map();
     pp1.set(pkId, boundCheckVerifyingKey);
@@ -974,7 +986,7 @@ describe('Presentation creation and verification', () => {
         }
       }
     });
-    expect(pres2.spec.credentials[2].status).toEqual({
+    expect(pres2.spec.getStatus(2)).toEqual({
       $registryId: 'dock:accumulator:accumId123',
       $revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
@@ -982,7 +994,7 @@ describe('Presentation creation and verification', () => {
     });
 
     const acc = new Map();
-    acc.set(2, [accumulator3.accumulated, accumulator3Pk]);
+    acc.set(2, accumulator3Pk);
 
     const pp1 = new Map();
     pp1.set(commGensId, commGensNew);
@@ -1188,7 +1200,7 @@ describe('Presentation creation and verification', () => {
         }
       }
     });
-    expect(pres1.spec.credentials[2].status).toEqual({
+    expect(pres1.spec.getStatus(2)).toEqual({
       $registryId: 'dock:accumulator:accumId123',
       $revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
@@ -1196,7 +1208,7 @@ describe('Presentation creation and verification', () => {
     });
 
     const acc = new Map();
-    acc.set(2, [accumulator3.accumulated, accumulator3Pk]);
+    acc.set(2, accumulator3Pk);
 
     const pp = new Map();
     pp.set(boundCheckSnarkId, boundCheckVerifyingKey);
@@ -1204,6 +1216,7 @@ describe('Presentation creation and verification', () => {
     pp.set(ekId, saverEk);
     pp.set(snarkPkId, saverVerifyingKey);
     checkResult(pres1.verify([pk1, pk2, pk3], acc, pp));
+    console.log(pres1.spec.toJSON());
   });
 
   it('from a credential with subject as an array `credential5`', () => {

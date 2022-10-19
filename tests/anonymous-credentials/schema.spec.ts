@@ -11,11 +11,9 @@ import {
   ValueType,
   VERSION_STR
 } from '../../src/anonymous-credentials';
-import { flatten } from 'flat';
 import { getExampleSchema } from './utils';
-import { set } from 'husky';
 
-describe('Credential Schema', () => {
+describe('CredentialBuilder Schema', () => {
   beforeAll(async () => {
     await initializeWasm();
   });
@@ -121,22 +119,7 @@ describe('Credential Schema', () => {
   });
 
   it('validation of some more schemas', () => {
-    const schema5 = CredentialSchema.bare();
-    schema5[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' },
-      email: { type: 'string' },
-      SSN: { type: 'stringReversible', compress: false },
-      userId: { type: 'stringReversible', compress: true },
-      country: { type: 'string' },
-      city: { type: 'string' },
-      timeOfBirth: { type: 'positiveInteger' },
-      height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-      weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-      BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-      score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
-      secret: { type: 'string' }
-    };
+    const schema5 = getExampleSchema(9);
     const cs5 = new CredentialSchema(schema5);
     expect(cs5.schema[SUBJECT_STR]).toEqual(schema5[SUBJECT_STR]);
     expect(cs5.schema[STATUS_STR]).not.toBeDefined();

@@ -21,7 +21,7 @@ import { flattenTill2ndLastKey } from './util';
  * Rules
  * 1. Schema must define a top level `credentialSubject` field for the subject, and it can be an array of object
  * 2. Schema must define a top level `credentialSchema` field.
- * 3. Credential status if defined must be present as `credentialStatus` field.
+ * 3. CredentialBuilder status if defined must be present as `credentialStatus` field.
  * 4. Any top level keys in the schema JSON can be created
  Some example schemas
 
@@ -223,7 +223,7 @@ export class CredentialSchema extends Versioned {
   private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
   private static readonly NUM_TYPE = 'decimalNumber';
 
-  // Credential subject/claims cannot have any of these names
+  // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
 
   static POSSIBLE_TYPES = new Set<string>([
@@ -416,18 +416,22 @@ export class CredentialSchema extends Versioned {
   }
 
   getCustomTopLevelKeys(): string[] {
-    return CredentialSchema.getCustomTopLevelKeys(this.schema)
+    return CredentialSchema.getCustomTopLevelKeys(this.schema);
   }
 
   static getCustomTopLevelKeys(schema: object): string[] {
     const keys: string[] = [];
     for (const k of Object.keys(schema)) {
       if (CredentialSchema.RESERVED_NAMES.has(k)) {
-        continue
+        continue;
       }
       keys.push(k);
     }
     return keys;
+  }
+
+  hasStatus(): boolean {
+    return this.schema[STATUS_STR] !== undefined;
   }
 
   toJSON(): string {

@@ -38,9 +38,9 @@ describe('Proving that blood group is not AB-', () => {
   const label = stringToBytes('Sig params label');
   let sigPk: BBSPlusPublicKeyG2;
 
-  // Credential for the user with blood group AB+
+  // CredentialBuilder for the user with blood group AB+
   let signed1: SignedMessages;
-  // Credential for the user with blood group AB-
+  // CredentialBuilder for the user with blood group AB-
   let signed2: SignedMessages;
 
   let r1cs: ParsedR1CSFile;

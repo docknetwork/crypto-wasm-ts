@@ -26,14 +26,19 @@ import {
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  StringOrObject,
-  SUBJECT_STR
+  StringOrObject
 } from './types-and-consts';
-import { PresentationSpecification } from './presentation-specification';
+import {
+  IPresentedAttributeBounds,
+  IPresentedAttributeVE,
+  IPresentedStatus,
+  PresentationSpecification
+} from './presentation-specification';
 import b58 from 'bs58';
 import { Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
 import {
+  buildContextForProof,
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
@@ -55,7 +60,7 @@ export class PresentationBuilder extends Versioned {
   // underlying crypto changes.
   static VERSION = '0.0.1';
 
-  _context?: Uint8Array;
+  _context?: string | Uint8Array;
   _nonce?: Uint8Array;
   proof?: CompositeProofG1;
   // Just for debugging
@@ -223,7 +228,7 @@ export class PresentationBuilder extends Versioned {
         revealedNames = new Set();
       }
 
-      // Credential version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
+      // CredentialBuilder version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
       // type, i.e. "membership" or "non-membership" are always revealed.
       revealedNames.add(CRED_VERSION_STR);
       revealedNames.add(SCHEMA_STR);
@@ -248,18 +253,18 @@ export class PresentationBuilder extends Versioned {
       statements.add(statement);
       witnesses.add(witness);
 
-      let presentedStatus: object | undefined;
+      let presentedStatus: IPresentedStatus | undefined;
       if (cred.credStatus !== undefined) {
-        presentedStatus = {
-          [REGISTRY_ID_STR]: cred.credStatus[REGISTRY_ID_STR],
-          [REV_CHECK_STR]: cred.credStatus[REV_CHECK_STR]
-        };
         const s = this.credStatuses.get(i);
         if (s === undefined) {
           throw new Error(`No status details found for credential index ${i}`);
         }
-        presentedStatus['accumulated'] = s[1];
-        presentedStatus['extra'] = s[3];
+        presentedStatus = {
+          [REGISTRY_ID_STR]: cred.credStatus[REGISTRY_ID_STR],
+          [REV_CHECK_STR]: cred.credStatus[REV_CHECK_STR],
+          accumulated: s[1],
+          extra: s[3]
+        };
         credStatusAux.push([
           i,
           cred.credStatus[REV_CHECK_STR],
@@ -267,7 +272,7 @@ export class PresentationBuilder extends Versioned {
         ]);
       }
 
-      let attributeBounds: object | undefined;
+      let attributeBounds: { [key: string]: string | IPresentedAttributeBounds } | undefined;
       const bounds = this.bounds.get(i);
       if (bounds !== undefined && bounds.size > 0) {
         attributeBounds = {};
@@ -281,7 +286,7 @@ export class PresentationBuilder extends Versioned {
         unrevealedMsgsEncoded.set(i, encodedAttrs);
       }
 
-      let attributeEncs: object | undefined;
+      let attributeEncs: { [key: string]: string | IPresentedAttributeVE } | undefined;
       const encs = this.verifEnc.get(i);
       if (encs !== undefined && encs.size > 0) {
         attributeEncs = {};
@@ -408,7 +413,9 @@ export class PresentationBuilder extends Versioned {
         } else if (param instanceof LegoProvingKeyUncompressed) {
           statement = Statement.boundCheckProver(transformedMin, transformedMax, param);
         } else {
-          throw new Error(`Predicate param id ${paramId} (for credential index ${cId}) was expected to be a Legosnark proving key but was ${param}`);
+          throw new Error(
+            `Predicate param id ${paramId} (for credential index ${cId}) was expected to be a Legosnark proving key but was ${param}`
+          );
         }
 
         const encodedAttrVal = unrevealedMsgsEncoded.get(cId)?.get(nameIdx) as Uint8Array;
@@ -493,8 +500,9 @@ export class PresentationBuilder extends Versioned {
       }
     }
 
-    // TODO: Include version and spec in context
-    this._proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], this._context);
+    // The version and spec are also added to the proof thus binding these to the proof cryptographically.
+    const ctx = buildContextForProof(this.version, this.spec, this._context);
+    this._proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], ctx);
     this.proof = CompositeProofG1.generateUsingQuasiProofSpec(this._proofSpec, witnesses, this._nonce);
 
     let attributeCiphertexts;
@@ -528,12 +536,11 @@ export class PresentationBuilder extends Versioned {
     return new Presentation(this.version, this.spec, this.proof, attributeCiphertexts, this._context, this._nonce);
   }
 
-  get context(): Uint8Array | undefined {
+  get context(): string | Uint8Array | undefined {
     return this._context;
   }
 
-  // TODO: Context can be string as well.
-  set context(context: Uint8Array | undefined) {
+  set context(context: string | Uint8Array | undefined) {
     this._context = context;
   }
 
@@ -555,9 +562,12 @@ export class PresentationBuilder extends Versioned {
     // TODO:
     return JSON.stringify({
       version: this.version,
-      context: this._context ? b58.encode(this._context) : null,
+      context: this._context ? (typeof this._context === 'string' ? this._context : b58.encode(this._context)) : null,
       nonce: this._nonce ? b58.encode(this._nonce) : null,
-      spec: this.spec.forPresentation(),
+      spec: {
+        credentials: this.spec.credentials,
+        attributeEqualities: this.spec.attributeEqualities
+      },
       proof: b58.encode((this.proof as CompositeProofG1).bytes)
     });
   }
