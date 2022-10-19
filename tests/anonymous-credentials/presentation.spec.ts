@@ -302,39 +302,7 @@ describe('Presentation creation and verification', () => {
       )
     ).toEqual(true);
 
-    const schema5 = CredentialSchema.bare();
-    schema5[SUBJECT_STR] = [
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      }
-    ];
+    const schema5 = getExampleSchema(6);
     const credSchema5 = new CredentialSchema(schema5);
     credential5 = new Credential();
     credential5.schema = credSchema5;
@@ -374,46 +342,7 @@ describe('Presentation creation and verification', () => {
     credential5.sign(sk1);
     checkResult(credential5.verify(pk1));
 
-    const schema6 = CredentialSchema.bare();
-    schema6[SUBJECT_STR] = [
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-    ];
-    schema6['issuer'] = {
-      name: {type: "string"},
-      desc: {type: "string"},
-      logo: {type: "string"}
-    };
-    schema6['issuanceDate'] = {type: "positiveInteger"};
-    schema6['expirationDate'] = {type: "positiveInteger"};
+    const schema6 = getExampleSchema(7);
 
     const credSchema6 = new CredentialSchema(schema6);
     credential6 = new Credential();
