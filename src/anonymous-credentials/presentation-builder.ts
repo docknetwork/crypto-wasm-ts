@@ -408,7 +408,9 @@ export class PresentationBuilder extends Versioned {
         } else if (param instanceof LegoProvingKeyUncompressed) {
           statement = Statement.boundCheckProver(transformedMin, transformedMax, param);
         } else {
-          throw new Error(`Predicate param id ${paramId} (for credential index ${cId}) was expected to be a Legosnark proving key but was ${param}`);
+          throw new Error(
+            `Predicate param id ${paramId} (for credential index ${cId}) was expected to be a Legosnark proving key but was ${param}`
+          );
         }
 
         const encodedAttrVal = unrevealedMsgsEncoded.get(cId)?.get(nameIdx) as Uint8Array;

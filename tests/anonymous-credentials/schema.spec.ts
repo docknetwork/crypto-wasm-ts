@@ -192,25 +192,25 @@ describe('Credential Schema', () => {
   it('flattening', () => {
     const cs1 = new CredentialSchema(getExampleSchema(1));
     expect(cs1.flatten()).toEqual([
-      [SCHEMA_STR, CRED_VERSION_STR, `${SUBJECT_STR}.fname`],
+      [SCHEMA_STR, `${SUBJECT_STR}.fname`, CRED_VERSION_STR],
       [{ type: 'string' }, { type: 'string' }, { type: 'string' }]
     ]);
 
     const cs2 = new CredentialSchema(getExampleSchema(2));
     expect(cs2.flatten()).toEqual([
-      [SCHEMA_STR, CRED_VERSION_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.score`],
-      [{ type: 'string' }, { type: 'string' }, { type: 'string' }, { type: 'integer', minimum: -100 }],
+      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.score`, CRED_VERSION_STR],
+      [{ type: 'string' }, { type: 'string' }, { type: 'integer', minimum: -100 }, { type: 'string' }],
     ]);
 
     const cs3 = new CredentialSchema(getExampleSchema(3));
     expect(cs3.flatten()).toEqual([
-      [SCHEMA_STR, CRED_VERSION_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.long`, `${SUBJECT_STR}.score`],
+      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.long`, `${SUBJECT_STR}.score`, CRED_VERSION_STR],
       [
-        { type: 'string' },
         { type: 'string' },
         { type: 'string' },
         { type: 'positiveDecimalNumber', decimalPlaces: 2 },
         { type: 'integer', minimum: -100 },
+        { type: 'string' },
       ]
     ]);
 
@@ -221,9 +221,9 @@ describe('Credential Schema', () => {
         `${STATUS_STR}.${REGISTRY_ID_STR}`,
         `${STATUS_STR}.${REV_CHECK_STR}`,
         `${STATUS_STR}.${REV_ID_STR}`,
-        CRED_VERSION_STR,
         `${SUBJECT_STR}.fname`,
         `${SUBJECT_STR}.score`,
+        CRED_VERSION_STR,
       ],
       [
         { type: 'string' },
@@ -231,8 +231,8 @@ describe('Credential Schema', () => {
         { type: 'string' },
         { type: 'string' },
         { type: 'string' },
-        { type: 'string' },
         { type: 'integer', minimum: -100 },
+        { type: 'string' },
       ]
     ]);
 
@@ -243,7 +243,6 @@ describe('Credential Schema', () => {
         `${STATUS_STR}.${REGISTRY_ID_STR}`,
         `${STATUS_STR}.${REV_CHECK_STR}`,
         `${STATUS_STR}.${REV_ID_STR}`,
-        CRED_VERSION_STR,
         `${SUBJECT_STR}.fname`,
         `${SUBJECT_STR}.lessSensitive.department.location.geo.lat`,
         `${SUBJECT_STR}.lessSensitive.department.location.geo.long`,
@@ -257,9 +256,9 @@ describe('Credential Schema', () => {
         `${SUBJECT_STR}.sensitive.email`,
         `${SUBJECT_STR}.sensitive.phone`,
         `${SUBJECT_STR}.sensitive.very.secret`,
+        CRED_VERSION_STR,
       ],
       [
-        { type: 'string' },
         { type: 'string' },
         { type: 'string' },
         { type: 'string' },
@@ -276,7 +275,8 @@ describe('Credential Schema', () => {
         { compress: false, type: 'stringReversible' },
         { type: 'string' },
         { type: 'string' },
-        { type: 'string' }
+        { type: 'string' },
+        { type: 'string' },
       ]
     ]);
   });

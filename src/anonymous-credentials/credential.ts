@@ -79,7 +79,7 @@ export class Credential extends Versioned {
     this._credStatus = {
       [REGISTRY_ID_STR]: registryId,
       [REV_CHECK_STR]: revCheck,
-      [REV_ID_STR]: memberValue,
+      [REV_ID_STR]: memberValue
     };
   }
 
@@ -88,7 +88,7 @@ export class Credential extends Versioned {
   }
 
   setTopLevelField(name: string, value: unknown) {
-    this._topLevelFields.set(name, value)
+    this._topLevelFields.set(name, value);
   }
 
   getTopLevelField(name: string): unknown {
@@ -153,11 +153,11 @@ export class Credential extends Versioned {
     }
     j['issuerPubKey'] = this._issuerPubKey;
     j['proof'] = {
-      type: 'Bls12381BBS+SignatureDock2022',
+      type: 'Bls12381BBS+SignatureDock2022'
     };
 
     if (this._sig) {
-      j['proof'].proofValue =  b58.encode((this._sig as SignatureG1).bytes);
+      j['proof'].proofValue = b58.encode((this._sig as SignatureG1).bytes);
     }
 
     // // This is for debugging only and can be omitted

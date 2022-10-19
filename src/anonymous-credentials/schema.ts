@@ -321,7 +321,7 @@ export class CredentialSchema extends Versioned {
     if (schema.properties[SUBJECT_STR] === undefined) {
       throw new Error(`Schema properties did not contain top level key ${SUBJECT_STR}`);
     }
-    this.validateGeneric(schema.properties[SUBJECT_STR]);
+    this.validateGeneric(schema);
     // TODO: restore
     // for (const k of this.getCustomTopLevelKeys(schema)) {
     //   this.validateGeneric(schema[k]);
@@ -334,7 +334,7 @@ export class CredentialSchema extends Versioned {
       if (typeof values[i] !== 'object') {
         throw new Error(`Schema value for ${names[i]} should have been an object type but was ${typeof values[i]}`);
       }
-      
+
       const value: any = values[i];
 
       if (typeof value.type === 'undefined') {
@@ -412,12 +412,12 @@ export class CredentialSchema extends Versioned {
 
   static bare(): object {
     const schema = {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "$metadata": {
-        "version": 1
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      $metadata: {
+        version: 1
       },
-      "type": "object",
-      "properties": {}
+      type: 'object',
+      properties: {}
     };
     schema.properties[CRED_VERSION_STR] = { type: 'string' };
     schema.properties[SCHEMA_STR] = { type: 'string' };
@@ -433,14 +433,14 @@ export class CredentialSchema extends Versioned {
   }
 
   getCustomTopLevelKeys(): string[] {
-    return CredentialSchema.getCustomTopLevelKeys(this.schema)
+    return CredentialSchema.getCustomTopLevelKeys(this.schema);
   }
 
   static getCustomTopLevelKeys(schema: object): string[] {
     const keys: string[] = [];
     for (const k of Object.keys(schema)) {
       if (CredentialSchema.RESERVED_NAMES.has(k)) {
-        continue
+        continue;
       }
       keys.push(k);
     }
@@ -458,32 +458,42 @@ export class CredentialSchema extends Versioned {
     return credSchema;
   }
 
-  static processSchemaObject(node: any, result: object) {
-    const keys = Object.keys(node);
-    keys.forEach(k => {
-      const value = node[k];
+  static processSchemaObject(node: any) {
+    if (typeof node.properties !== 'undefined') {
+      const result: object = {};
+      const keys = Object.keys(node.properties);
+      keys.forEach((k) => {
+        const value = node.properties[k];
 
-      let insVal = {};
-      if (value.type === 'object') {
-        if (typeof value.properties === 'object') {
-          CredentialSchema.processSchemaObject(value.properties, insVal);
+        let insVal = {};
+        if (value.type === 'object') {
+          if (typeof value.properties === 'object') {
+            insVal = CredentialSchema.processSchemaObject(value);
+          } else {
+            throw new Error(`${k} must have properties field that is an object`);
+          }
+        } else if (value.type === 'array') {
+          if (Array.isArray(value.items)) {
+            insVal = value.items.map((i) => CredentialSchema.processSchemaObject(i));
+          } else {
+            throw new Error('No indefinite length array support');
+          }
         } else {
-          throw new Error(`${k} must have properties field that is an object`);
+          insVal = value;
         }
-      } else {
-        insVal = value;
-      }
 
-      result[k] = insVal;
-    });
+        result[k] = insVal;
+      });
+      return result;
+    } else {
+      return node;
+    }
   }
 
   static flattenSchemaObj(schema: any): FlattenedSchema {
-    const resultObj = {};
-    CredentialSchema.processSchemaObject(schema.properties, resultObj);
+    const resultObj = CredentialSchema.processSchemaObject(schema);
     return flattenTill2ndLastKey(resultObj);
   }
-
 
   private static validateStringType(schema, fieldName) {
     if (JSON.stringify(schema[fieldName], undefined, 0) !== '{"type":"string"}') {

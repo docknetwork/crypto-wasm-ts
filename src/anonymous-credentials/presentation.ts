@@ -299,7 +299,7 @@ export class Presentation extends Versioned {
       // TODO: Check that keys present in `presentedCred`
       revealedRaw[STATUS_STR] = {
         [REGISTRY_ID_STR]: presentedCred.status[REGISTRY_ID_STR],
-        [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR],
+        [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR]
       };
     }
 
