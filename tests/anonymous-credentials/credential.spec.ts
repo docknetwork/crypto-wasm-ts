@@ -23,10 +23,13 @@ describe('CredentialBuilder signing and verification', () => {
   });
 
   it('for a flat (no-nesting) credential', () => {
-sconst schema = CredentialSchema.essential();
-    schema[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' }
+    const schema = CredentialSchema.essential();
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'string' }
+      }
     };
     const credSchema = new CredentialSchema(schema);
 
@@ -42,19 +45,27 @@ sconst schema = CredentialSchema.essential();
     checkResult(cred.verify(pk));
 
     const credJson = cred.toJSON();
+    console.log(credJson);
   });
 
   it('for credential with nesting', () => {
     const schema = CredentialSchema.essential();
-    schema[SUBJECT_STR] = {
-      fname: { type: 'string' },
-      lname: { type: 'string' },
-      sensitive: {
-        email: { type: 'string' },
-        phone: { type: 'string' },
-        SSN: { type: 'stringReversible', compress: false }
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'string' },
+        sensitive: {
+          type: 'object',
+          properties: {
+            email: { type: 'string' },
+            phone: { type: 'string' },
+            SSN: { type: 'stringReversible', compress: false }
+          }
+        }
       }
-    }));
+    };
+    const credSchema = new CredentialSchema(schema);
 
     const builder = new CredentialBuilder();
     builder.schema = credSchema;
@@ -85,52 +96,8 @@ sconst schema = CredentialSchema.essential();
   });
 
   it('for credential with numeric fields', () => {
-    // TODO: use jsonschema multipleOf instead of decimalPlaces
-    const credSchema = CredentialSchema.fromJSON(JSON.stringify({
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "$id": "test",
-      "type": "object",
-      "properties": {
-        "credentialSubject": {
-          "type": "object",
-          "properties": {
-            "fname": {
-              "type": "string"
-            },
-            "lname": {
-              "type": "string"
-            },
-            "timeOfBirth": {
-              "type": "positiveInteger"
-            },
-            "sensitive": {
-              "type": "object",
-              "properties": {
-                "email": {
-                  "type": "string"
-                },
-                "phone": {
-                  "type": "string"
-                },
-                "SSN": {
-                  "type": "stringReversible",
-                  "compress": false
-                }
-              }
-            }
-          },
-          "physical": {
-            "type": "object",
-            "properties": {
-              "height": {"type": "positiveDecimalNumber", "decimalPlaces": 1},
-              "weight": {"type": "positiveDecimalNumber", "decimalPlaces": 1},
-              "BMI": {"type": "positiveDecimalNumber", "decimalPlaces": 2}
-            }
-          },
-          "required": []
-        }
-      }
-    }));
+    const schema = getExampleSchema(8);
+    const credSchema = new CredentialSchema(schema);
 
     const builder = new CredentialBuilder();
     builder.schema = credSchema;
@@ -169,65 +136,7 @@ sconst schema = CredentialSchema.essential();
   });
 
   it('for credential with credential status', () => {
-    const schema: any = CredentialSchema.essential();
-    schema.properties[SUBJECT_STR] = {
-      type: 'object',
-      properties: {
-        fname: { type: 'string' },
-        lname: { type: 'string' },
-        sensitive: {
-          type: 'object',
-          properties: {
-            very: {
-              type: 'object',
-              properties: {
-                secret: { type: 'string' }
-              }
-            },
-            email: { type: 'string' },
-            phone: { type: 'string' },
-            SSN: { type: 'stringReversible', compress: false }
-          }
-        },
-        lessSensitive: {
-          type: 'object',
-          properties: {
-            location: {
-              type: 'object',
-              properties: {
-                country: { type: 'string' },
-                city: { type: 'string' }
-              }
-            },
-            department: {
-              type: 'object',
-              properties: {
-                name: { type: 'string' },
-                location: {
-                  name: { type: 'string' },
-                  geo: {
-                    type: 'object',
-                    properties: {
-                      lat: { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
-                      long: { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        rank: { type: 'positiveInteger' }
-      }
-    };
-    schema.properties[STATUS_STR] = {
-      type: 'object',
-      properties: {
-        $registryId: { type: 'string' },
-        $revocationCheck: { type: 'string' },
-        $revocationId: { type: 'string' }
-      }
-    };
+    const schema = getExampleSchema(5);
     const credSchema = new CredentialSchema(schema);
 
     const builder = new CredentialBuilder();

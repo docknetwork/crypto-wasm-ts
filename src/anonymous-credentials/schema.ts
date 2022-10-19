@@ -278,7 +278,7 @@ export class CredentialSchema extends Versioned {
       encoders.set(names[i], f);
     }
 
-    this.encoder = new Encoder(encoders, defaultEncoder);
+    this.encoder = new Encoder(encoders);
   }
 
   /**
