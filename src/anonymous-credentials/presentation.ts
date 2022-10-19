@@ -28,13 +28,13 @@ import {
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
-  buildContextForProof,
+  buildContextForProof, createWitEq,
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
   dockSaverEncryptionGensUncompressed,
-  flattenTill2ndLastKey
+  flattenTill2ndLastKey, getTransformedMinMax
 } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import {
@@ -72,7 +72,8 @@ export class Presentation extends Versioned {
     this.nonce = nonce;
   }
 
-  // TODO: This can be improved, figure out to use `SetupParams`
+  // TODO: This can be made more efficient (mostly saving serialization cost) by using `SetupParams`s. Repeated use of the
+  //  same param id can be detected and then finally `SetupParams`s can be created for them.
   /**
    *
    * @param publicKeys - Array of keys in the order of credentials in the presentation.
@@ -112,6 +113,7 @@ export class Presentation extends Versioned {
       const revealedEncoded = Presentation.encodeRevealed(i, presentedCred, presentedCredSchema, flattenedSchema[0]);
 
       if (maxAttribs < numAttribs) {
+        sigParams = sigParams.adapt(numAttribs);
         maxAttribs = numAttribs;
       }
       const statement = Statement.bbsSignature(sigParams.adapt(numAttribs), publicKeys[i], revealedEncoded, false);
@@ -137,7 +139,6 @@ export class Presentation extends Versioned {
       if (pk === undefined) {
         throw new Error(`Accumulator public key wasn't provided for credential index ${i}`);
       }
-      // TODO: Check if accum in pres spec matches the provided accum or check the accum in spec matches what verifier expects
       if (t === MEM_CHECK_STR) {
         statement = Statement.accumulatorMembership(dockAccumulatorParams(), pk, dockAccumulatorMemProvingKey(), accum);
       } else {
@@ -156,15 +157,7 @@ export class Presentation extends Versioned {
     });
 
     for (const eql of this.spec.attributeEqualities) {
-      const witnessEq = new WitnessEqualityMetaStatement();
-      for (const [cIdx, name] of eql) {
-        const i = flattenedSchemas[cIdx][0].indexOf(name);
-        if (i === -1) {
-          throw new Error(`Attribute name ${name} was not found`);
-        }
-        witnessEq.addWitnessRef(cIdx, i);
-      }
-      metaStatements.addWitnessEquality(witnessEq);
+      metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
     }
 
     boundsAux.forEach(([i, b]) => {
@@ -172,29 +165,9 @@ export class Presentation extends Versioned {
       bounds[0].forEach((name, j) => {
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
-        let statement, transformedMin, transformedMax;
-        // TODO: Duplicate code
+        let statement;
         const [min, max] = [bounds[1][j]['min'], bounds[1][j]['max']];
-        switch (valTyp.type) {
-          case ValueType.PositiveInteger:
-            transformedMin = min;
-            transformedMax = max;
-            break;
-          case ValueType.Integer:
-            transformedMin = Encoder.integerToPositiveInt(valTyp.minimum)(min);
-            transformedMax = Encoder.integerToPositiveInt(valTyp.minimum)(max);
-            break;
-          case ValueType.PositiveNumber:
-            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(min);
-            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(max);
-            break;
-          case ValueType.Number:
-            transformedMin = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(min);
-            transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
-            break;
-          default:
-            throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
-        }
+        const [transformedMin, transformedMax] = getTransformedMinMax(valTyp, min, max);
 
         const paramId = bounds[1][j]['paramId'];
         const param = predicateParams?.get(paramId);

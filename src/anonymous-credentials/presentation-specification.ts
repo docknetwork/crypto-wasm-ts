@@ -24,8 +24,6 @@ export interface IPresentedAttributeVE {
 export interface IPresentedCredential {
   version: string;
   schema: string;
-  // TODO: Remove
-  issuerPk: StringOrObject;
   revealedAttributes: object;
   status?: IPresentedStatus;
   // Bounds proved of any attribute(s)
@@ -50,7 +48,6 @@ export class PresentationSpecification {
   addPresentedCredential(
     version: string,
     schema: string,
-    issuerPk: StringOrObject,
     revealedAttributes: object,
     status?: IPresentedStatus,
     bounds?: { [key: string]: string | IPresentedAttributeBounds },
@@ -59,7 +56,6 @@ export class PresentationSpecification {
     const ps = {
       version,
       schema,
-      issuerPk,
       revealedAttributes
     };
     if (status !== undefined) {

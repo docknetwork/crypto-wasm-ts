@@ -1,12 +1,15 @@
 import { Accumulator, AccumulatorParams, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 import {
   ACCUMULATOR_PARAMS_LABEL_BYTES,
-  ACCUMULATOR_PROVING_KEY_LABEL_BYTES,
+  ACCUMULATOR_PROVING_KEY_LABEL_BYTES, AttributeEquality, FlattenedSchema,
   SAVER_ENCRYPTION_GENS_BYTES
 } from './types-and-consts';
 import { SaverEncryptionGens, SaverEncryptionGensUncompressed } from '../saver';
 import { flatten } from 'flat';
 import { PresentationSpecification } from './presentation-specification';
+import { ValueType, ValueTypes } from './schema';
+import { Encoder } from '../bbs-plus';
+import { WitnessEqualityMetaStatement } from '../composite-proof';
 
 export function dockAccumulatorParams(): AccumulatorParams {
   return Accumulator.generateParams(ACCUMULATOR_PARAMS_LABEL_BYTES);
@@ -71,4 +74,41 @@ export function buildContextForProof(
   }
   ctx = ctx.concat(Array.from(te.encode(presSpec.toJSON())));
   return new Uint8Array(ctx);
+}
+
+export function getTransformedMinMax(valTyp: ValueTypes, min: number, max: number): [number, number] {
+  let transformedMin, transformedMax;
+  switch (valTyp.type) {
+    case ValueType.PositiveInteger:
+      transformedMin = min;
+      transformedMax = max;
+      break;
+    case ValueType.Integer:
+      transformedMin = Encoder.integerToPositiveInt(valTyp.minimum)(min);
+      transformedMax = Encoder.integerToPositiveInt(valTyp.minimum)(max);
+      break;
+    case ValueType.PositiveNumber:
+      transformedMin = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(min);
+      transformedMax = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(max);
+      break;
+    case ValueType.Number:
+      transformedMin = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(min);
+      transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
+      break;
+    default:
+      throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
+  }
+  return [transformedMin, transformedMax];
+}
+
+export function createWitEq(eql: AttributeEquality, flattenedSchemas: FlattenedSchema[]): WitnessEqualityMetaStatement {
+  const witnessEq = new WitnessEqualityMetaStatement();
+  for (const [cIdx, name] of eql) {
+    const i = flattenedSchemas[cIdx][0].indexOf(name);
+    if (i === -1) {
+      throw new Error(`Attribute name ${name} was not found`);
+    }
+    witnessEq.addWitnessRef(cIdx, i);
+  }
+  return witnessEq;
 }

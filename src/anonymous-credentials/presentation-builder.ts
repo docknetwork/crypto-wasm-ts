@@ -18,7 +18,7 @@ import {
   AttributeEquality,
   CRED_VERSION_STR,
   FlattenedSchema,
-  MEM_CHECK_STR,
+  MEM_CHECK_STR, NON_MEM_CHECK_STR,
   PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
@@ -38,12 +38,12 @@ import b58 from 'bs58';
 import { Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
 import {
-  buildContextForProof,
+  buildContextForProof, createWitEq,
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
-  dockSaverEncryptionGensUncompressed
+  dockSaverEncryptionGensUncompressed, getTransformedMinMax
 } from './util';
 import {
   SaverChunkedCommitmentGens,
@@ -162,8 +162,6 @@ export class PresentationBuilder extends Versioned {
     this.bounds.set(credIdx, b);
   }
 
-  // TODO: Should check if all compressed or all uncompressed
-  // TODO: Should check that the attribute's encoding is reversible as per schema
   verifiablyEncrypt(
     credIdx: number,
     attributeName: string,
@@ -197,6 +195,11 @@ export class PresentationBuilder extends Versioned {
     this.verifEnc.set(credIdx, v);
   }
 
+  // TODO: This can be made more efficient (mostly saving serialization cost) by using `SetupParams`s. Repeated use of the
+  //  same param id can be detected and then finally `SetupParams`s can be created for them.
+  /**
+   * Create a presentation
+   */
   finalize(): Presentation {
     const numCreds = this.credentials.length;
     let maxAttribs = 2; // version and schema
@@ -221,6 +224,7 @@ export class PresentationBuilder extends Versioned {
       const flattenedSchema = schema.flatten();
       const numAttribs = flattenedSchema[0].length;
       if (maxAttribs < numAttribs) {
+        sigParams = sigParams.adapt(numAttribs);
         maxAttribs = numAttribs;
       }
       let revealedNames = this.revealedAttributes.get(i);
@@ -232,8 +236,10 @@ export class PresentationBuilder extends Versioned {
       // type, i.e. "membership" or "non-membership" are always revealed.
       revealedNames.add(CRED_VERSION_STR);
       revealedNames.add(SCHEMA_STR);
-      if (cred.credStatus !== undefined) {
-        // TODO: Input validation
+      if (cred.credentialStatus !== undefined) {
+        if (cred.credentialStatus[REGISTRY_ID_STR] === undefined || (cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_STR && cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_STR)) {
+          throw new Error(`Credential for ${i} has invalid status ${cred.credentialStatus}`)
+        }
         revealedNames.add(`${STATUS_STR}.${REGISTRY_ID_STR}`);
         revealedNames.add(`${STATUS_STR}.${REV_CHECK_STR}`);
       }
@@ -254,21 +260,21 @@ export class PresentationBuilder extends Versioned {
       witnesses.add(witness);
 
       let presentedStatus: IPresentedStatus | undefined;
-      if (cred.credStatus !== undefined) {
+      if (cred.credentialStatus !== undefined) {
         const s = this.credStatuses.get(i);
         if (s === undefined) {
           throw new Error(`No status details found for credential index ${i}`);
         }
         presentedStatus = {
-          [REGISTRY_ID_STR]: cred.credStatus[REGISTRY_ID_STR],
-          [REV_CHECK_STR]: cred.credStatus[REV_CHECK_STR],
+          [REGISTRY_ID_STR]: cred.credentialStatus[REGISTRY_ID_STR],
+          [REV_CHECK_STR]: cred.credentialStatus[REV_CHECK_STR],
           accumulated: s[1],
           extra: s[3]
         };
         credStatusAux.push([
           i,
-          cred.credStatus[REV_CHECK_STR],
-          schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credStatus[REV_ID_STR])
+          cred.credentialStatus[REV_CHECK_STR],
+          schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR])
         ]);
       }
 
@@ -314,7 +320,6 @@ export class PresentationBuilder extends Versioned {
       this.spec.addPresentedCredential(
         ver,
         sch,
-        cred.issuerPubKey as StringOrObject,
         revealedAtts,
         presentedStatus,
         attributeBounds,
@@ -361,15 +366,7 @@ export class PresentationBuilder extends Versioned {
 
     // For enforcing attribute equalities
     for (const eql of this.attributeEqualities) {
-      const witnessEq = new WitnessEqualityMetaStatement();
-      for (const [cIdx, name] of eql) {
-        const i = flattenedSchemas[cIdx][0].indexOf(name);
-        if (i === -1) {
-          throw new Error(`Attribute name ${name} was not found`);
-        }
-        witnessEq.addWitnessRef(cIdx, i);
-      }
-      metaStatements.addWitnessEquality(witnessEq);
+      metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
       this.spec.attributeEqualities.push(eql);
     }
 
@@ -384,28 +381,9 @@ export class PresentationBuilder extends Versioned {
         return a[0] - b[0];
       });
       dataSortedByNameIdx.forEach(([nameIdx, name, min, max, paramId]) => {
-        let statement, transformedMin, transformedMax;
+        let statement;
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[cId]);
-        switch (valTyp.type) {
-          case ValueType.PositiveInteger:
-            transformedMin = min;
-            transformedMax = max;
-            break;
-          case ValueType.Integer:
-            transformedMin = Encoder.integerToPositiveInt(valTyp.minimum)(min);
-            transformedMax = Encoder.integerToPositiveInt(valTyp.minimum)(max);
-            break;
-          case ValueType.PositiveNumber:
-            transformedMin = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(min);
-            transformedMax = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(max);
-            break;
-          case ValueType.Number:
-            transformedMin = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(min);
-            transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
-            break;
-          default:
-            throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
-        }
+        const [transformedMin, transformedMax] = getTransformedMinMax(valTyp, min, max);
 
         const param = this.predicateParams.get(paramId);
         if (param instanceof LegoProvingKey) {

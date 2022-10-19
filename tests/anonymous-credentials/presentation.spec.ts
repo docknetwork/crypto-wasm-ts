@@ -129,7 +129,6 @@ describe('Presentation creation and verification', () => {
     const credSchema1 = new CredentialSchema(schema1);
     const builder1 = new CredentialBuilder();
     builder1.schema = credSchema1;
-    builder1.issuerPubKey = 'did:dock:some-issuer-did-123';
     builder1.subject = {
       fname: 'John',
       lname: 'Smith',
@@ -152,7 +151,6 @@ describe('Presentation creation and verification', () => {
     const credSchema2 = new CredentialSchema(schema2);
     const builder2 = new CredentialBuilder();
     builder2.schema = credSchema2;
-    builder2.issuerPubKey = 'did:dock:some-issuer-did-124';
     builder2.subject = {
       fname: 'John',
       lname: 'Smith',
@@ -182,7 +180,6 @@ describe('Presentation creation and verification', () => {
     const credSchema3 = new CredentialSchema(schema3);
     const builder3 = new CredentialBuilder();
     builder3.schema = credSchema3;
-    builder3.issuerPubKey = 'did:dock:some-issuer-did-125';
     builder3.subject = {
       fname: 'John',
       lname: 'Smith',
@@ -245,7 +242,6 @@ describe('Presentation creation and verification', () => {
     const credSchema4 = new CredentialSchema(schema4);
     const builder4 = new CredentialBuilder();
     builder4.schema = credSchema4;
-    builder4.issuerPubKey = 'did:dock:some-issuer-did-126';
     builder4.subject = {
       fname: 'John',
       lname: 'Smith',
@@ -300,7 +296,7 @@ describe('Presentation creation and verification', () => {
       )
     ).toEqual(true);
 
-    const schema5 = CredentialSchema.bare();
+    const schema5 = CredentialSchema.essential();
     schema5[SUBJECT_STR] = [
       {
         name: {type: "string"},
@@ -336,7 +332,6 @@ describe('Presentation creation and verification', () => {
     const credSchema5 = new CredentialSchema(schema5);
     const builder5 = new CredentialBuilder();
     builder5.schema = credSchema5;
-    builder5.issuerPubKey = 'did:dock:some-issuer-did-123';
     builder5.subject = [
       {
         name: 'Random',
@@ -372,7 +367,7 @@ describe('Presentation creation and verification', () => {
     credential5 = builder5.sign(sk1);
     checkResult(credential5.verify(pk1));
 
-    const schema6 = CredentialSchema.bare();
+    const schema6 = CredentialSchema.essential();
     schema6[SUBJECT_STR] = [
       {
         name: {type: "string"},
@@ -416,7 +411,6 @@ describe('Presentation creation and verification', () => {
     const credSchema6 = new CredentialSchema(schema6);
     const builder6 = new CredentialBuilder();
     builder6.schema = credSchema6;
-    builder6.issuerPubKey = 'did:dock:some-issuer-did-123';
     builder6.subject = [
       {
         name: 'Random',

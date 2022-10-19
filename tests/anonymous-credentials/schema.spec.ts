@@ -46,12 +46,14 @@ describe('CredentialBuilder Schema', () => {
   });
 
   it('validation of numeric types', () => {
-    const schema2 = CredentialSchema.bare();
+    const schema2 = CredentialSchema.essential();
     schema2[SUBJECT_STR] = {
       fname: { type: 'string' },
       score: { type: 'random string' }
     };
     expect(() => new CredentialSchema(schema2)).toThrow();
+
+    expect(() => CredentialSchema.typeOfName('score', [['fname', 'score'], [{ type: 'string' }, { type: 'random string' }]])).toThrow();
 
     schema2[SUBJECT_STR] = {
       fname: { type: 'string' },
@@ -96,7 +98,7 @@ describe('CredentialBuilder Schema', () => {
   });
 
   it('validation of credential status', () => {
-    const schema4 = CredentialSchema.bare();
+    const schema4 = CredentialSchema.essential();
     schema4[SUBJECT_STR] = {
       fname: { type: 'string' },
       score: { type: 'integer', minimum: -100 }
@@ -123,12 +125,13 @@ describe('CredentialBuilder Schema', () => {
     const cs5 = new CredentialSchema(schema5);
     expect(cs5.schema[SUBJECT_STR]).toEqual(schema5[SUBJECT_STR]);
     expect(cs5.schema[STATUS_STR]).not.toBeDefined();
+    console.log(cs5.getJsonLdContext());
 
     const schema6 = getExampleSchema(5);
-
     const cs6 = new CredentialSchema(schema6);
     expect(cs6.schema[SUBJECT_STR]).toEqual(schema6[SUBJECT_STR]);
     expect(cs6.schema[STATUS_STR]).toEqual(schema6[STATUS_STR]);
+    console.log(cs6.getJsonLdContext());
   });
 
 
@@ -250,7 +253,7 @@ describe('CredentialBuilder Schema', () => {
   });
 
   it('check type', () => {
-    const schema = CredentialSchema.bare();
+    const schema = CredentialSchema.essential();
     schema[SUBJECT_STR] = {
       fname: { type: 'string' },
       SSN: { type: 'stringReversible', compress: false },

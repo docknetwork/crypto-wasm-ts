@@ -27,8 +27,6 @@ export class CredentialBuilder extends Versioned {
   _schema?: CredentialSchema;
   _subject?: object | object[];
   _credStatus?: object;
-  // TODO: Remove
-  _issuerPubKey?: StringOrObject;
   _encodedAttributes?: { [key: string]: Uint8Array };
   _topLevelFields: Map<string, unknown>;
   _sig?: SignatureG1;
@@ -58,15 +56,6 @@ export class CredentialBuilder extends Versioned {
   // @ts-ignore
   get schema(): CredentialSchema | undefined {
     return this._schema;
-  }
-
-  set issuerPubKey(issuer: StringOrObject) {
-    this._issuerPubKey = issuer;
-  }
-
-  // @ts-ignore
-  get issuerPubKey(): StringOrObject | undefined {
-    return this._issuerPubKey;
   }
 
   get credStatus(): object | undefined {
@@ -111,7 +100,6 @@ export class CredentialBuilder extends Versioned {
       schema,
       // @ts-ignore
       this._subject,
-      this.issuerPubKey,
       this._topLevelFields,
       this._sig,
       this._credStatus

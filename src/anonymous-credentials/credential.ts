@@ -5,7 +5,6 @@ import {
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  StringOrObject,
   SUBJECT_STR
 } from './types-and-consts';
 import { BBSPlusPublicKeyG2, SignatureG1 } from '../bbs-plus';
@@ -17,9 +16,7 @@ export class Credential extends Versioned {
   // Each credential references the schema which is included as an attribute
   schema: CredentialSchema;
   subject: object | object[];
-  credStatus?: object;
-  // TODO: Remove
-  issuerPubKey: StringOrObject;
+  credentialStatus?: object;
   topLevelFields: Map<string, unknown>;
   signature: SignatureG1;
 
@@ -27,7 +24,6 @@ export class Credential extends Versioned {
     version: string,
     schema: CredentialSchema,
     subject: object,
-    issuerPubKey: StringOrObject,
     topLevelFields: Map<string, unknown>,
     sig: SignatureG1,
     credStatus?: object
@@ -35,10 +31,9 @@ export class Credential extends Versioned {
     super(version);
     this.schema = schema;
     this.subject = subject;
-    this.issuerPubKey = issuerPubKey;
     this.topLevelFields = topLevelFields;
     this.signature = sig;
-    this.credStatus = credStatus;
+    this.credentialStatus = credStatus;
   }
 
   verify(publicKey: BBSPlusPublicKeyG2): VerifyResult {
@@ -64,8 +59,8 @@ export class Credential extends Versioned {
     for (const [k, v] of this.topLevelFields.entries()) {
       s[k] = v;
     }
-    if (this.credStatus !== undefined) {
-      s[STATUS_STR] = this.credStatus;
+    if (this.credentialStatus !== undefined) {
+      s[STATUS_STR] = this.credentialStatus;
     }
     return s;
   }
@@ -75,13 +70,12 @@ export class Credential extends Versioned {
     j['version'] = this._version;
     j['schema'] = this.schema.forCredential();
     j['credentialSubject'] = this.subject;
-    if (this.credStatus !== undefined) {
-      j['credentialStatus'] = this.credStatus;
+    if (this.credentialStatus !== undefined) {
+      j['credentialStatus'] = this.credentialStatus;
     }
     for (const [k, v] of this.topLevelFields.entries()) {
       j[k] = v;
     }
-    j['issuerPubKey'] = this.issuerPubKey;
     j['proof'] = {
       type: 'Bls12381BBS+SignatureDock2022',
       proofValue: b58.encode(this.signature.bytes)

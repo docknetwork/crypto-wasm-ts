@@ -23,7 +23,7 @@ describe('CredentialBuilder signing and verification', () => {
   });
 
   it('for a flat (no-nesting) credential', () => {
-    const schema = CredentialSchema.bare();
+    const schema = CredentialSchema.essential();
     schema[SUBJECT_STR] = {
       fname: { type: 'string' },
       lname: { type: 'string' }
@@ -32,7 +32,6 @@ describe('CredentialBuilder signing and verification', () => {
 
     const builder = new CredentialBuilder();
     builder.schema = credSchema;
-    builder.issuerPubKey = 'did:dock:some-issuer-did-123';
 
     builder.subject = { fname: 'John', lastName: 'Smith' };
     expect(() => builder.sign(sk)).toThrow();
@@ -47,7 +46,7 @@ describe('CredentialBuilder signing and verification', () => {
   });
 
   it('for credential with nesting', () => {
-    const schema = CredentialSchema.bare();
+    const schema = CredentialSchema.essential();
     schema[SUBJECT_STR] = {
       fname: { type: 'string' },
       lname: { type: 'string' },
@@ -61,7 +60,6 @@ describe('CredentialBuilder signing and verification', () => {
 
     const builder = new CredentialBuilder();
     builder.schema = credSchema;
-    builder.issuerPubKey = 'did:dock:some-issuer-did-123';
 
     builder.subject = {
       fname: 'John',
@@ -94,7 +92,6 @@ describe('CredentialBuilder signing and verification', () => {
 
     const builder = new CredentialBuilder();
     builder.schema = credSchema;
-    builder.issuerPubKey = 'did:dock:some-issuer-did-123';
 
     builder.subject = {
       fname: 'John',
@@ -135,7 +132,6 @@ describe('CredentialBuilder signing and verification', () => {
 
     const builder = new CredentialBuilder();
     builder.schema = credSchema;
-    builder.issuerPubKey = 'did:dock:some-issuer-did-123';
 
     builder.subject = {
       fname: 'John',
@@ -180,7 +176,6 @@ describe('CredentialBuilder signing and verification', () => {
 
     const builder = new CredentialBuilder();
     builder.schema = credSchema;
-    builder.issuerPubKey = 'did:dock:some-issuer-did-123';
 
     builder.subject = [
       {
