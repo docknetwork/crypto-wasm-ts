@@ -67,8 +67,8 @@ export class Credential extends Versioned {
 
   toJSON(): string {
     const j = {};
-    j['version'] = this._version;
-    j['schema'] = this.schema.forCredential();
+    j['credentialVersion'] = this._version;
+    j['credentialSchema'] = this.schema.forCredential();
     j['credentialSubject'] = this.subject;
     if (this.credentialStatus !== undefined) {
       j['credentialStatus'] = this.credentialStatus;

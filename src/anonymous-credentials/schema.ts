@@ -456,16 +456,21 @@ export class CredentialSchema extends Versioned {
     const num = 'schema:Number';
     const int = 'schema:Integer';
 
-    const ctx = {
+    let ctx = {
       schema: 'http://schema.org/',
       [CRED_VERSION_STR]: txt,   // Since our version is per semver
       [SCHEMA_STR]: txt,
-      [STATUS_STR]: {
-        [REGISTRY_ID_STR]: txt,
-        [REV_CHECK_STR]: txt,
-        [REV_ID_STR]: txt,
-      },
     };
+
+    if (this.hasStatus()) {
+      ctx = {...ctx, ...{
+          [STATUS_STR]: {
+            [REGISTRY_ID_STR]: txt,
+            [REV_CHECK_STR]: txt,
+            [REV_ID_STR]: txt,
+          },
+        }};
+    }
 
     const flattened = this.flatten();
 
@@ -477,31 +482,33 @@ export class CredentialSchema extends Versioned {
       if ([SCHEMA_STR, CRED_VERSION_STR, `${STATUS_STR}.${REGISTRY_ID_STR}`, `${STATUS_STR}.${REV_CHECK_STR}`, `${STATUS_STR}.${REV_ID_STR}`].indexOf(name) > 0) {
         continue
       }
-      // TODO: Following works for only flat structure, make it work for nested as well
-      const parts = name.split('.');
-      const n = parts[parts.length-1];
-      if (!seen.has(n)) {
-        switch (this.typeOfName(name, flattened).type) {
-          case ValueType.Str:
-            ctx[n] = txt
-            break;
-          case ValueType.RevStr:
-            ctx[n] = txt
-            break;
-          case ValueType.PositiveInteger:
-            ctx[n] = int
-            break;
-          case ValueType.Integer:
-            ctx[n] = int
-            break;
-          case ValueType.PositiveNumber:
-            ctx[n] = num
-            break;
-          case ValueType.Number:
-            ctx[n] = num
-            break;
+      let current = ctx;
+      const nameParts = name.split('.');
+      for (let j = 0; j < nameParts.length - 1; j++) {
+        if (current[nameParts[j]] === undefined) {
+          current[nameParts[j]] = {};
         }
-        seen.add(n);
+        current = current[nameParts[j]];
+      }
+      switch (this.typeOfName(name, flattened).type) {
+        case ValueType.Str:
+          current[nameParts[nameParts.length - 1]] = txt
+          break;
+        case ValueType.RevStr:
+          current[nameParts[nameParts.length - 1]] = txt
+          break;
+        case ValueType.PositiveInteger:
+          current[nameParts[nameParts.length - 1]] = int
+          break;
+        case ValueType.Integer:
+          current[nameParts[nameParts.length - 1]] = int
+          break;
+        case ValueType.PositiveNumber:
+          current[nameParts[nameParts.length - 1]] = num
+          break;
+        case ValueType.Number:
+          current[nameParts[nameParts.length - 1]] = num
+          break;
       }
     }
 
