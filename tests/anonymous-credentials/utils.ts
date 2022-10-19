@@ -227,92 +227,131 @@ export function getExampleSchema(num) {
       break;
     case 8:
       schema.properties[SUBJECT_STR] = {
-        fname: { type: 'string' },
-        lname: { type: 'string' },
-        sensitive: {
-          email: { type: 'string' },
-          phone: { type: 'string' },
-          SSN: { type: 'stringReversible', compress: false }
-        },
-        timeOfBirth: { type: 'positiveInteger' },
-        physical: {
-          height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
-        },
+        type: 'object',
+        properties: {
+          fname: { type: 'string' },
+          lname: { type: 'string' },
+          sensitive: {
+            type: 'object',
+            properties: {
+              email: { type: 'string' },
+              phone: { type: 'string' },
+              SSN: { type: 'stringReversible', compress: false }
+            }
+          },
+          timeOfBirth: { type: 'positiveInteger' },
+          physical: {
+            height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
+            weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
+            BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+          },
+        }
       };
       break;
     case 9:
       schema.properties[SUBJECT_STR] = {
-        fname: { type: 'string' },
-        lname: { type: 'string' },
-        email: { type: 'string' },
-        SSN: { type: 'stringReversible', compress: false },
-        userId: { type: 'stringReversible', compress: true },
-        country: { type: 'string' },
-        city: { type: 'string' },
-        timeOfBirth: { type: 'positiveInteger' },
-        height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-        weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-        BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-        score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
-        secret: { type: 'string' }
+        type: 'object',
+        properties: {
+          fname: { type: 'string' },
+          lname: { type: 'string' },
+          email: { type: 'string' },
+          SSN: { type: 'stringReversible', compress: false },
+          userId: { type: 'stringReversible', compress: true },
+          country: { type: 'string' },
+          city: { type: 'string' },
+          timeOfBirth: { type: 'positiveInteger' },
+          height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
+          weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
+          BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
+          score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
+          secret: { type: 'string' }
+        }
       };
       break;
     case 10:
       schema.properties[SUBJECT_STR] = {
-        fname: { type: 'string' },
-        lname: { type: 'string' },
-        sensitive: {
-          email: { type: 'string' },
-          SSN: { type: 'stringReversible', compress: false }
-        },
-        education: {
-          studentId: { type: 'string' },
-          university: {
-            name: { type: 'string' },
-            registrationNumber: { type: 'string' }
+        type: 'object',
+        properties: {
+          fname: { type: 'string' },
+          lname: { type: 'string' },
+          sensitive: {
+            email: { type: 'string' },
+            SSN: { type: 'stringReversible', compress: false }
           },
-          transcript: {
-            rank: { type: 'positiveInteger' },
-            CGPA: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-            scores: {
-              english: { type: 'positiveInteger' },
-              mathematics: { type: 'positiveInteger' },
-              science: { type: 'positiveInteger' },
-              history: { type: 'positiveInteger' },
-              geography: { type: 'positiveInteger' }
+          education: {
+            type: 'object',
+            properties: {
+              studentId: { type: 'string' },
+              university: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  registrationNumber: { type: 'string' }
+                }
+              },
+              transcript: {
+                type: 'object',
+                properties: {
+                  rank: { type: 'positiveInteger' },
+                  CGPA: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
+                  scores: {
+                    type: 'object',
+                    properties: {
+                      english: { type: 'positiveInteger' },
+                      mathematics: { type: 'positiveInteger' },
+                      science: { type: 'positiveInteger' },
+                      history: { type: 'positiveInteger' },
+                      geography: { type: 'positiveInteger' }
+                    }
+                  }
+                }
+              }
             }
           }
         }
       };
       schema[STATUS_STR] = {
-        $registryId: { type: 'string' },
-        $revocationCheck: { type: 'string' },
-        $revocationId: { type: 'string' }
+        type: 'object',
+        properties: {
+          $registryId: { type: 'string' },
+          $revocationCheck: { type: 'string' },
+          $revocationId: { type: 'string' }
+        }
       };
       break;
     case 11:
       schema.properties[SUBJECT_STR] = {
-        fname: { type: 'string' },
-        lname: { type: 'string' },
-        sensitive: {
-          secret: { type: 'string' },
-          email: { type: 'string' },
-          SSN: { type: 'stringReversible', compress: false },
-          userId: { type: 'stringReversible', compress: true }
-        },
-        location: {
-          country: { type: 'string' },
-          city: { type: 'string' }
-        },
-        timeOfBirth: { type: 'positiveInteger' },
-        physical: {
-          height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
-        },
-        score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 }
+        type: 'object',
+        properties: {
+          fname: { type: 'string' },
+          lname: { type: 'string' },
+          sensitive: {
+            type: 'object',
+            properties: {
+              secret: { type: 'string' },
+              email: { type: 'string' },
+              SSN: { type: 'stringReversible', compress: false },
+              userId: { type: 'stringReversible', compress: true }
+            }
+          },
+          location: {
+            type: 'object',
+            properties: {
+              country: { type: 'string' },
+              city: { type: 'string' }
+            }
+          },
+          timeOfBirth: { type: 'positiveInteger' },
+          physical: {
+            type: 'object',
+            properties: {
+              height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
+              weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
+              BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+            }
+          },
+          score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 }
+        }
       };
       break;
     default:

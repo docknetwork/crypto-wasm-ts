@@ -282,7 +282,7 @@ describe('Credential Schema', () => {
   });
 
   it('to and from JSON', () => {
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 11; i++) {
       const cs = new CredentialSchema(getExampleSchema(i));
       const j = cs.toJSON();
       const recreatedCs = CredentialSchema.fromJSON(j);
