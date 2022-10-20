@@ -230,7 +230,9 @@ export class CredentialSchema extends Versioned {
     this.POSITIVE_INT_TYPE,
     this.INT_TYPE,
     this.POSITIVE_NUM_TYPE,
-    this.NUM_TYPE
+    this.NUM_TYPE,
+    'object',
+    'array',
   ]);
 
   schema: any;
@@ -320,10 +322,6 @@ export class CredentialSchema extends Versioned {
       throw new Error(`Schema properties did not contain top level key ${SUBJECT_STR}`);
     }
     this.validateGeneric(schema);
-    // TODO: restore
-    // for (const k of this.getCustomTopLevelKeys(schema)) {
-    //   this.validateGeneric(schema[k]);
-    // }
   }
 
   static validateGeneric(schema: object) {
@@ -339,7 +337,7 @@ export class CredentialSchema extends Versioned {
         throw new Error(`Schema value for ${names[i]} should have a "type" field`);
       }
 
-      if (value['type'] !== 'object' && !CredentialSchema.POSSIBLE_TYPES.has(value['type'])) {
+      if (!CredentialSchema.POSSIBLE_TYPES.has(value['type'])) {
         throw new Error(`Schema value for ${names[i]} had an unknown "type" field ${value['type']}`);
       }
 
@@ -440,21 +438,6 @@ export class CredentialSchema extends Versioned {
     return CredentialSchema.flattenSchemaObj(this.schema);
   }
 
-  getCustomTopLevelKeys(): string[] {
-    return CredentialSchema.getCustomTopLevelKeys(this.schema);
-  }
-
-  static getCustomTopLevelKeys(schema: object): string[] {
-    const keys: string[] = [];
-    for (const k of Object.keys(schema)) {
-      if (CredentialSchema.RESERVED_NAMES.has(k)) {
-        continue;
-      }
-      keys.push(k);
-    }
-    return keys;
-  }
-
   hasStatus(): boolean {
     return this.properties[STATUS_STR] !== undefined;
   }
@@ -552,8 +535,6 @@ export class CredentialSchema extends Versioned {
     };
   }
 
-  static processSchemaObject(node: any) {}
-
   static flattenJSONSchema(node: any) {
     if (typeof node.type !== 'string') {
       throw new Error('Schema node must have type field that is a string');
@@ -590,7 +571,7 @@ export class CredentialSchema extends Versioned {
         throw new Error('Schema object must have properties object');
       }
     } else if (node.type === 'array') {
-      throw new Error(`top level array`);
+      return node.items.map((i) => CredentialSchema.flattenJSONSchema(i));
     } else {
       return node;
     }
