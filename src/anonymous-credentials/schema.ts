@@ -247,8 +247,6 @@ export class CredentialSchema extends Versioned {
     super(CredentialSchema.VERSION);
     this.schema = schem;
     this.initEncoder();
-
-    // TODO: validate "schem" this is a JSON schema
   }
 
   initEncoder() {
@@ -269,7 +267,7 @@ export class CredentialSchema extends Versioned {
           f = Encoder.integerEncoder(value['minimum'] || 0);
           break;
         case CredentialSchema.POSITIVE_NUM_TYPE:
-          f = Encoder.positiveDecimalNumberEncoder(value['decimalPlaces']); // TODO: replace decimalPlaces with jsonschema multipleof
+          f = Encoder.positiveDecimalNumberEncoder(value['decimalPlaces']);
           break;
         case CredentialSchema.NUM_TYPE:
           f = Encoder.decimalNumberEncoder(value['minimum'], value['decimalPlaces']);
@@ -280,6 +278,7 @@ export class CredentialSchema extends Versioned {
       encoders.set(names[i], f);
     }
 
+    // Intentionally not supplying default encoder as we already know the schema
     this.encoder = new Encoder(encoders);
   }
 
@@ -303,10 +302,6 @@ export class CredentialSchema extends Versioned {
   }
 
   static validate(schema: any) {
-    // // Following 2 fields could have been implicit but being explicit for clarity
-    // this.validateStringType(schema, CRED_VERSION_STR);
-    // this.validateStringType(schema, SCHEMA_STR);
-
     const schemaStatus = schema.properties[STATUS_STR];
     if (schemaStatus !== undefined) {
       this.validateStringType(schemaStatus.properties, REGISTRY_ID_STR);
