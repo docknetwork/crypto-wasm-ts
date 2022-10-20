@@ -1,7 +1,9 @@
 import { Accumulator, AccumulatorParams, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 import {
   ACCUMULATOR_PARAMS_LABEL_BYTES,
-  ACCUMULATOR_PROVING_KEY_LABEL_BYTES, AttributeEquality, FlattenedSchema,
+  ACCUMULATOR_PROVING_KEY_LABEL_BYTES,
+  AttributeEquality,
+  FlattenedSchema,
   SAVER_ENCRYPTION_GENS_BYTES
 } from './types-and-consts';
 import { SaverEncryptionGens, SaverEncryptionGensUncompressed } from '../saver';

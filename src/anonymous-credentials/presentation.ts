@@ -16,7 +16,8 @@ import {
   AttributeCiphertexts,
   CRED_VERSION_STR,
   FlattenedSchema,
-  MEM_CHECK_STR, NON_MEM_CHECK_STR,
+  MEM_CHECK_STR,
+  NON_MEM_CHECK_STR,
   PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
@@ -28,13 +29,15 @@ import {
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
-  buildContextForProof, createWitEq,
+  buildContextForProof,
+  createWitEq,
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
   dockSaverEncryptionGensUncompressed,
-  flattenTill2ndLastKey, getTransformedMinMax
+  flattenTill2ndLastKey,
+  getTransformedMinMax
 } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import {
@@ -276,8 +279,12 @@ export class Presentation extends Versioned {
       if (presentedCred.status === undefined) {
         throw new Error(`Schema for the credential index ${credIdx} required a status but wasn't provided`);
       }
-      if (presentedCred.status[REGISTRY_ID_STR] === undefined || (presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_STR && presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_STR)) {
-        throw new Error(`Presented credential for ${credIdx} has invalid status ${presentedCred.status}`)
+      if (
+        presentedCred.status[REGISTRY_ID_STR] === undefined ||
+        (presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_STR &&
+          presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_STR)
+      ) {
+        throw new Error(`Presented credential for ${credIdx} has invalid status ${presentedCred.status}`);
       }
       // Following will also ensure that holder (prover) cannot change the registry (accumulator) id or the type of check
       revealedRaw[STATUS_STR] = {

@@ -10,7 +10,7 @@ import {
   SCHEMA_STR,
   STATUS_STR,
   StringOrObject,
-  SUBJECT_STR,
+  SUBJECT_STR
 } from './types-and-consts';
 import { flatten } from 'flat';
 import { flattenTill2ndLastKey } from './util';
@@ -458,18 +458,21 @@ export class CredentialSchema extends Versioned {
 
     let ctx = {
       schema: 'http://schema.org/',
-      [CRED_VERSION_STR]: txt,   // Since our version is per semver
-      [SCHEMA_STR]: txt,
+      [CRED_VERSION_STR]: txt, // Since our version is per semver
+      [SCHEMA_STR]: txt
     };
 
     if (this.hasStatus()) {
-      ctx = {...ctx, ...{
+      ctx = {
+        ...ctx,
+        ...{
           [STATUS_STR]: {
             [REGISTRY_ID_STR]: txt,
             [REV_CHECK_STR]: txt,
-            [REV_ID_STR]: txt,
-          },
-        }};
+            [REV_ID_STR]: txt
+          }
+        }
+      };
     }
 
     const flattened = this.flatten();
@@ -479,8 +482,16 @@ export class CredentialSchema extends Versioned {
     seen.add(CRED_VERSION_STR);
 
     for (const name of flattened[0]) {
-      if ([SCHEMA_STR, CRED_VERSION_STR, `${STATUS_STR}.${REGISTRY_ID_STR}`, `${STATUS_STR}.${REV_CHECK_STR}`, `${STATUS_STR}.${REV_ID_STR}`].indexOf(name) > 0) {
-        continue
+      if (
+        [
+          SCHEMA_STR,
+          CRED_VERSION_STR,
+          `${STATUS_STR}.${REGISTRY_ID_STR}`,
+          `${STATUS_STR}.${REV_CHECK_STR}`,
+          `${STATUS_STR}.${REV_ID_STR}`
+        ].indexOf(name) > 0
+      ) {
+        continue;
       }
       let current = ctx;
       const nameParts = name.split('.');
@@ -492,30 +503,30 @@ export class CredentialSchema extends Versioned {
       }
       switch (this.typeOfName(name, flattened).type) {
         case ValueType.Str:
-          current[nameParts[nameParts.length - 1]] = txt
+          current[nameParts[nameParts.length - 1]] = txt;
           break;
         case ValueType.RevStr:
-          current[nameParts[nameParts.length - 1]] = txt
+          current[nameParts[nameParts.length - 1]] = txt;
           break;
         case ValueType.PositiveInteger:
-          current[nameParts[nameParts.length - 1]] = int
+          current[nameParts[nameParts.length - 1]] = int;
           break;
         case ValueType.Integer:
-          current[nameParts[nameParts.length - 1]] = int
+          current[nameParts[nameParts.length - 1]] = int;
           break;
         case ValueType.PositiveNumber:
-          current[nameParts[nameParts.length - 1]] = num
+          current[nameParts[nameParts.length - 1]] = num;
           break;
         case ValueType.Number:
-          current[nameParts[nameParts.length - 1]] = num
+          current[nameParts[nameParts.length - 1]] = num;
           break;
       }
     }
 
     return {
-      "@context": [
+      '@context': [
         {
-          "@version": 1.1
+          '@version': 1.1
         },
         ctx
       ]
