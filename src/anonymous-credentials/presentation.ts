@@ -31,6 +31,7 @@ import { AccumulatorPublicKey } from '../accumulator';
 import {
   buildContextForProof,
   createWitEq,
+  deepClone,
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
@@ -43,11 +44,13 @@ import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import {
   SaverChunkedCommitmentGens,
   SaverChunkedCommitmentGensUncompressed,
+  SaverCiphertext,
   SaverEncryptionKey,
   SaverEncryptionKeyUncompressed,
   SaverVerifyingKey,
   SaverVerifyingKeyUncompressed
 } from '../saver';
+import b58 from 'bs58';
 
 export class Presentation extends Versioned {
   spec: PresentationSpecification;
@@ -56,7 +59,7 @@ export class Presentation extends Versioned {
   // This is intentionally not part of presentation specification as this is created as part of the proof generation,
   // not before.
   attributeCiphertexts?: Map<number, AttributeCiphertexts>;
-  context?: string | Uint8Array;
+  context?: string;
   nonce?: Uint8Array;
 
   constructor(
@@ -64,7 +67,7 @@ export class Presentation extends Versioned {
     spec: PresentationSpecification,
     proof: CompositeProofG1,
     attributeCiphertexts?: Map<number, AttributeCiphertexts>,
-    context?: string | Uint8Array,
+    context?: string,
     nonce?: Uint8Array
   ) {
     super(version);
@@ -271,7 +274,7 @@ export class Presentation extends Versioned {
     presentedCredSchema: CredentialSchema,
     flattenedNames: string[]
   ): Map<number, Uint8Array> {
-    const revealedRaw = JSON.parse(JSON.stringify(presentedCred.revealedAttributes));
+    const revealedRaw = deepClone(presentedCred.revealedAttributes) as object;
     revealedRaw[CRED_VERSION_STR] = presentedCred.version;
     revealedRaw[SCHEMA_STR] = presentedCred.schema;
     if (presentedCredSchema.hasStatus()) {
@@ -303,5 +306,94 @@ export class Presentation extends Versioned {
     return encoded;
   }
 
-  // TODO: Add to/from JSON
+  toJSON(): string {
+    const attributeCiphertexts = {};
+    if (this.attributeCiphertexts !== undefined) {
+      for (const [i, v] of this.attributeCiphertexts.entries()) {
+        attributeCiphertexts[i] = {};
+        Presentation.toBs58(v, attributeCiphertexts[i]);
+      }
+    }
+
+    const creds: object[] = [];
+    for (const cred of this.spec.credentials) {
+      const current = deepClone(cred) as object; // Need this deep cloning because structure of revealed attributes or key `extra` isn't fixed
+      if (cred.status !== undefined) {
+        // @ts-ignore
+        current.status?.accumulated = b58.encode(cred.status.accumulated);
+      }
+      creds.push(current);
+    }
+
+    return JSON.stringify({
+      version: this.version,
+      context: this.context,
+      nonce: this.nonce ? b58.encode(this.nonce) : null,
+      spec: {
+        credentials: creds,
+        attributeEqualities: this.spec.attributeEqualities
+      },
+      attributeCiphertexts,
+      proof: b58.encode((this.proof as CompositeProofG1).bytes)
+    });
+  }
+
+  static fromJSON(json: string): Presentation {
+    const { version, context, nonce, spec, attributeCiphertexts, proof } = JSON.parse(json);
+    const nnc = nonce ? b58.decode(nonce) : undefined;
+
+    const presSpec = new PresentationSpecification();
+    for (const cred of spec['credentials']) {
+      let status;
+      if (cred['status'] !== undefined) {
+        status = deepClone(cred['status']) as object;
+        status['accumulated'] = b58.decode(cred['status']['accumulated']);
+      }
+      presSpec.addPresentedCredential(
+        cred['version'],
+        cred['schema'],
+        cred['revealedAttributes'],
+        status,
+        cred['bounds'],
+        cred['verifiableEncryptions']
+      );
+    }
+    presSpec.attributeEqualities = spec['attributeEqualities'];
+
+    const atc = new Map<number, AttributeCiphertexts>();
+    if (attributeCiphertexts !== undefined) {
+      Object.keys(attributeCiphertexts).forEach((k) => {
+        const c = attributeCiphertexts[k];
+        const rc = {};
+        Presentation.fromBs58(c, rc);
+        atc.set(parseInt(k), rc);
+      });
+    }
+
+    return new Presentation(version, presSpec, new CompositeProofG1(b58.decode(proof)), atc, context, nnc);
+  }
+
+  static toBs58(v: object, ret: object) {
+    Object.keys(v).forEach((k) => {
+      if (v[k] instanceof SaverCiphertext) {
+        // @ts-ignore
+        ret[k] = b58.encode(v[k].bytes);
+      } else {
+        ret[k] = {};
+        Presentation.toBs58(v[k], ret[k]);
+      }
+    });
+  }
+
+  static fromBs58(v: object, ret: AttributeCiphertexts) {
+    Object.keys(v).forEach((k) => {
+      if (typeof v[k] === 'string') {
+        ret[k] = new SaverCiphertext(b58.decode(v[k]));
+      } else {
+        ret[k] = {};
+        // @ts-ignore
+        Presentation.fromBs58(v[k], ret[k]);
+      }
+    });
+  }
 }

@@ -68,7 +68,7 @@ export class Credential extends Versioned {
   toJSON(): string {
     const j = {};
     j['credentialVersion'] = this._version;
-    j['credentialSchema'] = this.schema.forCredential();
+    j['credentialSchema'] = this.schema.toJSON();
     j['credentialSubject'] = this.subject;
     if (this.credentialStatus !== undefined) {
       j['credentialStatus'] = this.credentialStatus;
@@ -84,8 +84,23 @@ export class Credential extends Versioned {
   }
 
   static fromJSON(json: string): Credential {
-    // TODO
-    // @ts-ignore
-    return new Credential();
+    const { credentialVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } =
+      JSON.parse(json);
+    if (proof['type'] !== 'Bls12381BBS+SignatureDock2022') {
+      throw new Error(`Invalid proof type ${proof['type']}`);
+    }
+    const sig = new SignatureG1(b58.decode(proof['proofValue']));
+    const topLevelFields = new Map<string, unknown>();
+    Object.keys(custom).forEach((k) => {
+      topLevelFields.set(k, custom[k]);
+    });
+    return new Credential(
+      credentialVersion,
+      CredentialSchema.fromJSON(credentialSchema),
+      credentialSubject,
+      topLevelFields,
+      sig,
+      credentialStatus
+    );
   }
 }

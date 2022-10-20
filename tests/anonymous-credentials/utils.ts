@@ -1,5 +1,5 @@
 import {
-  CRED_VERSION_STR, PresentationSpecification,
+  CRED_VERSION_STR,
   REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
