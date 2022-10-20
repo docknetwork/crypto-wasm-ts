@@ -63,7 +63,7 @@ export class PresentationBuilder extends Versioned {
   // underlying crypto changes.
   static VERSION = '0.0.1';
 
-  _context?: string | Uint8Array;
+  _context?: string;
   _nonce?: Uint8Array;
   proof?: CompositeProofG1;
   // Just for debugging
@@ -205,6 +205,8 @@ export class PresentationBuilder extends Versioned {
    */
   finalize(): Presentation {
     const numCreds = this.credentials.length;
+    // Tracking maximum attributes across all credentials so that new values for signatures
+    // params are only created when the need be. Check definition of `adapt` for more details.
     let maxAttribs = 2; // version and schema
     let sigParams = SignatureParamsG1.generate(maxAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
 
@@ -514,11 +516,11 @@ export class PresentationBuilder extends Versioned {
     return new Presentation(this.version, this.spec, this.proof, attributeCiphertexts, this._context, this._nonce);
   }
 
-  get context(): string | Uint8Array | undefined {
+  get context(): string | undefined {
     return this._context;
   }
 
-  set context(context: string | Uint8Array | undefined) {
+  set context(context: string | undefined) {
     this._context = context;
   }
 
@@ -534,20 +536,6 @@ export class PresentationBuilder extends Versioned {
     if (credIdx >= this.credentials.length) {
       throw new Error(`Invalid credential index ${credIdx}. Number of credentials is ${this.credentials.length}`);
     }
-  }
-
-  toJSON(): string {
-    // TODO:
-    return JSON.stringify({
-      version: this.version,
-      context: this._context ? (typeof this._context === 'string' ? this._context : b58.encode(this._context)) : null,
-      nonce: this._nonce ? b58.encode(this._nonce) : null,
-      spec: {
-        credentials: this.spec.credentials,
-        attributeEqualities: this.spec.attributeEqualities
-      },
-      proof: b58.encode((this.proof as CompositeProofG1).bytes)
-    });
   }
 
   private updatePredicateParams(id: string, val?: PredicateParamType) {

@@ -35,6 +35,7 @@ import {
 import { checkResult, stringToBytes } from '../utils';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 import { getExampleSchema } from './utils';
+import { Presentation } from '../../src/anonymous-credentials/presentation';
 
 // Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
 async function prefillAccumulator(
@@ -470,6 +471,11 @@ describe('Presentation creation and verification', () => {
     expect(pres1.spec.credentials[0].status).not.toBeDefined();
 
     checkResult(pres1.verify([pk1]));
+
+    const presJson = pres1.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk1]));
+    expect(presJson).toEqual(recreatedPres.toJSON());
   });
 
   it('from a nested credential - `credential2`', () => {
@@ -489,6 +495,11 @@ describe('Presentation creation and verification', () => {
     expect(pres2.spec.credentials[0].status).not.toBeDefined();
 
     checkResult(pres2.verify([pk2]));
+
+    const presJson = pres2.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk2]));
+    expect(presJson).toEqual(recreatedPres.toJSON());
   });
 
   it('from a nested credential with credential status - `credential3`', () => {
@@ -518,7 +529,11 @@ describe('Presentation creation and verification', () => {
     const acc = new Map();
     acc.set(0, accumulator3Pk);
     checkResult(pres3.verify([pk3], acc));
-    console.log(pres3.spec.toJSON());
+
+    const presJson = pres3.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk3], acc));
+    expect(presJson).toEqual(recreatedPres.toJSON());
   });
 
   it('from 2 credentials, `credential1` and `credential2`, and prove some attributes equal', () => {
@@ -554,6 +569,11 @@ describe('Presentation creation and verification', () => {
     expect(pres4.verify([pk2, pk1]).verified).toEqual(false);
 
     checkResult(pres4.verify([pk1, pk2]));
+
+    const presJson = pres4.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk1, pk2]));
+    expect(presJson).toEqual(recreatedPres.toJSON());
   });
 
   it('from 2 credentials, both having credential status', () => {
@@ -611,6 +631,11 @@ describe('Presentation creation and verification', () => {
     acc.set(0, accumulator3Pk);
     acc.set(1, accumulator4Pk);
     checkResult(pres5.verify([pk3, pk4], acc));
+
+    const presJson = pres5.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk3, pk4], acc));
+    expect(presJson).toEqual(recreatedPres.toJSON());
   });
 
   it('from multiple credentials, some having credential status (revocable) and some not', () => {
@@ -689,6 +714,11 @@ describe('Presentation creation and verification', () => {
     acc.set(2, accumulator3Pk);
     acc.set(3, accumulator4Pk);
     checkResult(pres6.verify([pk1, pk2, pk3, pk4], acc));
+
+    const presJson = pres6.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk1, pk2, pk3, pk4], acc));
+    expect(presJson).toEqual(recreatedPres.toJSON());
   });
 
   it('from credentials and proving bounds on attributes', () => {
@@ -755,6 +785,11 @@ describe('Presentation creation and verification', () => {
     const pp = new Map();
     pp.set(pkId, boundCheckVerifyingKey);
     checkResult(pres1.verify([pk1], undefined, pp));
+
+    const presJson = pres1.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk1], undefined, pp));
+    expect(presJson).toEqual(recreatedPres.toJSON());
 
     // ---------------------------------- Presentation with 3 credentials ---------------------------------
 
@@ -854,6 +889,11 @@ describe('Presentation creation and verification', () => {
     const pp1 = new Map();
     pp1.set(pkId, boundCheckVerifyingKey);
     checkResult(pres2.verify([pk1, pk2, pk3], acc, pp1));
+
+    const presJson2 = pres2.toJSON();
+    const recreatedPres2 = Presentation.fromJSON(presJson2);
+    checkResult(recreatedPres2.verify([pk1, pk2, pk3], acc, pp1));
+    expect(presJson2).toEqual(recreatedPres2.toJSON());
   });
 
   it('from credentials and encryption of attributes', () => {
@@ -898,6 +938,11 @@ describe('Presentation creation and verification', () => {
     pp.set(ekId, saverEk);
     pp.set(snarkPkId, saverVerifyingKey);
     checkResult(pres1.verify([pk1], undefined, pp));
+
+    const presJson = pres1.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk1], undefined, pp));
+    expect(presJson).toEqual(recreatedPres.toJSON());
 
     // Decryptor gets the ciphertext from the verifier and decrypts it
     // @ts-ignore
@@ -996,6 +1041,11 @@ describe('Presentation creation and verification', () => {
     pp1.set(snarkPkId, saverVerifyingKey);
 
     checkResult(pres2.verify([pk1, pk2, pk3], acc, pp1));
+
+    const presJson2 = pres2.toJSON();
+    const recreatedPres2 = Presentation.fromJSON(presJson2);
+    checkResult(recreatedPres2.verify([pk1, pk2, pk3], acc, pp1));
+    expect(presJson2).toEqual(recreatedPres2.toJSON());
 
     // @ts-ignore
     expect(pres2.attributeCiphertexts.size).toEqual(2);
@@ -1210,7 +1260,11 @@ describe('Presentation creation and verification', () => {
     pp.set(ekId, saverEk);
     pp.set(snarkPkId, saverVerifyingKey);
     checkResult(pres1.verify([pk1, pk2, pk3], acc, pp));
-    console.log(pres1.spec.toJSON());
+
+    const presJson = pres1.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk1, pk2, pk3], acc, pp));
+    expect(presJson).toEqual(recreatedPres.toJSON());
   });
 
   it('from a credential with subject as an array `credential5`', () => {
@@ -1367,6 +1421,11 @@ describe('Presentation creation and verification', () => {
     const pp = new Map();
     pp.set(boundCheckSnarkId, boundCheckVerifyingKey);
     checkResult(pres2.verify([pk1], undefined, pp));
+
+    const presJson = pres2.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk1], undefined, pp));
+    expect(presJson).toEqual(recreatedPres.toJSON());
   });
 
   it('from a credential with subject as an array and top-level custom fields `credential6`', () => {
@@ -1460,5 +1519,10 @@ describe('Presentation creation and verification', () => {
     const pp = new Map();
     pp.set(boundCheckSnarkId, boundCheckVerifyingKey);
     checkResult(pres2.verify([pk1], undefined, pp));
+
+    const presJson = pres2.toJSON();
+    const recreatedPres = Presentation.fromJSON(presJson);
+    checkResult(recreatedPres.verify([pk1], undefined, pp));
+    expect(presJson).toEqual(recreatedPres.toJSON());
   })
 });
