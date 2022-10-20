@@ -1,8 +1,9 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  Credential,
   CredentialBuilder,
   CredentialSchema,
-  MEM_CHECK_STR,
+  MEM_CHECK_STR, REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
   SUBJECT_STR
@@ -21,6 +22,17 @@ describe('CredentialBuilder signing and verification', () => {
     sk = keypair.sk;
     pk = keypair.pk;
   });
+
+  function checkJsonConvForCred(cred: Credential, pk: BBSPlusPublicKeyG2): Credential {
+    // This to/from JSON can be abstracted into a class and then testing will lead to less duplicated code
+    const credJson = cred.toJSON();
+    const recreatedCred = Credential.fromJSON(credJson);
+    checkResult(recreatedCred.verify(pk));
+    expect(credJson).toEqual(recreatedCred.toJSON());
+    expect(recreatedCred.schema.version).toEqual(cred.schema.version);
+    expect(recreatedCred.schema.schema).toEqual(cred.schema.schema);
+    return recreatedCred;
+  }
 
   it('for a flat (no-nesting) credential', () => {
     const schema = CredentialSchema.essential();
@@ -43,9 +55,8 @@ describe('CredentialBuilder signing and verification', () => {
     const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
-
-    const credJson = cred.toJSON();
-    console.log(credJson);
+    const recreatedCred = checkJsonConvForCred(cred, pk);
+    expect(recreatedCred.subject).toEqual({ fname: 'John', lname: 'Smith' });
   });
 
   it('for credential with nesting', () => {
@@ -93,6 +104,16 @@ describe('CredentialBuilder signing and verification', () => {
     const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
+    const recreatedCred = checkJsonConvForCred(cred, pk);
+    expect(recreatedCred.subject).toEqual({
+      fname: 'John',
+      lname: 'Smith',
+      sensitive: {
+        phone: '810-1234567',
+        email: 'john.smith@example.com',
+        SSN: '123-456789-0'
+      }
+    });
   });
 
   it('for credential with numeric fields', () => {
@@ -133,6 +154,22 @@ describe('CredentialBuilder signing and verification', () => {
     const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
+    const recreatedCred = checkJsonConvForCred(cred, pk);
+    expect(recreatedCred.subject).toEqual({
+      fname: 'John',
+      lname: 'Smith',
+      sensitive: {
+        phone: '810-1234567',
+        email: 'john.smith@example.com',
+        SSN: '123-456789-0'
+      },
+      timeOfBirth: 1662010849619,
+      physical: {
+        height: 181.5,
+        weight: 210,
+        BMI: 23.25
+      }
+    });
   });
 
   it('for credential with credential status', () => {
@@ -175,7 +212,41 @@ describe('CredentialBuilder signing and verification', () => {
     const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
-
+    const recreatedCred = checkJsonConvForCred(cred, pk);
+    expect(recreatedCred.subject).toEqual({
+      fname: 'John',
+      lname: 'Smith',
+      sensitive: {
+        very: {
+          secret: 'my-secret-that-wont-tell-anyone'
+        },
+        email: 'john.smith@acme.com',
+        phone: '801009801',
+        SSN: '123-456789-0'
+      },
+      lessSensitive: {
+        location: {
+          country: 'USA',
+          city: 'New York'
+        },
+        department: {
+          name: 'Random',
+          location: {
+            name: 'Somewhere',
+            geo: {
+              lat: -23.658,
+              long: 2.556
+            }
+          }
+        }
+      },
+      rank: 6
+    });
+    expect(recreatedCred.credentialStatus).toEqual({
+      [REGISTRY_ID_STR]: 'dock:accumulator:accumId123',
+      [REV_CHECK_STR]: MEM_CHECK_STR,
+      [REV_ID_STR]: 'user:A-123'
+    })
     // In practice there will be an accumulator as well
   });
 
@@ -229,5 +300,6 @@ describe('CredentialBuilder signing and verification', () => {
     const cred = builder.sign(sk);
 
     checkResult(cred.verify(pk));
+    checkJsonConvForCred(cred, pk);
   })
 });

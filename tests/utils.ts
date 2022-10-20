@@ -109,3 +109,4 @@ export function checkResult(result: VerifyResult) {
   }
   expect(verified).toEqual(true);
 }
+
