@@ -15,6 +15,12 @@ import {
 import { flatten } from 'flat';
 import { flattenTill2ndLastKey } from './util';
 
+// Assuming native code uses 32-bit integers
+const INT_MIN_VALUE = -2147483648;
+
+// Assuming native code uses 64-bit numbers
+const NUMBER_MIN_VALUE = Number.MIN_VALUE;
+
 /**
  * Rules
  * 1. Schema must define a top level `credentialSubject` field for the subject, and it can be an array of object
@@ -264,13 +270,13 @@ export class CredentialSchema extends Versioned {
           f = Encoder.positiveIntegerEncoder();
           break;
         case CredentialSchema.INT_TYPE:
-          f = Encoder.integerEncoder(value['minimum'] || 0);
+          f = Encoder.integerEncoder(value['minimum'] || INT_MIN_VALUE);
           break;
         case CredentialSchema.POSITIVE_NUM_TYPE:
           f = Encoder.positiveDecimalNumberEncoder(value['decimalPlaces']);
           break;
         case CredentialSchema.NUM_TYPE:
-          f = Encoder.decimalNumberEncoder(value['minimum'], value['decimalPlaces']);
+          f = Encoder.decimalNumberEncoder(value['minimum'] || NUMBER_MIN_VALUE, value['decimalPlaces']);
           break;
         default:
           f = defaultEncoder;
@@ -302,15 +308,15 @@ export class CredentialSchema extends Versioned {
   }
 
   static validate(schema: any) {
+    if (typeof schema.properties !== 'object') {
+      throw new Error(`Schema must have top level properties object`);
+    }
+
     const schemaStatus = schema.properties[STATUS_STR];
     if (schemaStatus !== undefined) {
       this.validateStringType(schemaStatus.properties, REGISTRY_ID_STR);
       this.validateStringType(schemaStatus.properties, REV_CHECK_STR);
       this.validateStringType(schemaStatus.properties, REV_ID_STR);
-    }
-
-    if (typeof schema.properties !== 'object') {
-      throw new Error(`Schema must have top level properties object`);
     }
 
     if (schema.properties[SUBJECT_STR] === undefined) {
