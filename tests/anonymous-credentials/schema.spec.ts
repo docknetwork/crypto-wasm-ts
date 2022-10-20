@@ -26,6 +26,7 @@ describe('CredentialBuilder Schema', () => {
       "$metadata": {
         "version": 1
       },
+      type: 'object',
       properties: {
         credentialSubject: {
           type: 'object',
