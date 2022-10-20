@@ -44,7 +44,7 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
     height: {type: "positiveDecimalNumber", decimalPlaces: 1},
     weight: {type: "positiveDecimalNumber", decimalPlaces: 1},
     BMI: {type: "positiveDecimalNumber", decimalPlaces: 2},
-    score: {type: "decimalNumber", decimalPlaces: 1, minimum: -100},
+    score: {type: "number", decimalPlaces: 1, minimum: -100},
     secret: {type: "string"}
   }
  }
@@ -73,8 +73,8 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
         location: {
           name: {type: "string"},
           geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+            lat: {type: "number", decimalPlaces: 3, minimum: -90},
+            long: {type: "number", decimalPlaces: 3, minimum: -180}
           }
         }
       }
@@ -96,8 +96,8 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
       location: {
         name: {type: "string"},
         geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          lat: {type: "number", decimalPlaces: 3, minimum: -90},
+          long: {type: "number", decimalPlaces: 3, minimum: -180}
         }
       }
     },
@@ -106,8 +106,8 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
       location: {
         name: {type: "string"},
         geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          lat: {type: "number", decimalPlaces: 3, minimum: -90},
+          long: {type: "number", decimalPlaces: 3, minimum: -180}
         }
       }
     },
@@ -116,8 +116,8 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
       location: {
         name: {type: "string"},
         geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          lat: {type: "number", decimalPlaces: 3, minimum: -90},
+          long: {type: "number", decimalPlaces: 3, minimum: -180}
         }
       }
     }
@@ -133,8 +133,8 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
       location: {
         name: {type: "string"},
         geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          lat: {type: "number", decimalPlaces: 3, minimum: -90},
+          long: {type: "number", decimalPlaces: 3, minimum: -180}
         }
       }
     },
@@ -143,8 +143,8 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
       location: {
         name: {type: "string"},
         geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          lat: {type: "number", decimalPlaces: 3, minimum: -90},
+          long: {type: "number", decimalPlaces: 3, minimum: -180}
         }
       }
     },
@@ -153,8 +153,8 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
       location: {
         name: {type: "string"},
         geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          lat: {type: "number", decimalPlaces: 3, minimum: -90},
+          long: {type: "number", decimalPlaces: 3, minimum: -180}
         }
       }
     }
@@ -225,7 +225,7 @@ export class CredentialSchema extends Versioned {
   private static readonly POSITIVE_INT_TYPE = 'positiveInteger';
   private static readonly INT_TYPE = 'integer';
   private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
-  private static readonly NUM_TYPE = 'decimalNumber';
+  private static readonly NUM_TYPE = 'number';
 
   // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
@@ -272,6 +272,8 @@ export class CredentialSchema extends Versioned {
         case CredentialSchema.INT_TYPE:
           f = Encoder.integerEncoder(value['minimum'] || INT_MIN_VALUE);
           break;
+        // TODO: sensible defaults for decimalPlaces as its the maximum decimal places allowed
+        // depending if using f32/f64 in the rust code, we could set a value for this
         case CredentialSchema.POSITIVE_NUM_TYPE:
           f = Encoder.positiveDecimalNumberEncoder(value['decimalPlaces']);
           break;

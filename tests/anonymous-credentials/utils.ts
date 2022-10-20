@@ -80,8 +80,8 @@ export function getExampleSchema(num) {
               location: {
                 name: { type: 'string' },
                 geo: {
-                  lat: { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
-                  long: { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 }
+                  lat: { type: 'number', decimalPlaces: 3, minimum: -90 },
+                  long: { type: 'number', decimalPlaces: 3, minimum: -180 }
                 }
               }
             }
@@ -112,8 +112,8 @@ export function getExampleSchema(num) {
                 geo: {
                   type: "object",
                   properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+                    lat: {type: "number", decimalPlaces: 3, minimum: -90},
+                    long: {type: "number", decimalPlaces: 3, minimum: -180}
                   }
                 }
               }
@@ -130,8 +130,8 @@ export function getExampleSchema(num) {
                 geo: {
                   type: "object",
                   properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+                    lat: {type: "number", decimalPlaces: 3, minimum: -90},
+                    long: {type: "number", decimalPlaces: 3, minimum: -180}
                   }
                 }
               }
@@ -148,8 +148,8 @@ export function getExampleSchema(num) {
                 geo: {
                   type: "object",
                   properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+                    lat: {type: "number", decimalPlaces: 3, minimum: -90},
+                    long: {type: "number", decimalPlaces: 3, minimum: -180}
                   }
                 }
               }
@@ -172,8 +172,8 @@ export function getExampleSchema(num) {
                 geo: {
                   type: "object",
                   properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+                    lat: {type: "number", decimalPlaces: 3, minimum: -90},
+                    long: {type: "number", decimalPlaces: 3, minimum: -180}
                   }
                 }
               }
@@ -190,8 +190,8 @@ export function getExampleSchema(num) {
                 geo: {
                   type: "object",
                   properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+                    lat: {type: "number", decimalPlaces: 3, minimum: -90},
+                    long: {type: "number", decimalPlaces: 3, minimum: -180}
                   }
                 }
               }
@@ -208,8 +208,8 @@ export function getExampleSchema(num) {
                 geo: {
                   type: "object",
                   properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+                    lat: {type: "number", decimalPlaces: 3, minimum: -90},
+                    long: {type: "number", decimalPlaces: 3, minimum: -180}
                   }
                 }
               }
@@ -267,7 +267,7 @@ export function getExampleSchema(num) {
           height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
           weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
           BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-          score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
+          score: { type: 'number', decimalPlaces: 1, minimum: -100 },
           secret: { type: 'string' }
         }
       };
@@ -357,7 +357,7 @@ export function getExampleSchema(num) {
               BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
             }
           },
-          score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 }
+          score: { type: 'number', decimalPlaces: 1, minimum: -100 }
         }
       };
       break;

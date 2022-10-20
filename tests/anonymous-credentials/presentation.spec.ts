@@ -309,8 +309,8 @@ describe('Presentation creation and verification', () => {
               geo: {
                 type: 'object',
                 properties: {
-                  lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                  long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+                  lat: {type: "number", decimalPlaces: 3, minimum: -90},
+                  long: {type: "number", decimalPlaces: 3, minimum: -180}
                 }
               }
             }
@@ -374,8 +374,8 @@ describe('Presentation creation and verification', () => {
           properties: {
             name: {type: "string"},
             geo: {
-              lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-              long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+              lat: {type: "number", decimalPlaces: 3, minimum: -90},
+              long: {type: "number", decimalPlaces: 3, minimum: -180}
             },
           }
         }
