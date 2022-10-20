@@ -279,7 +279,7 @@ export class CredentialSchema extends Versioned {
     }
 
     // Intentionally not supplying default encoder as we already know the schema
-    this.encoder = new Encoder(encoders);
+    this.encoder = new Encoder(encoders, defaultEncoder);
   }
 
   /**
@@ -302,15 +302,15 @@ export class CredentialSchema extends Versioned {
   }
 
   static validate(schema: any) {
+    if (typeof schema.properties !== 'object') {
+      throw new Error(`Schema must have top level properties object`);
+    }
+
     const schemaStatus = schema.properties[STATUS_STR];
     if (schemaStatus !== undefined) {
       this.validateStringType(schemaStatus.properties, REGISTRY_ID_STR);
       this.validateStringType(schemaStatus.properties, REV_CHECK_STR);
       this.validateStringType(schemaStatus.properties, REV_ID_STR);
-    }
-
-    if (typeof schema.properties !== 'object') {
-      throw new Error(`Schema must have top level properties object`);
     }
 
     if (schema.properties[SUBJECT_STR] === undefined) {
@@ -339,12 +339,12 @@ export class CredentialSchema extends Versioned {
       switch (value['type']) {
         case this.STR_REV_TYPE:
           if (typeof value['compress'] !== 'boolean') {
-            throw new Error(`Schema value for ${names[i]} expected boolean but found ${value['compress']}`);
+            throw new Error(`Schema value for ${names[i]} expected boolean compress but found ${value['compress']}`);
           }
           break;
         case this.INT_TYPE:
           if (!Number.isInteger(value['minimum'])) {
-            throw new Error(`Schema value for ${names[i]} expected integer but found ${value['minimum']}`);
+            throw new Error(`Schema value for ${names[i]} expected integer minimum but found ${value['minimum']}`);
           }
           break;
         case this.POSITIVE_NUM_TYPE:
@@ -420,7 +420,13 @@ export class CredentialSchema extends Versioned {
       type: 'object',
       properties: {
         [CRED_VERSION_STR]: { type: 'string' },
-        [SCHEMA_STR]: { type: 'string' }
+        [SCHEMA_STR]: { type: 'string' },
+        [SUBJECT_STR]: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          }
+        }
       }
     };
   }
