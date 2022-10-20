@@ -238,7 +238,7 @@ export class CredentialSchema extends Versioned {
     this.POSITIVE_NUM_TYPE,
     this.NUM_TYPE,
     'object',
-    'array',
+    'array'
   ]);
 
   schema: any;
@@ -322,12 +322,21 @@ export class CredentialSchema extends Versioned {
     if (schema.properties[SUBJECT_STR] === undefined) {
       throw new Error(`Schema properties did not contain top level key ${SUBJECT_STR}`);
     }
-    this.validateGeneric(schema);
+
+    this.validateGeneric(schema, [
+      `${STATUS_STR}.${REGISTRY_ID_STR}`,
+      `${STATUS_STR}.${REV_CHECK_STR}`,
+      `${STATUS_STR}.${REV_ID_STR}`
+    ]);
   }
 
-  static validateGeneric(schema: object) {
+  static validateGeneric(schema: object, ignoreKeys: string[] = []) {
     const [names, values] = this.flattenSchemaObj(schema);
     for (let i = 0; i < names.length; i++) {
+      if (ignoreKeys.indexOf(names[i])) {
+        continue;
+      }
+
       if (typeof values[i] !== 'object') {
         throw new Error(`Schema value for ${names[i]} should have been an object type but was ${typeof values[i]}`);
       }
