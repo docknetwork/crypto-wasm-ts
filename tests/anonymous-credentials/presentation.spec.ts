@@ -297,38 +297,34 @@ describe('Presentation creation and verification', () => {
     ).toEqual(true);
 
     const schema5 = CredentialSchema.essential();
-    schema5[SUBJECT_STR] = [
-      {
-        name: {type: "string"},
-        location: {
+    const subjectItem = {
+        type: 'object',
+        properties: {
           name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          location: {
+            type: 'object',
+            properties: {
+              name: {type: "string"},
+              geo: {
+                type: 'object',
+                properties: {
+                  lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+                  long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+                }
+              }
+            }
           }
         }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      }
-    ];
+    };
+
+    schema5.properties[SUBJECT_STR] = {
+      type: 'array',
+      items: [
+        subjectItem,
+        subjectItem,
+        subjectItem
+      ]
+    };
     const credSchema5 = new CredentialSchema(schema5);
     const builder5 = new CredentialBuilder();
     builder5.schema = credSchema5;
@@ -368,45 +364,40 @@ describe('Presentation creation and verification', () => {
     checkResult(credential5.verify(pk1));
 
     const schema6 = CredentialSchema.essential();
-    schema6[SUBJECT_STR] = [
-      {
+    const subjectItem2 = {
+      type: 'object',
+      properties: {
         name: {type: "string"},
         location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+          type: 'object',
+          properties: {
+            name: {type: "string"},
+            geo: {
+              lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
+              long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+            },
           }
         }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-      {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-          }
-        }
-      },
-    ];
-    schema6['issuer'] = {
-      name: {type: "string"},
-      desc: {type: "string"},
-      logo: {type: "string"}
+      }
     };
-    schema6['issuanceDate'] = {type: "positiveInteger"};
-    schema6['expirationDate'] = {type: "positiveInteger"};
+    schema6.properties[SUBJECT_STR] = {
+      type: 'array',
+      items: [
+        subjectItem2,
+        subjectItem2,
+        subjectItem2
+      ]
+    };
+    schema6.properties['issuer'] = {
+      type: 'object',
+      properties: {
+        name: {type: "string"},
+        desc: {type: "string"},
+        logo: {type: "string"}
+      }
+    };
+    schema6.properties['issuanceDate'] = {type: "positiveInteger"};
+    schema6.properties['expirationDate'] = {type: "positiveInteger"};
 
     const credSchema6 = new CredentialSchema(schema6);
     const builder6 = new CredentialBuilder();

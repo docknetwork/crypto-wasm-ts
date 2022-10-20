@@ -279,8 +279,11 @@ export function getExampleSchema(num) {
           fname: { type: 'string' },
           lname: { type: 'string' },
           sensitive: {
-            email: { type: 'string' },
-            SSN: { type: 'stringReversible', compress: false }
+            type: 'object',
+            properties: {
+              email: { type: 'string' },
+              SSN: { type: 'stringReversible', compress: false }
+            }
           },
           education: {
             type: 'object',
@@ -314,7 +317,7 @@ export function getExampleSchema(num) {
           }
         }
       };
-      schema[STATUS_STR] = {
+      schema.properties[STATUS_STR] = {
         type: 'object',
         properties: {
           $registryId: { type: 'string' },

@@ -18,7 +18,8 @@ import {
   AttributeEquality,
   CRED_VERSION_STR,
   FlattenedSchema,
-  MEM_CHECK_STR, NON_MEM_CHECK_STR,
+  MEM_CHECK_STR,
+  NON_MEM_CHECK_STR,
   PredicateParamType,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
@@ -38,12 +39,14 @@ import b58 from 'bs58';
 import { Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
 import {
-  buildContextForProof, createWitEq,
+  buildContextForProof,
+  createWitEq,
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
-  dockSaverEncryptionGensUncompressed, getTransformedMinMax
+  dockSaverEncryptionGensUncompressed,
+  getTransformedMinMax
 } from './util';
 import {
   SaverChunkedCommitmentGens,
@@ -237,8 +240,12 @@ export class PresentationBuilder extends Versioned {
       revealedNames.add(CRED_VERSION_STR);
       revealedNames.add(SCHEMA_STR);
       if (cred.credentialStatus !== undefined) {
-        if (cred.credentialStatus[REGISTRY_ID_STR] === undefined || (cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_STR && cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_STR)) {
-          throw new Error(`Credential for ${i} has invalid status ${cred.credentialStatus}`)
+        if (
+          cred.credentialStatus[REGISTRY_ID_STR] === undefined ||
+          (cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_STR &&
+            cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_STR)
+        ) {
+          throw new Error(`Credential for ${i} has invalid status ${cred.credentialStatus}`);
         }
         revealedNames.add(`${STATUS_STR}.${REGISTRY_ID_STR}`);
         revealedNames.add(`${STATUS_STR}.${REV_CHECK_STR}`);
@@ -317,14 +324,7 @@ export class PresentationBuilder extends Versioned {
       delete revealedAtts[CRED_VERSION_STR];
       delete revealedAtts[SCHEMA_STR];
       delete revealedAtts[STATUS_STR];
-      this.spec.addPresentedCredential(
-        ver,
-        sch,
-        revealedAtts,
-        presentedStatus,
-        attributeBounds,
-        attributeEncs
-      );
+      this.spec.addPresentedCredential(ver, sch, revealedAtts, presentedStatus, attributeBounds, attributeEncs);
 
       flattenedSchemas.push(flattenedSchema);
     }
