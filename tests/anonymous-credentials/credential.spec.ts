@@ -124,8 +124,8 @@ describe('CredentialBuilder signing and verification', () => {
       },
       timeOfBirth: 1662010849619
     };
-    // TODO: Fix me by checking conformity to schema
-    // expect(() => builder.sign(sk)).toThrow();
+    // Throw when some fields missing
+    expect(() => builder.sign(sk)).toThrow();
 
     builder.subject = {
       fname: 'John',

@@ -8,7 +8,7 @@ import {
   Statements,
   WitnessEqualityMetaStatement
 } from '../composite-proof';
-import { BBSPlusPublicKeyG2, Encoder, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
 import { CredentialSchema, ValueType } from './schema';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
