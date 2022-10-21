@@ -169,6 +169,10 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
  }
  */
 
+export interface SchemaType {
+  properties: object;
+}
+
 export enum ValueType {
   Str,
   RevStr,
@@ -241,7 +245,7 @@ export class CredentialSchema extends Versioned {
     'array'
   ]);
 
-  schema: any;
+  schema: SchemaType;
   // @ts-ignore
   encoder: Encoder;
 
@@ -311,6 +315,10 @@ export class CredentialSchema extends Versioned {
     if (typeof schema.properties !== 'object') {
       throw new Error(`Schema must have top level properties object`);
     }
+    
+    // Following 2 fields could have been implicit but being explicit for clarity
+    this.validateStringType(schema.properties, CRED_VERSION_STR);
+    this.validateStringType(schema.properties, SCHEMA_STR);
 
     const schemaStatus = schema.properties[STATUS_STR];
     if (schemaStatus !== undefined) {
@@ -591,7 +599,7 @@ export class CredentialSchema extends Versioned {
 
   static flattenJSONSchema(node: any) {
     if (typeof node.type !== 'string') {
-      throw new Error('Schema node must have type field that is a string');
+      throw new Error(`Schema node must have type field that is a string, got ${JSON.stringify(node)}`);
     }
 
     if (node.type === 'object') {
@@ -636,8 +644,8 @@ export class CredentialSchema extends Versioned {
     return flattenTill2ndLastKey(resultObj);
   }
 
-  private static validateStringType(schema, fieldName) {
-    if (JSON.stringify(schema[fieldName], undefined, 0) !== '{"type":"string"}') {
+  private static validateStringType(schema: object, fieldName: string) {
+    if (!schema[fieldName] || schema[fieldName].type !== 'string') {
       throw new Error(`Schema should contain a top level key ${fieldName} and its value must be {"type":"string"}`);
     }
   }

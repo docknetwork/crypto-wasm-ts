@@ -18,16 +18,57 @@ describe('CredentialBuilder Schema', () => {
     await initializeWasm();
   });
 
+  it('needs version, schema and subject fields', () => {
+    const schema1 = {
+      type: 'object',
+      properties: {},
+    };
+
+    expect(() => new CredentialSchema(schema1)).toThrow();
+
+    schema1.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' }
+      }
+    };
+    expect(() => new CredentialSchema(schema1)).toThrow();
+
+    schema1.properties[CRED_VERSION_STR] = { type: 'integer' };
+    expect(() => new CredentialSchema(schema1)).toThrow();
+
+    schema1.properties[CRED_VERSION_STR] = { type: 'string' };
+    expect(() => new CredentialSchema(schema1)).toThrow();
+
+    schema1.properties[SCHEMA_STR] = { type: 'integer' };
+    expect(() => new CredentialSchema(schema1)).toThrow();
+
+    schema1.properties[SCHEMA_STR] = { type: 'string' };
+    const cs1 = new CredentialSchema(schema1);
+    expect(cs1.properties[CRED_VERSION_STR]).toEqual({ type: 'string' });
+    expect(cs1.properties[SCHEMA_STR]).toEqual({ type: 'string' });
+    expect(cs1.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+      },
+    });
+    expect(JSON.parse(cs1.toJSON())[VERSION_STR]).toEqual(CredentialSchema.VERSION);
+  });
+
   it('is valid schema validation', () => {
     expect(() => new CredentialSchema({})).toThrow();
 
+    const essentialProps = CredentialSchema.essential();
     const schema1: any = {
+      ...essentialProps,
       "$schema": "http://json-schema.org/draft-07/schema#",
       "$metadata": {
         "version": 1
       },
       type: 'object',
       properties: {
+        ...essentialProps.properties,
         credentialSubject: {
           type: 'object',
           properties: {
