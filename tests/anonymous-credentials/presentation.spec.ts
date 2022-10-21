@@ -32,10 +32,11 @@ import {
   STATUS_STR,
   SUBJECT_STR, dockSaverEncryptionGensUncompressed
 } from '../../src/anonymous-credentials';
-import { areUint8ArraysEqual, checkResult, stringToBytes } from '../utils';
+import { areUint8ArraysEqual, checkResult, readByteArrayFromFile, stringToBytes, writeByteArrayToFile } from '../utils';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 import { getExampleSchema } from './utils';
 import { Presentation } from '../../src/anonymous-credentials/presentation';
+
 
 // Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
 async function prefillAccumulator(
@@ -58,6 +59,8 @@ async function prefillAccumulator(
   await accumulator.addBatch(members, secretKey, state);
   return members;
 }
+
+const loadSnarkSetupFromFiles = true;
 
 describe('Presentation creation and verification', () => {
   let sk1: BBSPlusSecretKey, pk1: BBSPlusPublicKeyG2;
@@ -92,12 +95,18 @@ describe('Presentation creation and verification', () => {
 
   function setupBoundCheck() {
     if (boundCheckProvingKey === undefined) {
-      const pk = BoundCheckSnarkSetup();
-      boundCheckProvingKey = pk.decompress();
-      boundCheckVerifyingKey = pk.getVerifyingKeyUncompressed();
+      if (loadSnarkSetupFromFiles === true) {
+        boundCheckProvingKey = new LegoProvingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-proving-key-uncompressed.bin'));
+        boundCheckVerifyingKey = new LegoVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-verifying-key-uncompressed.bin'));
+      } else {
+        const pk = BoundCheckSnarkSetup();
+        boundCheckProvingKey = pk.decompress();
+        boundCheckVerifyingKey = pk.getVerifyingKeyUncompressed();
+      }
     }
   }
 
+  // TODO: Allow loading snark setup from file similar to bound check.
   function setupSaver() {
     if (saverProvingKey === undefined) {
       const encGens = dockSaverEncryptionGens();
