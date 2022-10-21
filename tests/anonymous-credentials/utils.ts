@@ -35,7 +35,7 @@ export function getExampleSchema(num) {
         properties: {
           fname: { type: 'string' },
           score: { type: 'integer', minimum: -100 },
-          long: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+          long: { type: 'number', minimum: 0, decimalPlaces: 2 }
         }
       };
       break;
@@ -86,7 +86,7 @@ export function getExampleSchema(num) {
               }
             }
           },
-          rank: { type: 'positiveInteger' }
+          rank: { type: 'integer', minimum: 0 }
         }
       };
       schema.properties[STATUS_STR] = {
@@ -226,8 +226,8 @@ export function getExampleSchema(num) {
           logo: {type: "string"}
         }
       };
-      schema.properties['issuanceDate'] = {type: "positiveInteger"};
-      schema.properties['expirationDate'] = {type: "positiveInteger"};
+      schema.properties['issuanceDate'] = {type: "integer", minimum: 0};
+      schema.properties['expirationDate'] = {type: "integer", minimum: 0};
       break;
     case 8:
       schema.properties[SUBJECT_STR] = {
@@ -243,11 +243,11 @@ export function getExampleSchema(num) {
               SSN: { type: 'stringReversible', compress: false }
             }
           },
-          timeOfBirth: { type: 'positiveInteger' },
+          timeOfBirth: { type: 'integer', minimum: 0 },
           physical: {
-            height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-            weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-            BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+            height: { type: 'number', minimum: 0, decimalPlaces: 1 },
+            weight: { type: 'number', minimum: 0, decimalPlaces: 1 },
+            BMI: { type: 'number', minimum: 0, decimalPlaces: 2 }
           },
         }
       };
@@ -263,10 +263,10 @@ export function getExampleSchema(num) {
           userId: { type: 'stringReversible', compress: true },
           country: { type: 'string' },
           city: { type: 'string' },
-          timeOfBirth: { type: 'positiveInteger' },
-          height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
+          timeOfBirth: { type: 'integer', minimum: 0 },
+          height: { type: 'number', minimum: 0, decimalPlaces: 1 },
+          weight: { type: 'number', minimum: 0, decimalPlaces: 1 },
+          BMI: { type: 'number', minimum: 0, decimalPlaces: 2 },
           score: { type: 'number', decimalPlaces: 1, minimum: -100 },
           secret: { type: 'string' }
         }
@@ -299,16 +299,16 @@ export function getExampleSchema(num) {
               transcript: {
                 type: 'object',
                 properties: {
-                  rank: { type: 'positiveInteger' },
-                  CGPA: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
+                  rank: { type: 'integer', minimum: 0 },
+                  CGPA: { type: 'number', minimum: 0, decimalPlaces: 2 },
                   scores: {
                     type: 'object',
                     properties: {
-                      english: { type: 'positiveInteger' },
-                      mathematics: { type: 'positiveInteger' },
-                      science: { type: 'positiveInteger' },
-                      history: { type: 'positiveInteger' },
-                      geography: { type: 'positiveInteger' }
+                      english: { type: 'integer', minimum: 0 },
+                      mathematics: { type: 'integer', minimum: 0 },
+                      science: { type: 'integer', minimum: 0 },
+                      history: { type: 'integer', minimum: 0 },
+                      geography: { type: 'integer', minimum: 0 }
                     }
                   }
                 }
@@ -348,13 +348,13 @@ export function getExampleSchema(num) {
               city: { type: 'string' }
             }
           },
-          timeOfBirth: { type: 'positiveInteger' },
+          timeOfBirth: { type: 'integer', minimum: 0 },
           physical: {
             type: 'object',
             properties: {
-              height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-              weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-              BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+              height: { type: 'number', minimum: 0, decimalPlaces: 1 },
+              weight: { type: 'number', minimum: 0, decimalPlaces: 1 },
+              BMI: { type: 'number', minimum: 0, decimalPlaces: 2 }
             }
           },
           score: { type: 'number', decimalPlaces: 1, minimum: -100 }

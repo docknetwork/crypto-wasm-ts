@@ -40,7 +40,7 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
     userId: {type: "stringReversible", compress: true},
     country: {type: "string"},
     city: {type: "string"},
-    timeOfBirth: {type: "positiveInteger"},
+    timeOfBirth: {type: "integer", minimum: 0},
     height: {type: "positiveDecimalNumber", decimalPlaces: 1},
     weight: {type: "positiveDecimalNumber", decimalPlaces: 1},
     BMI: {type: "positiveDecimalNumber", decimalPlaces: 2},
@@ -79,7 +79,7 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
         }
       }
     },
-    rank: {type: "positiveInteger"}
+    rank: {type: "integer", minimum: 0}
   },
   credentialStatus: {
     $registryId: {type: "string"},
@@ -164,8 +164,8 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
     desc: {type: "string"},
     logo: {type: "string"}
   },
-  issuanceDate: {type: "positiveInteger"},
-  expirationDate: {type: "positiveInteger"},
+  issuanceDate: {type: "integer", minimum: 0},
+  expirationDate: {type: "integer", minimum: 0},
  }
  */
 
@@ -222,9 +222,7 @@ export class CredentialSchema extends Versioned {
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
-  private static readonly POSITIVE_INT_TYPE = 'positiveInteger';
   private static readonly INT_TYPE = 'integer';
-  private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
   private static readonly NUM_TYPE = 'number';
 
   // CredentialBuilder subject/claims cannot have any of these names
@@ -233,9 +231,7 @@ export class CredentialSchema extends Versioned {
   static POSSIBLE_TYPES = new Set<string>([
     this.STR_TYPE,
     this.STR_REV_TYPE,
-    this.POSITIVE_INT_TYPE,
     this.INT_TYPE,
-    this.POSITIVE_NUM_TYPE,
     this.NUM_TYPE,
     'object',
     'array'
@@ -266,19 +262,26 @@ export class CredentialSchema extends Versioned {
         case CredentialSchema.STR_REV_TYPE:
           f = Encoder.reversibleEncoderString(value['compress']);
           break;
-        case CredentialSchema.POSITIVE_INT_TYPE:
-          f = Encoder.positiveIntegerEncoder();
-          break;
         case CredentialSchema.INT_TYPE:
-          f = Encoder.integerEncoder(value['minimum'] || INT_MIN_VALUE);
+          const intMinimum = value['minimum'] || INT_MIN_VALUE;
+          if (intMinimum >= 0) {
+            // TODO: why cant this specify a minimum?
+            f = Encoder.positiveIntegerEncoder();
+          } else {
+            f = Encoder.integerEncoder(intMinimum);
+          }
           break;
         // TODO: sensible defaults for decimalPlaces as its the maximum decimal places allowed
         // depending if using f32/f64 in the rust code, we could set a value for this
-        case CredentialSchema.POSITIVE_NUM_TYPE:
-          f = Encoder.positiveDecimalNumberEncoder(value['decimalPlaces']);
-          break;
         case CredentialSchema.NUM_TYPE:
-          f = Encoder.decimalNumberEncoder(value['minimum'] || NUMBER_MIN_VALUE, value['decimalPlaces']);
+          const numberMinimum = value['minimum'] || NUMBER_MIN_VALUE;
+          const decimalPlaces = value['decimalPlaces'];
+          if (numberMinimum >= 0) { // Positive number
+            // TODO: why cant this specify a minimum?
+            f = Encoder.positiveDecimalNumberEncoder(decimalPlaces);
+          } else {
+            f = Encoder.decimalNumberEncoder(numberMinimum, decimalPlaces);
+          }
           break;
         default:
           f = defaultEncoder;
@@ -364,13 +367,6 @@ export class CredentialSchema extends Versioned {
             throw new Error(`Schema value for ${names[i]} expected integer but found ${value['minimum']}`);
           }
           break;
-        case this.POSITIVE_NUM_TYPE:
-          if (!isPositiveInteger(value['decimalPlaces'])) {
-            throw new Error(
-              `Schema value for ${names[i]} expected maximum decimal places as a positive integer but was ${value['decimalPlaces']}`
-            );
-          }
-          break;
         case this.NUM_TYPE:
           if (!Number.isInteger(value['minimum']) || !isPositiveInteger(value['decimalPlaces'])) {
             throw new Error(
@@ -405,23 +401,28 @@ export class CredentialSchema extends Versioned {
 
   static typeOfValue(value: object): ValueTypes {
     const typ = value['type'];
+    const minimum = value['minimum'];
     switch (typ) {
       case CredentialSchema.STR_TYPE:
         return { type: ValueType.Str };
       case CredentialSchema.STR_REV_TYPE:
         return { type: ValueType.RevStr, compress: value['compress'] };
-      case CredentialSchema.POSITIVE_INT_TYPE:
-        return { type: ValueType.PositiveInteger };
       case CredentialSchema.INT_TYPE:
-        return { type: ValueType.Integer, minimum: value['minimum'] };
-      case CredentialSchema.POSITIVE_NUM_TYPE:
-        return { type: ValueType.PositiveNumber, decimalPlaces: value['decimalPlaces'] };
+        if (minimum >= 0) {
+          return { type: ValueType.PositiveInteger };
+        } else {
+          return { type: ValueType.Integer, minimum };
+        }
       case CredentialSchema.NUM_TYPE:
-        return {
-          type: ValueType.Number,
-          minimum: value['minimum'],
-          decimalPlaces: value['decimalPlaces']
-        };
+        if (minimum >= 0) {
+          return { type: ValueType.PositiveNumber, decimalPlaces: value['decimalPlaces'] };
+        } else {
+          return {
+            type: ValueType.Number,
+            minimum,
+            decimalPlaces: value['decimalPlaces']
+          };
+        }
       default:
         throw new Error(`Unknown type ${typ}`);
     }

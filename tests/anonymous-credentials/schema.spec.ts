@@ -85,7 +85,7 @@ describe('CredentialBuilder Schema', () => {
       properties: {
         fname: { type: 'string' },
         score: { type: 'integer', minimum: -100 },
-        long: { type: 'positiveDecimalNumber' }
+        long: { type: 'number' }
       },
     };
     expect(() => new CredentialSchema(schema3)).toThrow();
@@ -95,7 +95,7 @@ describe('CredentialBuilder Schema', () => {
       properties: {
         fname: { type: 'string' },
         score: { type: 'integer', minimum: -100 },
-        long: { type: 'positiveDecimalNumber', minimum: -200 }
+        long: { type: 'number', minimum: -200 }
       },
     };
     expect(() => new CredentialSchema(schema3)).toThrow();
@@ -105,7 +105,7 @@ describe('CredentialBuilder Schema', () => {
       properties: {
         fname: { type: 'string' },
         score: { type: 'integer', minimum: -100 },
-        long: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+        long: { type: 'number', minimum: 0, decimalPlaces: 2 }
       }
     };
     const cs3 = new CredentialSchema(schema3);
@@ -114,7 +114,7 @@ describe('CredentialBuilder Schema', () => {
       properties: {
         fname: { type: 'string' },
         score: { type: 'integer', minimum: -100 },
-        long: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+        long: { type: 'number', minimum: 0, decimalPlaces: 2 }
       }
     });
   });
@@ -180,7 +180,7 @@ describe('CredentialBuilder Schema', () => {
       [
         { type: 'string' },
         { type: 'string' },
-        { type: 'positiveDecimalNumber', decimalPlaces: 2 },
+        { type: 'number', minimum: 0, decimalPlaces: 2 },
         { type: 'integer', minimum: -100 },
         { type: 'string' },
       ]
@@ -243,7 +243,7 @@ describe('CredentialBuilder Schema', () => {
         { type: 'string' },
         { type: 'string' },
         { type: 'string' },
-        { type: 'positiveInteger' },
+        { type: 'integer', minimum: 0 },
         { compress: false, type: 'stringReversible' },
         { type: 'string' },
         { type: 'string' },
@@ -286,9 +286,9 @@ describe('CredentialBuilder Schema', () => {
         fname: { type: 'string' },
         SSN: { type: 'stringReversible', compress: false },
         userId: { type: 'stringReversible', compress: true },
-        timeOfBirth: { type: 'positiveInteger' },
+        timeOfBirth: { type: 'integer', minimum: 0 },
         xyz: { type: 'integer', minimum: -10 },
-        BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
+        BMI: { type: 'number', minimum: 0, decimalPlaces: 2 },
         score: { type: 'number', decimalPlaces: 1, minimum: -100 }
       },
     };
@@ -391,8 +391,8 @@ describe('CredentialBuilder Schema', () => {
         { type: 'string' },
         { type: 'string' },
         { type: 'string' },
-        { type: 'positiveInteger' },
-        { type: 'positiveInteger' },
+        { type: 'integer', minimum: 0 },
+        { type: 'integer', minimum: 0 },
         { type: 'string' },
         { type: 'string' },
         { type: 'string' }
