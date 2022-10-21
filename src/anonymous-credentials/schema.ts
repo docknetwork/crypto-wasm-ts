@@ -433,8 +433,7 @@ export class CredentialSchema extends Versioned {
     }
   }
 
-  // TODO: proper typedef for root schema instead of any
-  static essential(): any {
+  static essential(): object {
     return {
       $schema: 'http://json-schema.org/draft-07/schema#',
       $metadata: {
