@@ -9,6 +9,7 @@ import {
   ParsedR1CSFile
 } from '../src';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
+import { BytearrayWrapper } from '../src/bytearray-wrapper';
 
 /**
  * Converts a UTF-8 Encoded string to a byte array
@@ -124,3 +125,12 @@ export function checkResult(result: VerifyResult) {
   expect(verified).toEqual(true);
 }
 
+export function writeByteArrayToFile(bytes: Uint8Array, relativePath: string) {
+  const p = `${path.resolve('./')}/tests/${relativePath}`;
+  fs.writeFileSync(p, bytes);
+}
+
+export function readByteArrayFromFile(relativePath: string): Uint8Array {
+  const p = `${path.resolve('./')}/tests/${relativePath}`;
+  return fs.readFileSync(p);
+}
