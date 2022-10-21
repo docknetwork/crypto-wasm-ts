@@ -65,7 +65,7 @@ export class Credential extends Versioned {
     return s;
   }
 
-  toJSON(): string {
+  prepareForJson(): object {
     const j = {};
     j['credentialVersion'] = this._version;
     j['credentialSchema'] = this.schema.toJSON();
@@ -80,7 +80,30 @@ export class Credential extends Versioned {
       type: 'Bls12381BBS+SignatureDock2022',
       proofValue: b58.encode(this.signature.bytes)
     };
-    return JSON.stringify(j);
+    return j;
+  }
+
+  prepareForJsonLd(): object {
+    let j = this.prepareForJson();
+    const jctx = this.schema.getJsonLdContext();
+    // TODO: Uncomment me. The correct context should be "something like" below. See comments over the commented function `getJsonLdContext` for details
+    // jctx['@context'][1]['proof'] = {
+    //   type: 'schema:Text',
+    //   proofValue: 'schema:Text',
+    // };
+    jctx['@context'][1]['proof'] = CredentialSchema.getDummyContextValue('proof');
+    jctx['@context'][1]['type'] = CredentialSchema.getDummyContextValue('type');
+    jctx['@context'][1]['proofValue'] = CredentialSchema.getDummyContextValue('proofValue');
+    j = { ...j, ...jctx };
+    return j;
+  }
+
+  toJSON(): string {
+    return JSON.stringify(this.prepareForJson());
+  }
+
+  toJSONWithJsonLdContext(): string {
+    return JSON.stringify(this.prepareForJsonLd());
   }
 
   static fromJSON(json: string): Credential {

@@ -14,7 +14,9 @@ export type ToPositiveIntFunc = (value: unknown) => number;
 /**
  * Encodes the input to a field element for signing with BBS+ in group G1.
  * Used when working with messages that are specified as JS objects. This encoder object will contain
- * the mapping from message name (key in JS object) to an encoding function
+ * the mapping from message name (key in JS object) to an encoding function.
+ *
+ * TODO: Support identity encoder for values that are already field elements.
  */
 export class Encoder {
   // Mapping from the message name to the encoding function

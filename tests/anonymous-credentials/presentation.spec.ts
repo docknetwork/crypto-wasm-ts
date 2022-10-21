@@ -10,7 +10,7 @@ import {
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MembershipWitness,
-  PositiveAccumulator, SaverChunkedCommitmentGens,
+  PositiveAccumulator, randomFieldElement, SaverChunkedCommitmentGens,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
   SaverEncryptionKeyUncompressed,
@@ -32,7 +32,7 @@ import {
   STATUS_STR,
   SUBJECT_STR, dockSaverEncryptionGensUncompressed
 } from '../../src/anonymous-credentials';
-import { checkResult, stringToBytes } from '../utils';
+import { areUint8ArraysEqual, checkResult, stringToBytes } from '../utils';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 import { getExampleSchema } from './utils';
 import { Presentation } from '../../src/anonymous-credentials/presentation';
@@ -470,12 +470,51 @@ describe('Presentation creation and verification', () => {
     });
     expect(pres1.spec.credentials[0].status).not.toBeDefined();
 
+    expect(pres1.context).not.toBeDefined();
+    expect(pres1.nonce).not.toBeDefined();
+
     checkResult(pres1.verify([pk1]));
 
     const presJson = pres1.toJSON();
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk1]));
     expect(presJson).toEqual(recreatedPres.toJSON());
+  });
+
+  it('from with context and nonce', () => {
+    const ctx = 'Test context: Someeee   vverrryyyyyy  longgggg   contexxxxttttt .............';
+    const nonce = randomFieldElement();
+
+    const builder1 = new PresentationBuilder();
+    expect(builder1.addCredential(credential1, pk1)).toEqual(0);
+    builder1.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
+
+    builder1.context = ctx;
+    let pres = builder1.finalize();
+    expect(pres.context).toEqual(ctx);
+    expect(pres.nonce).not.toBeDefined();
+    checkResult(pres.verify([pk1]));
+
+    const builder2 = new PresentationBuilder();
+    expect(builder2.addCredential(credential1, pk1)).toEqual(0);
+    builder2.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
+
+    builder2.context = ctx;
+    builder2.nonce = nonce;
+    pres = builder2.finalize();
+    expect(pres.context).toEqual(ctx);
+    expect(areUint8ArraysEqual(pres.nonce as Uint8Array, nonce)).toEqual(true);
+    checkResult(pres.verify([pk1]));
+
+    const builder3 = new PresentationBuilder();
+    expect(builder3.addCredential(credential1, pk1)).toEqual(0);
+    builder3.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
+
+    builder3.nonce = nonce;
+    pres = builder3.finalize();
+    expect(pres.context).not.toBeDefined();
+    expect(areUint8ArraysEqual(pres.nonce as Uint8Array, nonce)).toEqual(true);
+    checkResult(pres.verify([pk1]));
   });
 
   it('from a nested credential - `credential2`', () => {

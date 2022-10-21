@@ -5,12 +5,12 @@ import {
   CredentialSchema,
   MEM_CHECK_STR, REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  STATUS_STR,
   SUBJECT_STR
 } from '../../src/anonymous-credentials';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
 import { getExampleSchema } from './utils';
+import * as jsonld from 'jsonld';
 
 describe('CredentialBuilder signing and verification', () => {
   let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
@@ -292,5 +292,37 @@ describe('CredentialBuilder signing and verification', () => {
 
     checkResult(cred.verify(pk));
     checkJsonConvForCred(cred, pk);
+  })
+
+  it('json-ld validation', async () => {
+    const schema = getExampleSchema(8);
+    const credSchema = new CredentialSchema(schema);
+
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
+    builder.subject = {
+      fname: 'John',
+      lname: 'Smith',
+      sensitive: {
+        phone: '810-1234567',
+        email: 'john.smith@example.com',
+        SSN: '123-456789-0'
+      },
+      timeOfBirth: 1662010849619,
+      physical: {
+        height: 181.5,
+        weight: 210,
+        BMI: 23.25
+      }
+    };
+    const cred = builder.sign(sk);
+
+    const credWithCtx = cred.prepareForJsonLd();
+    let normalized = await jsonld.normalize(credWithCtx);
+    expect(normalized).not.toEqual("");
+
+    const credWithoutCtx = cred.prepareForJson();
+    normalized = await jsonld.normalize(credWithoutCtx);
+    expect(normalized).toEqual("");
   })
 });
