@@ -4,11 +4,12 @@ import {
   CompositeProofG1,
   MetaStatements,
   QuasiProofSpecG1,
+  SetupParam,
   Statement,
   Statements,
   WitnessEqualityMetaStatement
 } from '../composite-proof';
-import { BBSPlusPublicKeyG2, Encoder, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
 import { CredentialSchema, ValueType } from './schema';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
@@ -51,6 +52,7 @@ import {
   SaverVerifyingKeyUncompressed
 } from '../saver';
 import b58 from 'bs58';
+import { SetupParamsTracker } from './setup-params-tracker';
 
 export class Presentation extends Versioned {
   spec: PresentationSpecification;
@@ -78,8 +80,6 @@ export class Presentation extends Versioned {
     this.nonce = nonce;
   }
 
-  // TODO: This can be made more efficient (mostly saving serialization cost) by using `SetupParams`s. Repeated use of the
-  //  same param id can be detected and then finally `SetupParams`s can be created for them.
   /**
    *
    * @param publicKeys - Array of keys in the order of credentials in the presentation.
@@ -110,6 +110,8 @@ export class Presentation extends Versioned {
     const boundsAux: [number, object][] = [];
     const verEncAux: [number, object][] = [];
 
+    const setupParamsTrk = new SetupParamsTracker();
+
     for (let i = 0; i < this.spec.credentials.length; i++) {
       const presentedCred = this.spec.credentials[i];
       const presentedCredSchema = CredentialSchema.fromJSON(presentedCred.schema);
@@ -122,7 +124,12 @@ export class Presentation extends Versioned {
         sigParams = sigParams.adapt(numAttribs);
         maxAttribs = numAttribs;
       }
-      const statement = Statement.bbsSignature(sigParams.adapt(numAttribs), publicKeys[i], revealedEncoded, false);
+      const statement = Statement.bbsSignatureFromSetupParamRefs(
+        setupParamsTrk.add(SetupParam.bbsSignatureParamsG1(sigParams.adapt(numAttribs))),
+        setupParamsTrk.add(SetupParam.bbsSignaturePublicKeyG2(publicKeys[i])),
+        revealedEncoded,
+        false
+      );
       statements.add(statement);
       flattenedSchemas.push(flattenedSchema);
 
@@ -145,13 +152,27 @@ export class Presentation extends Versioned {
       if (pk === undefined) {
         throw new Error(`Accumulator public key wasn't provided for credential index ${i}`);
       }
+      if (!setupParamsTrk.hasAccumulatorParams()) {
+        setupParamsTrk.addAccumulatorParams();
+      }
       if (t === MEM_CHECK_STR) {
-        statement = Statement.accumulatorMembership(dockAccumulatorParams(), pk, dockAccumulatorMemProvingKey(), accum);
+        if (!setupParamsTrk.hasAccumulatorMemProvingKey()) {
+          setupParamsTrk.addAccumulatorMemProvingKey();
+        }
+        statement = Statement.accumulatorMembershipFromSetupParamRefs(
+          setupParamsTrk.accumParamsIdx,
+          setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(pk)),
+          setupParamsTrk.memPrkIdx,
+          accum
+        );
       } else {
-        statement = Statement.accumulatorNonMembership(
-          dockAccumulatorParams(),
-          pk,
-          dockAccumulatorNonMemProvingKey(),
+        if (!setupParamsTrk.hasAccumulatorNonMemProvingKey()) {
+          setupParamsTrk.addAccumulatorNonMemProvingKey();
+        }
+        statement = Statement.accumulatorNonMembershipFromSetupParamRefs(
+          setupParamsTrk.accumParamsIdx,
+          setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(pk)),
+          setupParamsTrk.nonMemPrkIdx,
           accum
         );
       }
@@ -171,21 +192,29 @@ export class Presentation extends Versioned {
       bounds[0].forEach((name, j) => {
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
-        let statement;
         const [min, max] = [bounds[1][j]['min'], bounds[1][j]['max']];
         const [transformedMin, transformedMax] = getTransformedMinMax(valTyp, min, max);
 
         const paramId = bounds[1][j]['paramId'];
         const param = predicateParams?.get(paramId);
         if (param instanceof LegoVerifyingKey) {
-          statement = Statement.boundCheckVerifierFromCompressedParams(transformedMin, transformedMax, param);
+          if (!setupParamsTrk.isTrackingParam(paramId)) {
+            setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkVerifyingKey(param));
+          }
         } else if (param instanceof LegoVerifyingKeyUncompressed) {
-          statement = Statement.boundCheckVerifier(transformedMin, transformedMax, param);
+          if (!setupParamsTrk.isTrackingParam(paramId)) {
+            setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkVerifyingKeyUncompressed(param));
+          }
         } else {
           throw new Error(
             `Predicate param id ${paramId} was expected to be a Legosnark verifying key but was ${param}`
           );
         }
+        const statement = Statement.boundCheckVerifierFromSetupParamRefs(
+          transformedMin,
+          transformedMax,
+          setupParamsTrk.indexForParam(paramId)
+        );
         const sIdx = statements.add(statement);
         const witnessEq = new WitnessEqualityMetaStatement();
         witnessEq.addWitnessRef(i, nameIdx);
@@ -226,11 +255,23 @@ export class Presentation extends Versioned {
           encKey instanceof SaverEncryptionKeyUncompressed &&
           snarkVk instanceof SaverVerifyingKeyUncompressed
         ) {
-          statement = Statement.saverVerifier(
-            dockSaverEncryptionGensUncompressed(),
-            commGens,
-            encKey,
-            snarkVk,
+          if (!setupParamsTrk.hasEncryptionGensUncompressed()) {
+            setupParamsTrk.addEncryptionGensUncompressed();
+          }
+          if (!setupParamsTrk.isTrackingParam(commGensId)) {
+            setupParamsTrk.addForParamId(commGensId, SetupParam.saverCommitmentGensUncompressed(commGens));
+          }
+          if (!setupParamsTrk.isTrackingParam(encKeyId)) {
+            setupParamsTrk.addForParamId(encKeyId, SetupParam.saverEncryptionKeyUncompressed(encKey));
+          }
+          if (!setupParamsTrk.isTrackingParam(snarkVkId)) {
+            setupParamsTrk.addForParamId(snarkVkId, SetupParam.saverVerifyingKeyUncompressed(snarkVk));
+          }
+          statement = Statement.saverVerifierFromSetupParamRefs(
+            setupParamsTrk.encGensIdx,
+            setupParamsTrk.indexForParam(commGensId),
+            setupParamsTrk.indexForParam(encKeyId),
+            setupParamsTrk.indexForParam(snarkVkId),
             chunkBitSize
           );
         } else if (
@@ -238,11 +279,23 @@ export class Presentation extends Versioned {
           encKey instanceof SaverEncryptionKey &&
           snarkVk instanceof SaverVerifyingKey
         ) {
-          statement = Statement.saverVerifierFromCompressedParams(
-            dockSaverEncryptionGens(),
-            commGens,
-            encKey,
-            snarkVk,
+          if (!setupParamsTrk.hasEncryptionGensCompressed()) {
+            setupParamsTrk.addEncryptionGensCompressed();
+          }
+          if (!setupParamsTrk.isTrackingParam(commGensId)) {
+            setupParamsTrk.addForParamId(commGensId, SetupParam.saverCommitmentGens(commGens));
+          }
+          if (!setupParamsTrk.isTrackingParam(encKeyId)) {
+            setupParamsTrk.addForParamId(encKeyId, SetupParam.saverEncryptionKey(encKey));
+          }
+          if (!setupParamsTrk.isTrackingParam(snarkVkId)) {
+            setupParamsTrk.addForParamId(snarkVkId, SetupParam.saverVerifyingKey(snarkVk));
+          }
+          statement = Statement.saverVerifierFromSetupParamRefs(
+            setupParamsTrk.encGensCompIdx,
+            setupParamsTrk.indexForParam(commGensId),
+            setupParamsTrk.indexForParam(encKeyId),
+            setupParamsTrk.indexForParam(snarkVkId),
             chunkBitSize
           );
         } else {
@@ -257,7 +310,7 @@ export class Presentation extends Versioned {
     });
 
     const ctx = buildContextForProof(this.version, this.spec, this.context);
-    const proofSpec = new QuasiProofSpecG1(statements, metaStatements, [], ctx);
+    const proofSpec = new QuasiProofSpecG1(statements, metaStatements, setupParamsTrk.setupParams, ctx);
     return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce);
   }
 

@@ -463,7 +463,9 @@ export class CredentialSchema extends Versioned {
     return credSchema;
   }
 
-  getJsonLdContext(): object {
+  // TODO: Revisit me. Following was an attempt to create more accurate JSON-LD context but pausing it now because
+  // its not an immediate priority. When fixed, this should replace the uncommented function with same name below
+  /*getJsonLdContext(): object {
     const txt = 'schema:Text';
     const num = 'schema:Number';
     const int = 'schema:Integer';
@@ -489,9 +491,7 @@ export class CredentialSchema extends Versioned {
 
     const flattened = this.flatten();
 
-    const seen = new Set<string>();
-    seen.add(SCHEMA_STR);
-    seen.add(CRED_VERSION_STR);
+    const innerMostNames = new Map<string, string>();
 
     for (const name of flattened[0]) {
       if (
@@ -513,26 +513,28 @@ export class CredentialSchema extends Versioned {
         }
         current = current[nameParts[j]];
       }
+      const innerMostName = nameParts[nameParts.length - 1];
       switch (this.typeOfName(name, flattened).type) {
         case ValueType.Str:
-          current[nameParts[nameParts.length - 1]] = txt;
+          current[innerMostName] = txt;
           break;
         case ValueType.RevStr:
-          current[nameParts[nameParts.length - 1]] = txt;
+          current[innerMostName] = txt;
           break;
         case ValueType.PositiveInteger:
-          current[nameParts[nameParts.length - 1]] = int;
+          current[innerMostName] = int;
           break;
         case ValueType.Integer:
-          current[nameParts[nameParts.length - 1]] = int;
+          current[innerMostName] = int;
           break;
         case ValueType.PositiveNumber:
-          current[nameParts[nameParts.length - 1]] = num;
+          current[innerMostName] = num;
           break;
         case ValueType.Number:
-          current[nameParts[nameParts.length - 1]] = num;
+          current[innerMostName] = num;
           break;
       }
+      innerMostNames.set(innerMostName, current[innerMostName]);
     }
 
     return {
@@ -543,6 +545,48 @@ export class CredentialSchema extends Versioned {
         ctx
       ]
     };
+  }*/
+
+  getJsonLdContext(): object {
+    const terms = new Set<string>();
+    terms.add(SCHEMA_STR);
+    terms.add(CRED_VERSION_STR);
+
+    let ctx = {
+      dk: 'https://ld.dock.io/credentials#'
+    };
+
+    if (this.hasStatus()) {
+      terms.add(REGISTRY_ID_STR);
+      terms.add(REV_CHECK_STR);
+      terms.add(REV_ID_STR);
+    }
+
+    const flattened = this.flatten();
+
+    for (const name of flattened[0]) {
+      const nameParts = name.split('.');
+      for (let j = 0; j < nameParts.length; j++) {
+        terms.add(nameParts[j]);
+      }
+    }
+
+    for (const term of terms) {
+      ctx[term] = CredentialSchema.getDummyContextValue(term);
+    }
+
+    return {
+      '@context': [
+        {
+          '@version': 1.1
+        },
+        ctx
+      ]
+    };
+  }
+
+  static getDummyContextValue(term: string): string {
+    return `dk:${term}`;
   }
 
   static flattenJSONSchema(node: any) {

@@ -17,7 +17,12 @@ import {
   SUBJECT_STR
 } from './types-and-consts';
 import { Credential } from './credential';
+import { flatten } from 'flat';
+import { areArraysEqual } from '../../tests/utils';
 
+/**
+ * Create a credential
+ */
 export class CredentialBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
@@ -89,9 +94,20 @@ export class CredentialBuilder extends Versioned {
     return v;
   }
 
+  /**
+   * Serializes and signs creating a credential.
+   * Expects the credential to have the same fields as schema. This is intentional to always communicate to the
+   * verifier the full structure of the credential.
+   * For future: If this needs to be relaxed (by adding a `strict = false` or something) then the resulting credential
+   * should have the updated schema before signing and the caller should be notified (console.warn or something)
+   * @param secretKey
+   */
   sign(secretKey: BBSPlusSecretKey): Credential {
     const cred = this.serializeForSigning();
     const schema = this._schema as CredentialSchema;
+    if (!CredentialBuilder.hasAllFieldsFromSchema(cred, schema)) {
+      throw new Error('Credential does not have all the fields from schema');
+    }
     const signed = signMessageObject(cred, secretKey, SIGNATURE_PARAMS_LABEL_BYTES, schema.encoder);
     this._encodedAttributes = signed.encodedMessages;
     this._sig = signed.signature;
@@ -105,8 +121,6 @@ export class CredentialBuilder extends Versioned {
       this._credStatus
     );
   }
-
-  // TODO: Set schema and validate that no reserved names are used, subject, status is as per schema, revocation check is either membership or non-membership, etc
 
   serializeForSigning() {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
@@ -122,5 +136,9 @@ export class CredentialBuilder extends Versioned {
       s[STATUS_STR] = this._credStatus;
     }
     return s;
+  }
+
+  static hasAllFieldsFromSchema(serializedCred, schema: CredentialSchema): boolean {
+    return areArraysEqual(schema.flatten()[0], Object.keys(flatten(serializedCred) as object).sort());
   }
 }

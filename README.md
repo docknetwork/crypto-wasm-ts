@@ -35,10 +35,13 @@ the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
         - [Pseudonyms](#pseudonyms)
         - [Social KYC](#social-kyc)
     - [Verifiable encryption using SAVER](#verifiable-encryption-using-saver)
+      - [Encoding for verifiable encryption](#encoding-for-verifiable-encryption)
     - [Bound check using LegoGroth16](#bound-check-using-legogroth16)
+      - [Encoding for negative or decimal numbers](#encoding-for-negative-or-decimal-numbers)
     - [Optimization](#optimization)
     - [Working with messages as JS objects](#working-with-messages-as-js-objects)
     - [Writing predicates in Circom](#writing-predicates-in-circom)
+    - [Anonymous credentials](#anonymous-credentials)
 
 ## Getting started
 
@@ -896,11 +899,14 @@ while making decryption slower (or faster). Since encryption and proving are don
 is chosen for this parameter. Note that once parameters have been created with a certain value of `chunkBitSize`, the same value
 should be used while encryption, decryption, proving and verification (as shown below). 
 
-For signers (issuers of credentials), it's important to encode attributes that need to be verifiably encoded using a reversible 
+#### Encoding for verifiable encryption
+
+For signers (issuers of credentials), it's important to encode attributes that need to be verifiably encrypted using a reversible 
 encoding as the decryption might happen much later than the proof verification and thus the decryptor should be able to independently 
 recover the actual attributes. This situation is different from selective disclosure where the actual attributes are given to the 
 verifier who can then encode the attributes before verifying the proof. One such pair of functions are `Signature.reversibleEncodeStringForSigning`
-and `Signature.reversibleDecodeStringForSigning` and you can see its use in the above-mentioned test.  
+and `Signature.reversibleDecodeStringForSigning` and you can see its use in the above-mentioned test. Theese conversions are abstracted in this [Encoders](./src/bbs-plus/encoder.ts) class and you can see the usage 
+in [these tests](tests/composite-proofs/msg-js-obj/saver.spec.ts) of the  `Encoder` initialized [here](tests/composite-proofs/msg-js-obj/data-and-encoder.ts). 
 
 For creating the proof of knowledge of the BBS+ signature and verifiably encrypting an attribute, the prover creates the following 2 statements.
 
@@ -1042,7 +1048,10 @@ A complete example as a test is [here](./tests/composite-proofs/bound-check.spec
 
 Allow a verifier to check that some attribute of the credential satisfies given bounds `min` and `max`, i.e. `min <= message <= max` 
 without learning the attribute itself. Both `min` and `max` are positive integers. This is implemented using LegoGroth16, a protocol described in the SNARK 
-framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2.  
+framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2.
+
+#### Encoding for negative or decimal numbers
+
 To work with negative integers or decimal numbers, they must be converted to positive integers first and this conversion must happen before these are signed. 
 When working with negative integers, add the absolute value of the smallest (negative) integer to all values including bounds. Eg, if the smallest negative 
 number a value can be is -300, the signer should sign `value + 300` to ensure that values are always positive. During the bound check, say the verifier has to 
@@ -1050,7 +1059,7 @@ check if the value is between -200 and 50, the verifier should ask the prover to
 numbers, convert them to integers by multiplying with a number to make it integer, like if a decimal value can have maximum of 3 decimal places, they should be 
 multiplied by 1000.  The [test](./tests/composite-proofs/bound-check.spec.ts) mentioned above shows these scenarios.  
 The conversions defined in the above tests are abstracted in this [Encoders](./src/bbs-plus/encoder.ts) class and you can see the usage 
-in [these tests](tests/composite-proofs/msg-js-obj/bound-check.spec.ts). 
+in [these tests](tests/composite-proofs/msg-js-obj/bound-check.spec.ts) of the  `Encoder` initialized [here](tests/composite-proofs/msg-js-obj/data-and-encoder.ts).  
 
 
 For this, the verifier needs to first create the setup parameters which he then shares with the prover. Note that the 
@@ -1290,3 +1299,7 @@ See some of the following tests for Circom usage:
 7. [Certain attribute is the preimage of an MiMC hash](./tests/composite-proofs/msg-js-obj/r1cs/mimc-hash.spec.ts)
 
 The Circom programs and corresponding R1CS and WASM files for the tests are [here](./tests/circom).
+
+### Anonymous credentials
+
+The composite proof system is used to implement anonymous credentials. See [here](src/anonymous-credentials/) for details.
