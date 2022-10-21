@@ -171,6 +171,7 @@ const NUMBER_MIN_VALUE = Number.MIN_VALUE;
 
 export interface SchemaType {
   properties: object;
+  type: string;
 }
 
 export enum ValueType {
@@ -433,12 +434,8 @@ export class CredentialSchema extends Versioned {
     }
   }
 
-  static essential(): object {
+  static essential(): SchemaType {
     return {
-      $schema: 'http://json-schema.org/draft-07/schema#',
-      $metadata: {
-        version: 1
-      },
       type: 'object',
       properties: {
         [CRED_VERSION_STR]: { type: 'string' },
