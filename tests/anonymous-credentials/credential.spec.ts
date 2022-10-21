@@ -331,7 +331,7 @@ describe('CredentialBuilder signing and verification', () => {
     expect(normalized).not.toEqual("");
 
     const credWithoutCtx = cred.prepareForJson();
-    normalized = await jsonld.normalize(credWithoutCtx);
+    normalized = await jsonld.normalize(credWithoutCtx, {safe: false});
     expect(normalized).toEqual("");
   })
 });
