@@ -375,24 +375,23 @@ describe('CredentialBuilder Schema', () => {
     const ctx9 = cs9.getJsonLdContext();
     expect(ctx9['@context'][0]).toEqual({ '@version': 1.1 });
     expect(ctx9['@context'][1]).toEqual({
-      schema: "http://schema.org/",
-      [CRED_VERSION_STR]: 'schema:Text',
-      [SCHEMA_STR]: 'schema:Text',
-      [SUBJECT_STR]: {
-        fname: 'schema:Text',
-        lname: 'schema:Text',
-        secret: 'schema:Text',
-        userId: 'schema:Text',
-        SSN: 'schema:Text',
-        email: 'schema:Text',
-        country: 'schema:Text',
-        city: 'schema:Text',
-        BMI: 'schema:Number',
-        height: 'schema:Number',
-        weight: 'schema:Number',
-        timeOfBirth: 'schema:Integer',
-        score: 'schema:Number'
-      }
+      dk: 'https://ld.dock.io/credentials#',
+      credentialSchema: 'dk:credentialSchema',
+      credentialVersion: 'dk:credentialVersion',
+      credentialSubject: 'dk:credentialSubject',
+      BMI: 'dk:BMI',
+      SSN: 'dk:SSN',
+      city: 'dk:city',
+      country: 'dk:country',
+      email: 'dk:email',
+      fname: 'dk:fname',
+      height: 'dk:height',
+      lname: 'dk:lname',
+      score: 'dk:score',
+      secret: 'dk:secret',
+      timeOfBirth: 'dk:timeOfBirth',
+      userId: 'dk:userId',
+      weight: 'dk:weight'
     });
 
     const schema5 = getExampleSchema(5);
@@ -400,85 +399,56 @@ describe('CredentialBuilder Schema', () => {
     const ctx5 = cs5.getJsonLdContext();
     expect(ctx5['@context'][0]).toEqual({ '@version': 1.1 });
     expect(ctx5['@context'][1]).toEqual({
-      schema: "http://schema.org/",
-      [CRED_VERSION_STR]: 'schema:Text',
-      [SCHEMA_STR]: 'schema:Text',
-      [STATUS_STR]: {
-        [REGISTRY_ID_STR]: 'schema:Text',
-        [REV_CHECK_STR]: 'schema:Text',
-        [REV_ID_STR]: 'schema:Text',
-      },
-      [SUBJECT_STR]: {
-        fname: 'schema:Text',
-        lname: 'schema:Text',
-        sensitive: {
-          SSN: 'schema:Text',
-          email: 'schema:Text',
-          phone: 'schema:Text',
-          very: {
-            secret: 'schema:Text',
-          }
-        },
-        lessSensitive: {
-          department: {
-            name: 'schema:Text',
-            location: {
-              name: 'schema:Text',
-              geo: {
-                lat: 'schema:Number',
-                long: 'schema:Number',
-              }
-            }
-          },
-          location: {
-            country: 'schema:Text',
-            city: 'schema:Text',
-          }
-        },
-        rank: 'schema:Integer'
-      }
+      dk: 'https://ld.dock.io/credentials#',
+      credentialSchema: 'dk:credentialSchema',
+      credentialVersion: 'dk:credentialVersion',
+      '$registryId': 'dk:$registryId',
+      '$revocationCheck': 'dk:$revocationCheck',
+      '$revocationId': 'dk:$revocationId',
+      credentialStatus: 'dk:credentialStatus',
+      credentialSubject: 'dk:credentialSubject',
+      fname: 'dk:fname',
+      lessSensitive: 'dk:lessSensitive',
+      department: 'dk:department',
+      location: 'dk:location',
+      geo: 'dk:geo',
+      lat: 'dk:lat',
+      long: 'dk:long',
+      name: 'dk:name',
+      city: 'dk:city',
+      country: 'dk:country',
+      lname: 'dk:lname',
+      rank: 'dk:rank',
+      sensitive: 'dk:sensitive',
+      SSN: 'dk:SSN',
+      email: 'dk:email',
+      phone: 'dk:phone',
+      very: 'dk:very',
+      secret: 'dk:secret'
     });
 
     const schema7 = getExampleSchema(7);
     const cs7 = new CredentialSchema(schema7);
     const ctx7 = cs7.getJsonLdContext();
     expect(ctx7['@context'][0]).toEqual({ '@version': 1.1 });
-    expect(ctx7['@context'][1].issuanceDate).toEqual('schema:Integer');
-    expect(ctx7['@context'][1].expirationDate).toEqual('schema:Integer');
-    expect(ctx7['@context'][1].issuer).toEqual({
-      desc: 'schema:Text',
-      logo: 'schema:Text',
-      name: 'schema:Text'
-    });
-    expect(ctx7['@context'][1].credentialSubject['0']).toEqual({
-      name: 'schema:Text',
-      location: {
-        name: 'schema:Text',
-        geo: {
-          lat: 'schema:Number',
-          long: 'schema:Number',
-        }
-      }
-    });
-    expect(ctx7['@context'][1].credentialSubject['1']).toEqual({
-      name: 'schema:Text',
-      location: {
-        name: 'schema:Text',
-        geo: {
-          lat: 'schema:Number',
-          long: 'schema:Number',
-        }
-      }
-    });
-    expect(ctx7['@context'][1].credentialSubject['2']).toEqual({
-      name: 'schema:Text',
-      location: {
-        name: 'schema:Text',
-        geo: {
-          lat: 'schema:Number',
-          long: 'schema:Number',
-        }
-      }
+    expect(ctx7['@context'][1]).toEqual({
+      '0': 'dk:0',
+      '1': 'dk:1',
+      '2': 'dk:2',
+      dk: 'https://ld.dock.io/credentials#',
+      credentialSchema: 'dk:credentialSchema',
+      credentialVersion: 'dk:credentialVersion',
+      credentialSubject: 'dk:credentialSubject',
+      location: 'dk:location',
+      geo: 'dk:geo',
+      lat: 'dk:lat',
+      long: 'dk:long',
+      name: 'dk:name',
+      expirationDate: 'dk:expirationDate',
+      issuanceDate: 'dk:issuanceDate',
+      issuer: 'dk:issuer',
+      desc: 'dk:desc',
+      logo: 'dk:logo'
     });
   });
 });

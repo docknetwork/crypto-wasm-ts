@@ -1,4 +1,4 @@
-import { AttributeEquality, REGISTRY_ID_STR, REV_CHECK_STR, StringOrObject } from './types-and-consts';
+import { AttributeEquality, REGISTRY_ID_STR, REV_CHECK_STR } from './types-and-consts';
 import b58 from 'bs58';
 
 export interface IPresentedStatus {

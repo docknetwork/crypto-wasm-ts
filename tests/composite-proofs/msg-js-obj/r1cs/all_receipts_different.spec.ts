@@ -103,8 +103,9 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
   });
 
   it('signers signs attributes', () => {
-    // Message count shouldn't matter as `label` is known
-    let params = SignatureParamsG1.generate(1, label);
+    const numAttrs = Object.keys(receiptAttributesStruct).length;
+    // Issuing multiple credentials with the same number of attributes so create sig. params only once for faster execution
+    let params = SignatureParamsG1.generate(numAttrs, label);
     const keypair = KeypairG2.generate(params);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
@@ -117,8 +118,8 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
         amount: minAmount + Math.ceil(Math.random() * 100),
         otherDetails: Math.random().toString(36).slice(2, 20) // https://stackoverflow.com/a/38622545
       });
-      signed.push(signMessageObject(receiptsAttributes[i], sk, label, encoder));
-      checkResult(verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, label, encoder));
+      signed.push(signMessageObject(receiptsAttributes[i], sk, params, encoder));
+      checkResult(verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, params, encoder));
     }
   });
 

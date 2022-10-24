@@ -29,18 +29,7 @@ import {
   SUBJECT_STR
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
-import {
-  buildContextForProof,
-  createWitEq,
-  deepClone,
-  dockAccumulatorMemProvingKey,
-  dockAccumulatorNonMemProvingKey,
-  dockAccumulatorParams,
-  dockSaverEncryptionGens,
-  dockSaverEncryptionGensUncompressed,
-  flattenTill2ndLastKey,
-  getTransformedMinMax
-} from './util';
+import { buildContextForProof, createWitEq, deepClone, flattenTill2ndLastKey, getTransformedMinMax } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import {
   SaverChunkedCommitmentGens,

@@ -1,5 +1,5 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../../utils';
+import { checkResult, getBoundCheckSnarkKeys, readByteArrayFromFile, stringToBytes } from '../../utils';
 import {
   BoundCheckSnarkSetup,
   CompositeProofG1,
@@ -10,6 +10,8 @@ import {
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   KeypairG2,
+  LegoProvingKeyUncompressed,
+  LegoVerifyingKeyUncompressed,
   MetaStatements,
   ProofSpecG1,
   SetupParam,
@@ -32,6 +34,8 @@ import {
   GlobalEncoder
 } from './data-and-encoder';
 import { checkMapsEqual } from './index';
+
+const loadSnarkSetupFromFiles = true;
 
 describe('Range proof using LegoGroth16', () => {
   beforeAll(async () => {
@@ -80,9 +84,7 @@ describe('Range proof using LegoGroth16', () => {
     checkResult(verifyMessageObject(attributes3, signed3.signature, pk3, label3, GlobalEncoder));
 
     // Verifier creates SNARK proving and verification key
-    const pk = BoundCheckSnarkSetup();
-    const snarkProvingKey = pk.decompress();
-    const snarkVerifyingKey = pk.getVerifyingKeyUncompressed();
+    const [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
 
     // The lower and upper bounds of attributes involved in the bound check
     const timeMin = 1662010819619;
