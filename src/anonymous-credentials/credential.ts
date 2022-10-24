@@ -7,7 +7,7 @@ import {
   STATUS_STR,
   SUBJECT_STR
 } from './types-and-consts';
-import { BBSPlusPublicKeyG2, SignatureG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { verifyMessageObject } from '../sign-verify-js-objs';
 import b58 from 'bs58';
@@ -36,9 +36,15 @@ export class Credential extends Versioned {
     this.credentialStatus = credStatus;
   }
 
-  verify(publicKey: BBSPlusPublicKeyG2): VerifyResult {
+  verify(publicKey: BBSPlusPublicKeyG2, signatureParams?: SignatureParamsG1): VerifyResult {
     const cred = this.serializeForSigning();
-    return verifyMessageObject(cred, this.signature, publicKey, SIGNATURE_PARAMS_LABEL_BYTES, this.schema.encoder);
+    return verifyMessageObject(
+      cred,
+      this.signature,
+      publicKey,
+      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      this.schema.encoder
+    );
   }
 
   getTopLevelField(name: string): unknown {

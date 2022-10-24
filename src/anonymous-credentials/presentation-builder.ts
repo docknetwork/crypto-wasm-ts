@@ -1,6 +1,6 @@
 import { Versioned } from './versioned';
 import { Credential } from './credential';
-import { BBSPlusPublicKeyG2, Encoder, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
 import {
   CompositeProofG1,
   MetaStatements,
@@ -37,16 +37,7 @@ import {
 } from './presentation-specification';
 import { Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
-import {
-  buildContextForProof,
-  createWitEq,
-  dockAccumulatorMemProvingKey,
-  dockAccumulatorNonMemProvingKey,
-  dockAccumulatorParams,
-  dockSaverEncryptionGens,
-  dockSaverEncryptionGensUncompressed,
-  getTransformedMinMax
-} from './util';
+import { buildContextForProof, createWitEq, getTransformedMinMax } from './util';
 import {
   SaverChunkedCommitmentGens,
   SaverChunkedCommitmentGensUncompressed,

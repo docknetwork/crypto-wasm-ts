@@ -4,7 +4,6 @@ import {
   AccumulatorSecretKey,
   BBSPlusPublicKeyG2,
   BBSPlusSecretKey,
-  BoundCheckSnarkSetup,
   IAccumulatorState,
   KeypairG2,
   LegoProvingKeyUncompressed,
@@ -14,7 +13,7 @@ import {
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
   SaverEncryptionKeyUncompressed,
-  SaverProvingKeyUncompressed,
+  SaverProvingKeyUncompressed, SaverSecretKey,
   SaverVerifyingKeyUncompressed,
   SignatureParamsG1
 } from '../../src';
@@ -32,7 +31,13 @@ import {
   STATUS_STR,
   SUBJECT_STR, dockSaverEncryptionGensUncompressed
 } from '../../src/anonymous-credentials';
-import { areUint8ArraysEqual, checkResult, readByteArrayFromFile, stringToBytes, writeByteArrayToFile } from '../utils';
+import {
+  areUint8ArraysEqual,
+  checkResult,
+  getBoundCheckSnarkKeys,
+  readByteArrayFromFile,
+  stringToBytes
+} from '../utils';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 import { getExampleSchema } from './utils';
 import { Presentation } from '../../src/anonymous-credentials/presentation';
@@ -60,6 +65,7 @@ async function prefillAccumulator(
   return members;
 }
 
+// Setting it to false will make the test run the SNARK setups making tests quite slow
 const loadSnarkSetupFromFiles = true;
 
 describe('Presentation creation and verification', () => {
@@ -95,27 +101,27 @@ describe('Presentation creation and verification', () => {
 
   function setupBoundCheck() {
     if (boundCheckProvingKey === undefined) {
-      if (loadSnarkSetupFromFiles === true) {
-        boundCheckProvingKey = new LegoProvingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-proving-key-uncompressed.bin'));
-        boundCheckVerifyingKey = new LegoVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-verifying-key-uncompressed.bin'));
-      } else {
-        const pk = BoundCheckSnarkSetup();
-        boundCheckProvingKey = pk.decompress();
-        boundCheckVerifyingKey = pk.getVerifyingKeyUncompressed();
-      }
+      [boundCheckProvingKey, boundCheckVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
     }
   }
 
-  // TODO: Allow loading snark setup from file similar to bound check.
   function setupSaver() {
     if (saverProvingKey === undefined) {
-      const encGens = dockSaverEncryptionGens();
-      const [saverSnarkPk, saverSec, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
-      saverSk = saverSec;
-      saverProvingKey = saverSnarkPk.decompress();
-      saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
-      saverEk = encryptionKey.decompress();
-      saverDk = decryptionKey.decompress();
+      if (loadSnarkSetupFromFiles) {
+        saverSk = new SaverSecretKey(readByteArrayFromFile('snark-setups/saver-secret-key-16.bin'));
+        saverProvingKey = new SaverProvingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin'));
+        saverVerifyingKey = new SaverVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin'));
+        saverEk = new SaverEncryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin'));
+        saverDk = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin'));
+      } else {
+        const encGens = dockSaverEncryptionGens();
+        const [saverSnarkPk, saverSec, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
+        saverSk = saverSec;
+        saverProvingKey = saverSnarkPk.decompress();
+        saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
+        saverEk = encryptionKey.decompress();
+        saverDk = decryptionKey.decompress();
+      }
     }
   }
 
@@ -762,7 +768,7 @@ describe('Presentation creation and verification', () => {
 
   it('from credentials and proving bounds on attributes', () => {
     setupBoundCheck();
-
+    
     const pkId = 'random';
 
     // ------------------- Presentation with 1 credential -----------------------------------------

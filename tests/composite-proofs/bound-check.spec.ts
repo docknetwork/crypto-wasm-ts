@@ -19,7 +19,13 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
-import { checkResult, getRevealedUnrevealed, stringToBytes } from '../utils';
+import {
+  checkResult,
+  getRevealedUnrevealed,
+  stringToBytes,
+  readByteArrayFromFile,
+  getBoundCheckSnarkKeys
+} from '../utils';
 
 describe('Bound check of signed messages', () => {
   const messageCount = 5;
@@ -48,10 +54,11 @@ describe('Bound check of signed messages', () => {
     await initializeWasm();
   });
 
+  // Setting it to false will make the test run the SNARK setups making tests quite slow
+  const loadSnarkSetupFromFiles = true;
+  
   it('do verifier setup', () => {
-    const pk = BoundCheckSnarkSetup();
-    snarkProvingKey = pk.decompress();
-    snarkVerifyingKey = pk.getVerifyingKeyUncompressed();
+    [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
   });
 
   it('do signers setup', () => {
