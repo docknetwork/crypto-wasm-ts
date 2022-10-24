@@ -1,6 +1,5 @@
-import { BBSPlusPublicKeyG2, BBSPlusSecretKey, SignatureG1 } from '../bbs-plus';
-import { signMessageObject, verifyMessageObject } from '../sign-verify-js-objs';
-import { VerifyResult } from '@docknetwork/crypto-wasm';
+import { BBSPlusSecretKey, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
+import { signMessageObject } from '../sign-verify-js-objs';
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
@@ -98,17 +97,26 @@ export class CredentialBuilder extends Versioned {
    * Serializes and signs creating a credential.
    * Expects the credential to have the same fields as schema. This is intentional to always communicate to the
    * verifier the full structure of the credential.
+   *
    * For future: If this needs to be relaxed (by adding a `strict = false` or something) then the resulting credential
    * should have the updated schema before signing and the caller should be notified (console.warn or something)
+   *
    * @param secretKey
+   * @param signatureParams - This makes bulk issuance of credentials with same number of attributes faster because the
+   * signature params dont have to be generated.
    */
-  sign(secretKey: BBSPlusSecretKey): Credential {
+  sign(secretKey: BBSPlusSecretKey, signatureParams?: SignatureParamsG1): Credential {
     const cred = this.serializeForSigning();
     const schema = this._schema as CredentialSchema;
     if (!CredentialBuilder.hasAllFieldsFromSchema(cred, schema)) {
       throw new Error('Credential does not have all the fields from schema');
     }
-    const signed = signMessageObject(cred, secretKey, SIGNATURE_PARAMS_LABEL_BYTES, schema.encoder);
+    const signed = signMessageObject(
+      cred,
+      secretKey,
+      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      schema.encoder
+    );
     this._encodedAttributes = signed.encodedMessages;
     this._sig = signed.signature;
     return new Credential(

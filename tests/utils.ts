@@ -2,6 +2,7 @@ import * as r1csf from 'r1csfile';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  BoundCheckSnarkSetup,
   LegoProvingKey,
   LegoProvingKeyUncompressed,
   LegoVerifyingKey,
@@ -9,7 +10,6 @@ import {
   ParsedR1CSFile
 } from '../src';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
-import { BytearrayWrapper } from '../src/bytearray-wrapper';
 
 /**
  * Converts a UTF-8 Encoded string to a byte array
@@ -125,12 +125,43 @@ export function checkResult(result: VerifyResult) {
   expect(verified).toEqual(true);
 }
 
+/**
+ *
+ * @param relativePath - Path relative to tests folder
+ */
+function relPathToAbsPath(relativePath: string): string {
+  let p = relativePath;
+  if (relativePath.startsWith('/')) {
+    p = p.slice(1);
+  }
+  return `${path.resolve('./')}/tests/${p}`;
+}
+/**
+ *
+ * @param bytes
+ * @param relativePath - Path relative to `tests` folder
+ */
 export function writeByteArrayToFile(bytes: Uint8Array, relativePath: string) {
-  const p = `${path.resolve('./')}/tests/${relativePath}`;
-  fs.writeFileSync(p, bytes);
+  fs.writeFileSync(relPathToAbsPath(relativePath), bytes);
 }
 
+/**
+ *
+ * @param relativePath - Path relative to tests folder
+ */
 export function readByteArrayFromFile(relativePath: string): Uint8Array {
-  const p = `${path.resolve('./')}/tests/${relativePath}`;
-  return fs.readFileSync(p);
+  return fs.readFileSync(relPathToAbsPath(relativePath));
+}
+
+export function getBoundCheckSnarkKeys(loadSnarkSetupFromFiles: boolean): [LegoProvingKeyUncompressed, LegoVerifyingKeyUncompressed] {
+  let snarkProvingKey: LegoProvingKeyUncompressed, snarkVerifyingKey: LegoVerifyingKeyUncompressed;
+  if (loadSnarkSetupFromFiles) {
+    snarkProvingKey = new LegoProvingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-proving-key-uncompressed.bin'));
+    snarkVerifyingKey = new LegoVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-verifying-key-uncompressed.bin'));
+  } else {
+    const pk = BoundCheckSnarkSetup();
+    snarkProvingKey = pk.decompress();
+    snarkVerifyingKey = pk.getVerifyingKeyUncompressed();
+  }
+  return [snarkProvingKey, snarkVerifyingKey];
 }

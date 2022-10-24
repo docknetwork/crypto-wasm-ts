@@ -1,5 +1,5 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../../utils';
+import { checkResult, getBoundCheckSnarkKeys, readByteArrayFromFile, stringToBytes } from '../../utils';
 import {
   BoundCheckSnarkSetup,
   CompositeProofG1,
@@ -7,12 +7,17 @@ import {
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  KeypairG2,
+  KeypairG2, LegoProvingKeyUncompressed, LegoVerifyingKeyUncompressed,
   MetaStatements,
   QuasiProofSpecG1,
   SaverChunkedCommitmentGens,
+  SaverDecryptionKeyUncompressed,
   SaverDecryptor,
   SaverEncryptionGens,
+  SaverEncryptionKeyUncompressed,
+  SaverProvingKeyUncompressed,
+  SaverSecretKey,
+  SaverVerifyingKeyUncompressed,
   SignatureG1,
   SignatureParamsG1,
   signMessageObject,
@@ -32,6 +37,9 @@ describe('Verifiable encryption using SAVER', () => {
     await initializeWasm();
   });
 
+  // Setting it to false will make the test run the SNARK setups making tests quite slow
+  const loadSnarkSetupFromFiles = true;
+
   it('signing and proof of knowledge of signature, verifiable encryption and range proof', () => {
     // This test check in addition to proof of knowledge of signature, one of the attribute is verifiably encrypted for a
     // 3rd-party and a proof that an attribute satisfies bounds (range proof) can also be created.
@@ -47,22 +55,36 @@ describe('Verifiable encryption using SAVER', () => {
     checkResult(verifyMessageObject(attributes1, signed.signature, pk, label, GlobalEncoder));
 
     // Setup for decryptor
+    let saverEncGens, saverSk, saverProvingKey, saverVerifyingKey, saverEk, saverDk;
     const chunkBitSize = 16;
-    const encGens = SaverEncryptionGens.generate();
-    // `chunkBitSize` is optional, it will default to reasonable good value.
-    const [saverSnarkPk, saverSk, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
-    const saverEncGens = encGens.decompress();
-    const saverProvingKey = saverSnarkPk.decompress();
-    const saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
-    const saverEk = encryptionKey.decompress();
-    const saverDk = decryptionKey.decompress();
-
-    console.info('Saver setup done');
+    if (loadSnarkSetupFromFiles && (chunkBitSize === 16)) {
+      saverSk = new SaverSecretKey(readByteArrayFromFile('snark-setups/saver-secret-key-16.bin'));
+      saverEncGens = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-gens-16-uncompressed.bin'));
+      saverProvingKey = new SaverProvingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin'));
+      saverVerifyingKey = new SaverVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin'));
+      saverEk = new SaverEncryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin'));
+      saverDk = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin'));
+    } else {
+      const encGens = SaverEncryptionGens.generate();
+      // `chunkBitSize` is optional, it will default to reasonable good value.
+      let [saverSnarkPk, saverSk, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
+      saverEncGens = encGens.decompress();
+      saverProvingKey = saverSnarkPk.decompress();
+      saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
+      saverEk = encryptionKey.decompress();
+      saverDk = decryptionKey.decompress();
+      console.info('Saver setup done');
+    }
 
     // Verifier creates SNARK proving and verification key
-    const spk = BoundCheckSnarkSetup();
-    const snarkProvingKey = spk.decompress();
-    const snarkVerifyingKey = spk.getVerifyingKeyUncompressed();
+    let boundCheckProvingKey, boundCheckVerifyingKey;
+    if (loadSnarkSetupFromFiles) {
+      boundCheckProvingKey = new LegoProvingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-proving-key-uncompressed.bin'));
+      boundCheckVerifyingKey = new LegoVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-verifying-key-uncompressed.bin'));
+    } else {
+      [boundCheckProvingKey, boundCheckVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
+    }
+
 
     console.info('Bound check setup done');
 
@@ -95,7 +117,7 @@ describe('Verifiable encryption using SAVER', () => {
 
     const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
     const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, saverProvingKey, chunkBitSize);
-    const statement3 = Statement.boundCheckProver(timeMin, timeMax, snarkProvingKey);
+    const statement3 = Statement.boundCheckProver(timeMin, timeMax, boundCheckProvingKey);
 
     const statementsProver = new Statements();
     const sIdx1 = statementsProver.add(statement1);
@@ -133,7 +155,7 @@ describe('Verifiable encryption using SAVER', () => {
 
     const statement4 = Statement.bbsSignature(sigParams, pk, revealedMsgsFromVerifier, false);
     const statement5 = Statement.saverVerifier(saverEncGens, commGens, saverEk, saverVerifyingKey, chunkBitSize);
-    const statement6 = Statement.boundCheckVerifier(timeMin, timeMax, snarkVerifyingKey);
+    const statement6 = Statement.boundCheckVerifier(timeMin, timeMax, boundCheckVerifyingKey);
 
     const verifierStatements = new Statements();
     const sIdx4 = verifierStatements.add(statement4);

@@ -25,7 +25,7 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
-import { areUint8ArraysEqual, getRevealedUnrevealed, stringToBytes } from '../utils';
+import { areUint8ArraysEqual, getRevealedUnrevealed, readByteArrayFromFile, stringToBytes } from '../utils';
 
 describe('Verifiable encryption of signed messages', () => {
   const chunkBitSize = 16;
@@ -52,20 +52,32 @@ describe('Verifiable encryption of signed messages', () => {
     await initializeWasm();
   });
 
-  it('do decryptor setup', () => {
-    const gens = SaverEncryptionGens.generate();
-    // `chunkBitSize` is optional, it will default to reasonable good value.
-    const [snarkPk, secretKey, encryptionKey, decryptionKey] = SaverDecryptor.setup(gens, chunkBitSize);
-    console.log(snarkPk.value.length, encryptionKey.value.length, decryptionKey.value.length, gens.value.length);
-    saverSk = secretKey;
+  // Setting it to false will make the test run the SNARK setups making tests quite slow
+  const loadSnarkSetupFromFiles = true;
 
-    // The following decompressions can be done by anyone. Ideally the decryptor will publish `gens`, `snarkPk`, `encryptionKey`
-    // and `decryptionKey` and respective parties will create/keep the information necessary for them.
-    saverEncGens = gens.decompress();
-    snarkProvingKey = snarkPk.decompress();
-    snarkVerifyingKey = snarkPk.getVerifyingKeyUncompressed();
-    saverEk = encryptionKey.decompress();
-    saverDk = decryptionKey.decompress();
+  it('do decryptor setup', () => {
+    if (loadSnarkSetupFromFiles && (chunkBitSize === 16)) {
+      saverSk = new SaverSecretKey(readByteArrayFromFile('snark-setups/saver-secret-key-16.bin'));
+      saverEncGens = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-gens-16-uncompressed.bin'));
+      snarkProvingKey = new SaverProvingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin'));
+      snarkVerifyingKey = new SaverVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin'));
+      saverEk = new SaverEncryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin'));
+      saverDk = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin'));
+    } else {
+      const gens = SaverEncryptionGens.generate();
+      // `chunkBitSize` is optional, it will default to reasonable good value.
+      const [snarkPk, secretKey, encryptionKey, decryptionKey] = SaverDecryptor.setup(gens, chunkBitSize);
+      console.log(snarkPk.value.length, encryptionKey.value.length, decryptionKey.value.length, gens.value.length);
+      saverSk = secretKey;
+
+      // The following decompressions can be done by anyone. Ideally the decryptor will publish `gens`, `snarkPk`, `encryptionKey`
+      // and `decryptionKey` and respective parties will create/keep the information necessary for them.
+      saverEncGens = gens.decompress();
+      snarkProvingKey = snarkPk.decompress();
+      snarkVerifyingKey = snarkPk.getVerifyingKeyUncompressed();
+      saverEk = encryptionKey.decompress();
+      saverDk = decryptionKey.decompress();
+    }
     console.log(
       snarkProvingKey.value.length,
       snarkVerifyingKey.value.length,
