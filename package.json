@@ -10,7 +10,7 @@
     "clean": "rm -rf lib/",
     "prepare": "husky install",
     "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test": "jest",
     "buildAndPublish": "yarn clean && yarn build && yarn publish"
   },
   "license": "Apache-2.0",
@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@types/jest": "24.0.18",
+    "@types/jsonld": "^1.5.7",
     "@types/node": "^16.11.6",
     "@typescript-eslint/eslint-plugin": "^5.3.0",
     "@typescript-eslint/parser": "^5.3.0",
