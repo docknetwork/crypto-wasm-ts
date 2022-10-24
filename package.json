@@ -8,9 +8,10 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf lib/",
+    "jest": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "prepare": "husky install",
     "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "test": "jest",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "buildAndPublish": "yarn clean && yarn build && yarn publish"
   },
   "license": "Apache-2.0",
