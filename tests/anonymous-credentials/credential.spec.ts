@@ -12,7 +12,7 @@ import { checkResult } from '../utils';
 import { getExampleSchema } from './utils';
 import * as jsonld from 'jsonld';
 
-describe('CredentialBuilder signing and verification', () => {
+describe('Credential signing and verification', () => {
   let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
 
   beforeAll(async () => {

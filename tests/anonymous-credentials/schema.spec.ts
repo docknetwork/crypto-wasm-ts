@@ -13,7 +13,7 @@ import {
 } from '../../src/anonymous-credentials';
 import { getExampleSchema } from './utils';
 
-describe('CredentialBuilder Schema', () => {
+describe('Credential Schema', () => {
   beforeAll(async () => {
     await initializeWasm();
   });
