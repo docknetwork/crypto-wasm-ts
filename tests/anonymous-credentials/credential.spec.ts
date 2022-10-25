@@ -9,7 +9,7 @@ import {
 } from '../../src/anonymous-credentials';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
-import { getExampleSchema } from './utils';
+import { checkSchemaFromJson, getExampleSchema } from './utils';
 import * as jsonld from 'jsonld';
 
 describe('CredentialBuilder signing and verification', () => {
@@ -27,9 +27,7 @@ describe('CredentialBuilder signing and verification', () => {
     // This to/from JSON can be abstracted into a class and then testing will lead to less duplicated code
     const credJson = cred.toJSON();
     // Check that the credential JSON contains the schema in JSON-schema format
-    const parsedCredSchema = JSON.parse(credJson[SCHEMA_STR]);
-    delete parsedCredSchema[VERSION_STR];
-    expect(parsedCredSchema).toEqual(cred.schema.jsonSchema)
+    checkSchemaFromJson(credJson[SCHEMA_STR], cred.schema.jsonSchema);
 
     // The recreated credential should verify
     const recreatedCred = Credential.fromJSON(credJson);

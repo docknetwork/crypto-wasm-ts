@@ -4,7 +4,7 @@ import {
   SCHEMA_STR,
   STATUS_STR,
   SUBJECT_STR,
-  CredentialSchema, IJsonSchema
+  CredentialSchema, IJsonSchema, VERSION_STR
 } from '../../src/anonymous-credentials';
 
 export function getExampleSchema(num): IJsonSchema {
@@ -363,4 +363,11 @@ export function getExampleSchema(num): IJsonSchema {
       throw Error(`Cannot find example schema number ${num}`)
   }
   return schema;
+}
+
+export function checkSchemaFromJson(schemaJson: string, schema: IJsonSchema) {
+  // @ts-ignore
+  const schm = JSON.parse(schemaJson);
+  delete schm[VERSION_STR];
+  expect(schm).toEqual(schema);
 }

@@ -29,7 +29,7 @@ import {
   REV_ID_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  SUBJECT_STR, dockSaverEncryptionGensUncompressed
+  SUBJECT_STR, dockSaverEncryptionGensUncompressed, SCHEMA_STR, VERSION_STR
 } from '../../src/anonymous-credentials';
 import {
   areUint8ArraysEqual,
@@ -39,7 +39,7 @@ import {
   stringToBytes
 } from '../utils';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
-import { getExampleSchema } from './utils';
+import { checkSchemaFromJson, getExampleSchema } from './utils';
 import { Presentation } from '../../src/anonymous-credentials/presentation';
 
 
@@ -485,6 +485,11 @@ describe('Presentation creation and verification', () => {
     checkResult(pres1.verify([pk1]));
 
     const presJson = pres1.toJSON();
+
+    // The schema of the credential in the presentation matches the JSON-schema
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema.jsonSchema);
+
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk1]));
     expect(presJson).toEqual(recreatedPres.toJSON());
@@ -545,6 +550,11 @@ describe('Presentation creation and verification', () => {
     checkResult(pres2.verify([pk2]));
 
     const presJson = pres2.toJSON();
+
+    // The schema of the credential in the presentation matches the JSON-schema
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential2.schema.jsonSchema);
+
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk2]));
     expect(presJson).toEqual(recreatedPres.toJSON());
@@ -579,6 +589,11 @@ describe('Presentation creation and verification', () => {
     checkResult(pres3.verify([pk3], acc));
 
     const presJson = pres3.toJSON();
+
+    // The schema of the credential in the presentation matches the JSON-schema
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential3.schema.jsonSchema);
+
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk3], acc));
     expect(presJson).toEqual(recreatedPres.toJSON());
@@ -619,6 +634,13 @@ describe('Presentation creation and verification', () => {
     checkResult(pres4.verify([pk1, pk2]));
 
     const presJson = pres4.toJSON();
+
+    // The schema of the credentials in the presentation matches their JSON-schema
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema.jsonSchema);
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[1].schema, credential2.schema.jsonSchema);
+
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk1, pk2]));
     expect(presJson).toEqual(recreatedPres.toJSON());
@@ -681,6 +703,13 @@ describe('Presentation creation and verification', () => {
     checkResult(pres5.verify([pk3, pk4], acc));
 
     const presJson = pres5.toJSON();
+
+    // The schema of the credentials in the presentation matches their JSON-schema
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential3.schema.jsonSchema);
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[1].schema, credential4.schema.jsonSchema);
+
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk3, pk4], acc));
     expect(presJson).toEqual(recreatedPres.toJSON());
@@ -764,6 +793,17 @@ describe('Presentation creation and verification', () => {
     checkResult(pres6.verify([pk1, pk2, pk3, pk4], acc));
 
     const presJson = pres6.toJSON();
+
+    // The schema of the credentials in the presentation matches their JSON-schema
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema.jsonSchema);
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[1].schema, credential2.schema.jsonSchema);
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[2].schema, credential3.schema.jsonSchema);
+    // @ts-ignore
+    checkSchemaFromJson(presJson.spec.credentials[3].schema, credential4.schema.jsonSchema);
+
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk1, pk2, pk3, pk4], acc));
     expect(presJson).toEqual(recreatedPres.toJSON());
