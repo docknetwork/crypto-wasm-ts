@@ -39,6 +39,7 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.20.2",
     "husky": "^7.0.4",
+    "jsonschema": "1.4.1",
     "jest": "^27.3.0",
     "jsonld": "6.0.0",
     "prettier": "2.7.1",

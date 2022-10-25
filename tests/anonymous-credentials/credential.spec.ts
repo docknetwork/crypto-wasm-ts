@@ -5,12 +5,13 @@ import {
   CredentialSchema,
   MEM_CHECK_STR, REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR, SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  SUBJECT_STR, VERSION_STR
+  SUBJECT_STR
 } from '../../src/anonymous-credentials';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
 import { checkSchemaFromJson, getExampleSchema } from './utils';
 import * as jsonld from 'jsonld';
+import { validate } from 'jsonschema';
 
 describe('CredentialBuilder signing and verification', () => {
   let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
@@ -64,6 +65,23 @@ describe('CredentialBuilder signing and verification', () => {
     checkResult(cred.verify(pk));
     const recreatedCred = checkJsonConvForCred(cred, pk);
     expect(recreatedCred.subject).toEqual({ fname: 'John', lname: 'Smith' });
+
+    // The credential JSON should be valid as per the JSON schema
+    let res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(true);
+
+    // The credential JSON fails to validate for an incorrect schema
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'number' }
+      }
+    };
+    res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(false);
+    
+    // NOTE: Probably makes sense to always have `required` as true in each object. Also to disallow extra keys.
   });
 
   it('for credential with nesting', () => {
