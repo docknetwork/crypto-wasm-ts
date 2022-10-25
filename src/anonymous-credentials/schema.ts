@@ -9,17 +9,16 @@ import {
   REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
-  StringOrObject,
-  SUBJECT_STR
+  SUBJECT_STR,
+  VERSION_STR
 } from './types-and-consts';
-import { flatten } from 'flat';
-import { flattenTill2ndLastKey } from './util';
+import { flattenTill2ndLastKey, getDecimalPlaces } from './util';
 
 /**
  * Rules
  * 1. Schema must define a top level `credentialSubject` field for the subject, and it can be an array of object
  * 2. Schema must define a top level `credentialSchema` field.
- * 3. CredentialBuilder status if defined must be present as `credentialStatus` field.
+ * 3. Credential status if defined must be present as `credentialStatus` field.
  * 4. Any top level keys in the schema JSON can be created
  Some example schemas
 
@@ -163,9 +162,15 @@ import { flattenTill2ndLastKey } from './util';
  }
  */
 
-export interface SchemaType {
-  properties: object;
-  type: string;
+export const META_SCHEMA_STR = '$schema';
+
+export interface ISchema {
+  [CRED_VERSION_STR]: object;
+  [SCHEMA_STR]: object;
+  [SUBJECT_STR]: object | object[];
+  // @ts-ignore
+  [STATUS_STR]?: object;
+  [key: string]: object;
 }
 
 export enum ValueType {
@@ -214,6 +219,22 @@ export type ValueTypes =
   | PositiveNumberType
   | NumberType;
 
+export interface IJsonSchemaProperties {
+  [CRED_VERSION_STR]: object;
+  [SCHEMA_STR]: object;
+  [SUBJECT_STR]: object | object[];
+  // @ts-ignore
+  [STATUS_STR]?: object;
+  [key: string]: object;
+}
+
+export interface IJsonSchema {
+  [META_SCHEMA_STR]: string;
+  type: string;
+  properties: IJsonSchemaProperties;
+  definitions?: { [key: string]: object };
+}
+
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
@@ -229,31 +250,68 @@ export class CredentialSchema extends Versioned {
   // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
 
+  // Custom definitions for JSON schema syntax
+  static JSON_SCHEMA_CUSTOM_DEFS = {
+    positiveInteger: {
+      type: 'integer',
+      minimum: 0
+    },
+    positiveNumber: {
+      type: 'number',
+      minimum: 0
+    },
+    encryptableString: {
+      type: 'string'
+    },
+    encryptableCompString: {
+      type: 'string'
+    }
+  };
+
+  // Keys to ignore from generic validation as they are already validated
+  static IGNORE_GENERIC_VALIDATION = new Set([
+    CRED_VERSION_STR,
+    SCHEMA_STR,
+    `${STATUS_STR}.${REGISTRY_ID_STR}`,
+    `${STATUS_STR}.${REV_CHECK_STR}`,
+    `${STATUS_STR}.${REV_ID_STR}`
+  ]);
+
   static POSSIBLE_TYPES = new Set<string>([
     this.STR_TYPE,
     this.STR_REV_TYPE,
     this.POSITIVE_INT_TYPE,
     this.INT_TYPE,
     this.POSITIVE_NUM_TYPE,
-    this.NUM_TYPE,
-    'object',
-    'array'
+    this.NUM_TYPE
   ]);
 
-  schema: SchemaType;
+  schema: ISchema;
+  jsonSchema: IJsonSchema;
   // @ts-ignore
   encoder: Encoder;
 
-  constructor(schema: StringOrObject) {
+  /**
+   * Takes a schema object as per JSON-schema syntax (`IJsonSchema`), validates it and converts it to an internal
+   * representation (`ISchema`) and stores both as the one with JSON-schema syntax is added to the credential representation.
+   * @param jsonSchema
+   */
+  constructor(jsonSchema: IJsonSchema) {
     // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
-    const schem = typeof schema === 'string' ? JSON.parse(schema) : schema;
-    CredentialSchema.validate(schem);
+    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema) as ISchema;
+    CredentialSchema.validate(schema);
 
     super(CredentialSchema.VERSION);
-    this.schema = schem;
+    this.schema = schema as ISchema;
+    // This is the schema in JSON-schema format. Kept to output in credentials or in `toJSON` without converting back from
+    // internal representation; trading off memory for CPU time.
+    this.jsonSchema = jsonSchema;
     this.initEncoder();
   }
 
+  /**
+   * Initialize the encoder as per the internal representation of schema, i.e. `ISchema`
+   */
   initEncoder() {
     const defaultEncoder = Encoder.defaultEncodeFunc();
     const encoders = new Map<string, EncodeFunc>();
@@ -288,55 +346,32 @@ export class CredentialSchema extends Versioned {
   }
 
   /**
-   * Encode a sub-structure of the subject
-   * @param subject
-   * @param flattenedSchema
+   * Validates the internal representation of schema
+   * @param schema
    */
-  encodeSubject(subject: object, flattenedSchema?: [string[], unknown[]]): Map<number, Uint8Array> {
-    const encoded = new Map<number, Uint8Array>();
-    const [names] = flattenedSchema === undefined ? this.flatten() : flattenedSchema[0];
-    Object.entries(flatten(subject) as object).forEach(([k, v]) => {
-      const n = `${SUBJECT_STR}.${k}`;
-      const i = names.indexOf(n);
-      if (i === -1) {
-        throw new Error(`Attribute name ${n} not found in schema`);
-      }
-      encoded.set(i, this.encoder.encodeMessage(n, v));
-    });
-    return encoded;
-  }
-
-  static validate(schema: any) {
-    if (typeof schema.properties !== 'object') {
-      throw new Error(`Schema must have top level properties object`);
-    }
-    
+  static validate(schema: ISchema) {
     // Following 2 fields could have been implicit but being explicit for clarity
-    this.validateStringType(schema.properties, CRED_VERSION_STR);
-    this.validateStringType(schema.properties, SCHEMA_STR);
+    this.validateStringType(schema, CRED_VERSION_STR);
+    this.validateStringType(schema, SCHEMA_STR);
 
-    const schemaStatus = schema.properties[STATUS_STR];
+    const schemaStatus = schema[STATUS_STR];
     if (schemaStatus !== undefined) {
-      this.validateStringType(schemaStatus.properties, REGISTRY_ID_STR);
-      this.validateStringType(schemaStatus.properties, REV_CHECK_STR);
-      this.validateStringType(schemaStatus.properties, REV_ID_STR);
+      this.validateStringType(schemaStatus, REGISTRY_ID_STR);
+      this.validateStringType(schemaStatus, REV_CHECK_STR);
+      this.validateStringType(schemaStatus, REV_ID_STR);
     }
 
-    if (schema.properties[SUBJECT_STR] === undefined) {
+    if (schema[SUBJECT_STR] === undefined) {
       throw new Error(`Schema properties did not contain top level key ${SUBJECT_STR}`);
     }
 
-    this.validateGeneric(schema, [
-      `${STATUS_STR}.${REGISTRY_ID_STR}`,
-      `${STATUS_STR}.${REV_CHECK_STR}`,
-      `${STATUS_STR}.${REV_ID_STR}`
-    ]);
+    this.validateGeneric(schema, CredentialSchema.IGNORE_GENERIC_VALIDATION);
   }
 
-  static validateGeneric(schema: object, ignoreKeys: string[] = []) {
+  static validateGeneric(schema: object, ignoreKeys: Set<string> = new Set()) {
     const [names, values] = this.flattenSchemaObj(schema);
     for (let i = 0; i < names.length; i++) {
-      if (ignoreKeys.indexOf(names[i])) {
+      if (ignoreKeys.has(names[i])) {
         continue;
       }
 
@@ -346,7 +381,7 @@ export class CredentialSchema extends Versioned {
 
       const value: any = values[i];
 
-      if (typeof value.type === 'undefined') {
+      if (value.type === undefined) {
         throw new Error(`Schema value for ${names[i]} should have a "type" field`);
       }
 
@@ -383,10 +418,6 @@ export class CredentialSchema extends Versioned {
           break;
       }
     }
-  }
-
-  get properties(): object {
-    return this.schema.properties;
   }
 
   typeOfName(name: string, flattenedSchema?: FlattenedSchema): ValueTypes {
@@ -428,18 +459,22 @@ export class CredentialSchema extends Versioned {
     }
   }
 
-  static essential(): SchemaType {
-    return {
+  static essential(withDefinitions = true): IJsonSchema {
+    const s = {
+      // Currently only assuming support for draft-07 but other might work as well
+      [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         [CRED_VERSION_STR]: { type: 'string' },
-        [SCHEMA_STR]: { type: 'string' }
+        [SCHEMA_STR]: { type: 'string' },
+        [SUBJECT_STR]: {}
       }
     };
-  }
-
-  forCredential(): object {
-    return { $version: this.version, ...this.schema };
+    if (withDefinitions) {
+      s['definitions'] = this.JSON_SCHEMA_CUSTOM_DEFS;
+    }
+    // @ts-ignore
+    return s;
   }
 
   flatten(): FlattenedSchema {
@@ -447,16 +482,18 @@ export class CredentialSchema extends Versioned {
   }
 
   hasStatus(): boolean {
-    return this.properties[STATUS_STR] !== undefined;
+    return this.schema[STATUS_STR] !== undefined;
   }
 
-  toJSON(): string {
-    return JSON.stringify(this.forCredential());
+  toJSON(): object {
+    return { [VERSION_STR]: this.version, ...this.jsonSchema };
   }
 
-  static fromJSON(j: string): CredentialSchema {
-    const { $version, ...schema } = JSON.parse(j);
-    const credSchema = new CredentialSchema(schema);
+  static fromJSON(j: object): CredentialSchema {
+    // @ts-ignore
+    const { $version, ...jsonSchema } = j;
+    // @ts-ignore
+    const credSchema = new CredentialSchema(jsonSchema);
     credSchema.version = $version;
     return credSchema;
   }
@@ -587,56 +624,78 @@ export class CredentialSchema extends Versioned {
     return `dk:${term}`;
   }
 
-  static flattenJSONSchema(node: any) {
-    if (typeof node.type !== 'string') {
-      throw new Error(`Schema node must have type field that is a string, got ${JSON.stringify(node)}`);
-    }
+  /**
+   * Convert a schema object as per JSON-schema syntax (`IJsonSchema`) to the internal representation (`ISchema`).
+   * Currently, does not check if the needed JSON-schema definitions are actually present but assumes that they will be
+   * already passed.
+   * @param node
+   * @param nodeKeyName - Name of the node, used for throwing more informative error message
+   */
+  static convertToInternalSchemaObj(node: any, nodeKeyName: string = ''): object {
+    // util function needed only in this func
+    const createFullName = (old: string, neww: string): string => {
+      return old.length == 0 ? neww : `${old}.${neww}`;
+    };
 
-    if (node.type === 'object') {
-      if (typeof node.properties !== 'undefined') {
-        const result: object = {};
-        const keys = Object.keys(node.properties);
-        keys.forEach((k) => {
-          const value = node.properties[k];
-
-          let insVal = {};
-          if (value.type === 'object') {
-            if (typeof value.properties === 'object') {
-              insVal = CredentialSchema.flattenJSONSchema(value);
-            } else {
-              throw new Error(`${k} must have properties field that is an object`);
-            }
-          } else if (value.type === 'array') {
-            if (Array.isArray(value.items)) {
-              insVal = value.items.map((i) => CredentialSchema.flattenJSONSchema(i));
-            } else {
-              throw new Error('No indefinite length array support');
-            }
+    // Will either have a "type" property or will be defined using "$ref"
+    const typ = node.type;
+    const ref = node.$ref;
+    if (typ !== undefined) {
+      switch (typ) {
+        case 'string':
+          return node;
+        case 'integer':
+          // If key "minimum" is not present or not an integer, validation logic in other function will throw.
+          return { type: this.INT_TYPE, minimum: node.minimum };
+        case 'number':
+          return { type: this.NUM_TYPE, minimum: node.minimum, decimalPlaces: getDecimalPlaces(node.multipleOf) };
+        case 'object':
+          if (node.properties !== undefined) {
+            const result = {};
+            Object.entries(node.properties).forEach(([k, v]) => {
+              result[k] = CredentialSchema.convertToInternalSchemaObj(v, createFullName(nodeKeyName, k));
+            });
+            return result;
           } else {
-            insVal = value;
+            throw new Error(`Schema object key ${nodeKeyName} must have properties object`);
           }
-
-          result[k] = insVal;
-        });
-        return result;
-      } else {
-        throw new Error('Schema object must have properties object');
+        case 'array':
+          return node.items.map((i) => CredentialSchema.convertToInternalSchemaObj(i, createFullName(nodeKeyName, i)));
+        default:
+          throw new Error(`Unknown type for key ${nodeKeyName} in schema: ${typ}`);
       }
-    } else if (node.type === 'array') {
-      return node.items.map((i) => CredentialSchema.flattenJSONSchema(i));
+    } else if (ref !== undefined) {
+      switch (ref) {
+        case '#/definitions/encryptableString':
+          return { type: this.STR_REV_TYPE, compress: false };
+        case '#/definitions/encryptableCompString':
+          return { type: this.STR_REV_TYPE, compress: true };
+        case '#/definitions/positiveInteger':
+          return { type: this.POSITIVE_INT_TYPE };
+        default:
+          throw new Error(`Unknown ref for key ${nodeKeyName} in schema: ${ref}`);
+      }
     } else {
-      return node;
+      if (Array.isArray(node.allOf)) {
+        let merged: any = {};
+        for (const t of node.allOf) {
+          merged = { ...merged, ...t };
+        }
+        if (merged.$ref === '#/definitions/positiveNumber') {
+          return { type: this.POSITIVE_NUM_TYPE, decimalPlaces: getDecimalPlaces(merged.multipleOf) };
+        }
+      }
+      throw new Error(`Cannot parse node key ${nodeKeyName} for JSON-schema syntax: ${node}`);
     }
   }
 
-  static flattenSchemaObj(schema: any): FlattenedSchema {
-    const resultObj = CredentialSchema.flattenJSONSchema(schema);
-    return flattenTill2ndLastKey(resultObj);
+  static flattenSchemaObj(schema: object): FlattenedSchema {
+    return flattenTill2ndLastKey(schema);
   }
 
   private static validateStringType(schema: object, fieldName: string) {
     if (!schema[fieldName] || schema[fieldName].type !== 'string') {
-      throw new Error(`Schema should contain a top level key ${fieldName} and its value must be {"type":"string"}`);
+      throw new Error(`Schema should contain a top level key ${fieldName} and its type must be "string"`);
     }
   }
 }

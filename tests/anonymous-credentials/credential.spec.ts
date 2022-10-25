@@ -3,9 +3,9 @@ import {
   Credential,
   CredentialBuilder,
   CredentialSchema,
-  MEM_CHECK_STR, REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR,
+  MEM_CHECK_STR, REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR, SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  SUBJECT_STR
+  SUBJECT_STR, VERSION_STR
 } from '../../src/anonymous-credentials';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
@@ -26,11 +26,20 @@ describe('CredentialBuilder signing and verification', () => {
   function checkJsonConvForCred(cred: Credential, pk: BBSPlusPublicKeyG2): Credential {
     // This to/from JSON can be abstracted into a class and then testing will lead to less duplicated code
     const credJson = cred.toJSON();
+    // Check that the credential JSON contains the schema in JSON-schema format
+    const parsedCredSchema = JSON.parse(credJson[SCHEMA_STR]);
+    delete parsedCredSchema[VERSION_STR];
+    expect(parsedCredSchema).toEqual(cred.schema.jsonSchema)
+
+    // The recreated credential should verify
     const recreatedCred = Credential.fromJSON(credJson);
     checkResult(recreatedCred.verify(pk));
+
+    // The JSON representation of original and recreated credential should be same
     expect(credJson).toEqual(recreatedCred.toJSON());
     expect(recreatedCred.schema.version).toEqual(cred.schema.version);
     expect(recreatedCred.schema.schema).toEqual(cred.schema.schema);
+    expect(recreatedCred.schema.jsonSchema).toEqual(cred.schema.jsonSchema);
     return recreatedCred;
   }
 
@@ -71,7 +80,7 @@ describe('CredentialBuilder signing and verification', () => {
           properties: {
             email: { type: 'string' },
             phone: { type: 'string' },
-            SSN: { type: 'stringReversible', compress: false }
+            SSN: { $ref: '#/definitions/encryptableString' }
           }
         }
       }
@@ -326,11 +335,11 @@ describe('CredentialBuilder signing and verification', () => {
     };
     const cred = builder.sign(sk);
 
-    const credWithCtx = cred.prepareForJsonLd();
+    const credWithCtx = cred.toJSONWithJsonLdContext();
     let normalized = await jsonld.normalize(credWithCtx);
     expect(normalized).not.toEqual("");
 
-    const credWithoutCtx = cred.prepareForJson();
+    const credWithoutCtx = cred.toJSON();
     normalized = await jsonld.normalize(credWithoutCtx);
     expect(normalized).toEqual("");
   })

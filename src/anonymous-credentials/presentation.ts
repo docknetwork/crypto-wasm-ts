@@ -103,7 +103,7 @@ export class Presentation extends Versioned {
 
     for (let i = 0; i < this.spec.credentials.length; i++) {
       const presentedCred = this.spec.credentials[i];
-      const presentedCredSchema = CredentialSchema.fromJSON(presentedCred.schema);
+      const presentedCredSchema = CredentialSchema.fromJSON(JSON.parse(presentedCred.schema));
       const flattenedSchema = presentedCredSchema.flatten();
       const numAttribs = flattenedSchema[0].length;
 
@@ -348,7 +348,7 @@ export class Presentation extends Versioned {
     return encoded;
   }
 
-  toJSON(): string {
+  toJSON(): object {
     const attributeCiphertexts = {};
     if (this.attributeCiphertexts !== undefined) {
       for (const [i, v] of this.attributeCiphertexts.entries()) {
@@ -367,7 +367,7 @@ export class Presentation extends Versioned {
       creds.push(current);
     }
 
-    return JSON.stringify({
+    return {
       version: this.version,
       context: this.context,
       nonce: this.nonce ? b58.encode(this.nonce) : null,
@@ -377,11 +377,12 @@ export class Presentation extends Versioned {
       },
       attributeCiphertexts,
       proof: b58.encode((this.proof as CompositeProofG1).bytes)
-    });
+    };
   }
 
-  static fromJSON(json: string): Presentation {
-    const { version, context, nonce, spec, attributeCiphertexts, proof } = JSON.parse(json);
+  static fromJSON(j: object): Presentation {
+    // @ts-ignore
+    const { version, context, nonce, spec, attributeCiphertexts, proof } = j;
     const nnc = nonce ? b58.decode(nonce) : undefined;
 
     const presSpec = new PresentationSpecification();

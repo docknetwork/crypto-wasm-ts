@@ -118,3 +118,12 @@ export function createWitEq(eql: AttributeEquality, flattenedSchemas: FlattenedS
 export function deepClone(obj: unknown): unknown {
   return JSON.parse(JSON.stringify(obj));
 }
+
+export function getDecimalPlaces(d: number): number {
+  const re = /^0?\.(0*1$)/;
+  const m = d.toString().match(re);
+  if (m === null) {
+    throw new Error(`Needed a number with a decimal point like .1, .01, .001, etc but found ${d}`);
+  }
+  return m[1].length;
+}

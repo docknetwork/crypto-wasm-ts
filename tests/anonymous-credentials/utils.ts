@@ -4,11 +4,11 @@ import {
   SCHEMA_STR,
   STATUS_STR,
   SUBJECT_STR,
-  CredentialSchema,
+  CredentialSchema, IJsonSchema
 } from '../../src/anonymous-credentials';
 
-export function getExampleSchema(num) {
-  const schema: any = CredentialSchema.essential();
+export function getExampleSchema(num): IJsonSchema {
+  const schema = CredentialSchema.essential();
   schema.properties[CRED_VERSION_STR] = { type: 'string' };
   schema.properties[SCHEMA_STR] = { type: 'string' };
   switch (num) {
@@ -35,7 +35,11 @@ export function getExampleSchema(num) {
         properties: {
           fname: { type: 'string' },
           score: { type: 'integer', minimum: -100 },
-          long: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+          long: { "allOf": [
+              { $ref: '#/definitions/positiveNumber' },
+              { multipleOf: 0.01 }
+            ]
+          }
         }
       };
       break;
@@ -63,30 +67,51 @@ export function getExampleSchema(num) {
           fname: { type: 'string' },
           lname: { type: 'string' },
           sensitive: {
-            very: {
-              secret: { type: 'string' }
-            },
-            email: { type: 'string' },
-            phone: { type: 'string' },
-            SSN: { type: 'stringReversible', compress: false }
+            type: 'object',
+            properties: {
+              very: {
+                type: 'object',
+                properties: {
+                  secret: { type: 'string' }
+                }
+              },
+              email: { type: 'string' },
+              phone: { type: 'string' },
+              SSN: { $ref: '#/definitions/encryptableString' }
+            }
           },
           lessSensitive: {
-            location: {
-              country: { type: 'string' },
-              city: { type: 'string' }
-            },
-            department: {
-              name: { type: 'string' },
+            type: 'object',
+            properties: {
               location: {
-                name: { type: 'string' },
-                geo: {
-                  lat: { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
-                  long: { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 }
+                type: 'object',
+                properties: {
+                  country: { type: 'string' },
+                  city: { type: 'string' }
+                },
+              },
+              department: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  location: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      geo: {
+                        type: 'object',
+                        properties: {
+                          lat: {type: 'number',minimum: -90, multipleOf: 0.001},
+                          long: {type: 'number',minimum: -180, multipleOf: 0.001}
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
           },
-          rank: { type: 'positiveInteger' }
+          rank: { $ref: '#/definitions/positiveInteger' }
         }
       };
       schema.properties[STATUS_STR] = {
@@ -99,123 +124,53 @@ export function getExampleSchema(num) {
       };
       break;
     case 6:
+      const item = {
+        type: "object",
+        properties: {
+          name: {type: "string"},
+          location: {
+            type: "object",
+            properties: {
+              name: {type: "string"},
+              geo: {
+                type: "object",
+                properties: {
+                  lat: {type: 'number',minimum: -90, multipleOf: 0.001},
+                  long: {type: 'number',minimum: -180, multipleOf: 0.001}
+                }
+              }
+            }
+          }
+        }
+      };
       schema.properties[SUBJECT_STR] = {
         type: "array",
-        items: [{
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }, {
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }, {
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }]
+        items: [item, item, item]
       };
       break;
     case 7:
+      const item1 = {
+        type: "object",
+        properties: {
+          name: {type: "string"},
+          location: {
+            type: "object",
+            properties: {
+              name: {type: "string"},
+              geo: {
+                type: "object",
+                properties: {
+                  lat: {type: 'number', minimum: -90, multipleOf: 0.001},
+                  long: {type: 'number', minimum: -180, multipleOf: 0.001}
+                }
+              }
+            }
+          }
+        }
+      };
       schema.properties[SUBJECT_STR] = {
         type: "array",
-        items: [{
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }, {
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }, {
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }]
+        items: [item1, item1, item1]
       };
       
       schema.properties['issuer'] = {
@@ -226,8 +181,8 @@ export function getExampleSchema(num) {
           logo: {type: "string"}
         }
       };
-      schema.properties['issuanceDate'] = {type: "positiveInteger"};
-      schema.properties['expirationDate'] = {type: "positiveInteger"};
+      schema.properties['issuanceDate'] = {$ref: "#/definitions/positiveInteger"};
+      schema.properties['expirationDate'] = {$ref: "#/definitions/positiveInteger"};
       break;
     case 8:
       schema.properties[SUBJECT_STR] = {
@@ -240,14 +195,29 @@ export function getExampleSchema(num) {
             properties: {
               email: { type: 'string' },
               phone: { type: 'string' },
-              SSN: { type: 'stringReversible', compress: false }
+              SSN: { $ref: '#/definitions/encryptableString' }
             }
           },
-          timeOfBirth: { type: 'positiveInteger' },
+          timeOfBirth: { $ref: '#/definitions/positiveInteger' },
           physical: {
-            height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-            weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-            BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+            type: 'object',
+            properties: {
+              height: { "allOf": [
+                  { $ref: '#/definitions/positiveNumber' },
+                  { multipleOf: 0.1 }
+                ]
+              },
+              weight: { "allOf": [
+                  { $ref: '#/definitions/positiveNumber' },
+                  { multipleOf: 0.1 }
+                ]
+              },
+              BMI: { "allOf": [
+                  { $ref: '#/definitions/positiveNumber' },
+                  { multipleOf: 0.01 }
+                ]
+              }
+            }
           },
         }
       };
@@ -259,15 +229,27 @@ export function getExampleSchema(num) {
           fname: { type: 'string' },
           lname: { type: 'string' },
           email: { type: 'string' },
-          SSN: { type: 'stringReversible', compress: false },
-          userId: { type: 'stringReversible', compress: true },
+          SSN: { $ref: '#/definitions/encryptableString' },
+          userId: { $ref: '#/definitions/encryptableCompString' },
           country: { type: 'string' },
           city: { type: 'string' },
-          timeOfBirth: { type: 'positiveInteger' },
-          height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-          score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
+          timeOfBirth: { $ref: "#/definitions/positiveInteger" },
+          height: { "allOf": [
+              { $ref: '#/definitions/positiveNumber' },
+              { multipleOf: 0.1 }
+            ]
+          },
+          weight: { "allOf": [
+              { $ref: '#/definitions/positiveNumber' },
+              { multipleOf: 0.1 }
+            ]
+          },
+          BMI: { "allOf": [
+              { $ref: '#/definitions/positiveNumber' },
+              { multipleOf: 0.01 }
+            ]
+          },
+          score: { type: 'number', minimum: -100, multipleOf: 0.1 },
           secret: { type: 'string' }
         }
       };
@@ -282,7 +264,7 @@ export function getExampleSchema(num) {
             type: 'object',
             properties: {
               email: { type: 'string' },
-              SSN: { type: 'stringReversible', compress: false }
+              SSN: { $ref: '#/definitions/encryptableString' }
             }
           },
           education: {
@@ -299,16 +281,20 @@ export function getExampleSchema(num) {
               transcript: {
                 type: 'object',
                 properties: {
-                  rank: { type: 'positiveInteger' },
-                  CGPA: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
+                  rank: { $ref: '#/definitions/positiveInteger' },
+                  CGPA: { "allOf": [
+                      { $ref: '#/definitions/positiveNumber' },
+                      { multipleOf: 0.01 }
+                    ]
+                  },
                   scores: {
                     type: 'object',
                     properties: {
-                      english: { type: 'positiveInteger' },
-                      mathematics: { type: 'positiveInteger' },
-                      science: { type: 'positiveInteger' },
-                      history: { type: 'positiveInteger' },
-                      geography: { type: 'positiveInteger' }
+                      english: { $ref: '#/definitions/positiveInteger' },
+                      mathematics: { $ref: '#/definitions/positiveInteger' },
+                      science: { $ref: '#/definitions/positiveInteger' },
+                      history: { $ref: '#/definitions/positiveInteger' },
+                      geography: { $ref: '#/definitions/positiveInteger' }
                     }
                   }
                 }
@@ -337,8 +323,8 @@ export function getExampleSchema(num) {
             properties: {
               secret: { type: 'string' },
               email: { type: 'string' },
-              SSN: { type: 'stringReversible', compress: false },
-              userId: { type: 'stringReversible', compress: true }
+              SSN: { $ref: '#/definitions/encryptableString' },
+              userId: { $ref: '#/definitions/encryptableCompString' }
             }
           },
           location: {
@@ -348,16 +334,28 @@ export function getExampleSchema(num) {
               city: { type: 'string' }
             }
           },
-          timeOfBirth: { type: 'positiveInteger' },
+          timeOfBirth: { $ref: '#/definitions/positiveInteger' },
           physical: {
             type: 'object',
             properties: {
-              height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-              weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-              BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+              height: { "allOf": [
+                  { $ref: '#/definitions/positiveNumber' },
+                  { multipleOf: 0.1 }
+                ]
+              },
+              weight: { "allOf": [
+                  { $ref: '#/definitions/positiveNumber' },
+                  { multipleOf: 0.1 }
+                ]
+              },
+              BMI: { "allOf": [
+                  { $ref: '#/definitions/positiveNumber' },
+                  { multipleOf: 0.01 }
+                ]
+              }
             }
           },
-          score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 }
+          score: { type: 'number', multipleOf: .1, minimum: -100 }
         }
       };
       break;

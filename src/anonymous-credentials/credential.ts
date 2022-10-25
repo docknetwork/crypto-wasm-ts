@@ -59,7 +59,7 @@ export class Credential extends Versioned {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
       [CRED_VERSION_STR]: this.version,
-      [SCHEMA_STR]: this.schema.toJSON(),
+      [SCHEMA_STR]: JSON.stringify(this.schema?.toJSON()),
       [SUBJECT_STR]: this.subject
     };
     for (const [k, v] of this.topLevelFields.entries()) {
@@ -71,10 +71,10 @@ export class Credential extends Versioned {
     return s;
   }
 
-  prepareForJson(): object {
+  toJSON(): object {
     const j = {};
     j['credentialVersion'] = this._version;
-    j['credentialSchema'] = this.schema.toJSON();
+    j['credentialSchema'] = JSON.stringify(this.schema.toJSON());
     j['credentialSubject'] = this.subject;
     if (this.credentialStatus !== undefined) {
       j['credentialStatus'] = this.credentialStatus;
@@ -89,8 +89,8 @@ export class Credential extends Versioned {
     return j;
   }
 
-  prepareForJsonLd(): object {
-    let j = this.prepareForJson();
+  toJSONWithJsonLdContext(): object {
+    let j = this.toJSON();
     const jctx = this.schema.getJsonLdContext();
     // TODO: Uncomment me. The correct context should be "something like" below. See comments over the commented function `getJsonLdContext` for details
     // jctx['@context'][1]['proof'] = {
@@ -104,17 +104,9 @@ export class Credential extends Versioned {
     return j;
   }
 
-  toJSON(): string {
-    return JSON.stringify(this.prepareForJson());
-  }
-
-  toJSONWithJsonLdContext(): string {
-    return JSON.stringify(this.prepareForJsonLd());
-  }
-
-  static fromJSON(json: string): Credential {
-    const { credentialVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } =
-      JSON.parse(json);
+  static fromJSON(j: object): Credential {
+    // @ts-ignore
+    const { credentialVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } = j;
     if (proof['type'] !== 'Bls12381BBS+SignatureDock2022') {
       throw new Error(`Invalid proof type ${proof['type']}`);
     }
@@ -125,7 +117,7 @@ export class Credential extends Versioned {
     });
     return new Credential(
       credentialVersion,
-      CredentialSchema.fromJSON(credentialSchema),
+      CredentialSchema.fromJSON(JSON.parse(credentialSchema)),
       credentialSubject,
       topLevelFields,
       sig,

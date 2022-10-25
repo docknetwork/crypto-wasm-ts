@@ -134,7 +134,7 @@ export class CredentialBuilder extends Versioned {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
       [CRED_VERSION_STR]: this._version,
-      [SCHEMA_STR]: this._schema?.toJSON(),
+      [SCHEMA_STR]: JSON.stringify(this._schema?.toJSON()),
       [SUBJECT_STR]: this._subject
     };
     for (const [k, v] of this._topLevelFields.entries()) {

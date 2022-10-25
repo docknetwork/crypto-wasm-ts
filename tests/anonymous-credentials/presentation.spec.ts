@@ -324,8 +324,8 @@ describe('Presentation creation and verification', () => {
               geo: {
                 type: 'object',
                 properties: {
-                  lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                  long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+                  lat: {type: 'number',minimum: -90, multipleOf: 0.001},
+                  long: {type: 'number',minimum: -180, multipleOf: 0.001}
                 }
               }
             }
@@ -389,8 +389,11 @@ describe('Presentation creation and verification', () => {
           properties: {
             name: {type: "string"},
             geo: {
-              lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-              long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+              type: "object",
+              properties: {
+                lat: {type: 'number', minimum: -90, multipleOf: 0.001},
+                long: {type: 'number', minimum: -180, multipleOf: 0.001}
+              }
             },
           }
         }
@@ -412,8 +415,8 @@ describe('Presentation creation and verification', () => {
         logo: {type: "string"}
       }
     };
-    schema6.properties['issuanceDate'] = {type: "positiveInteger"};
-    schema6.properties['expirationDate'] = {type: "positiveInteger"};
+    schema6.properties['issuanceDate'] = {$ref: '#/definitions/positiveInteger'};
+    schema6.properties['expirationDate'] = {$ref: '#/definitions/positiveInteger'};
 
     const credSchema6 = new CredentialSchema(schema6);
     const builder6 = new CredentialBuilder();
