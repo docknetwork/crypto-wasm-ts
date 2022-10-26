@@ -18,6 +18,62 @@ describe('Credential Schema', () => {
     await initializeWasm();
   });
 
+  it('JSON-schema $ref expansion with schema defined definitions', () => {
+    const jsonSchema = {
+      type: 'object',
+      definitions: {
+        customDefinition: { type: 'integer', minimum: -256 },
+      },
+      properties: {
+        credentialVersion: {type: 'string'},
+        credentialSchema: {type: 'string'},
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            customField: { $ref: '#/definitions/customDefinition' },
+          }
+        }
+      }
+    };
+    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema);
+    expect(schema).toEqual({
+      credentialVersion: { type: 'string' },
+      credentialSchema: { type: 'string' },
+      credentialSubject: {
+        customField: { type: 'integer', minimum: -256 },
+      }
+    });
+  });
+
+  it('JSON-schema $ref expansion with override definitions', () => {
+    const jsonSchema = {
+      type: 'object',
+      definitions: {
+        encryptableString: { type: 'string' },
+      },
+      properties: {
+        credentialVersion: {type: 'string'},
+        credentialSchema: {type: 'string'},
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            SSN: { $ref: '#/definitions/encryptableString' },
+            userId: { $ref: '#/definitions/encryptableCompString' },
+          }
+        }
+      }
+    };
+    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema);
+    expect(schema).toEqual({
+      credentialVersion: { type: 'string' },
+      credentialSchema: { type: 'string' },
+      credentialSubject: {
+        SSN: { type: 'stringReversible', compress: false },
+        userId: { type: 'stringReversible', compress: true },
+      }
+    });
+  });
+
   it('Parse JSON-schema syntax', () => {
     const jsonSchema = {
       type: 'object',

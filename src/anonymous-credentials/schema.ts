@@ -1,3 +1,4 @@
+import pointer from 'json-pointer';
 import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../bbs-plus';
 import { isPositiveInteger } from '../util';
@@ -265,6 +266,23 @@ export class CredentialSchema extends Versioned {
     },
     encryptableCompString: {
       type: 'string'
+    }
+  };
+
+  // Custom override definitions for JSON schema syntax
+  // any refs in the jsonschema that reference these will be overwritten
+  static JSON_SCHEMA_OVERRIDE_DEFS = {
+    '#/definitions/encryptableString': {
+      type: CredentialSchema.STR_REV_TYPE,
+      compress: false,
+    },
+    '#/definitions/encryptableCompString': {
+      type: CredentialSchema.STR_REV_TYPE,
+      compress: true,
+    },
+    // TODO: remove this reference type when minimum >= 0 change is applied?
+    '#/definitions/positiveInteger': {
+      type: CredentialSchema.POSITIVE_INT_TYPE,
     }
   };
 
@@ -628,18 +646,34 @@ export class CredentialSchema extends Versioned {
    * Convert a schema object as per JSON-schema syntax (`IJsonSchema`) to the internal representation (`ISchema`).
    * Currently, does not check if the needed JSON-schema definitions are actually present but assumes that they will be
    * already passed.
-   * @param node
+   * @param inputNode
    * @param nodeKeyName - Name of the node, used for throwing more informative error message
    */
-  static convertToInternalSchemaObj(node: any, nodeKeyName: string = ''): object {
+  static convertToInternalSchemaObj(inputNode: any, nodeKeyName: string = '', rootObject: any = undefined): object {
     // util function needed only in this func
     const createFullName = (old: string, neww: string): string => {
       return old.length == 0 ? neww : `${old}.${neww}`;
     };
 
     // Will either have a "type" property or will be defined using "$ref"
+    let node: any = inputNode;
+    const ref = inputNode.$ref;
+    const rootNode = rootObject || inputNode;
+
+    // If the node is using a ref, we should locate it with a jsonpointer
+    // or use an override in case of encryptable strings
+    if (ref) {
+      const overrideRef = this.JSON_SCHEMA_OVERRIDE_DEFS[ref];
+      if (overrideRef) {
+        node = { ...overrideRef };
+      } else {
+        const value = pointer.get(rootNode, ref.replace('#', ''));
+        node = { ...value };
+      }
+    }
+
     const typ = node.type;
-    const ref = node.$ref;
+
     if (typ !== undefined) {
       switch (typ) {
         case 'string':
@@ -653,27 +687,23 @@ export class CredentialSchema extends Versioned {
           if (node.properties !== undefined) {
             const result = {};
             Object.entries(node.properties).forEach(([k, v]) => {
-              result[k] = CredentialSchema.convertToInternalSchemaObj(v, createFullName(nodeKeyName, k));
+              result[k] = CredentialSchema.convertToInternalSchemaObj(v, createFullName(nodeKeyName, k), rootNode);
             });
             return result;
           } else {
             throw new Error(`Schema object key ${nodeKeyName} must have properties object`);
           }
         case 'array':
-          return node.items.map((i) => CredentialSchema.convertToInternalSchemaObj(i, createFullName(nodeKeyName, i)));
+          return node.items.map((i) => CredentialSchema.convertToInternalSchemaObj(i, createFullName(nodeKeyName, i), rootNode));
+        case this.STR_REV_TYPE:
+          if (node.compress === undefined) {
+            throw new Error(`Schema object key ${nodeKeyName} must have boolean compress attribute`);
+          }
+          return node;
+        case this.POSITIVE_INT_TYPE: // TODO: remove this reference type when minimum >= 0 change is applied?
+          return node;
         default:
           throw new Error(`Unknown type for key ${nodeKeyName} in schema: ${typ}`);
-      }
-    } else if (ref !== undefined) {
-      switch (ref) {
-        case '#/definitions/encryptableString':
-          return { type: this.STR_REV_TYPE, compress: false };
-        case '#/definitions/encryptableCompString':
-          return { type: this.STR_REV_TYPE, compress: true };
-        case '#/definitions/positiveInteger':
-          return { type: this.POSITIVE_INT_TYPE };
-        default:
-          throw new Error(`Unknown ref for key ${nodeKeyName} in schema: ${ref}`);
       }
     } else {
       if (Array.isArray(node.allOf)) {
