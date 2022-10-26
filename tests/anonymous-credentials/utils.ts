@@ -1,16 +1,14 @@
 import {
-  CRED_VERSION_STR,
-  REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR,
+  CRYPTO_VERSION_STR,
+  ID_STR, REV_CHECK_STR, REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
   SUBJECT_STR,
-  CredentialSchema,
+  CredentialSchema, IJsonSchema, VERSION_STR, TYPE_STR, STATUS_TYPE_STR, EMBEDDED_SCHEMA_URI_PREFIX, SCHEMA_TYPE_STR
 } from '../../src/anonymous-credentials';
 
-export function getExampleSchema(num) {
-  const schema: any = CredentialSchema.essential();
-  schema.properties[CRED_VERSION_STR] = { type: 'string' };
-  schema.properties[SCHEMA_STR] = { type: 'string' };
+export function getExampleSchema(num): IJsonSchema {
+  const schema = CredentialSchema.essential();
   switch (num) {
     case 1:
       schema.properties[SUBJECT_STR] = {
@@ -35,7 +33,7 @@ export function getExampleSchema(num) {
         properties: {
           fname: { type: 'string' },
           score: { type: 'integer', minimum: -100 },
-          long: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+          long: {type: 'number', minimum: 0, multipleOf: 0.01}
         }
       };
       break;
@@ -47,14 +45,7 @@ export function getExampleSchema(num) {
           score: { type: 'integer', minimum: -100 }
         }
       };
-      schema.properties[STATUS_STR] = {
-        type: 'object',
-        properties: {
-          [REGISTRY_ID_STR]: { type: 'string' },
-          [REV_CHECK_STR]: { type: 'string' },
-          [REV_ID_STR]: { type: 'string' },
-        },
-      };
+      schema.properties[STATUS_STR] = CredentialSchema.statusAsJsonSchema();
       break;
     case 5:
       schema.properties[SUBJECT_STR] = {
@@ -63,159 +54,103 @@ export function getExampleSchema(num) {
           fname: { type: 'string' },
           lname: { type: 'string' },
           sensitive: {
-            very: {
-              secret: { type: 'string' }
-            },
-            email: { type: 'string' },
-            phone: { type: 'string' },
-            SSN: { type: 'stringReversible', compress: false }
+            type: 'object',
+            properties: {
+              very: {
+                type: 'object',
+                properties: {
+                  secret: { type: 'string' }
+                }
+              },
+              email: { type: 'string' },
+              phone: { type: 'string' },
+              SSN: { $ref: '#/definitions/encryptableString' }
+            }
           },
           lessSensitive: {
-            location: {
-              country: { type: 'string' },
-              city: { type: 'string' }
-            },
-            department: {
-              name: { type: 'string' },
+            type: 'object',
+            properties: {
               location: {
-                name: { type: 'string' },
-                geo: {
-                  lat: { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
-                  long: { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 }
+                type: 'object',
+                properties: {
+                  country: { type: 'string' },
+                  city: { type: 'string' }
+                },
+              },
+              department: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  location: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      geo: {
+                        type: 'object',
+                        properties: {
+                          lat: {type: 'number',minimum: -90, multipleOf: 0.001},
+                          long: {type: 'number',minimum: -180, multipleOf: 0.001}
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
           },
-          rank: { type: 'positiveInteger' }
+          rank: { type: 'integer', minimum: 0 }
         }
       };
-      schema.properties[STATUS_STR] = {
-        type: 'object',
-        properties: {
-          $registryId: { type: 'string' },
-          $revocationCheck: { type: 'string' },
-          $revocationId: { type: 'string' }
-        }
-      };
+      schema.properties[STATUS_STR] = CredentialSchema.statusAsJsonSchema();
       break;
     case 6:
+      const item = {
+        type: "object",
+        properties: {
+          name: {type: "string"},
+          location: {
+            type: "object",
+            properties: {
+              name: {type: "string"},
+              geo: {
+                type: "object",
+                properties: {
+                  lat: {type: 'number',minimum: -90, multipleOf: 0.001},
+                  long: {type: 'number',minimum: -180, multipleOf: 0.001}
+                }
+              }
+            }
+          }
+        }
+      };
       schema.properties[SUBJECT_STR] = {
         type: "array",
-        items: [{
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }, {
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }, {
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }]
+        items: [item, item, item]
       };
       break;
     case 7:
+      const item1 = {
+        type: "object",
+        properties: {
+          name: {type: "string"},
+          location: {
+            type: "object",
+            properties: {
+              name: {type: "string"},
+              geo: {
+                type: "object",
+                properties: {
+                  lat: {type: 'number', minimum: -90, multipleOf: 0.001},
+                  long: {type: 'number', minimum: -180, multipleOf: 0.001}
+                }
+              }
+            }
+          }
+        }
+      };
       schema.properties[SUBJECT_STR] = {
         type: "array",
-        items: [{
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }, {
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }, {
-          type: "object",
-          properties: {
-            name: {type: "string"},
-            location: {
-              type: "object",
-              properties: {
-                name: {type: "string"},
-                geo: {
-                  type: "object",
-                  properties: {
-                    lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-                    long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-                  }
-                }
-              }
-            }
-          }
-        }]
+        items: [item1, item1, item1]
       };
       
       schema.properties['issuer'] = {
@@ -226,8 +161,8 @@ export function getExampleSchema(num) {
           logo: {type: "string"}
         }
       };
-      schema.properties['issuanceDate'] = {type: "positiveInteger"};
-      schema.properties['expirationDate'] = {type: "positiveInteger"};
+      schema.properties['issuanceDate'] = { type: 'integer', minimum: 0 };
+      schema.properties['expirationDate'] = { type: 'integer', minimum: 0 };
       break;
     case 8:
       schema.properties[SUBJECT_STR] = {
@@ -240,14 +175,17 @@ export function getExampleSchema(num) {
             properties: {
               email: { type: 'string' },
               phone: { type: 'string' },
-              SSN: { type: 'stringReversible', compress: false }
+              SSN: { $ref: '#/definitions/encryptableString' }
             }
           },
-          timeOfBirth: { type: 'positiveInteger' },
+          timeOfBirth: { type: 'integer', minimum: 0 },
           physical: {
-            height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-            weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-            BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+            type: 'object',
+            properties: {
+              height: {type: 'number', minimum: 0, multipleOf: 0.1},
+              weight: {type: 'number', minimum: 0, multipleOf: 0.1},
+              BMI: {type: 'number', minimum: 0, multipleOf: 0.01}
+            }
           },
         }
       };
@@ -259,15 +197,15 @@ export function getExampleSchema(num) {
           fname: { type: 'string' },
           lname: { type: 'string' },
           email: { type: 'string' },
-          SSN: { type: 'stringReversible', compress: false },
-          userId: { type: 'stringReversible', compress: true },
+          SSN: { $ref: '#/definitions/encryptableString' },
+          userId: { $ref: '#/definitions/encryptableCompString' },
           country: { type: 'string' },
           city: { type: 'string' },
-          timeOfBirth: { type: 'positiveInteger' },
-          height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-          BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
-          score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 },
+          timeOfBirth: {type: 'integer', minimum: 0},
+          height: {type: 'number', minimum: 0, multipleOf: 0.1},
+          weight: {type: 'number', minimum: 0, multipleOf: 0.1},
+          BMI: {type: 'number', minimum: 0, multipleOf: 0.01},
+          score: { type: 'number', minimum: -100, multipleOf: 0.1 },
           secret: { type: 'string' }
         }
       };
@@ -282,7 +220,7 @@ export function getExampleSchema(num) {
             type: 'object',
             properties: {
               email: { type: 'string' },
-              SSN: { type: 'stringReversible', compress: false }
+              SSN: { $ref: '#/definitions/encryptableString' }
             }
           },
           education: {
@@ -299,16 +237,16 @@ export function getExampleSchema(num) {
               transcript: {
                 type: 'object',
                 properties: {
-                  rank: { type: 'positiveInteger' },
-                  CGPA: { type: 'positiveDecimalNumber', decimalPlaces: 2 },
+                  rank: {type: 'integer', minimum: 0},
+                  CGPA: {type: 'number', minimum: 0, multipleOf: 0.01},
                   scores: {
                     type: 'object',
                     properties: {
-                      english: { type: 'positiveInteger' },
-                      mathematics: { type: 'positiveInteger' },
-                      science: { type: 'positiveInteger' },
-                      history: { type: 'positiveInteger' },
-                      geography: { type: 'positiveInteger' }
+                      english: {type: 'integer', minimum: 0},
+                      mathematics: {type: 'integer', minimum: 0},
+                      science: {type: 'integer', minimum: 0},
+                      history: {type: 'integer', minimum: 0},
+                      geography: {type: 'integer', minimum: 0}
                     }
                   }
                 }
@@ -317,14 +255,7 @@ export function getExampleSchema(num) {
           }
         }
       };
-      schema.properties[STATUS_STR] = {
-        type: 'object',
-        properties: {
-          $registryId: { type: 'string' },
-          $revocationCheck: { type: 'string' },
-          $revocationId: { type: 'string' }
-        }
-      };
+      schema.properties[STATUS_STR] = CredentialSchema.statusAsJsonSchema();
       break;
     case 11:
       schema.properties[SUBJECT_STR] = {
@@ -337,8 +268,8 @@ export function getExampleSchema(num) {
             properties: {
               secret: { type: 'string' },
               email: { type: 'string' },
-              SSN: { type: 'stringReversible', compress: false },
-              userId: { type: 'stringReversible', compress: true }
+              SSN: { $ref: '#/definitions/encryptableString' },
+              userId: { $ref: '#/definitions/encryptableCompString' }
             }
           },
           location: {
@@ -348,16 +279,16 @@ export function getExampleSchema(num) {
               city: { type: 'string' }
             }
           },
-          timeOfBirth: { type: 'positiveInteger' },
+          timeOfBirth: {type: 'integer', minimum: 0},
           physical: {
             type: 'object',
             properties: {
-              height: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-              weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
-              BMI: { type: 'positiveDecimalNumber', decimalPlaces: 2 }
+              height: {type: 'number', minimum: 0, multipleOf: 0.1},
+              weight: {type: 'number', minimum: 0, multipleOf: 0.1},
+              BMI: {type: 'number', minimum: 0, multipleOf: 0.01}
             }
           },
-          score: { type: 'decimalNumber', decimalPlaces: 1, minimum: -100 }
+          score: { type: 'number', multipleOf: .1, minimum: -100 }
         }
       };
       break;
@@ -365,4 +296,12 @@ export function getExampleSchema(num) {
       throw Error(`Cannot find example schema number ${num}`)
   }
   return schema;
+}
+
+export function checkSchemaFromJson(schemaJson: string, schema: CredentialSchema) {
+  let schm = JSON.parse(schemaJson);
+  expect(CredentialSchema.extractJsonSchemaFromEmbedded(schm.id)).toEqual(schema.jsonSchema);
+  expect(schm.parsingOptions).toEqual(schema.parsingOptions);
+  expect(schm.version).toEqual(schema.version);
+  expect(schm.type).toEqual(SCHEMA_TYPE_STR);
 }

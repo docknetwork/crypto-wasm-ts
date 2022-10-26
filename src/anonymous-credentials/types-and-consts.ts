@@ -23,14 +23,18 @@ export type PredicateParamType =
 export type FlattenedSchema = [string[], object[]];
 export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext };
 
-export const VERSION_STR = '$version';
-export const CRED_VERSION_STR = 'credentialVersion';
+export const VERSION_STR = 'version';
+export const CRYPTO_VERSION_STR = 'cryptoVersion';
 export const SCHEMA_STR = 'credentialSchema';
+export const SCHEMA_TYPE_STR = 'DockBBS+Schema2022';
+export const EMBEDDED_SCHEMA_URI_PREFIX = 'data:application/json;';
 export const SUBJECT_STR = 'credentialSubject';
 export const STATUS_STR = 'credentialStatus';
-export const REGISTRY_ID_STR = '$registryId';
-export const REV_CHECK_STR = '$revocationCheck';
-export const REV_ID_STR = '$revocationId';
+export const TYPE_STR = 'type';
+export const STATUS_TYPE_STR = 'DockVBAccumulator2022';
+export const ID_STR = 'id';
+export const REV_CHECK_STR = 'revocationCheck';
+export const REV_ID_STR = 'revocationId';
 export const MEM_CHECK_STR = 'membership';
 export const NON_MEM_CHECK_STR = 'non-membership';
 

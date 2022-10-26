@@ -3,17 +3,18 @@ import { signMessageObject } from '../sign-verify-js-objs';
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
-  CRED_VERSION_STR,
+  CRYPTO_VERSION_STR,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
-  REGISTRY_ID_STR,
+  ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  StringOrObject,
-  SUBJECT_STR
+  STATUS_TYPE_STR,
+  SUBJECT_STR,
+  TYPE_STR
 } from './types-and-consts';
 import { Credential } from './credential';
 import { flatten } from 'flat';
@@ -71,7 +72,8 @@ export class CredentialBuilder extends Versioned {
       throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} but was ${revCheck}`);
     }
     this._credStatus = {
-      [REGISTRY_ID_STR]: registryId,
+      [TYPE_STR]: STATUS_TYPE_STR,
+      [ID_STR]: registryId,
       [REV_CHECK_STR]: revCheck,
       [REV_ID_STR]: memberValue
     };
@@ -97,9 +99,6 @@ export class CredentialBuilder extends Versioned {
    * Serializes and signs creating a credential.
    * Expects the credential to have the same fields as schema. This is intentional to always communicate to the
    * verifier the full structure of the credential.
-   *
-   * For future: If this needs to be relaxed (by adding a `strict = false` or something) then the resulting credential
-   * should have the updated schema before signing and the caller should be notified (console.warn or something)
    *
    * @param secretKey
    * @param signatureParams - This makes bulk issuance of credentials with same number of attributes faster because the
@@ -130,11 +129,11 @@ export class CredentialBuilder extends Versioned {
     );
   }
 
-  serializeForSigning() {
+  serializeForSigning(): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
-      [CRED_VERSION_STR]: this._version,
-      [SCHEMA_STR]: this._schema?.toJSON(),
+      [CRYPTO_VERSION_STR]: this._version,
+      [SCHEMA_STR]: JSON.stringify(this._schema?.toJSON()),
       [SUBJECT_STR]: this._subject
     };
     for (const [k, v] of this._topLevelFields.entries()) {

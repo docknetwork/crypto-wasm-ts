@@ -3,14 +3,15 @@ import {
   Credential,
   CredentialBuilder,
   CredentialSchema,
-  MEM_CHECK_STR, REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR,
-  SIGNATURE_PARAMS_LABEL_BYTES,
-  SUBJECT_STR
+  MEM_CHECK_STR, ID_STR, REV_CHECK_STR, REV_ID_STR, SCHEMA_STR,
+  SIGNATURE_PARAMS_LABEL_BYTES, STATUS_TYPE_STR,
+  SUBJECT_STR, TYPE_STR
 } from '../../src/anonymous-credentials';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
-import { getExampleSchema } from './utils';
+import { checkSchemaFromJson, getExampleSchema } from './utils';
 import * as jsonld from 'jsonld';
+import { validate } from 'jsonschema';
 
 describe('CredentialBuilder signing and verification', () => {
   let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
@@ -26,11 +27,18 @@ describe('CredentialBuilder signing and verification', () => {
   function checkJsonConvForCred(cred: Credential, pk: BBSPlusPublicKeyG2): Credential {
     // This to/from JSON can be abstracted into a class and then testing will lead to less duplicated code
     const credJson = cred.toJSON();
+    // Check that the credential JSON contains the schema in JSON-schema format
+    checkSchemaFromJson(credJson[SCHEMA_STR], cred.schema);
+
+    // The recreated credential should verify
     const recreatedCred = Credential.fromJSON(credJson);
     checkResult(recreatedCred.verify(pk));
+
+    // The JSON representation of original and recreated credential should be same
     expect(credJson).toEqual(recreatedCred.toJSON());
     expect(recreatedCred.schema.version).toEqual(cred.schema.version);
     expect(recreatedCred.schema.schema).toEqual(cred.schema.schema);
+    expect(recreatedCred.schema.jsonSchema).toEqual(cred.schema.jsonSchema);
     return recreatedCred;
   }
 
@@ -57,6 +65,23 @@ describe('CredentialBuilder signing and verification', () => {
     checkResult(cred.verify(pk));
     const recreatedCred = checkJsonConvForCred(cred, pk);
     expect(recreatedCred.subject).toEqual({ fname: 'John', lname: 'Smith' });
+
+    // The credential JSON should be valid as per the JSON schema
+    let res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(true);
+
+    // The credential JSON fails to validate for an incorrect schema
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'number' }
+      }
+    };
+    res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(false);
+    
+    // NOTE: Probably makes sense to always have `required` as true in each object. Also to disallow extra keys.
   });
 
   it('for credential with nesting', () => {
@@ -71,7 +96,7 @@ describe('CredentialBuilder signing and verification', () => {
           properties: {
             email: { type: 'string' },
             phone: { type: 'string' },
-            SSN: { type: 'stringReversible', compress: false }
+            SSN: { $ref: '#/definitions/encryptableString' }
           }
         }
       }
@@ -243,9 +268,10 @@ describe('CredentialBuilder signing and verification', () => {
       rank: 6
     });
     expect(recreatedCred.credentialStatus).toEqual({
-      [REGISTRY_ID_STR]: 'dock:accumulator:accumId123',
+      [ID_STR]: 'dock:accumulator:accumId123',
       [REV_CHECK_STR]: MEM_CHECK_STR,
-      [REV_ID_STR]: 'user:A-123'
+      [REV_ID_STR]: 'user:A-123',
+      [TYPE_STR]: STATUS_TYPE_STR,
     })
     // In practice there will be an accumulator as well
   });
@@ -326,11 +352,11 @@ describe('CredentialBuilder signing and verification', () => {
     };
     const cred = builder.sign(sk);
 
-    const credWithCtx = cred.prepareForJsonLd();
+    const credWithCtx = cred.toJSONWithJsonLdContext();
     let normalized = await jsonld.normalize(credWithCtx);
     expect(normalized).not.toEqual("");
 
-    const credWithoutCtx = cred.prepareForJson();
+    const credWithoutCtx = cred.toJSON();
     normalized = await jsonld.normalize(credWithoutCtx);
     expect(normalized).toEqual("");
   })
