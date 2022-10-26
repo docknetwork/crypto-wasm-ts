@@ -14,11 +14,11 @@ import b58 from 'bs58';
 
 export class Credential extends Versioned {
   // Each credential references the schema which is included as an attribute
-  schema: CredentialSchema;
-  subject: object | object[];
-  credentialStatus?: object;
-  topLevelFields: Map<string, unknown>;
-  signature: SignatureG1;
+  readonly schema: CredentialSchema;
+  readonly subject: object | object[];
+  readonly credentialStatus?: object;
+  readonly topLevelFields: Map<string, unknown>;
+  readonly signature: SignatureG1;
 
   constructor(
     version: string,

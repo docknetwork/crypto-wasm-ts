@@ -3,14 +3,17 @@ import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../bbs-plus';
 import { isPositiveInteger } from '../util';
 import {
-  CRYPTO_VERSION_STR, EMBEDDED_SCHEMA_URI_PREFIX,
+  CRYPTO_VERSION_STR,
+  EMBEDDED_SCHEMA_URI_PREFIX,
   FlattenedSchema,
   ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
-  SCHEMA_STR, SCHEMA_TYPE_STR,
+  SCHEMA_STR,
+  SCHEMA_TYPE_STR,
   STATUS_STR,
-  SUBJECT_STR, TYPE_STR,
+  SUBJECT_STR,
+  TYPE_STR
 } from './types-and-consts';
 import { flattenTill2ndLastKey } from './util';
 
@@ -261,7 +264,7 @@ export class CredentialSchema extends Versioned {
   // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRYPTO_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
 
-  static IMPLICIT_FIELDS = {[CRYPTO_VERSION_STR]: {type: 'string'}, [SCHEMA_STR]: {type: 'string'}};
+  static IMPLICIT_FIELDS = { [CRYPTO_VERSION_STR]: { type: 'string' }, [SCHEMA_STR]: { type: 'string' } };
 
   // Custom definitions for JSON schema syntax
   static JSON_SCHEMA_CUSTOM_DEFS = {
@@ -304,9 +307,9 @@ export class CredentialSchema extends Versioned {
     this.NUM_TYPE
   ]);
 
-  schema: ISchema;
-  jsonSchema: IJsonSchema;
-  parsingOptions: ISchemaParsingOpts;
+  readonly schema: ISchema;
+  readonly jsonSchema: IJsonSchema;
+  readonly parsingOptions: ISchemaParsingOpts;
   // @ts-ignore
   encoder: Encoder;
 
@@ -488,7 +491,7 @@ export class CredentialSchema extends Versioned {
       [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
-        [SUBJECT_STR]: {},
+        [SUBJECT_STR]: {}
       }
     };
     if (withDefinitions) {
@@ -505,7 +508,7 @@ export class CredentialSchema extends Versioned {
         [ID_STR]: { type: 'string' },
         [TYPE_STR]: { type: 'string' },
         [REV_CHECK_STR]: { type: 'string' },
-        [REV_ID_STR]: { type: 'string' },
+        [REV_ID_STR]: { type: 'string' }
       }
     };
   }
@@ -786,7 +789,7 @@ export class CredentialSchema extends Versioned {
   }
 
   static flattenSchemaObj(schema: object): FlattenedSchema {
-    return flattenTill2ndLastKey({...this.IMPLICIT_FIELDS, ...schema});
+    return flattenTill2ndLastKey({ ...this.IMPLICIT_FIELDS, ...schema });
   }
 
   private static validateStringType(schema: object, fieldName: string) {

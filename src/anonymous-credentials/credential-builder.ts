@@ -11,8 +11,10 @@ import {
   REV_ID_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  STATUS_STR, STATUS_TYPE_STR,
-  SUBJECT_STR, TYPE_STR
+  STATUS_STR,
+  STATUS_TYPE_STR,
+  SUBJECT_STR,
+  TYPE_STR
 } from './types-and-consts';
 import { Credential } from './credential';
 import { flatten } from 'flat';

@@ -25,7 +25,7 @@ import {
   REV_ID_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  STATUS_STR,
+  STATUS_STR
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import { buildContextForProof, createWitEq, deepClone, flattenTill2ndLastKey, getTransformedMinMax } from './util';
@@ -43,14 +43,14 @@ import b58 from 'bs58';
 import { SetupParamsTracker } from './setup-params-tracker';
 
 export class Presentation extends Versioned {
-  spec: PresentationSpecification;
-  proof: CompositeProofG1;
+  readonly spec: PresentationSpecification;
+  readonly proof: CompositeProofG1;
   // Ciphertexts for the verifiable encryption of required attributes. The key of the map is the credential index.
   // This is intentionally not part of presentation specification as this is created as part of the proof generation,
   // not before.
-  attributeCiphertexts?: Map<number, AttributeCiphertexts>;
-  context?: string;
-  nonce?: Uint8Array;
+  readonly attributeCiphertexts?: Map<number, AttributeCiphertexts>;
+  readonly context?: string;
+  readonly nonce?: Uint8Array;
 
   constructor(
     version: string,

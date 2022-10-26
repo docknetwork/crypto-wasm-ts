@@ -9,10 +9,9 @@ import {
   STATUS_STR,
   SUBJECT_STR,
   ValueType,
-  VERSION_STR
+  VERSION_STR, TYPE_STR
 } from '../../src/anonymous-credentials';
 import { getExampleSchema } from './utils';
-import { TYPE_STR } from '../../../../../../../../home/lovesh/dev/dock/crypto-wasm-ts/src/anonymous-credentials';
 
 describe('Credential Schema', () => {
   beforeAll(async () => {
@@ -26,8 +25,6 @@ describe('Credential Schema', () => {
         customDefinition: { type: 'integer', minimum: -256 },
       },
       properties: {
-        // cryptoVersion: {type: 'string'},
-        // credentialSchema: CredentialSchema.schemaAsJsonSchema(),
         credentialSubject: {
           type: 'object',
           properties: {
@@ -38,8 +35,6 @@ describe('Credential Schema', () => {
     };
     const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
     expect(schema).toEqual({
-      // cryptoVersion: { type: 'string' },
-      // credentialSchema: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       credentialSubject: {
         customField: { type: 'integer', minimum: -256 },
       }
@@ -66,8 +61,6 @@ describe('Credential Schema', () => {
     };
     const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
     expect(schema).toEqual({
-      // cryptoVersion: { type: 'string' },
-      // credentialSchema: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       credentialSubject: {
         SSN: { type: 'stringReversible', compress: false },
         userId: { type: 'stringReversible', compress: true },
@@ -79,8 +72,6 @@ describe('Credential Schema', () => {
     const jsonSchema = {
       type: 'object',
       properties: {
-        // cryptoVersion: {type: 'string'},
-        // credentialSchema: CredentialSchema.schemaAsJsonSchema(),
         credentialSubject: {
           type: 'object',
           properties: {
@@ -96,8 +87,6 @@ describe('Credential Schema', () => {
     };
     const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
     expect(schema).toEqual({
-      // cryptoVersion: { type: 'string' },
-      // credentialSchema: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       credentialSubject: {
         SSN: { type: 'stringReversible', compress: false },
         userId: { type: 'stringReversible', compress: true },
@@ -111,8 +100,6 @@ describe('Credential Schema', () => {
     const jsonSchema1 = {
       type: 'object',
       properties: {
-        // cryptoVersion: { type: 'string' },
-        // credentialSchema: CredentialSchema.schemaAsJsonSchema(),
         credentialSubject: {
           type: 'object',
           properties: {
@@ -148,8 +135,6 @@ describe('Credential Schema', () => {
     };
     const schema1 = CredentialSchema.convertToInternalSchemaObj(jsonSchema1, DefaultSchemaParsingOpts);
     expect(schema1).toEqual({
-      // cryptoVersion: { type: 'string' },
-      // credentialSchema: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       credentialSubject: {
         sensitive: { SSN: { type: 'stringReversible', compress: false }, userId: { type: 'stringReversible', compress: true } },
         longitude: { type: 'decimalNumber', minimum: -180, decimalPlaces: 3 },
@@ -180,30 +165,8 @@ describe('Credential Schema', () => {
         fname: { type: 'string' }
       }
     };
-    // // @ts-ignore
-    // expect(() => new CredentialSchema(schema1)).toThrow();
-    //
-    // schema1.properties[CRYPTO_VERSION_STR] = { type: 'integer' };
-    // // @ts-ignore
-    // expect(() => new CredentialSchema(schema1)).toThrow();
-    //
-    // schema1.properties[CRYPTO_VERSION_STR] = { type: 'string' };
-    // // @ts-ignore
-    // expect(() => new CredentialSchema(schema1)).toThrow();
-    //
-    // schema1.properties[SCHEMA_STR] = { type: 'integer' };
-    // // @ts-ignore
-    // expect(() => new CredentialSchema(schema1)).toThrow();
-    //
-    // schema1.properties[SCHEMA_STR] = { type: 'string' };
-    // // @ts-ignore
-    // expect(() => new CredentialSchema(schema1)).toThrow();
-    //
-    // schema1.properties[SCHEMA_STR] = CredentialSchema.schemaAsJsonSchema();
     // @ts-ignore
     const cs1 = new CredentialSchema(schema1);
-    // expect(cs1.schema[CRYPTO_VERSION_STR]).toEqual({ type: 'string' });
-    // expect(cs1.schema[SCHEMA_STR]).toEqual({ [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } });
     expect(cs1.schema[SUBJECT_STR]).toEqual({
       fname: { type: 'string' },
     });
@@ -233,8 +196,6 @@ describe('Credential Schema', () => {
     };
     const cs1 = new CredentialSchema(schema1);
     expect(cs1.schema).toEqual({
-      // [CRYPTO_VERSION_STR]: { type: 'string' },
-      // [SCHEMA_STR]: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       [SUBJECT_STR]: {
         fname: { type: 'string' }
       },
@@ -246,8 +207,6 @@ describe('Credential Schema', () => {
       },
       type: 'object',
       properties: {
-        // [CRYPTO_VERSION_STR]: { type: 'string' },
-        // [SCHEMA_STR]: CredentialSchema.schemaAsJsonSchema(),
         [SUBJECT_STR]: {
           type: 'object',
           properties: {

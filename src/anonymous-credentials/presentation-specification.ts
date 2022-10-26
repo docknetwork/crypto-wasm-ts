@@ -3,7 +3,7 @@ import b58 from 'bs58';
 
 export interface IPresentedStatus {
   [ID_STR]: string;
-  [TYPE_STR]: string,
+  [TYPE_STR]: string;
   [REV_CHECK_STR]: string;
   accumulated: Uint8Array;
   extra: object;

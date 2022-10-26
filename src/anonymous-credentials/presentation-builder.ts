@@ -27,7 +27,9 @@ import {
   REV_ID_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  STATUS_STR, TYPE_STR, STATUS_TYPE_STR
+  STATUS_STR,
+  TYPE_STR,
+  STATUS_TYPE_STR
 } from './types-and-consts';
 import {
   IPresentedAttributeBounds,
