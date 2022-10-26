@@ -1,7 +1,7 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   CRED_VERSION_STR,
-  CredentialSchema, META_SCHEMA_STR,
+  CredentialSchema, DefaultSchemaParsingOpts, META_SCHEMA_STR,
   REGISTRY_ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
@@ -35,7 +35,7 @@ describe('Credential Schema', () => {
         }
       }
     };
-    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema);
+    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
     expect(schema).toEqual({
       credentialVersion: { type: 'string' },
       credentialSchema: { type: 'string' },
@@ -63,7 +63,7 @@ describe('Credential Schema', () => {
         }
       }
     };
-    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema);
+    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
     expect(schema).toEqual({
       credentialVersion: { type: 'string' },
       credentialSchema: { type: 'string' },
@@ -87,18 +87,13 @@ describe('Credential Schema', () => {
             userId: { $ref: '#/definitions/encryptableCompString' },
             vision: {type: 'integer', minimum: -20},
             longitude: {type: 'number', minimum: -180, multipleOf: 0.001},
-            time: { $ref: '#/definitions/positiveInteger' },
-            weight: {
-              allOf: [
-                { $ref: '#/definitions/positiveNumber' },
-                { multipleOf: 0.1 }
-              ]
-            },
+            time: { type: 'integer', minimum: 0 },
+            weight: {type: 'number', minimum: 25, multipleOf: 0.1},
           }
         }
       }
     };
-    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema);
+    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
     expect(schema).toEqual({
       credentialVersion: { type: 'string' },
       credentialSchema: { type: 'string' },
@@ -128,7 +123,7 @@ describe('Credential Schema', () => {
               }
             },
             longitude: { type: 'number', minimum: -180, multipleOf: 0.001 },
-            time: { $ref: '#/definitions/positiveInteger' },
+            time: { type: 'integer', minimum: 0 },
             physical: {
               type: 'object',
               properties: {
@@ -141,12 +136,7 @@ describe('Credential Schema', () => {
                 l2: {
                   type: 'object',
                   properties: {
-                    weight: {
-                      allOf: [
-                        { $ref: '#/definitions/positiveNumber' },
-                        { multipleOf: 0.1 }
-                      ]
-                    },
+                    weight: {type: 'number', minimum: 25, multipleOf: 0.1},
                   },
                 }
               }
@@ -155,7 +145,7 @@ describe('Credential Schema', () => {
         }
       }
     };
-    const schema1 = CredentialSchema.convertToInternalSchemaObj(jsonSchema1);
+    const schema1 = CredentialSchema.convertToInternalSchemaObj(jsonSchema1, DefaultSchemaParsingOpts);
     expect(schema1).toEqual({
       credentialVersion: { type: 'string' },
       credentialSchema: { type: 'string' },
@@ -290,6 +280,28 @@ describe('Credential Schema', () => {
       type: 'object',
       properties: {
         fname: { type: 'string' },
+        score: { type: 'integer' }
+      }
+    };
+    expect(() => new CredentialSchema(schema2)).toThrow();
+
+    let cs = new CredentialSchema(schema2, {useDefaults: true});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      score: { type: 'integer', minimum: DefaultSchemaParsingOpts.defaultMinimumInteger },
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer' },
+      }
+    });
+
+    schema2.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
         score: { type: 'integer', minimum: -100 }
       },
     };
@@ -313,40 +325,57 @@ describe('Credential Schema', () => {
       properties: {
         fname: { type: 'string' },
         score: { type: 'integer', minimum: -100 },
-        long: {
-          allOf: [
-            { $ref: '#/definitions/positiveNumber' },
-          ]
-        }
+        long: { type: 'number'}
       },
     };
     expect(() => new CredentialSchema(schema3)).toThrow();
+
+    cs = new CredentialSchema(schema3, {useDefaults: true});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      score: { type: 'integer', minimum: -100 },
+      long: { type: 'decimalNumber', minimum: DefaultSchemaParsingOpts.defaultMinimumInteger, decimalPlaces: DefaultSchemaParsingOpts.defaultDecimalPlaces }
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer', minimum: -100 },
+        long: { type: 'number' }
+      }
+    });
 
     schema3.properties[SUBJECT_STR] = {
       type: 'object',
       properties: {
         fname: { type: 'string' },
         score: { type: 'integer', minimum: -100 },
-        long: { allOf: [
-            { $ref: '#/definitions/positiveNumber' },
-            { minimum: -200 }
-          ]
+        long: { type: 'number', minimum: -200}
         }
-      },
     };
     expect(() => new CredentialSchema(schema3)).toThrow();
+
+    cs = new CredentialSchema(schema3, {useDefaults: true});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      score: { type: 'integer', minimum: -100 },
+      long: { type: 'decimalNumber', minimum: -200, decimalPlaces: DefaultSchemaParsingOpts.defaultDecimalPlaces }
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer', minimum: -100 },
+        long: { type: 'number', minimum: -200 }
+      }
+    });
 
     schema3.properties[SUBJECT_STR] = {
       type: 'object',
       properties: {
         fname: { type: 'string' },
         score: { type: 'integer', minimum: -100 },
-        long: {
-          allOf: [
-            { $ref: '#/definitions/positiveNumber' },
-            { multipleOf: 0.01 }
-          ]
-        }
+        long: { type: 'number', minimum: 0, multipleOf: 0.01 }
       }
     };
     const cs3 = new CredentialSchema(schema3);
@@ -360,12 +389,7 @@ describe('Credential Schema', () => {
       properties: {
         fname: { type: 'string' },
         score: { type: 'integer', minimum: -100 },
-        long: {
-          allOf: [
-            { $ref: '#/definitions/positiveNumber' },
-            { multipleOf: 0.01 }
-          ]
-        }
+        long: { type: 'number', minimum: 0, multipleOf: 0.01 }
       }
     });
 
@@ -381,6 +405,21 @@ describe('Credential Schema', () => {
     };
     expect(() => new CredentialSchema(schema4)).toThrow();
 
+    cs = new CredentialSchema(schema4, {useDefaults: true});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      score: { type: 'integer', minimum: -100 },
+      lat: { type: 'decimalNumber', minimum: DefaultSchemaParsingOpts.defaultMinimumInteger, decimalPlaces: DefaultSchemaParsingOpts.defaultDecimalPlaces }
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer', minimum: -100 },
+        lat: { type: 'number' }
+      }
+    });
+
     schema4.properties[SUBJECT_STR] = {
       type: 'object',
       properties: {
@@ -390,6 +429,21 @@ describe('Credential Schema', () => {
       }
     };
     expect(() => new CredentialSchema(schema4)).toThrow();
+
+    cs = new CredentialSchema(schema4, {useDefaults: true});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      score: { type: 'integer', minimum: -100 },
+      lat: { type: 'decimalNumber', minimum: DefaultSchemaParsingOpts.defaultMinimumInteger, decimalPlaces: 3 }
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer', minimum: -100 },
+        lat: { type: 'number', multipleOf: .001 }
+      }
+    });
 
     schema4.properties[SUBJECT_STR] = {
       type: 'object',
@@ -611,14 +665,9 @@ describe('Credential Schema', () => {
         fname: { type: 'string' },
         SSN: { $ref: '#/definitions/encryptableString' },
         userId: { $ref: '#/definitions/encryptableCompString' },
-        timeOfBirth: { $ref: '#/definitions/positiveInteger' },
+        timeOfBirth: { type: 'integer', minimum: 0 },
         xyz: { type: 'integer', minimum: -10 },
-        BMI: {
-          "allOf": [
-            { "$ref": "#/definitions/positiveNumber" },
-            { "multipleOf": 0.01 }
-          ]
-        },
+        BMI: {type: 'number', minimum: 0, multipleOf: 0.01},
         score: { type: 'number', multipleOf: .1, minimum: -100 }
       },
     };

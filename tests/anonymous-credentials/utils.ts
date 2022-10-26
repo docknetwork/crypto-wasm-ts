@@ -35,11 +35,7 @@ export function getExampleSchema(num): IJsonSchema {
         properties: {
           fname: { type: 'string' },
           score: { type: 'integer', minimum: -100 },
-          long: { "allOf": [
-              { $ref: '#/definitions/positiveNumber' },
-              { multipleOf: 0.01 }
-            ]
-          }
+          long: {type: 'number', minimum: 0, multipleOf: 0.01}
         }
       };
       break;
@@ -111,7 +107,7 @@ export function getExampleSchema(num): IJsonSchema {
               }
             }
           },
-          rank: { $ref: '#/definitions/positiveInteger' }
+          rank: { type: 'integer', minimum: 0 }
         }
       };
       schema.properties[STATUS_STR] = {
@@ -181,8 +177,8 @@ export function getExampleSchema(num): IJsonSchema {
           logo: {type: "string"}
         }
       };
-      schema.properties['issuanceDate'] = {$ref: "#/definitions/positiveInteger"};
-      schema.properties['expirationDate'] = {$ref: "#/definitions/positiveInteger"};
+      schema.properties['issuanceDate'] = { type: 'integer', minimum: 0 };
+      schema.properties['expirationDate'] = { type: 'integer', minimum: 0 };
       break;
     case 8:
       schema.properties[SUBJECT_STR] = {
@@ -198,25 +194,13 @@ export function getExampleSchema(num): IJsonSchema {
               SSN: { $ref: '#/definitions/encryptableString' }
             }
           },
-          timeOfBirth: { $ref: '#/definitions/positiveInteger' },
+          timeOfBirth: { type: 'integer', minimum: 0 },
           physical: {
             type: 'object',
             properties: {
-              height: { "allOf": [
-                  { $ref: '#/definitions/positiveNumber' },
-                  { multipleOf: 0.1 }
-                ]
-              },
-              weight: { "allOf": [
-                  { $ref: '#/definitions/positiveNumber' },
-                  { multipleOf: 0.1 }
-                ]
-              },
-              BMI: { "allOf": [
-                  { $ref: '#/definitions/positiveNumber' },
-                  { multipleOf: 0.01 }
-                ]
-              }
+              height: {type: 'number', minimum: 0, multipleOf: 0.1},
+              weight: {type: 'number', minimum: 0, multipleOf: 0.1},
+              BMI: {type: 'number', minimum: 0, multipleOf: 0.01}
             }
           },
         }
@@ -233,22 +217,10 @@ export function getExampleSchema(num): IJsonSchema {
           userId: { $ref: '#/definitions/encryptableCompString' },
           country: { type: 'string' },
           city: { type: 'string' },
-          timeOfBirth: { $ref: "#/definitions/positiveInteger" },
-          height: { "allOf": [
-              { $ref: '#/definitions/positiveNumber' },
-              { multipleOf: 0.1 }
-            ]
-          },
-          weight: { "allOf": [
-              { $ref: '#/definitions/positiveNumber' },
-              { multipleOf: 0.1 }
-            ]
-          },
-          BMI: { "allOf": [
-              { $ref: '#/definitions/positiveNumber' },
-              { multipleOf: 0.01 }
-            ]
-          },
+          timeOfBirth: {type: 'integer', minimum: 0},
+          height: {type: 'number', minimum: 0, multipleOf: 0.1},
+          weight: {type: 'number', minimum: 0, multipleOf: 0.1},
+          BMI: {type: 'number', minimum: 0, multipleOf: 0.01},
           score: { type: 'number', minimum: -100, multipleOf: 0.1 },
           secret: { type: 'string' }
         }
@@ -281,20 +253,16 @@ export function getExampleSchema(num): IJsonSchema {
               transcript: {
                 type: 'object',
                 properties: {
-                  rank: { $ref: '#/definitions/positiveInteger' },
-                  CGPA: { "allOf": [
-                      { $ref: '#/definitions/positiveNumber' },
-                      { multipleOf: 0.01 }
-                    ]
-                  },
+                  rank: {type: 'integer', minimum: 0},
+                  CGPA: {type: 'number', minimum: 0, multipleOf: 0.01},
                   scores: {
                     type: 'object',
                     properties: {
-                      english: { $ref: '#/definitions/positiveInteger' },
-                      mathematics: { $ref: '#/definitions/positiveInteger' },
-                      science: { $ref: '#/definitions/positiveInteger' },
-                      history: { $ref: '#/definitions/positiveInteger' },
-                      geography: { $ref: '#/definitions/positiveInteger' }
+                      english: {type: 'integer', minimum: 0},
+                      mathematics: {type: 'integer', minimum: 0},
+                      science: {type: 'integer', minimum: 0},
+                      history: {type: 'integer', minimum: 0},
+                      geography: {type: 'integer', minimum: 0}
                     }
                   }
                 }
@@ -334,25 +302,13 @@ export function getExampleSchema(num): IJsonSchema {
               city: { type: 'string' }
             }
           },
-          timeOfBirth: { $ref: '#/definitions/positiveInteger' },
+          timeOfBirth: {type: 'integer', minimum: 0},
           physical: {
             type: 'object',
             properties: {
-              height: { "allOf": [
-                  { $ref: '#/definitions/positiveNumber' },
-                  { multipleOf: 0.1 }
-                ]
-              },
-              weight: { "allOf": [
-                  { $ref: '#/definitions/positiveNumber' },
-                  { multipleOf: 0.1 }
-                ]
-              },
-              BMI: { "allOf": [
-                  { $ref: '#/definitions/positiveNumber' },
-                  { multipleOf: 0.01 }
-                ]
-              }
+              height: {type: 'number', minimum: 0, multipleOf: 0.1},
+              weight: {type: 'number', minimum: 0, multipleOf: 0.1},
+              BMI: {type: 'number', minimum: 0, multipleOf: 0.01}
             }
           },
           score: { type: 'number', multipleOf: .1, minimum: -100 }

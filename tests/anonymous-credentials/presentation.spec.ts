@@ -415,8 +415,8 @@ describe('Presentation creation and verification', () => {
         logo: {type: "string"}
       }
     };
-    schema6.properties['issuanceDate'] = {$ref: '#/definitions/positiveInteger'};
-    schema6.properties['expirationDate'] = {$ref: '#/definitions/positiveInteger'};
+    schema6.properties['issuanceDate'] = {type: 'integer', minimum: 0};
+    schema6.properties['expirationDate'] = {type: 'integer', minimum: 0};
 
     const credSchema6 = new CredentialSchema(schema6);
     const builder6 = new CredentialBuilder();

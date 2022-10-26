@@ -13,7 +13,7 @@ import {
   SUBJECT_STR,
   VERSION_STR
 } from './types-and-consts';
-import { flattenTill2ndLastKey, getDecimalPlaces } from './util';
+import { flattenTill2ndLastKey } from './util';
 
 /**
  * Rules
@@ -236,6 +236,19 @@ export interface IJsonSchema {
   definitions?: { [key: string]: object };
 }
 
+export interface ISchemaParsingOpts {
+  useDefaults: boolean;
+  defaultMinimumInteger: number;
+  defaultDecimalPlaces: number;
+}
+
+export const DefaultSchemaParsingOpts: ISchemaParsingOpts = {
+  useDefaults: false,
+  // Minimum value kept over a billion
+  defaultMinimumInteger: -(Math.pow(2, 32) - 1),
+  defaultDecimalPlaces: 0
+};
+
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
@@ -253,14 +266,6 @@ export class CredentialSchema extends Versioned {
 
   // Custom definitions for JSON schema syntax
   static JSON_SCHEMA_CUSTOM_DEFS = {
-    positiveInteger: {
-      type: 'integer',
-      minimum: 0
-    },
-    positiveNumber: {
-      type: 'number',
-      minimum: 0
-    },
     encryptableString: {
       type: 'string'
     },
@@ -274,15 +279,11 @@ export class CredentialSchema extends Versioned {
   static JSON_SCHEMA_OVERRIDE_DEFS = {
     '#/definitions/encryptableString': {
       type: CredentialSchema.STR_REV_TYPE,
-      compress: false,
+      compress: false
     },
     '#/definitions/encryptableCompString': {
       type: CredentialSchema.STR_REV_TYPE,
-      compress: true,
-    },
-    // TODO: remove this reference type when minimum >= 0 change is applied?
-    '#/definitions/positiveInteger': {
-      type: CredentialSchema.POSITIVE_INT_TYPE,
+      compress: true
     }
   };
 
@@ -306,6 +307,7 @@ export class CredentialSchema extends Versioned {
 
   schema: ISchema;
   jsonSchema: IJsonSchema;
+  parsingOptions: ISchemaParsingOpts;
   // @ts-ignore
   encoder: Encoder;
 
@@ -313,10 +315,12 @@ export class CredentialSchema extends Versioned {
    * Takes a schema object as per JSON-schema syntax (`IJsonSchema`), validates it and converts it to an internal
    * representation (`ISchema`) and stores both as the one with JSON-schema syntax is added to the credential representation.
    * @param jsonSchema
+   * @param parsingOpts
    */
-  constructor(jsonSchema: IJsonSchema) {
+  constructor(jsonSchema: IJsonSchema, parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts) {
     // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
-    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema) as ISchema;
+    const pOpts = { ...DefaultSchemaParsingOpts, ...parsingOpts };
+    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, pOpts, '', undefined) as ISchema;
     CredentialSchema.validate(schema);
 
     super(CredentialSchema.VERSION);
@@ -324,6 +328,7 @@ export class CredentialSchema extends Versioned {
     // This is the schema in JSON-schema format. Kept to output in credentials or in `toJSON` without converting back from
     // internal representation; trading off memory for CPU time.
     this.jsonSchema = jsonSchema;
+    this.parsingOptions = pOpts;
     this.initEncoder();
   }
 
@@ -647,9 +652,16 @@ export class CredentialSchema extends Versioned {
    * Currently, does not check if the needed JSON-schema definitions are actually present but assumes that they will be
    * already passed.
    * @param inputNode
+   * @param parsingOpts
    * @param nodeKeyName - Name of the node, used for throwing more informative error message
+   * @param rootObject
    */
-  static convertToInternalSchemaObj(inputNode: any, nodeKeyName: string = '', rootObject: any = undefined): object {
+  static convertToInternalSchemaObj(
+    inputNode: any,
+    parsingOpts: ISchemaParsingOpts,
+    nodeKeyName: string = '',
+    rootObject?: object
+  ): object {
     // util function needed only in this func
     const createFullName = (old: string, neww: string): string => {
       return old.length == 0 ? neww : `${old}.${neww}`;
@@ -664,11 +676,14 @@ export class CredentialSchema extends Versioned {
     // or use an override in case of encryptable strings
     if (ref) {
       const overrideRef = this.JSON_SCHEMA_OVERRIDE_DEFS[ref];
-      if (overrideRef) {
-        node = { ...overrideRef };
+      if (overrideRef !== undefined) {
+        return overrideRef;
       } else {
-        const value = pointer.get(rootNode, ref.replace('#', ''));
-        node = { ...value };
+        try {
+          node = { ...pointer.get(rootNode, ref.replace('#', '')) };
+        } catch (e) {
+          throw new Error(`Error while getting pointer ${ref} in node name ${nodeKeyName}: ${e}`);
+        }
       }
     }
 
@@ -679,44 +694,67 @@ export class CredentialSchema extends Versioned {
         case 'string':
           return node;
         case 'integer':
-          // If key "minimum" is not present or not an integer, validation logic in other function will throw.
-          return { type: this.INT_TYPE, minimum: node.minimum };
+          return this.parseIntegerType(node, parsingOpts, nodeKeyName);
         case 'number':
-          return { type: this.NUM_TYPE, minimum: node.minimum, decimalPlaces: getDecimalPlaces(node.multipleOf) };
+          return this.parseNumberType(node, parsingOpts, nodeKeyName);
         case 'object':
           if (node.properties !== undefined) {
             const result = {};
             Object.entries(node.properties).forEach(([k, v]) => {
-              result[k] = CredentialSchema.convertToInternalSchemaObj(v, createFullName(nodeKeyName, k), rootNode);
+              result[k] = CredentialSchema.convertToInternalSchemaObj(
+                v,
+                parsingOpts,
+                createFullName(nodeKeyName, k),
+                rootNode
+              );
             });
             return result;
           } else {
             throw new Error(`Schema object key ${nodeKeyName} must have properties object`);
           }
         case 'array':
-          return node.items.map((i) => CredentialSchema.convertToInternalSchemaObj(i, createFullName(nodeKeyName, i), rootNode));
-        case this.STR_REV_TYPE:
-          if (node.compress === undefined) {
-            throw new Error(`Schema object key ${nodeKeyName} must have boolean compress attribute`);
-          }
-          return node;
-        case this.POSITIVE_INT_TYPE: // TODO: remove this reference type when minimum >= 0 change is applied?
-          return node;
+          return node.items.map((i) =>
+            CredentialSchema.convertToInternalSchemaObj(i, parsingOpts, createFullName(nodeKeyName, i), rootNode)
+          );
         default:
           throw new Error(`Unknown type for key ${nodeKeyName} in schema: ${typ}`);
       }
     } else {
-      if (Array.isArray(node.allOf)) {
-        let merged: any = {};
-        for (const t of node.allOf) {
-          merged = { ...merged, ...t };
-        }
-        if (merged.$ref === '#/definitions/positiveNumber') {
-          return { type: this.POSITIVE_NUM_TYPE, decimalPlaces: getDecimalPlaces(merged.multipleOf) };
-        }
-      }
       throw new Error(`Cannot parse node key ${nodeKeyName} for JSON-schema syntax: ${node}`);
     }
+  }
+
+  static parseIntegerType(node: { minimum?: number }, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
+    if (!parsingOpts.useDefaults && node.minimum === undefined) {
+      throw new Error(`No minimum was provided for key ${nodeName}`);
+    }
+    const min = node.minimum !== undefined ? node.minimum : parsingOpts.defaultMinimumInteger;
+    return min >= 0 ? { type: this.POSITIVE_INT_TYPE } : { type: this.INT_TYPE, minimum: min };
+  }
+
+  static parseNumberType(
+    node: { minimum?: number; multipleOf: number },
+    parsingOpts: ISchemaParsingOpts,
+    nodeName: string
+  ): object {
+    if (!parsingOpts.useDefaults && (node.minimum === undefined || node.multipleOf === undefined)) {
+      throw new Error(`both minimum and multipleOf must be provided for key ${nodeName}`);
+    }
+
+    const min = node.minimum !== undefined ? node.minimum : parsingOpts.defaultMinimumInteger;
+    const d = node.multipleOf !== undefined ? this.getDecimalPlaces(node.multipleOf) : parsingOpts.defaultDecimalPlaces;
+    return min >= 0
+      ? { type: this.POSITIVE_NUM_TYPE, decimalPlaces: d }
+      : { type: this.NUM_TYPE, minimum: min, decimalPlaces: d };
+  }
+
+  static getDecimalPlaces(d: number): number {
+    const re = /^0?\.(0*1$)/;
+    const m = d.toString().match(re);
+    if (m === null) {
+      throw new Error(`Needed a number with a decimal point like .1, .01, .001, etc but found ${d}`);
+    }
+    return m[1].length;
   }
 
   static flattenSchemaObj(schema: object): FlattenedSchema {
