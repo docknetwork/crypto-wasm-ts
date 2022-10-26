@@ -1,8 +1,8 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
-  CRED_VERSION_STR,
+  CRYPTO_VERSION_STR,
   CredentialSchema, DefaultSchemaParsingOpts, META_SCHEMA_STR,
-  REGISTRY_ID_STR,
+  ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
@@ -12,6 +12,7 @@ import {
   VERSION_STR
 } from '../../src/anonymous-credentials';
 import { getExampleSchema } from './utils';
+import { TYPE_STR } from '../../../../../../../../home/lovesh/dev/dock/crypto-wasm-ts/src/anonymous-credentials';
 
 describe('Credential Schema', () => {
   beforeAll(async () => {
@@ -25,8 +26,8 @@ describe('Credential Schema', () => {
         customDefinition: { type: 'integer', minimum: -256 },
       },
       properties: {
-        credentialVersion: {type: 'string'},
-        credentialSchema: {type: 'string'},
+        // cryptoVersion: {type: 'string'},
+        // credentialSchema: CredentialSchema.schemaAsJsonSchema(),
         credentialSubject: {
           type: 'object',
           properties: {
@@ -37,8 +38,8 @@ describe('Credential Schema', () => {
     };
     const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
     expect(schema).toEqual({
-      credentialVersion: { type: 'string' },
-      credentialSchema: { type: 'string' },
+      // cryptoVersion: { type: 'string' },
+      // credentialSchema: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       credentialSubject: {
         customField: { type: 'integer', minimum: -256 },
       }
@@ -52,8 +53,8 @@ describe('Credential Schema', () => {
         encryptableString: { type: 'string' },
       },
       properties: {
-        credentialVersion: {type: 'string'},
-        credentialSchema: {type: 'string'},
+        // cryptoVersion: {type: 'string'},
+        // credentialSchema: CredentialSchema.schemaAsJsonSchema(),
         credentialSubject: {
           type: 'object',
           properties: {
@@ -65,8 +66,8 @@ describe('Credential Schema', () => {
     };
     const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
     expect(schema).toEqual({
-      credentialVersion: { type: 'string' },
-      credentialSchema: { type: 'string' },
+      // cryptoVersion: { type: 'string' },
+      // credentialSchema: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       credentialSubject: {
         SSN: { type: 'stringReversible', compress: false },
         userId: { type: 'stringReversible', compress: true },
@@ -78,8 +79,8 @@ describe('Credential Schema', () => {
     const jsonSchema = {
       type: 'object',
       properties: {
-        credentialVersion: {type: 'string'},
-        credentialSchema: {type: 'string'},
+        // cryptoVersion: {type: 'string'},
+        // credentialSchema: CredentialSchema.schemaAsJsonSchema(),
         credentialSubject: {
           type: 'object',
           properties: {
@@ -95,8 +96,8 @@ describe('Credential Schema', () => {
     };
     const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
     expect(schema).toEqual({
-      credentialVersion: { type: 'string' },
-      credentialSchema: { type: 'string' },
+      // cryptoVersion: { type: 'string' },
+      // credentialSchema: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       credentialSubject: {
         SSN: { type: 'stringReversible', compress: false },
         userId: { type: 'stringReversible', compress: true },
@@ -110,8 +111,8 @@ describe('Credential Schema', () => {
     const jsonSchema1 = {
       type: 'object',
       properties: {
-        credentialVersion: { type: 'string' },
-        credentialSchema: { type: 'string' },
+        // cryptoVersion: { type: 'string' },
+        // credentialSchema: CredentialSchema.schemaAsJsonSchema(),
         credentialSubject: {
           type: 'object',
           properties: {
@@ -147,8 +148,8 @@ describe('Credential Schema', () => {
     };
     const schema1 = CredentialSchema.convertToInternalSchemaObj(jsonSchema1, DefaultSchemaParsingOpts);
     expect(schema1).toEqual({
-      credentialVersion: { type: 'string' },
-      credentialSchema: { type: 'string' },
+      // cryptoVersion: { type: 'string' },
+      // credentialSchema: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       credentialSubject: {
         sensitive: { SSN: { type: 'stringReversible', compress: false }, userId: { type: 'stringReversible', compress: true } },
         longitude: { type: 'decimalNumber', minimum: -180, decimalPlaces: 3 },
@@ -179,26 +180,30 @@ describe('Credential Schema', () => {
         fname: { type: 'string' }
       }
     };
-    // @ts-ignore
-    expect(() => new CredentialSchema(schema1)).toThrow();
-
-    schema1.properties[CRED_VERSION_STR] = { type: 'integer' };
-    // @ts-ignore
-    expect(() => new CredentialSchema(schema1)).toThrow();
-
-    schema1.properties[CRED_VERSION_STR] = { type: 'string' };
-    // @ts-ignore
-    expect(() => new CredentialSchema(schema1)).toThrow();
-
-    schema1.properties[SCHEMA_STR] = { type: 'integer' };
-    // @ts-ignore
-    expect(() => new CredentialSchema(schema1)).toThrow();
-
-    schema1.properties[SCHEMA_STR] = { type: 'string' };
+    // // @ts-ignore
+    // expect(() => new CredentialSchema(schema1)).toThrow();
+    //
+    // schema1.properties[CRYPTO_VERSION_STR] = { type: 'integer' };
+    // // @ts-ignore
+    // expect(() => new CredentialSchema(schema1)).toThrow();
+    //
+    // schema1.properties[CRYPTO_VERSION_STR] = { type: 'string' };
+    // // @ts-ignore
+    // expect(() => new CredentialSchema(schema1)).toThrow();
+    //
+    // schema1.properties[SCHEMA_STR] = { type: 'integer' };
+    // // @ts-ignore
+    // expect(() => new CredentialSchema(schema1)).toThrow();
+    //
+    // schema1.properties[SCHEMA_STR] = { type: 'string' };
+    // // @ts-ignore
+    // expect(() => new CredentialSchema(schema1)).toThrow();
+    //
+    // schema1.properties[SCHEMA_STR] = CredentialSchema.schemaAsJsonSchema();
     // @ts-ignore
     const cs1 = new CredentialSchema(schema1);
-    expect(cs1.schema[CRED_VERSION_STR]).toEqual({ type: 'string' });
-    expect(cs1.schema[SCHEMA_STR]).toEqual({ type: 'string' });
+    // expect(cs1.schema[CRYPTO_VERSION_STR]).toEqual({ type: 'string' });
+    // expect(cs1.schema[SCHEMA_STR]).toEqual({ [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } });
     expect(cs1.schema[SUBJECT_STR]).toEqual({
       fname: { type: 'string' },
     });
@@ -228,8 +233,8 @@ describe('Credential Schema', () => {
     };
     const cs1 = new CredentialSchema(schema1);
     expect(cs1.schema).toEqual({
-      [CRED_VERSION_STR]: { type: 'string' },
-      [SCHEMA_STR]: { type: 'string' },
+      // [CRYPTO_VERSION_STR]: { type: 'string' },
+      // [SCHEMA_STR]: { [ID_STR]: { type: 'string' }, [TYPE_STR]: { type: 'string' } },
       [SUBJECT_STR]: {
         fname: { type: 'string' }
       },
@@ -241,8 +246,8 @@ describe('Credential Schema', () => {
       },
       type: 'object',
       properties: {
-        [CRED_VERSION_STR]: { type: 'string' },
-        [SCHEMA_STR]: { type: 'string' },
+        // [CRYPTO_VERSION_STR]: { type: 'string' },
+        // [SCHEMA_STR]: CredentialSchema.schemaAsJsonSchema(),
         [SUBJECT_STR]: {
           type: 'object',
           properties: {
@@ -493,31 +498,36 @@ describe('Credential Schema', () => {
     schema4.properties[STATUS_STR] = {
       type: 'object',
       properties: {
-        [REGISTRY_ID_STR]: { type: 'integer', minimum: -100 },
+        [ID_STR]: { type: 'integer', minimum: -100 },
       }
     };
 
     expect(() => new CredentialSchema(schema4)).toThrow();
 
-    schema4.properties[STATUS_STR]['properties'][REGISTRY_ID_STR] = { type: 'string' };
+    schema4.properties[STATUS_STR]['properties'][ID_STR] = { type: 'string' };
     schema4.properties[STATUS_STR]['properties'][REV_CHECK_STR] = { type: 'string' };
     expect(() => new CredentialSchema(schema4)).toThrow();
 
     schema4.properties[STATUS_STR]['properties'][REV_ID_STR] = { type: 'string' };
+    schema4.properties[STATUS_STR]['properties'][TYPE_STR] = { type: 'string' };
     const cs4 = new CredentialSchema(schema4);
     // @ts-ignore
-    expect(cs4.schema[STATUS_STR][REGISTRY_ID_STR]).toEqual({ type: 'string' });
+    expect(cs4.schema[STATUS_STR][ID_STR]).toEqual({ type: 'string' });
     // @ts-ignore
     expect(cs4.schema[STATUS_STR][REV_CHECK_STR]).toEqual({ type: 'string' });
     // @ts-ignore
     expect(cs4.schema[STATUS_STR][REV_ID_STR]).toEqual({ type: 'string' });
+    // @ts-ignore
+    expect(cs4.schema[STATUS_STR][TYPE_STR]).toEqual({ type: 'string' });
 
     // @ts-ignore
-    expect(cs4.jsonSchema.properties[STATUS_STR].properties[REGISTRY_ID_STR]).toEqual({ type: 'string' });
+    expect(cs4.jsonSchema.properties[STATUS_STR].properties[ID_STR]).toEqual({ type: 'string' });
     // @ts-ignore
     expect(cs4.jsonSchema.properties[STATUS_STR].properties[REV_CHECK_STR]).toEqual({ type: 'string' });
     // @ts-ignore
     expect(cs4.jsonSchema.properties[STATUS_STR].properties[REV_ID_STR]).toEqual({ type: 'string' });
+    // @ts-ignore
+    expect(cs4.jsonSchema.properties[STATUS_STR].properties[TYPE_STR]).toEqual({ type: 'string' });
 
     expect(cs4.hasStatus()).toEqual(true);
   });
@@ -542,19 +552,19 @@ describe('Credential Schema', () => {
   it('flattening', () => {
     const cs1 = new CredentialSchema(getExampleSchema(1));
     expect(cs1.flatten()).toEqual([
-      [SCHEMA_STR, `${SUBJECT_STR}.fname`, CRED_VERSION_STR],
+      [SCHEMA_STR, `${SUBJECT_STR}.fname`, CRYPTO_VERSION_STR],
       [{ type: 'string' }, { type: 'string' }, { type: 'string' }]
     ]);
 
     const cs2 = new CredentialSchema(getExampleSchema(2));
     expect(cs2.flatten()).toEqual([
-      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.score`, CRED_VERSION_STR],
+      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.score`, CRYPTO_VERSION_STR],
       [{ type: 'string' }, { type: 'string' }, { type: 'integer', minimum: -100 }, { type: 'string' }],
     ]);
 
     const cs3 = new CredentialSchema(getExampleSchema(3));
     expect(cs3.flatten()).toEqual([
-      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.long`, `${SUBJECT_STR}.score`, CRED_VERSION_STR],
+      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.long`, `${SUBJECT_STR}.score`, CRYPTO_VERSION_STR],
       [
         { type: 'string' },
         { type: 'string' },
@@ -568,14 +578,16 @@ describe('Credential Schema', () => {
     expect(cs4.flatten()).toEqual([
       [
         SCHEMA_STR,
-        `${STATUS_STR}.${REGISTRY_ID_STR}`,
+        `${STATUS_STR}.${ID_STR}`,
         `${STATUS_STR}.${REV_CHECK_STR}`,
         `${STATUS_STR}.${REV_ID_STR}`,
+        `${STATUS_STR}.${TYPE_STR}`,
         `${SUBJECT_STR}.fname`,
         `${SUBJECT_STR}.score`,
-        CRED_VERSION_STR,
+        CRYPTO_VERSION_STR,
       ],
       [
+        { type: 'string' },
         { type: 'string' },
         { type: 'string' },
         { type: 'string' },
@@ -590,9 +602,10 @@ describe('Credential Schema', () => {
     expect(cs5.flatten()).toEqual([
       [
         SCHEMA_STR,
-        `${STATUS_STR}.${REGISTRY_ID_STR}`,
+        `${STATUS_STR}.${ID_STR}`,
         `${STATUS_STR}.${REV_CHECK_STR}`,
         `${STATUS_STR}.${REV_ID_STR}`,
+        `${STATUS_STR}.${TYPE_STR}`,
         `${SUBJECT_STR}.fname`,
         `${SUBJECT_STR}.lessSensitive.department.location.geo.lat`,
         `${SUBJECT_STR}.lessSensitive.department.location.geo.long`,
@@ -606,9 +619,10 @@ describe('Credential Schema', () => {
         `${SUBJECT_STR}.sensitive.email`,
         `${SUBJECT_STR}.sensitive.phone`,
         `${SUBJECT_STR}.sensitive.very.secret`,
-        CRED_VERSION_STR,
+        CRYPTO_VERSION_STR,
       ],
       [
+        { type: 'string' },
         { type: 'string' },
         { type: 'string' },
         { type: 'string' },
@@ -633,7 +647,8 @@ describe('Credential Schema', () => {
 
   it('to and from JSON', () => {
     for (let i = 1; i <= 11; i++) {
-      const cs = new CredentialSchema(getExampleSchema(i));
+      const schema = getExampleSchema(i);
+      const cs = new CredentialSchema(schema);
       const j = cs.toJSON();
       const recreatedCs = CredentialSchema.fromJSON(j);
       expect(cs.version).toEqual(recreatedCs.version);
@@ -704,7 +719,7 @@ describe('Credential Schema', () => {
         `${SUBJECT_STR}.2.location.geo.long`,
         `${SUBJECT_STR}.2.location.name`,
         `${SUBJECT_STR}.2.name`,
-        CRED_VERSION_STR
+        CRYPTO_VERSION_STR
       ],
       [
         { type: 'string' },
@@ -748,7 +763,7 @@ describe('Credential Schema', () => {
         `${SUBJECT_STR}.2.location.geo.long`,
         `${SUBJECT_STR}.2.location.name`,
         `${SUBJECT_STR}.2.name`,
-        CRED_VERSION_STR,
+        CRYPTO_VERSION_STR,
         'expirationDate',
         'issuanceDate',
         'issuer.desc',
@@ -787,7 +802,7 @@ describe('Credential Schema', () => {
     expect(ctx9['@context'][1]).toEqual({
       dk: 'https://ld.dock.io/credentials#',
       credentialSchema: 'dk:credentialSchema',
-      credentialVersion: 'dk:credentialVersion',
+      cryptoVersion: 'dk:cryptoVersion',
       credentialSubject: 'dk:credentialSubject',
       BMI: 'dk:BMI',
       SSN: 'dk:SSN',
@@ -811,10 +826,10 @@ describe('Credential Schema', () => {
     expect(ctx5['@context'][1]).toEqual({
       dk: 'https://ld.dock.io/credentials#',
       credentialSchema: 'dk:credentialSchema',
-      credentialVersion: 'dk:credentialVersion',
-      '$registryId': 'dk:$registryId',
-      '$revocationCheck': 'dk:$revocationCheck',
-      '$revocationId': 'dk:$revocationId',
+      cryptoVersion: 'dk:cryptoVersion',
+      'id': 'dk:id',
+      'revocationCheck': 'dk:revocationCheck',
+      'revocationId': 'dk:revocationId',
       credentialStatus: 'dk:credentialStatus',
       credentialSubject: 'dk:credentialSubject',
       fname: 'dk:fname',
@@ -833,6 +848,7 @@ describe('Credential Schema', () => {
       SSN: 'dk:SSN',
       email: 'dk:email',
       phone: 'dk:phone',
+      type: 'dk:type',
       very: 'dk:very',
       secret: 'dk:secret'
     });
@@ -847,7 +863,7 @@ describe('Credential Schema', () => {
       '2': 'dk:2',
       dk: 'https://ld.dock.io/credentials#',
       credentialSchema: 'dk:credentialSchema',
-      credentialVersion: 'dk:credentialVersion',
+      cryptoVersion: 'dk:cryptoVersion',
       credentialSubject: 'dk:credentialSubject',
       location: 'dk:location',
       geo: 'dk:geo',
@@ -858,7 +874,7 @@ describe('Credential Schema', () => {
       issuanceDate: 'dk:issuanceDate',
       issuer: 'dk:issuer',
       desc: 'dk:desc',
-      logo: 'dk:logo'
+      logo: 'dk:logo',
     });
   });
 });

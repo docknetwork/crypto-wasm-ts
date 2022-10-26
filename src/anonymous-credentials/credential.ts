@@ -1,7 +1,7 @@
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
-  CRED_VERSION_STR,
+  CRYPTO_VERSION_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
@@ -55,10 +55,12 @@ export class Credential extends Versioned {
     return v;
   }
 
-  serializeForSigning() {
+  serializeForSigning(): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
-      [CRED_VERSION_STR]: this.version,
+      [CRYPTO_VERSION_STR]: this.version,
+      // Converting the schema to a JSON string rather than keeping it JSO object to avoid creating extra fields while
+      // signing which makes the implementation more expensive as one sig param is needed for each field.
       [SCHEMA_STR]: JSON.stringify(this.schema?.toJSON()),
       [SUBJECT_STR]: this.subject
     };
@@ -73,7 +75,7 @@ export class Credential extends Versioned {
 
   toJSON(): object {
     const j = {};
-    j['credentialVersion'] = this._version;
+    j['cryptoVersion'] = this._version;
     j['credentialSchema'] = JSON.stringify(this.schema.toJSON());
     j['credentialSubject'] = this.subject;
     if (this.credentialStatus !== undefined) {
@@ -106,7 +108,7 @@ export class Credential extends Versioned {
 
   static fromJSON(j: object): Credential {
     // @ts-ignore
-    const { credentialVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } = j;
+    const { cryptoVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } = j;
     if (proof['type'] !== 'Bls12381BBS+SignatureDock2022') {
       throw new Error(`Invalid proof type ${proof['type']}`);
     }
@@ -116,7 +118,7 @@ export class Credential extends Versioned {
       topLevelFields.set(k, custom[k]);
     });
     return new Credential(
-      credentialVersion,
+      cryptoVersion,
       CredentialSchema.fromJSON(JSON.parse(credentialSchema)),
       credentialSubject,
       topLevelFields,

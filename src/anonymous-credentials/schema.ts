@@ -3,15 +3,14 @@ import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../bbs-plus';
 import { isPositiveInteger } from '../util';
 import {
-  CRED_VERSION_STR,
+  CRYPTO_VERSION_STR, EMBEDDED_SCHEMA_URI_PREFIX,
   FlattenedSchema,
-  REGISTRY_ID_STR,
+  ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
-  SCHEMA_STR,
+  SCHEMA_STR, SCHEMA_TYPE_STR,
   STATUS_STR,
-  SUBJECT_STR,
-  VERSION_STR
+  SUBJECT_STR, TYPE_STR,
 } from './types-and-consts';
 import { flattenTill2ndLastKey } from './util';
 
@@ -24,7 +23,7 @@ import { flattenTill2ndLastKey } from './util';
  Some example schemas
 
  {
-  credentialVersion: {type: "string"},
+  cryptoVersion: {type: "string"},
   credentialSchema: {type: "string"},
   credentialSubject: {
     fname: {type: "string"},
@@ -44,7 +43,7 @@ import { flattenTill2ndLastKey } from './util';
  }
 
  {
-  credentialVersion: {type: "string"},
+  cryptoVersion: {type: "string"},
   credentialSchema: {type: "string"},
   credentialSubject: {
     fname: {type: "string"},
@@ -76,13 +75,13 @@ import { flattenTill2ndLastKey } from './util';
     rank: {type: "positiveInteger"}
   },
   credentialStatus: {
-    $registryId: {type: "string"},
-    $revocationCheck: {type: "string"},
-    $revocationId: {type: "string"},
+    id: {type: "string"},
+    revocationCheck: {type: "string"},
+    revocationId: {type: "string"},
   }
 
   {
-  credentialVersion: {type: "string"},
+  cryptoVersion: {type: "string"},
   credentialSchema: {type: "string"},
   credentialSubject: [
     {
@@ -119,7 +118,7 @@ import { flattenTill2ndLastKey } from './util';
  }
 
  {
-  credentialVersion: {type: "string"},
+  cryptoVersion: {type: "string"},
   credentialSchema: {type: "string"},
   credentialSubject: [
     {
@@ -166,7 +165,7 @@ import { flattenTill2ndLastKey } from './util';
 export const META_SCHEMA_STR = '$schema';
 
 export interface ISchema {
-  [CRED_VERSION_STR]: object;
+  [CRYPTO_VERSION_STR]: object;
   [SCHEMA_STR]: object;
   [SUBJECT_STR]: object | object[];
   // @ts-ignore
@@ -221,8 +220,6 @@ export type ValueTypes =
   | NumberType;
 
 export interface IJsonSchemaProperties {
-  [CRED_VERSION_STR]: object;
-  [SCHEMA_STR]: object;
   [SUBJECT_STR]: object | object[];
   // @ts-ignore
   [STATUS_STR]?: object;
@@ -262,7 +259,9 @@ export class CredentialSchema extends Versioned {
   private static readonly NUM_TYPE = 'decimalNumber';
 
   // CredentialBuilder subject/claims cannot have any of these names
-  static RESERVED_NAMES = new Set([CRED_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
+  static RESERVED_NAMES = new Set([CRYPTO_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
+
+  static IMPLICIT_FIELDS = {[CRYPTO_VERSION_STR]: {type: 'string'}, [SCHEMA_STR]: {type: 'string'}};
 
   // Custom definitions for JSON schema syntax
   static JSON_SCHEMA_CUSTOM_DEFS = {
@@ -289,9 +288,9 @@ export class CredentialSchema extends Versioned {
 
   // Keys to ignore from generic validation as they are already validated
   static IGNORE_GENERIC_VALIDATION = new Set([
-    CRED_VERSION_STR,
+    CRYPTO_VERSION_STR,
     SCHEMA_STR,
-    `${STATUS_STR}.${REGISTRY_ID_STR}`,
+    `${STATUS_STR}.${ID_STR}`,
     `${STATUS_STR}.${REV_CHECK_STR}`,
     `${STATUS_STR}.${REV_ID_STR}`
   ]);
@@ -364,6 +363,10 @@ export class CredentialSchema extends Versioned {
       encoders.set(names[i], f);
     }
 
+    // Implicitly present fields
+    encoders.set(CRYPTO_VERSION_STR, defaultEncoder);
+    encoders.set(SCHEMA_STR, defaultEncoder);
+
     // Intentionally not supplying default encoder as we already know the schema
     this.encoder = new Encoder(encoders);
   }
@@ -373,19 +376,16 @@ export class CredentialSchema extends Versioned {
    * @param schema
    */
   static validate(schema: ISchema) {
-    // Following 2 fields could have been implicit but being explicit for clarity
-    this.validateStringType(schema, CRED_VERSION_STR);
-    this.validateStringType(schema, SCHEMA_STR);
+    if (schema[SUBJECT_STR] === undefined) {
+      throw new Error(`Schema properties did not contain top level key ${SUBJECT_STR}`);
+    }
 
     const schemaStatus = schema[STATUS_STR];
     if (schemaStatus !== undefined) {
-      this.validateStringType(schemaStatus, REGISTRY_ID_STR);
+      this.validateStringType(schemaStatus, TYPE_STR);
+      this.validateStringType(schemaStatus, ID_STR);
       this.validateStringType(schemaStatus, REV_CHECK_STR);
       this.validateStringType(schemaStatus, REV_ID_STR);
-    }
-
-    if (schema[SUBJECT_STR] === undefined) {
-      throw new Error(`Schema properties did not contain top level key ${SUBJECT_STR}`);
     }
 
     this.validateGeneric(schema, CredentialSchema.IGNORE_GENERIC_VALIDATION);
@@ -488,9 +488,7 @@ export class CredentialSchema extends Versioned {
       [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
-        [CRED_VERSION_STR]: { type: 'string' },
-        [SCHEMA_STR]: { type: 'string' },
-        [SUBJECT_STR]: {}
+        [SUBJECT_STR]: {},
       }
     };
     if (withDefinitions) {
@@ -498,6 +496,18 @@ export class CredentialSchema extends Versioned {
     }
     // @ts-ignore
     return s;
+  }
+
+  static statusAsJsonSchema(): object {
+    return {
+      type: 'object',
+      properties: {
+        [ID_STR]: { type: 'string' },
+        [TYPE_STR]: { type: 'string' },
+        [REV_CHECK_STR]: { type: 'string' },
+        [REV_ID_STR]: { type: 'string' },
+      }
+    };
   }
 
   flatten(): FlattenedSchema {
@@ -509,16 +519,33 @@ export class CredentialSchema extends Versioned {
   }
 
   toJSON(): object {
-    return { [VERSION_STR]: this.version, ...this.jsonSchema };
+    return {
+      [ID_STR]: `${EMBEDDED_SCHEMA_URI_PREFIX}${JSON.stringify(this.jsonSchema)}`,
+      [TYPE_STR]: SCHEMA_TYPE_STR,
+      parsingOptions: this.parsingOptions,
+      version: this._version
+    };
   }
 
   static fromJSON(j: object): CredentialSchema {
     // @ts-ignore
-    const { $version, ...jsonSchema } = j;
+    const { id, type, parsingOptions, version } = j;
+    if (type !== SCHEMA_TYPE_STR) {
+      throw new Error(`Schema type not as expected: ${type}`);
+    }
+    const jsonSchema = this.extractJsonSchemaFromEmbedded(id);
+    // Note: `parsingOptions` might still be in an incorrect format which can fail the next call
     // @ts-ignore
-    const credSchema = new CredentialSchema(jsonSchema);
-    credSchema.version = $version;
+    const credSchema = new CredentialSchema(jsonSchema, parsingOptions);
+    credSchema.version = version;
     return credSchema;
+  }
+
+  static extractJsonSchemaFromEmbedded(embedded: string): IJsonSchema {
+    if (!embedded.startsWith(EMBEDDED_SCHEMA_URI_PREFIX)) {
+      throw new Error(`Embedded schema not in the expected format: ${embedded}`);
+    }
+    return JSON.parse(embedded.slice(EMBEDDED_SCHEMA_URI_PREFIX.length));
   }
 
   // TODO: Revisit me. Following was an attempt to create more accurate JSON-LD context but pausing it now because
@@ -608,16 +635,17 @@ export class CredentialSchema extends Versioned {
   getJsonLdContext(): object {
     const terms = new Set<string>();
     terms.add(SCHEMA_STR);
-    terms.add(CRED_VERSION_STR);
+    terms.add(CRYPTO_VERSION_STR);
 
     let ctx = {
       dk: 'https://ld.dock.io/credentials#'
     };
 
     if (this.hasStatus()) {
-      terms.add(REGISTRY_ID_STR);
+      terms.add(ID_STR);
       terms.add(REV_CHECK_STR);
       terms.add(REV_ID_STR);
+      terms.add(TYPE_STR);
     }
 
     const flattened = this.flatten();
@@ -758,7 +786,7 @@ export class CredentialSchema extends Versioned {
   }
 
   static flattenSchemaObj(schema: object): FlattenedSchema {
-    return flattenTill2ndLastKey(schema);
+    return flattenTill2ndLastKey({...this.IMPLICIT_FIELDS, ...schema});
   }
 
   private static validateStringType(schema: object, fieldName: string) {

@@ -15,18 +15,17 @@ import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 import {
   AttributeCiphertexts,
-  CRED_VERSION_STR,
+  CRYPTO_VERSION_STR,
   FlattenedSchema,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
-  REGISTRY_ID_STR,
+  ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  SUBJECT_STR
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import { buildContextForProof, createWitEq, deepClone, flattenTill2ndLastKey, getTransformedMinMax } from './util';
@@ -317,7 +316,7 @@ export class Presentation extends Versioned {
     flattenedNames: string[]
   ): Map<number, Uint8Array> {
     const revealedRaw = deepClone(presentedCred.revealedAttributes) as object;
-    revealedRaw[CRED_VERSION_STR] = presentedCred.version;
+    revealedRaw[CRYPTO_VERSION_STR] = presentedCred.version;
     revealedRaw[SCHEMA_STR] = presentedCred.schema;
     if (presentedCredSchema.hasStatus()) {
       // To guard against a malicious holder not proving the credential status when required.
@@ -325,7 +324,7 @@ export class Presentation extends Versioned {
         throw new Error(`Schema for the credential index ${credIdx} required a status but wasn't provided`);
       }
       if (
-        presentedCred.status[REGISTRY_ID_STR] === undefined ||
+        presentedCred.status[ID_STR] === undefined ||
         (presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_STR &&
           presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_STR)
       ) {
@@ -333,7 +332,7 @@ export class Presentation extends Versioned {
       }
       // Following will also ensure that holder (prover) cannot change the registry (accumulator) id or the type of check
       revealedRaw[STATUS_STR] = {
-        [REGISTRY_ID_STR]: presentedCred.status[REGISTRY_ID_STR],
+        [ID_STR]: presentedCred.status[ID_STR],
         [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR]
       };
     }

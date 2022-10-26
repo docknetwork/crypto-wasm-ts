@@ -3,9 +3,9 @@ import {
   Credential,
   CredentialBuilder,
   CredentialSchema,
-  MEM_CHECK_STR, REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR, SCHEMA_STR,
-  SIGNATURE_PARAMS_LABEL_BYTES,
-  SUBJECT_STR
+  MEM_CHECK_STR, ID_STR, REV_CHECK_STR, REV_ID_STR, SCHEMA_STR,
+  SIGNATURE_PARAMS_LABEL_BYTES, STATUS_TYPE_STR,
+  SUBJECT_STR, TYPE_STR
 } from '../../src/anonymous-credentials';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
@@ -28,7 +28,7 @@ describe('CredentialBuilder signing and verification', () => {
     // This to/from JSON can be abstracted into a class and then testing will lead to less duplicated code
     const credJson = cred.toJSON();
     // Check that the credential JSON contains the schema in JSON-schema format
-    checkSchemaFromJson(credJson[SCHEMA_STR], cred.schema.jsonSchema);
+    checkSchemaFromJson(credJson[SCHEMA_STR], cred.schema);
 
     // The recreated credential should verify
     const recreatedCred = Credential.fromJSON(credJson);
@@ -268,9 +268,10 @@ describe('CredentialBuilder signing and verification', () => {
       rank: 6
     });
     expect(recreatedCred.credentialStatus).toEqual({
-      [REGISTRY_ID_STR]: 'dock:accumulator:accumId123',
+      [ID_STR]: 'dock:accumulator:accumId123',
       [REV_CHECK_STR]: MEM_CHECK_STR,
-      [REV_ID_STR]: 'user:A-123'
+      [REV_ID_STR]: 'user:A-123',
+      [TYPE_STR]: STATUS_TYPE_STR,
     })
     // In practice there will be an accumulator as well
   });

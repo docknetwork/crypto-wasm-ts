@@ -17,17 +17,17 @@ import { CredentialSchema, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
-  CRED_VERSION_STR,
+  CRYPTO_VERSION_STR,
   FlattenedSchema,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
-  REGISTRY_ID_STR,
+  ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  STATUS_STR
+  STATUS_STR, TYPE_STR, STATUS_TYPE_STR
 } from './types-and-consts';
 import {
   IPresentedAttributeBounds,
@@ -278,17 +278,17 @@ export class PresentationBuilder extends Versioned {
 
       // CredentialBuilder version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
       // type, i.e. "membership" or "non-membership" are always revealed.
-      revealedNames.add(CRED_VERSION_STR);
+      revealedNames.add(CRYPTO_VERSION_STR);
       revealedNames.add(SCHEMA_STR);
       if (cred.credentialStatus !== undefined) {
         if (
-          cred.credentialStatus[REGISTRY_ID_STR] === undefined ||
+          cred.credentialStatus[ID_STR] === undefined ||
           (cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_STR &&
             cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_STR)
         ) {
           throw new Error(`Credential for ${i} has invalid status ${cred.credentialStatus}`);
         }
-        revealedNames.add(`${STATUS_STR}.${REGISTRY_ID_STR}`);
+        revealedNames.add(`${STATUS_STR}.${ID_STR}`);
         revealedNames.add(`${STATUS_STR}.${REV_CHECK_STR}`);
       }
 
@@ -314,7 +314,8 @@ export class PresentationBuilder extends Versioned {
           throw new Error(`No status details found for credential index ${i}`);
         }
         presentedStatus = {
-          [REGISTRY_ID_STR]: cred.credentialStatus[REGISTRY_ID_STR],
+          [ID_STR]: cred.credentialStatus[ID_STR],
+          [TYPE_STR]: STATUS_TYPE_STR,
           [REV_CHECK_STR]: cred.credentialStatus[REV_CHECK_STR],
           accumulated: s[1],
           extra: s[3]
@@ -360,9 +361,9 @@ export class PresentationBuilder extends Versioned {
         unrevealedMsgsEncoded.set(i, encodedAttrs);
       }
 
-      const ver = revealedAtts[CRED_VERSION_STR];
+      const ver = revealedAtts[CRYPTO_VERSION_STR];
       const sch = revealedAtts[SCHEMA_STR];
-      delete revealedAtts[CRED_VERSION_STR];
+      delete revealedAtts[CRYPTO_VERSION_STR];
       delete revealedAtts[SCHEMA_STR];
       delete revealedAtts[STATUS_STR];
       this.spec.addPresentedCredential(ver, sch, revealedAtts, presentedStatus, attributeBounds, attributeEncs);

@@ -1,16 +1,14 @@
 import {
-  CRED_VERSION_STR,
-  REGISTRY_ID_STR, REV_CHECK_STR, REV_ID_STR,
+  CRYPTO_VERSION_STR,
+  ID_STR, REV_CHECK_STR, REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
   SUBJECT_STR,
-  CredentialSchema, IJsonSchema, VERSION_STR
+  CredentialSchema, IJsonSchema, VERSION_STR, TYPE_STR, STATUS_TYPE_STR, EMBEDDED_SCHEMA_URI_PREFIX, SCHEMA_TYPE_STR
 } from '../../src/anonymous-credentials';
 
 export function getExampleSchema(num): IJsonSchema {
   const schema = CredentialSchema.essential();
-  schema.properties[CRED_VERSION_STR] = { type: 'string' };
-  schema.properties[SCHEMA_STR] = { type: 'string' };
   switch (num) {
     case 1:
       schema.properties[SUBJECT_STR] = {
@@ -47,14 +45,7 @@ export function getExampleSchema(num): IJsonSchema {
           score: { type: 'integer', minimum: -100 }
         }
       };
-      schema.properties[STATUS_STR] = {
-        type: 'object',
-        properties: {
-          [REGISTRY_ID_STR]: { type: 'string' },
-          [REV_CHECK_STR]: { type: 'string' },
-          [REV_ID_STR]: { type: 'string' },
-        },
-      };
+      schema.properties[STATUS_STR] = CredentialSchema.statusAsJsonSchema();
       break;
     case 5:
       schema.properties[SUBJECT_STR] = {
@@ -110,14 +101,7 @@ export function getExampleSchema(num): IJsonSchema {
           rank: { type: 'integer', minimum: 0 }
         }
       };
-      schema.properties[STATUS_STR] = {
-        type: 'object',
-        properties: {
-          $registryId: { type: 'string' },
-          $revocationCheck: { type: 'string' },
-          $revocationId: { type: 'string' }
-        }
-      };
+      schema.properties[STATUS_STR] = CredentialSchema.statusAsJsonSchema();
       break;
     case 6:
       const item = {
@@ -271,14 +255,7 @@ export function getExampleSchema(num): IJsonSchema {
           }
         }
       };
-      schema.properties[STATUS_STR] = {
-        type: 'object',
-        properties: {
-          $registryId: { type: 'string' },
-          $revocationCheck: { type: 'string' },
-          $revocationId: { type: 'string' }
-        }
-      };
+      schema.properties[STATUS_STR] = CredentialSchema.statusAsJsonSchema();
       break;
     case 11:
       schema.properties[SUBJECT_STR] = {
@@ -321,9 +298,10 @@ export function getExampleSchema(num): IJsonSchema {
   return schema;
 }
 
-export function checkSchemaFromJson(schemaJson: string, schema: IJsonSchema) {
-  // @ts-ignore
-  const schm = JSON.parse(schemaJson);
-  delete schm[VERSION_STR];
-  expect(schm).toEqual(schema);
+export function checkSchemaFromJson(schemaJson: string, schema: CredentialSchema) {
+  let schm = JSON.parse(schemaJson);
+  expect(CredentialSchema.extractJsonSchemaFromEmbedded(schm.id)).toEqual(schema.jsonSchema);
+  expect(schm.parsingOptions).toEqual(schema.parsingOptions);
+  expect(schm.version).toEqual(schema.version);
+  expect(schm.type).toEqual(SCHEMA_TYPE_STR);
 }

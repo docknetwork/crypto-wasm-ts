@@ -29,7 +29,7 @@ import {
   REV_ID_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  SUBJECT_STR, dockSaverEncryptionGensUncompressed, SCHEMA_STR, VERSION_STR
+  SUBJECT_STR, dockSaverEncryptionGensUncompressed, SCHEMA_STR, VERSION_STR, ID_STR, TYPE_STR, STATUS_TYPE_STR
 } from '../../src/anonymous-credentials';
 import {
   areUint8ArraysEqual,
@@ -488,7 +488,7 @@ describe('Presentation creation and verification', () => {
 
     // The schema of the credential in the presentation matches the JSON-schema
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema);
 
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk1]));
@@ -553,7 +553,7 @@ describe('Presentation creation and verification', () => {
 
     // The schema of the credential in the presentation matches the JSON-schema
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential2.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential2.schema);
 
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk2]));
@@ -578,8 +578,9 @@ describe('Presentation creation and verification', () => {
       }
     });
     expect(pres3.spec.getStatus(0)).toEqual({
-      $registryId: 'dock:accumulator:accumId123',
-      $revocationCheck: 'membership',
+      id: 'dock:accumulator:accumId123',
+      [TYPE_STR]: STATUS_TYPE_STR,
+      revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
     });
@@ -592,7 +593,7 @@ describe('Presentation creation and verification', () => {
 
     // The schema of the credential in the presentation matches the JSON-schema
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential3.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential3.schema);
 
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk3], acc));
@@ -637,9 +638,9 @@ describe('Presentation creation and verification', () => {
 
     // The schema of the credentials in the presentation matches their JSON-schema
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema);
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[1].schema, credential2.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[1].schema, credential2.schema);
 
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk1, pk2]));
@@ -685,14 +686,16 @@ describe('Presentation creation and verification', () => {
       }
     });
     expect(pres5.spec.getStatus(0)).toEqual({
-      $registryId: 'dock:accumulator:accumId123',
-      $revocationCheck: 'membership',
+      id: 'dock:accumulator:accumId123',
+      [TYPE_STR]: STATUS_TYPE_STR,
+      revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
     });
     expect(pres5.spec.getStatus(1)).toEqual({
-      $registryId: 'dock:accumulator:accumId124',
-      $revocationCheck: 'membership',
+      id: 'dock:accumulator:accumId124',
+      [TYPE_STR]: STATUS_TYPE_STR,
+      revocationCheck: 'membership',
       accumulated: accumulator4.accumulated,
       extra: { blockNo: 2010340 }
     });
@@ -706,9 +709,9 @@ describe('Presentation creation and verification', () => {
 
     // The schema of the credentials in the presentation matches their JSON-schema
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential3.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential3.schema);
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[1].schema, credential4.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[1].schema, credential4.schema);
 
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk3, pk4], acc));
@@ -775,14 +778,16 @@ describe('Presentation creation and verification', () => {
     });
 
     expect(pres6.spec.getStatus(2)).toEqual({
-      $registryId: 'dock:accumulator:accumId123',
-      $revocationCheck: 'membership',
+      id: 'dock:accumulator:accumId123',
+      [TYPE_STR]: STATUS_TYPE_STR,
+      revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
     });
     expect(pres6.spec.getStatus(3)).toEqual({
-      $registryId: 'dock:accumulator:accumId124',
-      $revocationCheck: 'membership',
+      id: 'dock:accumulator:accumId124',
+      [TYPE_STR]: STATUS_TYPE_STR,
+      revocationCheck: 'membership',
       accumulated: accumulator4.accumulated,
       extra: { blockNo: 2010340 }
     });
@@ -796,13 +801,13 @@ describe('Presentation creation and verification', () => {
 
     // The schema of the credentials in the presentation matches their JSON-schema
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema);
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[1].schema, credential2.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[1].schema, credential2.schema);
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[2].schema, credential3.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[2].schema, credential3.schema);
     // @ts-ignore
-    checkSchemaFromJson(presJson.spec.credentials[3].schema, credential4.schema.jsonSchema);
+    checkSchemaFromJson(presJson.spec.credentials[3].schema, credential4.schema);
 
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk1, pk2, pk3, pk4], acc));
@@ -965,8 +970,9 @@ describe('Presentation creation and verification', () => {
       }
     });
     expect(pres2.spec.getStatus(2)).toEqual({
-      $registryId: 'dock:accumulator:accumId123',
-      $revocationCheck: 'membership',
+      id: 'dock:accumulator:accumId123',
+      [TYPE_STR]: STATUS_TYPE_STR,
+      revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
     });
@@ -1114,8 +1120,9 @@ describe('Presentation creation and verification', () => {
       }
     });
     expect(pres2.spec.getStatus(2)).toEqual({
-      $registryId: 'dock:accumulator:accumId123',
-      $revocationCheck: 'membership',
+      id: 'dock:accumulator:accumId123',
+      [TYPE_STR]: STATUS_TYPE_STR,
+      revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
     });
@@ -1333,8 +1340,9 @@ describe('Presentation creation and verification', () => {
       }
     });
     expect(pres1.spec.getStatus(2)).toEqual({
-      $registryId: 'dock:accumulator:accumId123',
-      $revocationCheck: 'membership',
+      id: 'dock:accumulator:accumId123',
+      [TYPE_STR]: STATUS_TYPE_STR,
+      revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
     });
