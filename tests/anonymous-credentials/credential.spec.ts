@@ -25,7 +25,6 @@ describe('Credential signing and verification', () => {
   });
 
   function checkJsonConvForCred(cred: Credential, pk: BBSPlusPublicKeyG2): Credential {
-    // This to/from JSON can be abstracted into a class and then testing will lead to less duplicated code
     const credJson = cred.toJSON();
     // Check that the credential JSON contains the schema in JSON-schema format
     checkSchemaFromJson(credJson[SCHEMA_STR], cred.schema);

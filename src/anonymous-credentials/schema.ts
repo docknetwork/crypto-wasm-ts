@@ -20,149 +20,294 @@ import { flattenTill2ndLastKey } from './util';
 /**
  * Rules
  * 1. Schema must define a top level `credentialSubject` field for the subject, and it can be an array of object
- * 2. Schema must define a top level `credentialSchema` field.
- * 3. Credential status if defined must be present as `credentialStatus` field.
- * 4. Any top level keys in the schema JSON can be created
+ * 2. Credential status if defined must be present as `credentialStatus` field.
+ * 3. Any top level keys in the schema JSON can be created
  Some example schemas
 
  {
-  cryptoVersion: {type: "string"},
-  credentialSchema: {type: "string"},
-  credentialSubject: {
-    fname: {type: "string"},
-    lname: {type: "string"},
-    email: {type: "string"},
-    SSN: {type: "stringReversible", compress: false},
-    userId: {type: "stringReversible", compress: true},
-    country: {type: "string"},
-    city: {type: "string"},
-    timeOfBirth: {type: "positiveInteger"},
-    height: {type: "positiveDecimalNumber", decimalPlaces: 1},
-    weight: {type: "positiveDecimalNumber", decimalPlaces: 1},
-    BMI: {type: "positiveDecimalNumber", decimalPlaces: 2},
-    score: {type: "decimalNumber", decimalPlaces: 1, minimum: -100},
-    secret: {type: "string"}
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  properties: {
+    credentialSubject: {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'string' },
+        email: { type: 'string' },
+        SSN: { '$ref': '#/definitions/encryptableString' },
+        userId: { '$ref': '#/definitions/encryptableCompString' },
+        country: { type: 'string' },
+        city: { type: 'string' },
+        timeOfBirth: { type: 'integer', minimum: 0 },
+        height: { type: 'number', minimum: 0, multipleOf: 0.1 },
+        weight: { type: 'number', minimum: 0, multipleOf: 0.1 },
+        BMI: { type: 'number', minimum: 0, multipleOf: 0.01 },
+        score: { type: 'number', minimum: -100, multipleOf: 0.1 },
+        secret: { type: 'string' }
+      }
+    }
+  },
+  definitions: {
+    encryptableString: { type: 'string' },
+    encryptableCompString: { type: 'string' }
+  }
+}
+
+ {
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  properties: {
+    credentialSubject: {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'string' },
+        sensitive: {
+          type: 'object',
+          properties: {
+            very: {
+              type: 'object',
+              properties: { secret: { type: 'string' } }
+            },
+            email: { type: 'string' },
+            phone: { type: 'string' },
+            SSN: { '$ref': '#/definitions/encryptableString' }
+          }
+        },
+        lessSensitive: {
+          type: 'object',
+          properties: {
+            location: {
+              type: 'object',
+              properties: { country: { type: 'string' }, city: { type: 'string' } }
+            },
+            department: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                location: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    geo: {
+                      type: 'object',
+                      properties: {
+                        lat: {
+                          type: 'number',
+                          minimum: -90,
+                          multipleOf: 0.001
+                        },
+                        long: {
+                          type: 'number',
+                          minimum: -180,
+                          multipleOf: 0.001
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        rank: { type: 'integer', minimum: 0 }
+      }
+    },
+    credentialStatus: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        type: { type: 'string' },
+        revocationCheck: { type: 'string' },
+        revocationId: { type: 'string' }
+      }
+    }
+  },
+  definitions: {
+    encryptableString: { type: 'string' },
+    encryptableCompString: { type: 'string' }
   }
  }
 
  {
-  cryptoVersion: {type: "string"},
-  credentialSchema: {type: "string"},
-  credentialSubject: {
-    fname: {type: "string"},
-    lname: {type: "string"},
-    sensitive: {
-      very: {
-        secret: {type: "string"}
-      },
-      email: {type: "string"},
-      phone: {type: "string"},
-      SSN: {type: "stringReversible", compress: false},
-    },
-    lessSensitive: {
-      location: {
-        country: {type: "string"},
-        city: {type: "string"}
-      },
-      department: {
-        name: {type: "string"},
-        location: {
-          name: {type: "string"},
-          geo: {
-            lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-            long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  properties: {
+    credentialSubject: {
+      type: 'array',
+      items: [
+        {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            location: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                geo: {
+                  type: 'object',
+                  properties: {
+                    lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+                    long: {
+                      type: 'number',
+                      minimum: -180,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            location: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                geo: {
+                  type: 'object',
+                  properties: {
+                    lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+                    long: {
+                      type: 'number',
+                      minimum: -180,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            location: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                geo: {
+                  type: 'object',
+                  properties: {
+                    lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+                    long: {
+                      type: 'number',
+                      minimum: -180,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            }
           }
         }
-      }
-    },
-    rank: {type: "positiveInteger"}
-  },
-  credentialStatus: {
-    id: {type: "string"},
-    revocationCheck: {type: "string"},
-    revocationId: {type: "string"},
-  }
-
-  {
-  cryptoVersion: {type: "string"},
-  credentialSchema: {type: "string"},
-  credentialSubject: [
-    {
-      name: {type: "string"},
-      location: {
-        name: {type: "string"},
-        geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-        }
-      }
-    },
-    {
-      name: {type: "string"},
-      location: {
-        name: {type: "string"},
-        geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-        }
-      }
-    },
-    {
-      name: {type: "string"},
-      location: {
-        name: {type: "string"},
-        geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-        }
-      }
+      ]
     }
-  ]
+  },
+  definitions: {
+    encryptableString: { type: 'string' },
+    encryptableCompString: { type: 'string' }
+  }
  }
 
  {
-  cryptoVersion: {type: "string"},
-  credentialSchema: {type: "string"},
-  credentialSubject: [
-    {
-      name: {type: "string"},
-      location: {
-        name: {type: "string"},
-        geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  properties: {
+    credentialSubject: {
+      type: 'array',
+      items: [
+        {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            location: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                geo: {
+                  type: 'object',
+                  properties: {
+                    lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+                    long: {
+                      type: 'number',
+                      minimum: -180,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            location: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                geo: {
+                  type: 'object',
+                  properties: {
+                    lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+                    long: {
+                      type: 'number',
+                      minimum: -180,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            location: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                geo: {
+                  type: 'object',
+                  properties: {
+                    lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+                    long: {
+                      type: 'number',
+                      minimum: -180,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
+      ]
+    },
+    issuer: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        desc: { type: 'string' },
+        logo: { type: 'string' }
       }
     },
-    {
-      name: {type: "string"},
-      location: {
-        name: {type: "string"},
-        geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-        }
-      }
-    },
-    {
-      name: {type: "string"},
-      location: {
-        name: {type: "string"},
-        geo: {
-          lat: {type: "decimalNumber", decimalPlaces: 3, minimum: -90},
-          long: {type: "decimalNumber", decimalPlaces: 3, minimum: -180}
-        }
-      }
-    }
-  ],
-  issuer: {
-    name: {type: "string"},
-    desc: {type: "string"},
-    logo: {type: "string"}
+    issuanceDate: { type: 'integer', minimum: 0 },
+    expirationDate: { type: 'integer', minimum: 0 }
   },
-  issuanceDate: {type: "positiveInteger"},
-  expirationDate: {type: "positiveInteger"},
- }
+  definitions: {
+    encryptableString: { type: 'string' },
+    encryptableCompString: { type: 'string' }
+  }
+}
  */
 
 export const META_SCHEMA_STR = '$schema';
@@ -754,6 +899,14 @@ export class CredentialSchema extends Versioned {
       throw new Error(`Cannot parse node key ${nodeKeyName} for JSON-schema syntax: ${node}`);
     }
   }
+
+  // Rules for parsing numeric type:
+  // 1. For type integer, if minimum is provided and >=0, then it's a positive integer. If minimum is not provided its potentially
+  // negative and choose a minimum if `useDefaults` is set to true in `parsingOptions` else throw error.
+  // 2. For type number, if minimum is provided and >=0, then it's a positive number. If minimum is not provided its potentially
+  // negative and choose a minimum if `useDefaults` is set to true in `parsingOptions` else throw error.
+  // 3. For type number, if `multipleOf` is not provided, assume value of 0 if `useDefaults` is set to true in `parsingOptions`
+  // else throw error.
 
   static parseIntegerType(node: { minimum?: number }, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
     if (!parsingOpts.useDefaults && node.minimum === undefined) {

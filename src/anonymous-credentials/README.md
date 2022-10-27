@@ -12,6 +12,7 @@ before passing to the crypto (signing, proving) algorithms. Choosing an appropri
 enforcing bounds on attributes (range proofs), verifiable encryption of attributes or when using it in [predicates](https://blog.dock.io/circom-language-integration/) written 
 in [Circom](https://docs.circom.io/). For more details on the need of encoding see [here](README.md#encoding-for-negative-or-decimal-numbers) and 
 [here](README.md#encoding-for-verifiable-encryption). 
+It expects the schema in the [JSON-schema syntax](https://json-schema.org/), draft-07. 
 
 Schema [code](src/anonymous-credentials/schema.ts) and [tests](tests/anonymous-credentials/schema.spec.ts).
 

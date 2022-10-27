@@ -28,17 +28,17 @@ import {
   STATUS_STR
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
-import { buildContextForProof, createWitEq, deepClone, flattenTill2ndLastKey, getTransformedMinMax } from './util';
-import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import {
-  SaverChunkedCommitmentGens,
-  SaverChunkedCommitmentGensUncompressed,
-  SaverCiphertext,
-  SaverEncryptionKey,
-  SaverEncryptionKeyUncompressed,
-  SaverVerifyingKey,
-  SaverVerifyingKeyUncompressed
-} from '../saver';
+  accumulatorStatement,
+  buildContextForProof,
+  createWitEq,
+  deepClone,
+  flattenTill2ndLastKey,
+  getTransformedMinMax,
+  saverStatement
+} from './util';
+import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
+import { SaverCiphertext } from '../saver';
 import b58 from 'bs58';
 import { SetupParamsTracker } from './setup-params-tracker';
 
@@ -135,35 +135,12 @@ export class Presentation extends Versioned {
     }
 
     credStatusAux.forEach(([i, t, accum]) => {
-      let statement;
+      // let statement;
       const pk = accumulatorPublicKeys?.get(i);
       if (pk === undefined) {
         throw new Error(`Accumulator public key wasn't provided for credential index ${i}`);
       }
-      if (!setupParamsTrk.hasAccumulatorParams()) {
-        setupParamsTrk.addAccumulatorParams();
-      }
-      if (t === MEM_CHECK_STR) {
-        if (!setupParamsTrk.hasAccumulatorMemProvingKey()) {
-          setupParamsTrk.addAccumulatorMemProvingKey();
-        }
-        statement = Statement.accumulatorMembershipFromSetupParamRefs(
-          setupParamsTrk.accumParamsIdx,
-          setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(pk)),
-          setupParamsTrk.memPrkIdx,
-          accum
-        );
-      } else {
-        if (!setupParamsTrk.hasAccumulatorNonMemProvingKey()) {
-          setupParamsTrk.addAccumulatorNonMemProvingKey();
-        }
-        statement = Statement.accumulatorNonMembershipFromSetupParamRefs(
-          setupParamsTrk.accumParamsIdx,
-          setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(pk)),
-          setupParamsTrk.nonMemPrkIdx,
-          accum
-        );
-      }
+      const statement = accumulatorStatement(t, pk, accum, setupParamsTrk);
       const sIdx = statements.add(statement);
       const witnessEq = new WitnessEqualityMetaStatement();
       witnessEq.addWitnessRef(i, flattenedSchemas[i][0].indexOf(`${STATUS_STR}.${REV_ID_STR}`));
@@ -181,7 +158,7 @@ export class Presentation extends Versioned {
         const nameIdx = flattenedSchemas[i][0].indexOf(name);
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
         const [min, max] = [bounds[1][j]['min'], bounds[1][j]['max']];
-        const [transformedMin, transformedMax] = getTransformedMinMax(valTyp, min, max);
+        const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
 
         const paramId = bounds[1][j]['paramId'];
         const param = predicateParams?.get(paramId);
@@ -226,69 +203,37 @@ export class Presentation extends Versioned {
           throw new Error(`Commitment gens id not found for ${name}`);
         }
         const commGens = predicateParams?.get(commGensId);
+        if (commGens === undefined) {
+          throw new Error(`Commitment gens not found for id ${commGensId}`);
+        }
         const encKeyId = verEnc[1][j]['encryptionKeyId'];
         if (encKeyId === undefined) {
           throw new Error(`Encryption key id not found for ${name}`);
         }
         const encKey = predicateParams?.get(encKeyId);
+        if (encKey === undefined) {
+          throw new Error(`Encryption key not found for id ${encKey}`);
+        }
         const snarkVkId = verEnc[1][j]['snarkKeyId'];
         if (snarkVkId === undefined) {
           throw new Error(`Snark verification key id not found for ${name}`);
         }
         const snarkVk = predicateParams?.get(snarkVkId);
-        const chunkBitSize = verEnc[1][j]['chunkBitSize'];
-        let statement;
-        if (
-          commGens instanceof SaverChunkedCommitmentGensUncompressed &&
-          encKey instanceof SaverEncryptionKeyUncompressed &&
-          snarkVk instanceof SaverVerifyingKeyUncompressed
-        ) {
-          if (!setupParamsTrk.hasEncryptionGensUncompressed()) {
-            setupParamsTrk.addEncryptionGensUncompressed();
-          }
-          if (!setupParamsTrk.isTrackingParam(commGensId)) {
-            setupParamsTrk.addForParamId(commGensId, SetupParam.saverCommitmentGensUncompressed(commGens));
-          }
-          if (!setupParamsTrk.isTrackingParam(encKeyId)) {
-            setupParamsTrk.addForParamId(encKeyId, SetupParam.saverEncryptionKeyUncompressed(encKey));
-          }
-          if (!setupParamsTrk.isTrackingParam(snarkVkId)) {
-            setupParamsTrk.addForParamId(snarkVkId, SetupParam.saverVerifyingKeyUncompressed(snarkVk));
-          }
-          statement = Statement.saverVerifierFromSetupParamRefs(
-            setupParamsTrk.encGensIdx,
-            setupParamsTrk.indexForParam(commGensId),
-            setupParamsTrk.indexForParam(encKeyId),
-            setupParamsTrk.indexForParam(snarkVkId),
-            chunkBitSize
-          );
-        } else if (
-          commGens instanceof SaverChunkedCommitmentGens &&
-          encKey instanceof SaverEncryptionKey &&
-          snarkVk instanceof SaverVerifyingKey
-        ) {
-          if (!setupParamsTrk.hasEncryptionGensCompressed()) {
-            setupParamsTrk.addEncryptionGensCompressed();
-          }
-          if (!setupParamsTrk.isTrackingParam(commGensId)) {
-            setupParamsTrk.addForParamId(commGensId, SetupParam.saverCommitmentGens(commGens));
-          }
-          if (!setupParamsTrk.isTrackingParam(encKeyId)) {
-            setupParamsTrk.addForParamId(encKeyId, SetupParam.saverEncryptionKey(encKey));
-          }
-          if (!setupParamsTrk.isTrackingParam(snarkVkId)) {
-            setupParamsTrk.addForParamId(snarkVkId, SetupParam.saverVerifyingKey(snarkVk));
-          }
-          statement = Statement.saverVerifierFromSetupParamRefs(
-            setupParamsTrk.encGensCompIdx,
-            setupParamsTrk.indexForParam(commGensId),
-            setupParamsTrk.indexForParam(encKeyId),
-            setupParamsTrk.indexForParam(snarkVkId),
-            chunkBitSize
-          );
-        } else {
-          throw new Error('All SAVER parameters should either be compressed in uncompressed');
+        if (snarkVk === undefined) {
+          throw new Error(`Snark verification key not found for id ${snarkVkId}`);
         }
+        const chunkBitSize = verEnc[1][j]['chunkBitSize'];
+        const statement = saverStatement(
+          false,
+          chunkBitSize,
+          commGensId,
+          encKeyId,
+          snarkVkId,
+          commGens,
+          encKey,
+          snarkVk,
+          setupParamsTrk
+        );
         const sIdx = statements.add(statement);
         const witnessEq = new WitnessEqualityMetaStatement();
         witnessEq.addWitnessRef(i, nameIdx);

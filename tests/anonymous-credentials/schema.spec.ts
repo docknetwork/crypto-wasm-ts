@@ -12,6 +12,7 @@ import {
   VERSION_STR, TYPE_STR
 } from '../../src/anonymous-credentials';
 import { getExampleSchema } from './utils';
+import * as util from 'util';
 
 describe('Credential Schema', () => {
   beforeAll(async () => {
@@ -609,6 +610,7 @@ describe('Credential Schema', () => {
       const schema = getExampleSchema(i);
       const cs = new CredentialSchema(schema);
       const j = cs.toJSON();
+      console.log(util.inspect(schema, false, null, true /* enable colors */))
       const recreatedCs = CredentialSchema.fromJSON(j);
       expect(cs.version).toEqual(recreatedCs.version);
       expect(cs.jsonSchema).toEqual(recreatedCs.jsonSchema);

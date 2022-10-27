@@ -39,7 +39,7 @@ import {
 } from './presentation-specification';
 import { Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
-import { buildContextForProof, createWitEq, getTransformedMinMax } from './util';
+import { accumulatorStatement, buildContextForProof, createWitEq, getTransformedMinMax, saverStatement } from './util';
 import {
   SaverChunkedCommitmentGens,
   SaverChunkedCommitmentGensUncompressed,
@@ -380,39 +380,19 @@ export class PresentationBuilder extends Versioned {
         throw new Error(`No status details found for credential index ${i}`);
       }
       const [wit, acc, pk] = s;
-      let statement, witness;
-      if (!setupParamsTrk.hasAccumulatorParams()) {
-        setupParamsTrk.addAccumulatorParams();
-      }
+      let witness;
       if (t === MEM_CHECK_STR) {
         if (!(wit instanceof MembershipWitness)) {
           throw new Error(`Expected membership witness but got non-membership witness for credential index ${i}`);
         }
-        if (!setupParamsTrk.hasAccumulatorMemProvingKey()) {
-          setupParamsTrk.addAccumulatorMemProvingKey();
-        }
-        statement = Statement.accumulatorMembershipFromSetupParamRefs(
-          setupParamsTrk.accumParamsIdx,
-          setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(pk)),
-          setupParamsTrk.memPrkIdx,
-          acc
-        );
         witness = Witness.accumulatorMembership(value, wit);
       } else {
         if (!(wit instanceof NonMembershipWitness)) {
           throw new Error(`Expected non-membership witness but got membership witness for credential index ${i}`);
         }
-        if (!setupParamsTrk.hasAccumulatorNonMemProvingKey()) {
-          setupParamsTrk.addAccumulatorNonMemProvingKey();
-        }
-        statement = Statement.accumulatorNonMembershipFromSetupParamRefs(
-          setupParamsTrk.accumParamsIdx,
-          setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(pk)),
-          setupParamsTrk.nonMemPrkIdx,
-          acc
-        );
         witness = Witness.accumulatorNonMembership(value, wit);
       }
+      const statement = accumulatorStatement(t, pk, acc, setupParamsTrk);
       const sIdx = statements.add(statement);
       witnesses.add(witness);
 
@@ -440,7 +420,7 @@ export class PresentationBuilder extends Versioned {
       });
       dataSortedByNameIdx.forEach(([nameIdx, name, { min, max, paramId }]) => {
         const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[cId]);
-        const [transformedMin, transformedMax] = getTransformedMinMax(valTyp, min, max);
+        const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
 
         const param = this.predicateParams.get(paramId);
         if (param instanceof LegoProvingKey) {
@@ -491,71 +471,28 @@ export class PresentationBuilder extends Versioned {
         ([nameIdx, name, { chunkBitSize, commitmentGensId, encryptionKeyId, snarkKeyId }]) => {
           const commGens = this.predicateParams.get(commitmentGensId);
           if (commGens === undefined) {
-            throw new Error(`Predicate param id ${commitmentGensId} not found`);
+            throw new Error(`Predicate param for id ${commitmentGensId} not found`);
           }
           const encKey = this.predicateParams.get(encryptionKeyId);
           if (encKey === undefined) {
-            throw new Error(`Predicate param id ${encryptionKeyId} not found`);
+            throw new Error(`Predicate param for id ${encryptionKeyId} not found`);
           }
           const snarkPk = this.predicateParams.get(snarkKeyId);
           if (snarkPk === undefined) {
-            throw new Error(`Predicate param id ${snarkKeyId} not found`);
+            throw new Error(`Predicate param for id ${snarkKeyId} not found`);
           }
 
-          let statement;
-          if (
-            commGens instanceof SaverChunkedCommitmentGensUncompressed &&
-            encKey instanceof SaverEncryptionKeyUncompressed &&
-            snarkPk instanceof SaverProvingKeyUncompressed
-          ) {
-            if (!setupParamsTrk.hasEncryptionGensUncompressed()) {
-              setupParamsTrk.addEncryptionGensUncompressed();
-            }
-            if (!setupParamsTrk.isTrackingParam(commitmentGensId)) {
-              setupParamsTrk.addForParamId(commitmentGensId, SetupParam.saverCommitmentGensUncompressed(commGens));
-            }
-            if (!setupParamsTrk.isTrackingParam(encryptionKeyId)) {
-              setupParamsTrk.addForParamId(encryptionKeyId, SetupParam.saverEncryptionKeyUncompressed(encKey));
-            }
-            if (!setupParamsTrk.isTrackingParam(snarkKeyId)) {
-              setupParamsTrk.addForParamId(snarkKeyId, SetupParam.saverProvingKeyUncompressed(snarkPk));
-            }
-            statement = Statement.saverProverFromSetupParamRefs(
-              setupParamsTrk.encGensIdx,
-              setupParamsTrk.indexForParam(commitmentGensId),
-              setupParamsTrk.indexForParam(encryptionKeyId),
-              setupParamsTrk.indexForParam(snarkKeyId),
-              chunkBitSize
-            );
-          } else if (
-            commGens instanceof SaverChunkedCommitmentGens &&
-            encKey instanceof SaverEncryptionKey &&
-            snarkPk instanceof SaverProvingKey
-          ) {
-            if (!setupParamsTrk.hasEncryptionGensCompressed()) {
-              setupParamsTrk.addEncryptionGensCompressed();
-            }
-            if (!setupParamsTrk.isTrackingParam(commitmentGensId)) {
-              setupParamsTrk.addForParamId(commitmentGensId, SetupParam.saverCommitmentGens(commGens));
-            }
-            if (!setupParamsTrk.isTrackingParam(encryptionKeyId)) {
-              setupParamsTrk.addForParamId(encryptionKeyId, SetupParam.saverEncryptionKey(encKey));
-            }
-            if (!setupParamsTrk.isTrackingParam(snarkKeyId)) {
-              setupParamsTrk.addForParamId(snarkKeyId, SetupParam.saverProvingKey(snarkPk));
-            }
-
-            statement = Statement.saverProverFromSetupParamRefs(
-              setupParamsTrk.encGensCompIdx,
-              setupParamsTrk.indexForParam(commitmentGensId),
-              setupParamsTrk.indexForParam(encryptionKeyId),
-              setupParamsTrk.indexForParam(snarkKeyId),
-              chunkBitSize
-            );
-          } else {
-            throw new Error('All SAVER parameters should either be compressed in uncompressed');
-          }
-
+          const statement = saverStatement(
+            true,
+            chunkBitSize,
+            commitmentGensId,
+            encryptionKeyId,
+            snarkKeyId,
+            commGens,
+            encKey,
+            snarkPk,
+            setupParamsTrk
+          );
           const encodedAttrVal = unrevealedMsgsEncoded.get(cId)?.get(nameIdx) as Uint8Array;
           witnesses.add(Witness.saver(encodedAttrVal));
 
