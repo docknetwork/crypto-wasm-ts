@@ -219,6 +219,22 @@ describe('Credential Schema', () => {
     expect(cs1.hasStatus()).toEqual(false);
   });
 
+  it('parsing options', () => {
+    const schema = getExampleSchema(1);
+
+    const cs1 = new CredentialSchema(schema, {useDefaults: true, defaultMinimumInteger: -10, defaultDecimalPlaces: 1});
+    expect(cs1.parsingOptions).toEqual({useDefaults: true, defaultMinimumInteger: -10, defaultDecimalPlaces: 1});
+
+    const cs2 = new CredentialSchema(schema, {useDefaults: true});
+    expect(cs2.parsingOptions).toEqual({useDefaults: true, defaultMinimumInteger: DefaultSchemaParsingOpts.defaultMinimumInteger, defaultDecimalPlaces: DefaultSchemaParsingOpts.defaultDecimalPlaces});
+
+    const cs3 = new CredentialSchema(schema, {useDefaults: true, defaultDecimalPlaces: 3});
+    expect(cs3.parsingOptions).toEqual({useDefaults: true, defaultMinimumInteger: DefaultSchemaParsingOpts.defaultMinimumInteger, defaultDecimalPlaces: 3});
+
+    const cs4 = new CredentialSchema(schema, {useDefaults: true, defaultMinimumInteger: -50});
+    expect(cs4.parsingOptions).toEqual({useDefaults: true, defaultMinimumInteger: -50, defaultDecimalPlaces: DefaultSchemaParsingOpts.defaultDecimalPlaces});
+  });
+
   it('validation of numeric types', () => {
     const schema2 = CredentialSchema.essential();
     schema2[SUBJECT_STR] = {
@@ -254,6 +270,19 @@ describe('Credential Schema', () => {
     expect(cs.schema[SUBJECT_STR]).toEqual({
       fname: { type: 'string' },
       score: { type: 'integer', minimum: DefaultSchemaParsingOpts.defaultMinimumInteger },
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer' },
+      }
+    });
+
+    cs = new CredentialSchema(schema2, {useDefaults: true, defaultMinimumInteger: -100});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      score: { type: 'integer', minimum: -100 },
     });
     expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
       type: 'object',
@@ -310,6 +339,21 @@ describe('Credential Schema', () => {
       }
     });
 
+    cs = new CredentialSchema(schema3, {useDefaults: true, defaultMinimumInteger: -200, defaultDecimalPlaces: 5});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      score: { type: 'integer', minimum: -100 },
+      long: { type: 'decimalNumber', minimum: -200, decimalPlaces: 5 }
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer', minimum: -100 },
+        long: { type: 'number' }
+      }
+    });
+
     schema3.properties[SUBJECT_STR] = {
       type: 'object',
       properties: {
@@ -325,6 +369,21 @@ describe('Credential Schema', () => {
       fname: { type: 'string' },
       score: { type: 'integer', minimum: -100 },
       long: { type: 'decimalNumber', minimum: -200, decimalPlaces: DefaultSchemaParsingOpts.defaultDecimalPlaces }
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer', minimum: -100 },
+        long: { type: 'number', minimum: -200 }
+      }
+    });
+
+    cs = new CredentialSchema(schema3, {useDefaults: true, defaultDecimalPlaces: 2});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      score: { type: 'integer', minimum: -100 },
+      long: { type: 'decimalNumber', minimum: -200, decimalPlaces: 2 }
     });
     expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
       type: 'object',
@@ -400,6 +459,21 @@ describe('Credential Schema', () => {
       fname: { type: 'string' },
       score: { type: 'integer', minimum: -100 },
       lat: { type: 'decimalNumber', minimum: DefaultSchemaParsingOpts.defaultMinimumInteger, decimalPlaces: 3 }
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        score: { type: 'integer', minimum: -100 },
+        lat: { type: 'number', multipleOf: .001 }
+      }
+    });
+
+    cs = new CredentialSchema(schema4, {useDefaults: true, defaultMinimumInteger: -90});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      score: { type: 'integer', minimum: -100 },
+      lat: { type: 'decimalNumber', minimum: -90, decimalPlaces: 3 }
     });
     expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
       type: 'object',
@@ -610,7 +684,6 @@ describe('Credential Schema', () => {
       const schema = getExampleSchema(i);
       const cs = new CredentialSchema(schema);
       const j = cs.toJSON();
-      console.log(util.inspect(schema, false, null, true /* enable colors */))
       const recreatedCs = CredentialSchema.fromJSON(j);
       expect(cs.version).toEqual(recreatedCs.version);
       expect(cs.jsonSchema).toEqual(recreatedCs.jsonSchema);

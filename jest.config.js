@@ -8,7 +8,7 @@ module.exports = {
   testRegex: [".spec.ts$"],
   moduleFileExtensions: ["ts", "js", "json", "node"],
   coveragePathIgnorePatterns: ["<rootDir>/__tests__", "<rootDir>/lib"],
-  testTimeout: 20000,
+  testTimeout: 40000,
   verbose: true,
   name: pack.name,
   displayName: pack.name,
