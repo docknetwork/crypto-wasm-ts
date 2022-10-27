@@ -1,8 +1,9 @@
-import { AttributeEquality, REGISTRY_ID_STR, REV_CHECK_STR } from './types-and-consts';
+import { AttributeEquality, ID_STR, REV_CHECK_STR, TYPE_STR } from './types-and-consts';
 import b58 from 'bs58';
 
 export interface IPresentedStatus {
-  [REGISTRY_ID_STR]: string;
+  [ID_STR]: string;
+  [TYPE_STR]: string;
   [REV_CHECK_STR]: string;
   accumulated: Uint8Array;
   extra: object;

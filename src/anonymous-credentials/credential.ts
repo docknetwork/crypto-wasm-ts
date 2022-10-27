@@ -1,7 +1,7 @@
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
-  CRED_VERSION_STR,
+  CRYPTO_VERSION_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
@@ -14,11 +14,11 @@ import b58 from 'bs58';
 
 export class Credential extends Versioned {
   // Each credential references the schema which is included as an attribute
-  schema: CredentialSchema;
-  subject: object | object[];
-  credentialStatus?: object;
-  topLevelFields: Map<string, unknown>;
-  signature: SignatureG1;
+  readonly schema: CredentialSchema;
+  readonly subject: object | object[];
+  readonly credentialStatus?: object;
+  readonly topLevelFields: Map<string, unknown>;
+  readonly signature: SignatureG1;
 
   constructor(
     version: string,
@@ -55,11 +55,13 @@ export class Credential extends Versioned {
     return v;
   }
 
-  serializeForSigning() {
+  serializeForSigning(): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
-      [CRED_VERSION_STR]: this.version,
-      [SCHEMA_STR]: this.schema.toJSON(),
+      [CRYPTO_VERSION_STR]: this.version,
+      // Converting the schema to a JSON string rather than keeping it JSO object to avoid creating extra fields while
+      // signing which makes the implementation more expensive as one sig param is needed for each field.
+      [SCHEMA_STR]: JSON.stringify(this.schema?.toJSON()),
       [SUBJECT_STR]: this.subject
     };
     for (const [k, v] of this.topLevelFields.entries()) {
@@ -71,10 +73,10 @@ export class Credential extends Versioned {
     return s;
   }
 
-  prepareForJson(): object {
+  toJSON(): object {
     const j = {};
-    j['credentialVersion'] = this._version;
-    j['credentialSchema'] = this.schema.toJSON();
+    j['cryptoVersion'] = this._version;
+    j['credentialSchema'] = JSON.stringify(this.schema.toJSON());
     j['credentialSubject'] = this.subject;
     if (this.credentialStatus !== undefined) {
       j['credentialStatus'] = this.credentialStatus;
@@ -89,8 +91,8 @@ export class Credential extends Versioned {
     return j;
   }
 
-  prepareForJsonLd(): object {
-    let j = this.prepareForJson();
+  toJSONWithJsonLdContext(): object {
+    let j = this.toJSON();
     const jctx = this.schema.getJsonLdContext();
     // TODO: Uncomment me. The correct context should be "something like" below. See comments over the commented function `getJsonLdContext` for details
     // jctx['@context'][1]['proof'] = {
@@ -104,17 +106,9 @@ export class Credential extends Versioned {
     return j;
   }
 
-  toJSON(): string {
-    return JSON.stringify(this.prepareForJson());
-  }
-
-  toJSONWithJsonLdContext(): string {
-    return JSON.stringify(this.prepareForJsonLd());
-  }
-
-  static fromJSON(json: string): Credential {
-    const { credentialVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } =
-      JSON.parse(json);
+  static fromJSON(j: object): Credential {
+    // @ts-ignore
+    const { cryptoVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } = j;
     if (proof['type'] !== 'Bls12381BBS+SignatureDock2022') {
       throw new Error(`Invalid proof type ${proof['type']}`);
     }
@@ -124,8 +118,8 @@ export class Credential extends Versioned {
       topLevelFields.set(k, custom[k]);
     });
     return new Credential(
-      credentialVersion,
-      CredentialSchema.fromJSON(credentialSchema),
+      cryptoVersion,
+      CredentialSchema.fromJSON(JSON.parse(credentialSchema)),
       credentialSubject,
       topLevelFields,
       sig,

@@ -15,18 +15,17 @@ import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 import {
   AttributeCiphertexts,
-  CRED_VERSION_STR,
+  CRYPTO_VERSION_STR,
   FlattenedSchema,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
-  REGISTRY_ID_STR,
+  ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  STATUS_STR,
-  SUBJECT_STR
+  STATUS_STR
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import { buildContextForProof, createWitEq, deepClone, flattenTill2ndLastKey, getTransformedMinMax } from './util';
@@ -44,14 +43,14 @@ import b58 from 'bs58';
 import { SetupParamsTracker } from './setup-params-tracker';
 
 export class Presentation extends Versioned {
-  spec: PresentationSpecification;
-  proof: CompositeProofG1;
+  readonly spec: PresentationSpecification;
+  readonly proof: CompositeProofG1;
   // Ciphertexts for the verifiable encryption of required attributes. The key of the map is the credential index.
   // This is intentionally not part of presentation specification as this is created as part of the proof generation,
   // not before.
-  attributeCiphertexts?: Map<number, AttributeCiphertexts>;
-  context?: string;
-  nonce?: Uint8Array;
+  readonly attributeCiphertexts?: Map<number, AttributeCiphertexts>;
+  readonly context?: string;
+  readonly nonce?: Uint8Array;
 
   constructor(
     version: string,
@@ -103,7 +102,7 @@ export class Presentation extends Versioned {
 
     for (let i = 0; i < this.spec.credentials.length; i++) {
       const presentedCred = this.spec.credentials[i];
-      const presentedCredSchema = CredentialSchema.fromJSON(presentedCred.schema);
+      const presentedCredSchema = CredentialSchema.fromJSON(JSON.parse(presentedCred.schema));
       const flattenedSchema = presentedCredSchema.flatten();
       const numAttribs = flattenedSchema[0].length;
 
@@ -317,7 +316,7 @@ export class Presentation extends Versioned {
     flattenedNames: string[]
   ): Map<number, Uint8Array> {
     const revealedRaw = deepClone(presentedCred.revealedAttributes) as object;
-    revealedRaw[CRED_VERSION_STR] = presentedCred.version;
+    revealedRaw[CRYPTO_VERSION_STR] = presentedCred.version;
     revealedRaw[SCHEMA_STR] = presentedCred.schema;
     if (presentedCredSchema.hasStatus()) {
       // To guard against a malicious holder not proving the credential status when required.
@@ -325,7 +324,7 @@ export class Presentation extends Versioned {
         throw new Error(`Schema for the credential index ${credIdx} required a status but wasn't provided`);
       }
       if (
-        presentedCred.status[REGISTRY_ID_STR] === undefined ||
+        presentedCred.status[ID_STR] === undefined ||
         (presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_STR &&
           presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_STR)
       ) {
@@ -333,7 +332,7 @@ export class Presentation extends Versioned {
       }
       // Following will also ensure that holder (prover) cannot change the registry (accumulator) id or the type of check
       revealedRaw[STATUS_STR] = {
-        [REGISTRY_ID_STR]: presentedCred.status[REGISTRY_ID_STR],
+        [ID_STR]: presentedCred.status[ID_STR],
         [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR]
       };
     }
@@ -348,7 +347,7 @@ export class Presentation extends Versioned {
     return encoded;
   }
 
-  toJSON(): string {
+  toJSON(): object {
     const attributeCiphertexts = {};
     if (this.attributeCiphertexts !== undefined) {
       for (const [i, v] of this.attributeCiphertexts.entries()) {
@@ -367,7 +366,7 @@ export class Presentation extends Versioned {
       creds.push(current);
     }
 
-    return JSON.stringify({
+    return {
       version: this.version,
       context: this.context,
       nonce: this.nonce ? b58.encode(this.nonce) : null,
@@ -377,11 +376,12 @@ export class Presentation extends Versioned {
       },
       attributeCiphertexts,
       proof: b58.encode((this.proof as CompositeProofG1).bytes)
-    });
+    };
   }
 
-  static fromJSON(json: string): Presentation {
-    const { version, context, nonce, spec, attributeCiphertexts, proof } = JSON.parse(json);
+  static fromJSON(j: object): Presentation {
+    // @ts-ignore
+    const { version, context, nonce, spec, attributeCiphertexts, proof } = j;
     const nnc = nonce ? b58.decode(nonce) : undefined;
 
     const presSpec = new PresentationSpecification();
