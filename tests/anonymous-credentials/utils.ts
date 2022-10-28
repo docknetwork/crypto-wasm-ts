@@ -4,7 +4,7 @@ import {
   SCHEMA_STR,
   STATUS_STR,
   SUBJECT_STR,
-  CredentialSchema, IJsonSchema, VERSION_STR, TYPE_STR, STATUS_TYPE_STR, EMBEDDED_SCHEMA_URI_PREFIX, SCHEMA_TYPE_STR
+  CredentialSchema, IJsonSchema, VERSION_STR, TYPE_STR, STATUS_TYPE_STR, SCHEMA_TYPE_STR
 } from '../../src/anonymous-credentials';
 
 export function getExampleSchema(num): IJsonSchema {

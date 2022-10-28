@@ -911,4 +911,17 @@ describe('Credential Schema', () => {
       logo: 'dk:logo',
     });
   });
+
+  it('extracing json from embedded', () => {
+    const jsonData = { hello: 'world', buyDock: true };
+
+    let dataStr = JSON.stringify(jsonData);
+    let dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    let parsed = CredentialSchema.extractJsonSchemaFromEmbedded(dataUri);
+    expect(parsed).toEqual(jsonData);
+
+    dataUri = 'data:application/json;,'+ encodeURIComponent(dataStr);
+    parsed = CredentialSchema.extractJsonSchemaFromEmbedded(dataUri);
+    expect(parsed).toEqual(jsonData);
+  });
 });

@@ -4,7 +4,6 @@ import { EncodeFunc, Encoder } from '../bbs-plus';
 import { isPositiveInteger } from '../util';
 import {
   CRYPTO_VERSION_STR,
-  EMBEDDED_SCHEMA_URI_PREFIX,
   FlattenedSchema,
   ID_STR,
   REV_CHECK_STR,
@@ -671,7 +670,7 @@ export class CredentialSchema extends Versioned {
 
   toJSON(): object {
     return {
-      [ID_STR]: `${EMBEDDED_SCHEMA_URI_PREFIX}${JSON.stringify(this.jsonSchema)}`,
+      [ID_STR]: `data:application/json;,${encodeURIComponent(JSON.stringify(this.jsonSchema))}`,
       [TYPE_STR]: SCHEMA_TYPE_STR,
       parsingOptions: this.parsingOptions,
       version: this._version
@@ -693,10 +692,30 @@ export class CredentialSchema extends Versioned {
   }
 
   static extractJsonSchemaFromEmbedded(embedded: string): IJsonSchema {
-    if (!embedded.startsWith(EMBEDDED_SCHEMA_URI_PREFIX)) {
-      throw new Error(`Embedded schema not in the expected format: ${embedded}`);
+    if (!embedded.startsWith('data:')) {
+      throw new Error(`Embedded schema must be a data URI`);
     }
-    return JSON.parse(embedded.slice(EMBEDDED_SCHEMA_URI_PREFIX.length));
+
+    // Strip new lines
+    const dataUri = embedded.replace(/\r?\n/g, '');
+
+    // split the URI up into the "metadata" and the "data" portions
+    const firstComma = dataUri.indexOf(',');
+    if (firstComma === -1 || firstComma <= 4) {
+      throw new Error('Schema is a malformed data URI');
+    }
+
+    // Remove the scheme and parse metadata
+    const meta = dataUri.substring('data:'.length, firstComma).split(';');
+    const isBase64 = meta.indexOf('base64') !== -1;
+
+    if (isBase64) {
+      throw new Error('Base64 embedded JSON is not yet supported');
+    }
+
+    // Extract data string
+    const dataStr = decodeURIComponent(dataUri.substring(firstComma + 1));
+    return JSON.parse(dataStr);
   }
 
   // TODO: Revisit me. Following was an attempt to create more accurate JSON-LD context but pausing it now because
