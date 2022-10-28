@@ -515,8 +515,8 @@ export class CredentialSchema extends Versioned {
     encoders.set(CRYPTO_VERSION_STR, defaultEncoder);
     encoders.set(SCHEMA_STR, defaultEncoder);
 
-    // Intentionally not supplying default encoder as we already know the schema
-    this.encoder = new Encoder(encoders);
+    // Only supply default encoder if user requests to use defaults
+    this.encoder = new Encoder(encoders, this.parsingOptions.useDefaults ? defaultEncoder : undefined);
   }
 
   /**
@@ -636,7 +636,10 @@ export class CredentialSchema extends Versioned {
       [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
-        [SUBJECT_STR]: {}
+        [SUBJECT_STR]: {
+          type: 'object',
+          properties: {},
+        }
       }
     };
     if (withDefinitions) {
