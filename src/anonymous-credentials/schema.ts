@@ -679,7 +679,7 @@ export class CredentialSchema extends Versioned {
     // @ts-ignore
     const { id, type, parsingOptions, version } = j;
     if (type !== SCHEMA_TYPE_STR) {
-      throw new Error(`Schema type not as expected: ${type}`);
+      throw new Error(`Schema type was "${type}", expected: "${SCHEMA_TYPE_STR}"`);
     }
     const jsonSchema = this.extractJsonSchemaFromEmbedded(id);
     // Note: `parsingOptions` might still be in an incorrect format which can fail the next call
