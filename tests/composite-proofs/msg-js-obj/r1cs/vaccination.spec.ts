@@ -29,7 +29,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual, defaultEncoder } from '../index';
+import { checkMapsEqual } from '../index';
+import { defaultEncoder } from '../data-and-encoder';
 
 // Test for a scenario where a user wants to prove that he either got the vaccination less than 30 days ago or got
 // tested negative less than 2 days ago but does not reveal when these events happened or which of these conditions is true.
@@ -113,9 +114,9 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     vaccinationAttributes.vaccination.date = now - vDays * secondsInADay;
     diseaseTestAttributes.test.date = now - tDays * secondsInADay;
     const signedV = signMessageObject(vaccinationAttributes, sigSk, label, encoder);
-    expect(verifyMessageObject(vaccinationAttributes, signedV.signature, sigPk, label, encoder)).toBe(true);
+    checkResult(verifyMessageObject(vaccinationAttributes, signedV.signature, sigPk, label, encoder));
     const signedT = signMessageObject(diseaseTestAttributes, sigSk, label, encoder);
-    expect(verifyMessageObject(diseaseTestAttributes, signedT.signature, sigPk, label, encoder)).toBe(true);
+    checkResult(verifyMessageObject(diseaseTestAttributes, signedT.signature, sigPk, label, encoder));
     return [signedV, signedT];
   }
 

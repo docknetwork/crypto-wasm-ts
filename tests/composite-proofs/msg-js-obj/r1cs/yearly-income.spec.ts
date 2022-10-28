@@ -7,7 +7,7 @@ import {
   createWitnessEqualityMetaStatement,
   EncodeFunc,
   Encoder,
-  encodeRevealedMsgs,
+  encodeRevealedMsgs, flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
@@ -29,7 +29,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual, defaultEncoder } from '../index';
+import { checkMapsEqual } from '../index';
+import { defaultEncoder } from '../data-and-encoder';
 
 // Test for a scenario where a user wants to prove that his yearly income is less than 25000 where his income comprises
 // of 12 payslip credentials, 1 for each month's.
@@ -98,8 +99,9 @@ describe('Proving that yearly income calculated from monthly payslips is less th
   });
 
   it('signers signs attributes', () => {
-    // Message count shouldn't matter as `label` is known
-    let params = SignatureParamsG1.generate(1, label);
+    const numAttrs = Object.keys(flattenObjectToKeyValuesList(payslipAttributesStruct)).length;
+    // Issuing multiple credentials with the same number of attributes so create sig. params only once for faster execution
+    let params = SignatureParamsG1.generate(numAttrs, label);
     const keypair = KeypairG2.generate(params);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
@@ -121,8 +123,8 @@ describe('Proving that yearly income calculated from monthly payslips is less th
           amount: Math.floor(Math.random() * 2000) // salary will be under 2000
         }
       });
-      signed.push(signMessageObject(payslipAttributes[i], sk, label, encoder));
-      expect(verifyMessageObject(payslipAttributes[i], signed[i].signature, sigPk, label, encoder)).toBe(true);
+      signed.push(signMessageObject(payslipAttributes[i], sk, params, encoder));
+      checkResult(verifyMessageObject(payslipAttributes[i], signed[i].signature, sigPk, params, encoder));
     }
   });
 

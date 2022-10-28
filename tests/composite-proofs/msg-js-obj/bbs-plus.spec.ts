@@ -21,8 +21,16 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
-import { attributes1, attributes1Struct, attributes2, attributes2Struct, attributes3, attributes3Struct } from './data';
-import { checkMapsEqual, defaultEncoder, signedToHex } from './index';
+import {
+  attributes1,
+  attributes1Struct,
+  attributes2,
+  attributes2Struct,
+  attributes3,
+  attributes3Struct,
+  defaultEncoder
+} from './data-and-encoder';
+import { checkMapsEqual, signedToHex } from './index';
 
 describe('Signing and proof of knowledge of BBS+ signature', () => {
   // NOTE: The following tests contain a lot of duplicated code but that is intentional as this code is for illustration purpose.
@@ -59,7 +67,7 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
       expect(isValidMsgStructure(attributes, attributesStruct)).toEqual(true);
 
       const signed = signMessageObject(attributes, sk, label, encoder);
-      expect(verifyMessageObject(attributes, signed.signature, pk, label, encoder)).toBe(true);
+      checkResult(verifyMessageObject(attributes, signed.signature, pk, label, encoder));
 
       // For debugging
       console.log(signedToHex(signed));
@@ -172,10 +180,10 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
 
     // Sign and verify all signatures
     const signed1 = signMessageObject(attributes1, sk1, label1, encoder);
-    expect(verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
 
     const signed2 = signMessageObject(attributes2, sk2, label2, encoder);
-    expect(verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
 
     // Reveal
     // - first name ("fname" attribute) from both sets of signed attributes
@@ -291,13 +299,13 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
 
     // Sign and verify all signatures
     const signed1 = signMessageObject(attributes1, sk1, label1, encoder);
-    expect(verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
 
     const signed2 = signMessageObject(attributes2, sk2, label2, encoder);
-    expect(verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
 
     const signed3 = signMessageObject(attributes3, sk3, label3, encoder);
-    expect(verifyMessageObject(attributes3, signed3.signature, pk3, label3, encoder)).toBe(true);
+    checkResult(verifyMessageObject(attributes3, signed3.signature, pk3, label3, encoder));
 
     // Reveal
     // - first name ("fname" attribute) from all 3 sets of signed attributes

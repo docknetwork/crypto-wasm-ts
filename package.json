@@ -1,6 +1,6 @@
 {
   "name": "@docknetwork/crypto-wasm-ts",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "description": "Typescript abstractions over Dock's Rust crypto library's WASM wrapper",
   "homepage": "https://github.com/docknetwork/crypto-wasm-ts",
   "main": "lib/index.js",
@@ -8,9 +8,10 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf lib/",
+    "jest": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "prepare": "husky install",
     "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "test": "jest",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "buildAndPublish": "yarn clean && yarn build && yarn publish"
   },
   "license": "Apache-2.0",
@@ -22,13 +23,16 @@
     "lib": "lib"
   },
   "dependencies": {
-    "@docknetwork/crypto-wasm": "0.15.0",
+    "@docknetwork/crypto-wasm": "0.16.0",
     "@types/flat": "^5.0.2",
+    "bs58": "5.0.0",
     "flat": "^5.0.2",
+    "json-pointer": "^0.6.2",
     "lzutf8": "^0.6.3"
   },
   "devDependencies": {
     "@types/jest": "24.0.18",
+    "@types/jsonld": "^1.5.7",
     "@types/node": "^16.11.6",
     "@typescript-eslint/eslint-plugin": "^5.3.0",
     "@typescript-eslint/parser": "^5.3.0",
@@ -37,6 +41,8 @@
     "eslint-plugin-import": "^2.20.2",
     "husky": "^7.0.4",
     "jest": "^27.3.0",
+    "jsonld": "6.0.0",
+    "jsonschema": "1.4.1",
     "prettier": "2.7.1",
     "pretty-quick": "3.1.3",
     "r1csfile": "^0.0.41",

@@ -3,6 +3,7 @@ import {
   generateCompositeProofG1,
   generateCompositeProofG1WithDeconstructedProofSpec,
   saverGetCiphertextFromProof,
+  saverGetCiphertextsFromProof,
   verifyCompositeProofG1,
   verifyCompositeProofG1WithDeconstructedProofSpec,
   VerifyResult
@@ -81,6 +82,11 @@ export class CompositeProofG1 extends BytearrayWrapper {
    */
   getSaverCiphertext(statementIndex: number): SaverCiphertext {
     return new SaverCiphertext(saverGetCiphertextFromProof(this.value, statementIndex));
+  }
+
+  getSaverCiphertexts(statementIndices: number[]): SaverCiphertext[] {
+    const cts = saverGetCiphertextsFromProof(this.value, statementIndices);
+    return cts.map((ct) => new SaverCiphertext(ct));
   }
 
   static generateWithDeconstructedProofSpec(

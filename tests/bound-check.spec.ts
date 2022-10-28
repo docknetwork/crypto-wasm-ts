@@ -1,8 +1,4 @@
 import {
-  LegoProvingKey,
-  LegoProvingKeyUncompressed,
-  LegoVerifyingKey,
-  LegoVerifyingKeyUncompressed,
   BoundCheckSnarkSetup
 } from '../src';
 import { initializeWasm } from '@docknetwork/crypto-wasm';

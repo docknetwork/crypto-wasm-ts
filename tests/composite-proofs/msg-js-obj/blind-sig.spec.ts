@@ -1,5 +1,5 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { stringToBytes } from '../../utils';
+import { checkResult, stringToBytes } from '../../utils';
 import {
   blindSignMessageObject,
   CompositeProofG1,
@@ -14,8 +14,15 @@ import {
   verifyMessageObject,
   Witnesses
 } from '../../../src';
-import { attributes1, attributes1Struct, attributes2, attributes2Struct, attributes3, attributes3Struct } from './data';
-import { GlobalEncoder } from './index';
+import {
+  attributes1,
+  attributes1Struct,
+  attributes2,
+  attributes2Struct,
+  attributes3,
+  attributes3Struct,
+  GlobalEncoder
+} from './data-and-encoder';
 
 describe('Requesting blind signatures', () => {
   beforeAll(async () => {
@@ -171,7 +178,7 @@ describe('Requesting blind signatures', () => {
       const unblindedSig = blingSignature.signature.unblind(blinding);
 
       // The unblinded signature can now be used in the usual verification process
-      expect(verifyMessageObject(attributes, unblindedSig, pk, sigParams, GlobalEncoder)).toBe(true);
+      checkResult(verifyMessageObject(attributes, unblindedSig, pk, sigParams, GlobalEncoder));
 
       // Proof of knowledge of signature can be created and verified as usual.
     }

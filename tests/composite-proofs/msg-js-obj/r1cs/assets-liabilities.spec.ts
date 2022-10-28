@@ -7,7 +7,7 @@ import {
   createWitnessEqualityMetaStatement,
   EncodeFunc,
   Encoder,
-  encodeRevealedMsgs,
+  encodeRevealedMsgs, flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
@@ -29,7 +29,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual, defaultEncoder } from '../index';
+import { checkMapsEqual } from '../index';
+import { defaultEncoder } from '../data-and-encoder';
 
 // Test for a scenario where a user have 20 assets and liabilities, in different credentials (signed documents). The user
 // proves that the sum of his assets is greater than sum of liabilities by 10000 without revealing actual values of either.
@@ -128,9 +129,12 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
   });
 
   it('signers signs attributes', () => {
-    // Message count shouldn't matter as `label` is known
-    let params = SignatureParamsG1.generate(1, label);
-    const keypair = KeypairG2.generate(params);
+    const numAssetAttrs = Object.keys(flattenObjectToKeyValuesList(assetAttributesStruct)[0]).length;
+    const numLiablAttrs = Object.keys(flattenObjectToKeyValuesList(liabilitiesAttributesStruct)[0]).length;
+    // Issuing multiple credentials with the same number of attributes so create sig. params only once for faster execution
+    let assetSigParams = SignatureParamsG1.generate(numAssetAttrs, label);
+    let liablSigParams = SignatureParamsG1.generate(numLiablAttrs, label);
+    const keypair = KeypairG2.generate(assetSigParams);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
 
@@ -151,8 +155,8 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
           id5: (i + 5) * 10000
         }
       });
-      signedAssets.push(signMessageObject(assetAttributes[i], sk, label, encoder));
-      expect(verifyMessageObject(assetAttributes[i], signedAssets[i].signature, sigPk, label, encoder)).toBe(true);
+      signedAssets.push(signMessageObject(assetAttributes[i], sk, assetSigParams, encoder));
+      checkResult(verifyMessageObject(assetAttributes[i], signedAssets[i].signature, sigPk, assetSigParams, encoder));
     }
 
     for (let i = 0; i < numLiabilityCredentials; i++) {
@@ -170,10 +174,8 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
           id4: (i + 4) * 100
         }
       });
-      signedLiabilities.push(signMessageObject(liabilityAttributes[i], sk, label, encoder));
-      expect(verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, label, encoder)).toBe(
-        true
-      );
+      signedLiabilities.push(signMessageObject(liabilityAttributes[i], sk, liablSigParams, encoder));
+      checkResult(verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, liablSigParams, encoder));
     }
   });
 
