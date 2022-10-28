@@ -637,7 +637,7 @@ export class CredentialSchema extends Versioned {
       properties: {
         [SUBJECT_STR]: {
           type: 'object',
-          properties: {},
+          properties: {}
         }
       }
     };
@@ -701,14 +701,18 @@ export class CredentialSchema extends Versioned {
 
     // split the URI up into the "metadata" and the "data" portions
     const firstComma = dataUri.indexOf(',');
-    if (firstComma === -1 || firstComma <= 4) {
+    if (firstComma === -1) {
       throw new Error('Schema is a malformed data URI');
     }
 
     // Remove the scheme and parse metadata
-    const meta = dataUri.substring('data:'.length, firstComma).split(';');
-    const isBase64 = meta.indexOf('base64') !== -1;
+    const meta = dataUri.substring(5, firstComma).split(';'); // 'data:'.length = 5
 
+    if (meta[0] !== 'application/json') {
+      throw new Error(`Expected media type application/json but was ${meta[0]}`);
+    }
+
+    const isBase64 = meta.indexOf('base64') !== -1;
     if (isBase64) {
       throw new Error('Base64 embedded JSON is not yet supported');
     }
