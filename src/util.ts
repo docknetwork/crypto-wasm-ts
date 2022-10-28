@@ -86,3 +86,17 @@ export function bytearrayToHex(b: Uint8Array): string {
   });
   return hex;
 }
+
+export function areArraysEqual(arr1: string[] | number[] | boolean[], arr2: string[] | number[] | boolean[]): boolean {
+  if (arr1.length !== arr2.length) {
+    return false;
+  }
+
+  for (let i = 0; i < arr1.length; i++) {
+    if (arr1[i] !== arr2[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}

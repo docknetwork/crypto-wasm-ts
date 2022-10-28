@@ -18,7 +18,7 @@ import {
 } from './types-and-consts';
 import { Credential } from './credential';
 import { flatten } from 'flat';
-import { areArraysEqual } from '../../tests/utils';
+import { areArraysEqual } from '../util';
 
 /**
  * Create a credential

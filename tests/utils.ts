@@ -31,20 +31,6 @@ export function areUint8ArraysEqual(arr1: Uint8Array, arr2: Uint8Array): boolean
   return true;
 }
 
-export function areArraysEqual(arr1: string[] | number[] | boolean[], arr2: string[] | number[] | boolean[]): boolean {
-  if (arr1.length !== arr2.length) {
-    return false;
-  }
-
-  for (let i = 0; i < arr1.length; i++) {
-    if (arr1[i] !== arr2[i]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 /**
  * Given messages and indices to reveal, returns 2 maps, one for revealed messages and one for unrevealed
  * @param messages
