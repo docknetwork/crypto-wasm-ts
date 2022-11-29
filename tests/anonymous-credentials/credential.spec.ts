@@ -6,7 +6,7 @@ import {
   MEM_CHECK_STR, ID_STR, REV_CHECK_STR, REV_ID_STR, SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES, STATUS_TYPE_STR,
   SUBJECT_STR, TYPE_STR
-} from '../../src/anonymous-credentials';
+} from '../../src';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
 import { checkSchemaFromJson, getExampleSchema } from './utils';
@@ -359,4 +359,30 @@ describe('Credential signing and verification', () => {
     normalized = await jsonld.normalize(credWithoutCtx);
     expect(normalized).toEqual("");
   })
+
+  it('for credential with loose schema validation', () => {
+    const schema = CredentialSchema.essential();
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'string' }
+      }
+    };
+    const credSchema = new CredentialSchema(schema, {useDefaults: true});
+
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
+
+    builder.subject = { fname: 'John', lname: 'Smith', city: 'NY', education: {university: 'Example', major: 'Nothing'} };
+
+    expect(() => builder.sign(sk)).toThrow();
+    expect(() => builder.sign(sk, undefined, {requireAllFieldsFromSchema: true})).toThrow();
+
+    const cred = builder.sign(sk, undefined, {requireAllFieldsFromSchema: false});
+
+    checkResult(cred.verify(pk));
+    const recreatedCred = checkJsonConvForCred(cred, pk);
+    expect(recreatedCred.subject).toEqual({ fname: 'John', lname: 'Smith', city: 'NY', education: {university: 'Example', major: 'Nothing'} });
+  });
 });

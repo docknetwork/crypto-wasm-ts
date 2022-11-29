@@ -670,7 +670,7 @@ export class CredentialSchema extends Versioned {
 
   toJSON(): object {
     return {
-      [ID_STR]: `data:application/json;,${encodeURIComponent(JSON.stringify(this.jsonSchema))}`,
+      [ID_STR]: this.asEmbeddedJsonSchema(),
       [TYPE_STR]: SCHEMA_TYPE_STR,
       parsingOptions: this.parsingOptions,
       version: this._version
@@ -689,6 +689,14 @@ export class CredentialSchema extends Versioned {
     const credSchema = new CredentialSchema(jsonSchema, parsingOptions);
     credSchema.version = version;
     return credSchema;
+  }
+
+  asEmbeddedJsonSchema(): string {
+    return CredentialSchema.asEmbeddedJsonSchema(this.jsonSchema);
+  }
+
+  static asEmbeddedJsonSchema(jsonSchema: IJsonSchema): string {
+    return `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(jsonSchema))}`;
   }
 
   static extractJsonSchemaFromEmbedded(embedded: string): IJsonSchema {
@@ -861,7 +869,7 @@ export class CredentialSchema extends Versioned {
   static convertToInternalSchemaObj(
     inputNode: any,
     parsingOpts: ISchemaParsingOpts,
-    nodeKeyName: string = '',
+    nodeKeyName = '',
     rootObject?: object
   ): object {
     // util function needed only in this func

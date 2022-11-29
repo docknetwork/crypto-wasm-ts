@@ -19,7 +19,7 @@ Schema [code](src/anonymous-credentials/schema.ts) and [tests](tests/anonymous-c
 ## Credentials
 
 A credential contains one or more attributes signed by the issuer; attributes and the signature together make up the credential. 
-Anonymous credential allow to hide any number of attributes including the signature (always) while proving the knowledge of the signature by the issuer. 
+Anonymous credentials allow to hide any number of attributes and the signature (always) while proving the knowledge of the signature by the issuer. 
 A credential always contains a schema as one of the attribute (inline, not a reference) and the schema attribute is always revealed to the verifier.
 
 A [CredentialBuilder](src/anonymous-credentials/credential-builder.ts) is used to build a credential by setting various attributes and 

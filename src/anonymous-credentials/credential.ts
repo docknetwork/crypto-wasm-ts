@@ -119,7 +119,7 @@ export class Credential extends Versioned {
     });
     return new Credential(
       cryptoVersion,
-      CredentialSchema.fromJSON(typeof credentialSchema ==='string' ?  JSON.parse(credentialSchema): credentialSchema),
+      CredentialSchema.fromJSON(typeof credentialSchema === 'string' ? JSON.parse(credentialSchema) : credentialSchema),
       credentialSubject,
       topLevelFields,
       sig,

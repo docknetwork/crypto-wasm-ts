@@ -10,7 +10,7 @@ import {
   SUBJECT_STR,
   ValueType,
   VERSION_STR, TYPE_STR
-} from '../../src/anonymous-credentials';
+} from '../../src';
 import { getExampleSchema } from './utils';
 import * as util from 'util';
 
@@ -684,6 +684,8 @@ describe('Credential Schema', () => {
       const schema = getExampleSchema(i);
       const cs = new CredentialSchema(schema);
       const j = cs.toJSON();
+      expect(CredentialSchema.asEmbeddedJsonSchema(cs.jsonSchema)).toEqual(j[ID_STR]);
+      expect(CredentialSchema.extractJsonSchemaFromEmbedded(j[ID_STR])).toEqual(cs.jsonSchema);
       const recreatedCs = CredentialSchema.fromJSON(j);
       expect(cs.version).toEqual(recreatedCs.version);
       expect(cs.jsonSchema).toEqual(recreatedCs.jsonSchema);

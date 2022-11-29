@@ -20,6 +20,14 @@ import { Credential } from './credential';
 import { flatten } from 'flat';
 import { areArraysEqual } from '../util';
 
+export interface ISigningOpts {
+  requireAllFieldsFromSchema: boolean;
+}
+
+export const DefaultSigningOpts: ISigningOpts = {
+  requireAllFieldsFromSchema: true,
+};
+
 /**
  * Create a credential
  */
@@ -103,11 +111,15 @@ export class CredentialBuilder extends Versioned {
    * @param secretKey
    * @param signatureParams - This makes bulk issuance of credentials with same number of attributes faster because the
    * signature params dont have to be generated.
+   * @param signingOpts
    */
-  sign(secretKey: BBSPlusSecretKey, signatureParams?: SignatureParamsG1): Credential {
+  sign(secretKey: BBSPlusSecretKey, signatureParams?: SignatureParamsG1, signingOpts?: Partial<ISigningOpts>): Credential {
+    if (signingOpts === undefined) {
+      signingOpts = DefaultSigningOpts;
+    }
     const cred = this.serializeForSigning();
     const schema = this._schema as CredentialSchema;
-    if (!CredentialBuilder.hasAllFieldsFromSchema(cred, schema)) {
+    if (signingOpts.requireAllFieldsFromSchema && !CredentialBuilder.hasAllFieldsFromSchema(cred, schema)) {
       throw new Error('Credential does not have all the fields from schema');
     }
     const signed = signMessageObject(

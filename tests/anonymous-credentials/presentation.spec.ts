@@ -29,8 +29,8 @@ import {
   REV_ID_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  SUBJECT_STR, dockSaverEncryptionGensUncompressed, SCHEMA_STR, VERSION_STR, ID_STR, TYPE_STR, STATUS_TYPE_STR
-} from '../../src/anonymous-credentials';
+  SUBJECT_STR, dockSaverEncryptionGensUncompressed, TYPE_STR, STATUS_TYPE_STR
+} from '../../src';
 import {
   areUint8ArraysEqual,
   checkResult,
