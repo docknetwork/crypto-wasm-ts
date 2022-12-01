@@ -637,7 +637,11 @@ export class CredentialSchema extends Versioned {
       properties: {
         [SUBJECT_STR]: {
           type: 'object',
-          properties: {}
+          properties: {
+            id: {
+              type: 'string'
+            },
+          },
         }
       }
     };
