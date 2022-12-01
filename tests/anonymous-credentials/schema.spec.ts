@@ -237,7 +237,7 @@ describe('Credential Schema', () => {
 
   it('validation of numeric types', () => {
     const schema2 = CredentialSchema.essential();
-    schema2[SUBJECT_STR] = {
+    schema2.properties[SUBJECT_STR] = {
       type: 'object',
       properties: {
         fname: { type: 'string' },
@@ -248,7 +248,7 @@ describe('Credential Schema', () => {
 
     expect(() => CredentialSchema.typeOfName('score', [['fname', 'score'], [{ type: 'string' }, { type: 'random string' }]])).toThrow();
 
-    schema2[SUBJECT_STR] = {
+    schema2.properties[SUBJECT_STR] = {
       type: 'object',
       properties: {
         fname: { type: 'string' },
