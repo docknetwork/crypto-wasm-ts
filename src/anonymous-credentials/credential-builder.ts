@@ -37,7 +37,7 @@ export const DefaultSigningOpts: ISigningOpts = {
 export class CredentialBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.0.1';
+  static VERSION = '0.1.0';
 
   // Each credential references the schema which is included as an attribute
   _schema?: CredentialSchema;
