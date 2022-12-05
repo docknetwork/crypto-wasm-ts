@@ -375,6 +375,8 @@ export interface IJsonSchemaProperties {
 
 export interface IJsonSchema {
   [META_SCHEMA_STR]: string;
+  $id?: string;
+  title?: string;
   type: string;
   properties: IJsonSchemaProperties;
   definitions?: { [key: string]: object };
@@ -392,6 +394,8 @@ export const DefaultSchemaParsingOpts: ISchemaParsingOpts = {
   defaultMinimumInteger: -(Math.pow(2, 32) - 1),
   defaultDecimalPlaces: 0
 };
+
+export type CredVal = string | number | object | CredVal[];
 
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
@@ -927,9 +931,15 @@ export class CredentialSchema extends Versioned {
             throw new Error(`Schema object key ${nodeKeyName} must have properties object`);
           }
         case 'array':
-          return node.items.map((i) =>
-            CredentialSchema.convertToInternalSchemaObj(i, parsingOpts, createFullName(nodeKeyName, i), rootNode)
-          );
+          if (Array.isArray(node.items)) {
+            return node.items.map((i) =>
+              CredentialSchema.convertToInternalSchemaObj(i, parsingOpts, createFullName(nodeKeyName, i), rootNode)
+            );
+          } else {
+            throw new Error(
+              `"items" field must be an array but was ${typeof node.items}. This is required because the schema should specify exactly how many items are present in the array.`
+            );
+          }
         default:
           throw new Error(`Unknown type for key ${nodeKeyName} in schema: ${typ}`);
       }
@@ -981,6 +991,134 @@ export class CredentialSchema extends Versioned {
 
   static flattenSchemaObj(schema: object): FlattenedSchema {
     return flattenTill2ndLastKey({ ...this.IMPLICIT_FIELDS, ...schema });
+  }
+
+  /**
+   * Generate a schema based on the credential and with the help of a schema that defines some fields. For fields with a
+   * conflicting types between credential and schema, error will be thrown. For extra keys or items in schema, they will be
+   * removed in the returned schema. The missing keys or items in schema will be added in the returned schema.
+   * @param cred
+   * @param schema
+   */
+  // @ts-ignore
+  static generateAppropriateSchema(cred: object, schema: CredentialSchema): CredentialSchema {
+    const newJsonSchema = JSON.parse(JSON.stringify(schema.jsonSchema));
+    const props = newJsonSchema.properties;
+    CredentialSchema.generateFromCredential(cred, props);
+    return new CredentialSchema(newJsonSchema, schema.parsingOptions);
+  }
+
+  private static getType(value: CredVal): string {
+    let typ = typeof value as string;
+    switch (typ) {
+      case 'number':
+        if (Number.isInteger(value)) {
+          typ = 'integer';
+        }
+        break;
+      case 'object':
+        if (Array.isArray(value)) {
+          typ = 'array';
+        }
+        break;
+      default:
+        typ = 'string';
+    }
+    return typ;
+  }
+
+  private static getSubschema(value: CredVal): object {
+    const typ = CredentialSchema.getType(value);
+
+    if (typ === 'string') {
+      return { type: typ };
+    } else if (typ === 'number') {
+      return {
+        type: typ,
+        minimum: DefaultSchemaParsingOpts.defaultMinimumInteger,
+        multipleOf: 1 / Math.pow(10, value.toString().split('.')[1].length)
+      };
+    } else if (typ === 'integer') {
+      return { type: typ, minimum: DefaultSchemaParsingOpts.defaultMinimumInteger };
+    } else if (typ === 'object') {
+      const obj = { type: typ, properties: {} };
+      for (const [k, v] of Object.entries(value)) {
+        obj.properties[k] = CredentialSchema.getSubschema(v);
+      }
+      return obj;
+    } else {
+      // `typ` is array
+      const items: object[] = [];
+      // @ts-ignore
+      value.forEach((v) => {
+        items.push(CredentialSchema.getSubschema(v));
+      });
+      return { type: typ, items };
+    }
+  }
+
+  /**
+   * Update given JSON-schema properties based on the given credential object.
+   * @param cred
+   * @param schemaProps
+   * @private
+   */
+  private static generateFromCredential(cred: object, schemaProps: object) {
+    for (const [key, value] of Object.entries(cred)) {
+      const typ = CredentialSchema.getType(value);
+
+      if (schemaProps[key] === undefined) {
+        // key not in schema
+        schemaProps[key] = CredentialSchema.getSubschema(value);
+      } else if ('type' in schemaProps[key]) {
+        // key in schema
+        if (
+          schemaProps[key]['type'] == 'string' ||
+          schemaProps[key]['type'] == 'integer' ||
+          schemaProps[key]['type'] == 'number'
+        ) {
+          if (schemaProps[key]['type'] !== typ) {
+            throw new Error(`Mismatch in credential and given schema type: ${schemaProps[key]['type']} !== ${typ}`);
+          }
+        } else if (schemaProps[key]['type'] == 'array' && typ == 'array') {
+          if (schemaProps[key]['items'].length < value.length) {
+            // If cred has more items than schema, add the missing ones
+            value.slice(schemaProps[key]['items'].length).forEach((v) => {
+              schemaProps[key]['items'].push(CredentialSchema.getSubschema(v));
+            });
+          } else if (schemaProps[key]['items'].length > value.length) {
+            // If cred has less items than schema, delete those items
+            schemaProps[key]['items'] = schemaProps[key]['items'].slice(0, value.length);
+          }
+        } else if (schemaProps[key]['type'] == 'object' && typ == 'object') {
+          const schemaKeys = new Set([...Object.keys(schemaProps[key]['properties'])]);
+          const valKeys = new Set([...Object.keys(value)]);
+          for (const vk of valKeys) {
+            CredentialSchema.generateFromCredential(value, schemaProps[key]['properties']);
+          }
+          // Delete extra keys not in cred
+          for (const sk of schemaKeys) {
+            if (value[sk] === undefined) {
+              delete schemaKeys[sk];
+            }
+          }
+        } else {
+          throw new Error(
+            `Incompatible types in credential and schema for key ${key}: ${schemaProps[key]['type']} !== ${typ}`
+          );
+        }
+      } else {
+        throw new Error(`Schema's key ${key} does not have type field`);
+      }
+    }
+
+    // For keys in schemaProps but not in cred, they should be removed
+    const sk = Object.keys(schemaProps);
+    for (const k of sk) {
+      if (cred[k] === undefined) {
+        delete schemaProps[k];
+      }
+    }
   }
 
   private static validateStringType(schema: object, fieldName: string) {

@@ -49,7 +49,6 @@ See these [tests](tests/anonymous-credentials/presentation.spec.ts) for examples
 ## TODO
 
 - Blind credential issuance
-- Credentials without needing explicit schema where all fields are encoded using the same default encoder
 - Accumulator usage in general, i.e. without using credentialStatus field.
 - Pseudonyms in presentation
 - Circom predicates

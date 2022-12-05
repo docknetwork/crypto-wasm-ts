@@ -21,11 +21,14 @@ import { flatten } from 'flat';
 import { areArraysEqual } from '../util';
 
 export interface ISigningOpts {
-  requireAllFieldsFromSchema: boolean;
+  // Whether the credential should contain exactly the same fields (object keys, array items, literals) as the
+  // schema. Providing false for it will result in generation of a new schema to match the credential and that schema
+  // will be embedded in the signed credential.
+  requireSameFieldsAsSchema: boolean;
 }
 
 export const DefaultSigningOpts: ISigningOpts = {
-  requireAllFieldsFromSchema: true,
+  requireSameFieldsAsSchema: true
 };
 
 /**
@@ -110,17 +113,31 @@ export class CredentialBuilder extends Versioned {
    *
    * @param secretKey
    * @param signatureParams - This makes bulk issuance of credentials with same number of attributes faster because the
-   * signature params dont have to be generated.
+   * signature params don't have to be generated.
    * @param signingOpts
    */
-  sign(secretKey: BBSPlusSecretKey, signatureParams?: SignatureParamsG1, signingOpts?: Partial<ISigningOpts>): Credential {
+  sign(
+    secretKey: BBSPlusSecretKey,
+    signatureParams?: SignatureParamsG1,
+    signingOpts?: Partial<ISigningOpts>
+  ): Credential {
     if (signingOpts === undefined) {
       signingOpts = DefaultSigningOpts;
     }
     const cred = this.serializeForSigning();
-    const schema = this._schema as CredentialSchema;
-    if (signingOpts.requireAllFieldsFromSchema && !CredentialBuilder.hasAllFieldsFromSchema(cred, schema)) {
-      throw new Error('Credential does not have all the fields from schema');
+    let schema = this.schema as CredentialSchema;
+    if (!CredentialBuilder.hasSameFieldsAsSchema(cred, schema)) {
+      if (signingOpts.requireSameFieldsAsSchema) {
+        throw new Error('Credential does not have the fields as schema');
+      } else {
+        if (schema.encoder.defaultEncoder === undefined) {
+          throw new Error('Default encoder should be defined');
+        }
+        // Generate new schema
+        this.schema = CredentialSchema.generateAppropriateSchema(cred, schema);
+        schema = this.schema as CredentialSchema;
+        cred[SCHEMA_STR] = JSON.stringify(this.schema?.toJSON());
+      }
     }
     const signed = signMessageObject(
       cred,
@@ -145,7 +162,7 @@ export class CredentialBuilder extends Versioned {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
       [CRYPTO_VERSION_STR]: this._version,
-      [SCHEMA_STR]: JSON.stringify(this._schema?.toJSON()),
+      [SCHEMA_STR]: JSON.stringify(this.schema?.toJSON()),
       [SUBJECT_STR]: this._subject
     };
     for (const [k, v] of this._topLevelFields.entries()) {
@@ -157,7 +174,7 @@ export class CredentialBuilder extends Versioned {
     return s;
   }
 
-  static hasAllFieldsFromSchema(serializedCred, schema: CredentialSchema): boolean {
-    return areArraysEqual(schema.flatten()[0], Object.keys(flatten(serializedCred) as object).sort());
+  static hasSameFieldsAsSchema(cred, schema: CredentialSchema): boolean {
+    return areArraysEqual(schema.flatten()[0], Object.keys(flatten(cred) as object).sort());
   }
 }

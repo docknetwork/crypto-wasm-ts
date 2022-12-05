@@ -9,7 +9,7 @@ import {
 } from '../../src';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
-import { checkSchemaFromJson, getExampleSchema } from './utils';
+import { checkSchemaFromJson, getExampleBuilder, getExampleSchema } from './utils';
 import * as jsonld from 'jsonld';
 import { validate } from 'jsonschema';
 
@@ -360,29 +360,505 @@ describe('Credential signing and verification', () => {
     expect(normalized).toEqual("");
   })
 
-  it('for credential with loose schema validation', () => {
-    const schema = CredentialSchema.essential();
-    schema.properties[SUBJECT_STR] = {
+  it('for credential with relaxed schema validation', () => {
+    // The schema does not match the credential exactly
+
+    let builder = getExampleBuilder(1);
+    const ns = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
-        fname: { type: 'string' },
-        lname: { type: 'string' }
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            fname: { type: 'string' },
+            lname: { type: 'string' },
+            city: { type: 'string' },
+            education: {
+              type: 'object',
+              properties: { university: { type: 'string' }, major: { type: 'string' } }
+            }
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' }
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
       }
-    };
-    const credSchema = new CredentialSchema(schema, {useDefaults: true});
+    });
+    check(builder, sk, pk);
 
-    const builder = new CredentialBuilder();
-    builder.schema = credSchema;
+    builder = getExampleBuilder(2);
+    const ns1 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns1.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            fname: { type: 'string' },
+            lname: { type: 'string' },
+            city: { type: 'string' },
+            education: {
+              type: 'object',
+              properties: { university: { type: 'string' }, major: { type: 'string' } }
+            },
+            someArr: {
+              type: 'array',
+              items: [
+                { type: 'string' },
+                { type: 'string' },
+                { type: 'integer', minimum: -4294967295 },
+                { type: 'string' }
+              ]
+            }
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' }
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+    check(builder, sk, pk);
 
-    builder.subject = { fname: 'John', lname: 'Smith', city: 'NY', education: {university: 'Example', major: 'Nothing'} };
+    builder = getExampleBuilder(3);
+    const ns2 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns2.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            fname: { type: 'string' },
+            lname: { type: 'string' },
+            city: { type: 'string' },
+            education: {
+              type: 'object',
+              properties: {
+                university: { type: 'string' },
+                major: { type: 'string' },
+                location: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    lat: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.01
+                    },
+                    long: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' }
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+    check(builder, sk, pk);
 
-    expect(() => builder.sign(sk)).toThrow();
-    expect(() => builder.sign(sk, undefined, {requireAllFieldsFromSchema: true})).toThrow();
+    builder = getExampleBuilder(4);
+    const ns3 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns3.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            fname: { type: 'string' },
+            lname: { type: 'string' },
+            education: {
+              type: 'object',
+              properties: {
+                university: { type: 'string' },
+                major: { type: 'string' },
+                location: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    lat: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.01
+                    },
+                    long: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            },
+            city: { type: 'string' }
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' }
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+    check(builder, sk, pk);
 
-    const cred = builder.sign(sk, undefined, {requireAllFieldsFromSchema: false});
+    // With top level fields
+    builder = getExampleBuilder(5);
+    const ns4 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns4.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            fname: { type: 'string' },
+            lname: { type: 'string' },
+            education: {
+              type: 'object',
+              properties: {
+                university: { type: 'string' },
+                major: { type: 'string' },
+                location: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    lat: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.01
+                    },
+                    long: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            },
+            city: { type: 'string' }
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' },
+        issuer: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            location: {
+              type: 'object',
+              properties: { city: { type: 'string' }, state: { type: 'string' } }
+            }
+          }
+        },
+        issuanceDate: { type: 'string' },
+        types: {
+          type: 'array',
+          items: [ { type: 'string' }, { type: 'string' } ]
+        }
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+    check(builder, sk, pk);
 
-    checkResult(cred.verify(pk));
-    const recreatedCred = checkJsonConvForCred(cred, pk);
-    expect(recreatedCred.subject).toEqual({ fname: 'John', lname: 'Smith', city: 'NY', education: {university: 'Example', major: 'Nothing'} });
+    // Credential with array of objects and schema has extra fields which would be removed
+    builder = getExampleBuilder(6);
+    const ns5 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns5.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            fname: { type: 'string' },
+            lname: { type: 'string' },
+            city: { type: 'string' },
+            universities: {
+              type: 'array',
+              items: [
+                {
+                  type: 'object',
+                  properties: {
+                    university: { type: 'string' },
+                    major: { type: 'string' },
+                    location: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        lat: {
+                          type: 'number',
+                          minimum: -4294967295,
+                          multipleOf: 0.01
+                        },
+                        long: {
+                          type: 'number',
+                          minimum: -4294967295,
+                          multipleOf: 0.001
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  type: 'object',
+                  properties: {
+                    university: { type: 'string' },
+                    major: { type: 'string' },
+                    location: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        lat: { type: 'integer', minimum: -4294967295 },
+                        long: {
+                          type: 'number',
+                          minimum: -4294967295,
+                          multipleOf: 0.1
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' },
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+    check(builder, sk, pk);
+
+    // Credential with array of object, string and array and schema has extra fields which would be removed
+    builder = getExampleBuilder(7);
+    const ns6 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns6.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            fname: { type: 'string' },
+            lname: { type: 'string' },
+            city: { type: 'string' },
+            universities: {
+              type: 'array',
+              items: [
+                {
+                  type: 'object',
+                  properties: {
+                    university: { type: 'string' },
+                    major: { type: 'string' },
+                    location: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        lat: {
+                          type: 'number',
+                          minimum: -4294967295,
+                          multipleOf: 0.01
+                        },
+                        long: {
+                          type: 'number',
+                          minimum: -4294967295,
+                          multipleOf: 0.001
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  type: 'array',
+                  items: [
+                    { type: 'string' },
+                    { type: 'string' },
+                    {
+                      type: 'object',
+                      properties: { foo: { type: 'string' }, bar: { type: 'string' } }
+                    }
+                  ]
+                },
+                { type: 'string' }
+              ]
+            }
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' }
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+    check(builder, sk, pk);
+
+    // Some fields missing and some extra in credential
+    builder = getExampleBuilder(8);
+    const ns7 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns7.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            education: {
+              type: 'object',
+              properties: {
+                major: { type: 'string' },
+                location: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    lat: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.01
+                    },
+                    long: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            },
+            city: { type: 'string' }
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' }
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+    check(builder, sk, pk);
+
+    builder = getExampleBuilder(9);
+    const ns8 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns8.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            education: {
+              type: 'object',
+              properties: {
+                major: { type: 'string' },
+                location: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    lat: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.01
+                    },
+                    long: {
+                      type: 'number',
+                      minimum: -4294967295,
+                      multipleOf: 0.001
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' }
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+
+    builder = getExampleBuilder(10);
+    const ns9 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    expect(ns9.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      '$id': 'https://ld.dock.io/examples/resident-card-schema.json',
+      title: 'Resident Card Example',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            givenName: { title: 'Given Name', type: 'string' },
+            familyName: { title: 'Family Name', type: 'string' },
+            lprNumber: { title: 'LPR Number', type: 'integer', minimum: 0 },
+            id: { type: 'string' },
+            type: {
+              type: 'array',
+              items: [ { type: 'string' }, { type: 'string' } ]
+            }
+          },
+          required: []
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' },
+        '@context': {
+          type: 'array',
+          items: [ { type: 'string' }, { type: 'string' }, { type: 'string' } ]
+        },
+        id: { type: 'string' },
+        type: {
+          type: 'array',
+          items: [ { type: 'string' }, { type: 'string' } ]
+        },
+        identifier: { type: 'string' },
+        name: { type: 'string' },
+        description: { type: 'string' }
+      }
+    });
+
+    function check(builder: CredentialBuilder, sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2) {
+      expect(() => builder.sign(sk)).toThrow();
+      expect(() => builder.sign(sk, undefined, {requireSameFieldsAsSchema: true})).toThrow();
+
+      const cred = builder.sign(sk, undefined, {requireSameFieldsAsSchema: false});
+
+      checkResult(cred.verify(pk));
+
+      const recreatedCred = checkJsonConvForCred(cred, pk);
+      expect(recreatedCred.subject).toEqual(builder.subject);
+      checkResult(recreatedCred.verify(pk));
+    }
   });
 });

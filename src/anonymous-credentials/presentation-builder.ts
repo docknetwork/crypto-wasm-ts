@@ -268,6 +268,7 @@ export class PresentationBuilder extends Versioned {
       const cred = this.credentials[i][0];
       const schema = cred.schema as CredentialSchema;
       const flattenedSchema = schema.flatten();
+
       const numAttribs = flattenedSchema[0].length;
       if (maxAttribs < numAttribs) {
         sigParams = sigParams.adapt(numAttribs);
@@ -534,6 +535,7 @@ export class PresentationBuilder extends Versioned {
             if (curM[nameParts[j]] === undefined) {
               curM[nameParts[j]] = {};
             }
+
             // `curM` refers to this inner object of `m`
             curM = curM[nameParts[j]];
           }
