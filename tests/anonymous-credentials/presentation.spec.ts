@@ -39,7 +39,7 @@ import {
   stringToBytes
 } from '../utils';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
-import { checkSchemaFromJson, getExampleSchema } from './utils';
+import { checkSchemaFromJson, getExampleBuilder, getExampleSchema } from './utils';
 import { Presentation } from '../../src/anonymous-credentials/presentation';
 
 
@@ -493,6 +493,31 @@ describe('Presentation creation and verification', () => {
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk1]));
     expect(presJson).toEqual(recreatedPres.toJSON());
+  });
+
+  it('from a credential with relaxed schema', () => {
+    // The schema does not match the credential exactly
+
+    for (let i = 1; i <= 10; i++) {
+      const builder = getExampleBuilder(i);
+      check(builder, sk1, pk1);
+    }
+
+    function check(credBuilder: CredentialBuilder, sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2) {
+      const credential = credBuilder.sign(sk, undefined, {requireSameFieldsAsSchema: false});
+      checkResult(credential.verify(pk1));
+      const builder7 = new PresentationBuilder();
+      expect(builder7.addCredential(credential, pk)).toEqual(0);
+      const pres7 = builder7.finalize();
+
+      expect(pres7.spec.credentials.length).toEqual(1);
+      checkResult(pres7.verify([pk1]));
+
+      const presJson = pres7.toJSON();
+      const recreatedPres = Presentation.fromJSON(presJson);
+      checkResult(recreatedPres.verify([pk1]));
+      expect(presJson).toEqual(recreatedPres.toJSON());
+    }
   });
 
   it('from with context and nonce', () => {
