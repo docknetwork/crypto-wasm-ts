@@ -28,7 +28,7 @@ export interface ISigningOpts {
 }
 
 export const DefaultSigningOpts: ISigningOpts = {
-  requireSameFieldsAsSchema: true
+  requireSameFieldsAsSchema: true,
 };
 
 /**
@@ -72,6 +72,10 @@ export class CredentialBuilder extends Versioned {
   // @ts-ignore
   get schema(): CredentialSchema | undefined {
     return this._schema;
+  }
+
+  set credStatus(subject: object | undefined) {
+    this._credStatus = subject;
   }
 
   get credStatus(): object | undefined {
@@ -124,29 +128,20 @@ export class CredentialBuilder extends Versioned {
     if (signingOpts === undefined) {
       signingOpts = DefaultSigningOpts;
     }
-    const cred = this.serializeForSigning();
-    let schema = this.schema as CredentialSchema;
-    if (!CredentialBuilder.hasSameFieldsAsSchema(cred, schema)) {
-      if (signingOpts.requireSameFieldsAsSchema) {
-        throw new Error('Credential does not have the fields as schema');
-      } else {
-        if (schema.encoder.defaultEncoder === undefined) {
-          throw new Error('Default encoder should be defined');
-        }
-        // Generate new schema
-        this.schema = CredentialSchema.generateAppropriateSchema(cred, schema);
-        schema = this.schema as CredentialSchema;
-        cred[SCHEMA_STR] = JSON.stringify(this.schema?.toJSON());
-      }
-    }
+
+    const cred = this.serializeForSigning(signingOpts);
+    const schema = this.schema as CredentialSchema;
+
     const signed = signMessageObject(
       cred,
       secretKey,
       signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
       schema.encoder
     );
+
     this._encodedAttributes = signed.encodedMessages;
     this._sig = signed.signature;
+
     return new Credential(
       this._version,
       schema,
@@ -158,7 +153,7 @@ export class CredentialBuilder extends Versioned {
     );
   }
 
-  serializeForSigning(): object {
+  serializeForSigning(signingOpts?: Partial<ISigningOpts>): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
       [CRYPTO_VERSION_STR]: this._version,
@@ -171,6 +166,23 @@ export class CredentialBuilder extends Versioned {
     if (this._credStatus !== undefined) {
       s[STATUS_STR] = this._credStatus;
     }
+
+    let schema = this.schema as CredentialSchema;
+    if (signingOpts && !CredentialBuilder.hasSameFieldsAsSchema(s, schema)) {
+      if (signingOpts.requireSameFieldsAsSchema) {
+        throw new Error('Credential does not have the fields as schema');
+      } else {
+        if (schema.encoder.defaultEncoder === undefined) {
+          throw new Error('Default encoder should be defined');
+        }
+        
+        // Generate new schema
+        this.schema = CredentialSchema.generateAppropriateSchema(s, schema);
+        schema = this.schema as CredentialSchema;
+        s[SCHEMA_STR] = JSON.stringify(this.schema?.toJSON());
+      }
+    }
+
     return s;
   }
 
