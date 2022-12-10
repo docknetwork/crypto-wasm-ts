@@ -382,7 +382,8 @@ describe('Credential signing and verification', () => {
           }
         },
         cryptoVersion: { type: 'string' },
-        credentialSchema: { type: 'string' }
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -419,7 +420,8 @@ describe('Credential signing and verification', () => {
           }
         },
         cryptoVersion: { type: 'string' },
-        credentialSchema: { type: 'string' }
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -466,7 +468,8 @@ describe('Credential signing and verification', () => {
           }
         },
         cryptoVersion: { type: 'string' },
-        credentialSchema: { type: 'string' }
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -513,7 +516,8 @@ describe('Credential signing and verification', () => {
           }
         },
         cryptoVersion: { type: 'string' },
-        credentialSchema: { type: 'string' }
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -562,6 +566,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
         issuer: {
           type: 'object',
           properties: {
@@ -649,6 +654,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -713,7 +719,8 @@ describe('Credential signing and verification', () => {
           }
         },
         cryptoVersion: { type: 'string' },
-        credentialSchema: { type: 'string' }
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -758,7 +765,8 @@ describe('Credential signing and verification', () => {
           }
         },
         cryptoVersion: { type: 'string' },
-        credentialSchema: { type: 'string' }
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -801,7 +809,8 @@ describe('Credential signing and verification', () => {
           }
         },
         cryptoVersion: { type: 'string' },
-        credentialSchema: { type: 'string' }
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -833,6 +842,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
         '@context': {
           type: 'array',
           items: [ { type: 'string' }, { type: 'string' }, { type: 'string' } ]

@@ -200,6 +200,9 @@ describe('Credential Schema', () => {
       [SUBJECT_STR]: {
         fname: { type: 'string' }
       },
+      proof: {
+        type: { type: 'string' },
+      },
     });
     expect(cs1.jsonSchema).toEqual({
       [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
@@ -213,7 +216,8 @@ describe('Credential Schema', () => {
           properties: {
             fname: { type: 'string' }
           }
-        }
+        },
+        proof: CredentialSchema.essential().properties.proof,
       }
     });
     expect(cs1.hasStatus()).toEqual(false);
@@ -586,24 +590,25 @@ describe('Credential Schema', () => {
   it('flattening', () => {
     const cs1 = new CredentialSchema(getExampleSchema(1));
     expect(cs1.flatten()).toEqual([
-      [SCHEMA_STR, `${SUBJECT_STR}.fname`, CRYPTO_VERSION_STR],
-      [{ type: 'string' }, { type: 'string' }, { type: 'string' }]
+      [SCHEMA_STR, `${SUBJECT_STR}.fname`, CRYPTO_VERSION_STR, 'proof.type'],
+      [{ type: 'string' }, { type: 'string' }, { type: 'string' }, { type: 'string' }]
     ]);
 
     const cs2 = new CredentialSchema(getExampleSchema(2));
     expect(cs2.flatten()).toEqual([
-      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.score`, CRYPTO_VERSION_STR],
-      [{ type: 'string' }, { type: 'string' }, { type: 'integer', minimum: -100 }, { type: 'string' }],
+      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.score`, CRYPTO_VERSION_STR, 'proof.type'],
+      [{ type: 'string' }, { type: 'string' }, { type: 'integer', minimum: -100 }, { type: 'string' }, { type: 'string' }],
     ]);
 
     const cs3 = new CredentialSchema(getExampleSchema(3));
     expect(cs3.flatten()).toEqual([
-      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.long`, `${SUBJECT_STR}.score`, CRYPTO_VERSION_STR],
+      [SCHEMA_STR, `${SUBJECT_STR}.fname`, `${SUBJECT_STR}.long`, `${SUBJECT_STR}.score`, CRYPTO_VERSION_STR, 'proof.type'],
       [
         { type: 'string' },
         { type: 'string' },
         { type: 'positiveDecimalNumber', decimalPlaces: 2 },
         { type: 'integer', minimum: -100 },
+        { type: 'string' },
         { type: 'string' },
       ]
     ]);
@@ -619,6 +624,7 @@ describe('Credential Schema', () => {
         `${SUBJECT_STR}.fname`,
         `${SUBJECT_STR}.score`,
         CRYPTO_VERSION_STR,
+        'proof.type',
       ],
       [
         { type: 'string' },
@@ -628,6 +634,7 @@ describe('Credential Schema', () => {
         { type: 'string' },
         { type: 'string' },
         { type: 'integer', minimum: -100 },
+        { type: 'string' },
         { type: 'string' },
       ]
     ]);
@@ -654,6 +661,7 @@ describe('Credential Schema', () => {
         `${SUBJECT_STR}.sensitive.phone`,
         `${SUBJECT_STR}.sensitive.very.secret`,
         CRYPTO_VERSION_STR,
+        'proof.type',
       ],
       [
         { type: 'string' },
@@ -671,6 +679,7 @@ describe('Credential Schema', () => {
         { type: 'string' },
         { type: 'positiveInteger' },
         { compress: false, type: 'stringReversible' },
+        { type: 'string' },
         { type: 'string' },
         { type: 'string' },
         { type: 'string' },
@@ -755,7 +764,8 @@ describe('Credential Schema', () => {
         `${SUBJECT_STR}.2.location.geo.long`,
         `${SUBJECT_STR}.2.location.name`,
         `${SUBJECT_STR}.2.name`,
-        CRYPTO_VERSION_STR
+        CRYPTO_VERSION_STR,
+        'proof.type',
       ],
       [
         { type: 'string' },
@@ -769,6 +779,7 @@ describe('Credential Schema', () => {
         { type: 'string' },
         { type: 'decimalNumber', decimalPlaces: 3, minimum: -90 },
         { type: 'decimalNumber', decimalPlaces: 3, minimum: -180 },
+        { type: 'string' },
         { type: 'string' },
         { type: 'string' },
         { type: 'string' }
@@ -804,7 +815,8 @@ describe('Credential Schema', () => {
         'issuanceDate',
         'issuer.desc',
         'issuer.logo',
-        'issuer.name'
+        'issuer.name',
+        'proof.type'
       ],
       [
         { type: 'string' },
@@ -825,7 +837,8 @@ describe('Credential Schema', () => {
         { type: 'positiveInteger' },
         { type: 'string' },
         { type: 'string' },
-        { type: 'string' }
+        { type: 'string' },
+        { type: 'string' },
       ]
     ]);
   });
@@ -852,7 +865,9 @@ describe('Credential Schema', () => {
       secret: 'dk:secret',
       timeOfBirth: 'dk:timeOfBirth',
       userId: 'dk:userId',
-      weight: 'dk:weight'
+      weight: 'dk:weight',
+      proof: 'dk:proof',
+      type: 'dk:type',
     });
 
     const schema5 = getExampleSchema(5);
@@ -886,7 +901,8 @@ describe('Credential Schema', () => {
       phone: 'dk:phone',
       type: 'dk:type',
       very: 'dk:very',
-      secret: 'dk:secret'
+      secret: 'dk:secret',
+      proof: 'dk:proof',
     });
 
     const schema7 = getExampleSchema(7);
@@ -911,6 +927,8 @@ describe('Credential Schema', () => {
       issuer: 'dk:issuer',
       desc: 'dk:desc',
       logo: 'dk:logo',
+      proof: 'dk:proof',
+      type: 'dk:type',
     });
   });
 
