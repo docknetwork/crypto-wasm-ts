@@ -99,7 +99,9 @@ export class CredentialBuilder extends Versioned {
   }
 
   setTopLevelField(name: string, value: unknown) {
-    this._topLevelFields.set(name, value);
+    if (value !== undefined) {
+      this._topLevelFields.set(name, value);
+    }
   }
 
   getTopLevelField(name: string): unknown {
@@ -131,6 +133,7 @@ export class CredentialBuilder extends Versioned {
 
     const cred = this.serializeForSigning(signingOpts);
     const schema = this.schema as CredentialSchema;
+    this.setTopLevelField('proof', cred['proof']);
 
     const signed = signMessageObject(
       cred,
@@ -165,6 +168,10 @@ export class CredentialBuilder extends Versioned {
     }
     if (this._credStatus !== undefined) {
       s[STATUS_STR] = this._credStatus;
+    }
+
+    if (!s['proof']) {
+      Credential.applyProof(s);
     }
 
     let schema = this.schema as CredentialSchema;

@@ -12,6 +12,13 @@ import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { verifyMessageObject } from '../sign-verify-js-objs';
 import b58 from 'bs58';
 
+function isEmptyObject(obj) {
+  if (!obj) {
+    return true;
+  }
+  return Object.keys(obj).length === 0;
+}
+
 export class Credential extends Versioned {
   // Each credential references the schema which is included as an attribute
   readonly schema: CredentialSchema;
@@ -55,6 +62,15 @@ export class Credential extends Versioned {
     return v;
   }
 
+  static applyProof(s: object) {
+    if (!s['proof']) {
+      s['proof'] = {
+        type: 'Bls12381BBS+SignatureDock2022',
+      };
+    }
+    return s;
+  }
+
   serializeForSigning(): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
@@ -70,6 +86,10 @@ export class Credential extends Versioned {
     if (this.credentialStatus !== undefined) {
       s[STATUS_STR] = this.credentialStatus;
     }
+
+    Credential.applyProof(s);
+    delete s['proof']['proofValue'];
+
     return s;
   }
 
@@ -84,10 +104,9 @@ export class Credential extends Versioned {
     for (const [k, v] of this.topLevelFields.entries()) {
       j[k] = v;
     }
-    j['proof'] = {
-      type: 'Bls12381BBS+SignatureDock2022',
-      proofValue: b58.encode(this.signature.bytes)
-    };
+
+    Credential.applyProof(j);
+    j['proof']['proofValue'] = b58.encode(this.signature.bytes);
     return j;
   }
 
@@ -106,17 +125,37 @@ export class Credential extends Versioned {
     return j;
   }
 
-  static fromJSON(j: object): Credential {
+  static fromJSON(j: object, proofValue: string = ''): Credential {
     // @ts-ignore
     const { cryptoVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } = j;
+
+    // Ensure proof is present
+    if (!proof) {
+      throw new Error(`Credential.fromJSON expects proof to be defined in object`);
+    }
+
+    // Ensure proof type is correct
     if (proof['type'] !== 'Bls12381BBS+SignatureDock2022') {
       throw new Error(`Invalid proof type ${proof['type']}`);
     }
-    const sig = new SignatureG1(b58.decode(proof['proofValue']));
+
+    // Ensure we trim off proofValue as that isnt signed
+    const trimmedProof = { ...proof };
+    if (!proofValue && trimmedProof && trimmedProof.proofValue) {
+      proofValue = trimmedProof.proofValue;
+      delete trimmedProof.proofValue;
+    }
+
+    const sig = new SignatureG1(b58.decode(proofValue));
     const topLevelFields = new Map<string, unknown>();
     Object.keys(custom).forEach((k) => {
       topLevelFields.set(k, custom[k]);
     });
+
+    if (!isEmptyObject(trimmedProof)) {
+      topLevelFields.set('proof', trimmedProof);
+    }
+
     return new Credential(
       cryptoVersion,
       CredentialSchema.fromJSON(typeof credentialSchema === 'string' ? JSON.parse(credentialSchema) : credentialSchema),
