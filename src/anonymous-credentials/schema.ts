@@ -646,6 +646,14 @@ export class CredentialSchema extends Versioned {
               type: 'string'
             },
           },
+        },
+        proof: {
+          type: 'object',
+          properties: {
+            type: {
+              type: 'string'
+            },
+          },
         }
       }
     };

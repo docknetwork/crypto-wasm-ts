@@ -1,6 +1,6 @@
 {
   "name": "@docknetwork/crypto-wasm-ts",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "description": "Typescript abstractions over Dock's Rust crypto library's WASM wrapper",
   "homepage": "https://github.com/docknetwork/crypto-wasm-ts",
   "main": "lib/index.js",
@@ -11,7 +11,7 @@
     "jest": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "prepare": "husky install",
     "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test": "yarn jest",
     "buildAndPublish": "yarn clean && yarn build && yarn publish"
   },
   "license": "Apache-2.0",
