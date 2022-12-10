@@ -179,10 +179,6 @@ export class CredentialBuilder extends Versioned {
       if (signingOpts.requireSameFieldsAsSchema) {
         throw new Error('Credential does not have the fields as schema');
       } else {
-        if (schema.encoder.defaultEncoder === undefined) {
-          throw new Error('Default encoder should be defined');
-        }
-        
         // Generate new schema
         this.schema = CredentialSchema.generateAppropriateSchema(s, schema);
         schema = this.schema as CredentialSchema;
