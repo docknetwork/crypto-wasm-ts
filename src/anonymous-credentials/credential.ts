@@ -10,14 +10,8 @@ import {
 import { BBSPlusPublicKeyG2, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { verifyMessageObject } from '../sign-verify-js-objs';
+import { isEmptyObject } from '../util';
 import b58 from 'bs58';
-
-function isEmptyObject(obj) {
-  if (!obj) {
-    return true;
-  }
-  return Object.keys(obj).length === 0;
-}
 
 export class Credential extends Versioned {
   // Each credential references the schema which is included as an attribute

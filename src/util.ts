@@ -6,6 +6,13 @@
 import { generateFieldElementFromBytes, generateRandomFieldElement } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 
+export function isEmptyObject(obj) {
+  if (!obj) {
+    return true;
+  }
+  return Object.keys(obj).length === 0;
+}
+
 export function jsonObjToUint8Array(json: string): Uint8Array {
   const obj = JSON.parse(json);
   const arr = getUint8ArraysFromObject(obj, ['value']);
