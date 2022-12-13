@@ -1,8 +1,3 @@
-/**
- * Expects JSON object with field `value` as a bytearray and returns the bytearray
- * @param json
- * @returns
- */
 import { generateFieldElementFromBytes, generateRandomFieldElement } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 

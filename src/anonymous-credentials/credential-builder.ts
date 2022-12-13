@@ -131,9 +131,8 @@ export class CredentialBuilder extends Versioned {
       signingOpts = DefaultSigningOpts;
     }
 
-    const cred = this.serializeForSigning(signingOpts);
+    const cred = this.updateSchemaIfNeeded(signingOpts);
     const schema = this.schema as CredentialSchema;
-    this.setTopLevelField('proof', cred['proof']);
 
     const signed = signMessageObject(
       cred,
@@ -156,7 +155,7 @@ export class CredentialBuilder extends Versioned {
     );
   }
 
-  serializeForSigning(signingOpts?: Partial<ISigningOpts>): object {
+  serializeForSigning(): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
       [CRYPTO_VERSION_STR]: this._version,
@@ -170,26 +169,31 @@ export class CredentialBuilder extends Versioned {
       s[STATUS_STR] = this._credStatus;
     }
 
-    if (!s['proof']) {
-      Credential.applyProof(s);
-    }
+    Credential.applyDefaultProofMetadataIfNeeded(s);
+    return s;
+  }
 
-    let schema = this.schema as CredentialSchema;
-    if (signingOpts && !CredentialBuilder.hasSameFieldsAsSchema(s, schema)) {
+  /**
+   * When schema doesn't match the credential, create a new appropriate schema and update the credential. Returns the
+   * serialized credential
+   * @param signingOpts
+   */
+  updateSchemaIfNeeded(signingOpts?: Partial<ISigningOpts>): object {
+    const cred = this.serializeForSigning();
+    const schema = this.schema as CredentialSchema;
+    if (signingOpts && !CredentialBuilder.hasSameFieldsAsSchema(cred, schema)) {
       if (signingOpts.requireSameFieldsAsSchema) {
         throw new Error('Credential does not have the fields as schema');
       } else {
         // Generate new schema
-        this.schema = CredentialSchema.generateAppropriateSchema(s, schema);
-        schema = this.schema as CredentialSchema;
-        s[SCHEMA_STR] = JSON.stringify(this.schema?.toJSON());
+        this.schema = CredentialSchema.generateAppropriateSchema(cred, schema);
+        cred[SCHEMA_STR] = JSON.stringify(this.schema?.toJSON());
       }
     }
-
-    return s;
+    return cred;
   }
 
-  static hasSameFieldsAsSchema(cred, schema: CredentialSchema): boolean {
+  static hasSameFieldsAsSchema(cred: object, schema: CredentialSchema): boolean {
     return areArraysEqual(schema.flatten()[0], Object.keys(flatten(cred) as object).sort());
   }
 }
