@@ -126,7 +126,6 @@ export function signMessageObject(
   const msgCount = names.length;
 
   const sigParams = getSigParamsOfRequiredSize(msgCount, labelOrParams);
-
   const signature = SignatureG1.generate(encodedValues, secretKey, sigParams, false);
 
   // Encoded message as an object with key as the flattened name

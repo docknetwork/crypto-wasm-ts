@@ -1,6 +1,7 @@
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
+  CRED_PROOF_TYPE,
   CRYPTO_VERSION_STR,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
@@ -56,13 +57,17 @@ export class Credential extends Versioned {
     return v;
   }
 
-  static applyProof(s: object) {
+  /**
+   * A credential will have at least some proof metadata like the type or purpose. This adds those defaults to the
+   * given object.
+   * @param s
+   */
+  static applyDefaultProofMetadataIfNeeded(s: object) {
     if (!s['proof']) {
       s['proof'] = {
-        type: 'Bls12381BBS+SignatureDock2022',
+        type: CRED_PROOF_TYPE,
       };
     }
-    return s;
   }
 
   serializeForSigning(): object {
@@ -81,7 +86,7 @@ export class Credential extends Versioned {
       s[STATUS_STR] = this.credentialStatus;
     }
 
-    Credential.applyProof(s);
+    Credential.applyDefaultProofMetadataIfNeeded(s);
     delete s['proof']['proofValue'];
 
     return s;
@@ -99,7 +104,7 @@ export class Credential extends Versioned {
       j[k] = v;
     }
 
-    Credential.applyProof(j);
+    Credential.applyDefaultProofMetadataIfNeeded(j);
     j['proof']['proofValue'] = b58.encode(this.signature.bytes);
     return j;
   }
@@ -119,7 +124,7 @@ export class Credential extends Versioned {
     return j;
   }
 
-  static fromJSON(j: object, proofValue: string = ''): Credential {
+  static fromJSON(j: object, proofValue?: string): Credential {
     // @ts-ignore
     const { cryptoVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } = j;
 
@@ -129,23 +134,30 @@ export class Credential extends Versioned {
     }
 
     // Ensure proof type is correct
-    if (proof['type'] !== 'Bls12381BBS+SignatureDock2022') {
+    if (proof['type'] !== CRED_PROOF_TYPE) {
       throw new Error(`Invalid proof type ${proof['type']}`);
     }
 
     // Ensure we trim off proofValue as that isnt signed
     const trimmedProof = { ...proof };
-    if (!proofValue && trimmedProof && trimmedProof.proofValue) {
-      proofValue = trimmedProof.proofValue;
-      delete trimmedProof.proofValue;
+    if (!proofValue) {
+      if (trimmedProof && trimmedProof.proofValue) {
+        proofValue = trimmedProof.proofValue;
+        delete trimmedProof.proofValue;
+      } else {
+        throw new Error('A proofValue was neither provided nor was provided');
+      }
     }
 
-    const sig = new SignatureG1(b58.decode(proofValue));
+    const sig = new SignatureG1(b58.decode(proofValue as string));
     const topLevelFields = new Map<string, unknown>();
     Object.keys(custom).forEach((k) => {
       topLevelFields.set(k, custom[k]);
     });
 
+    // Note: There is some inconsistency here. While serialization "proof" doesn't exist in `topLevelFields` but during
+    // deserialization, it is. This doesn't break anything for now but can cause unexpected errors in future as the
+    // deserialized object won't be exactly same as the object that was serialized.
     if (!isEmptyObject(trimmedProof)) {
       topLevelFields.set('proof', trimmedProof);
     }
