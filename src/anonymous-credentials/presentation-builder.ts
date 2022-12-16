@@ -263,6 +263,9 @@ export class PresentationBuilder extends Versioned {
 
     const setupParamsTrk = new SetupParamsTracker();
 
+    // Reset spec state (incase this method is called more than once)
+    this.spec.reset();
+
     // Create statements and witnesses for proving possession of each credential, i.e. proof of knowledge of BBS+ sigs
     for (let i = 0; i < numCreds; i++) {
       const cred = this.credentials[i][0];
