@@ -46,6 +46,11 @@ export class PresentationSpecification {
     this.attributeEqualities = [];
   }
 
+  reset() {
+    this.credentials = [];
+    this.attributeEqualities = [];
+  }
+
   addPresentedCredential(
     version: string,
     schema: string,
