@@ -31,7 +31,7 @@ import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
 
 // Test for a scenario where user wants to prove that certain attribute of his credential is the preimage of a public MiMC hash.
-describe('Proving that blood group is not AB-', () => {
+describe('Proving that certain attribute of a credential is the preimage of a public MiMC hash', () => {
   let encoder: Encoder;
   let encodedPubKeyHash: Uint8Array;
 
