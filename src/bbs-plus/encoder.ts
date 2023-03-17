@@ -41,6 +41,9 @@ export class Encoder {
   encodeMessage(name: string, value: unknown, strict = false): Uint8Array {
     const encoder = this.encoders?.get(name) || this.defaultEncoder;
     if (encoder !== undefined) {
+      if (typeof value === undefined) {
+        throw new Error(`Cannot encode message with name ${name} as it is undefined`);
+      }
       return encoder(value);
     } else {
       if (!strict && value instanceof Uint8Array) {
