@@ -73,6 +73,9 @@ describe('Utils', () => {
     encoders1.set('foo', Encoder.positiveIntegerEncoder());
     const encoder1 = new Encoder(encoders1);
 
+    // Throws for undefined message
+    expect(() => encoder1.encodeMessage('bar', undefined)).toThrow();
+
     // Throws for unknown message name when no default encoder
     expect(() => encoder1.encodeMessage('bar', 6)).toThrow();
     expect(() => encoder1.encodeMessageObject({ bar: 6, foo: 10 })).toThrow();
