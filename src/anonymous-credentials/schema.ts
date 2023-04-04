@@ -544,6 +544,7 @@ export class CredentialSchema extends Versioned {
 
   static validateGeneric(schema: object, ignoreKeys: Set<string> = new Set()) {
     const [names, values] = this.flattenSchemaObj(schema);
+
     for (let i = 0; i < names.length; i++) {
       if (ignoreKeys.has(names[i])) {
         continue;
@@ -644,16 +645,16 @@ export class CredentialSchema extends Versioned {
           properties: {
             id: {
               type: 'string'
-            },
-          },
+            }
+          }
         },
         proof: {
           type: 'object',
           properties: {
             type: {
               type: 'string'
-            },
-          },
+            }
+          }
         }
       }
     };
@@ -1101,13 +1102,19 @@ export class CredentialSchema extends Versioned {
         } else if (schemaProps[key]['type'] == 'object' && typ == 'object') {
           const schemaKeys = new Set([...Object.keys(schemaProps[key]['properties'])]);
           const valKeys = new Set([...Object.keys(value)]);
-          for (const vk of valKeys) {
-            CredentialSchema.generateFromCredential(value, schemaProps[key]['properties']);
-          }
-          // Delete extra keys not in cred
-          for (const sk of schemaKeys) {
-            if (value[sk] === undefined) {
-              delete schemaKeys[sk];
+
+          // If empty object, skip it here otherwise causes problems downstream
+          if (schemaKeys.size === 0) {
+            delete schemaProps[key];
+          } else {
+            for (const vk of valKeys) {
+              CredentialSchema.generateFromCredential(value, schemaProps[key]['properties']);
+            }
+            // Delete extra keys not in cred
+            for (const sk of schemaKeys) {
+              if (value[sk] === undefined) {
+                delete schemaKeys[sk];
+              }
             }
           }
         } else {

@@ -1,5 +1,5 @@
 import { SignatureG1 } from './signature';
-import { flattenObjectToKeyValuesList, isPositiveInteger } from '../util';
+import { flattenObjectToKeyValuesList, isEmptyObject, isPositiveInteger } from '../util';
 
 /**
  * A function that encodes the input to field element bytes
@@ -63,7 +63,13 @@ export class Encoder {
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
   encodeMessageObject(messages: object, strict = false): [string[], Uint8Array[]] {
-    const [names, values] = flattenObjectToKeyValuesList(messages);
+    let [names, values] = flattenObjectToKeyValuesList(messages);
+
+    // Filter keys to remove empty objects
+    // this is done because schema generation removes empty objects + nothing to encode
+    names = names.filter((k, i) => typeof values[i] !== 'object' || !isEmptyObject(values[i]));
+    values = values.filter((k, i) => typeof values[i] !== 'object' || !isEmptyObject(values[i]));
+
     const encoded: Uint8Array[] = [];
     for (let i = 0; i < names.length; i++) {
       encoded.push(this.encodeMessage(names[i], values[i], strict));
