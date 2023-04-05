@@ -871,4 +871,17 @@ describe('Credential signing and verification', () => {
       checkResult(recreatedCred.verify(pk));
     }
   });
+
+  it('for credential with auto-generated schema and empty objects', () => {
+    const builder = new CredentialBuilder();
+    builder.schema = new CredentialSchema(CredentialSchema.essential());
+    builder.subject = {
+      fname: 'John',
+      emptyObject: {},
+      lname: 'Smith',
+    };
+
+    const cred = builder.sign(sk, undefined, {requireSameFieldsAsSchema: false});
+    checkResult(cred.verify(pk));
+  });
 });

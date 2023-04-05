@@ -32,6 +32,7 @@ import { ValueType, ValueTypes } from './schema';
 import { Encoder } from '../bbs-plus';
 import { SetupParam, Statement, WitnessEqualityMetaStatement } from '../composite-proof';
 import { SetupParamsTracker } from './setup-params-tracker';
+import { isEmptyObject } from '../util';
 
 export function dockAccumulatorParams(): AccumulatorParams {
   return Accumulator.generateParams(ACCUMULATOR_PARAMS_LABEL_BYTES);
@@ -56,7 +57,8 @@ export function dockSaverEncryptionGensUncompressed(): SaverEncryptionGensUncomp
 export function flattenTill2ndLastKey(obj: object): [string[], object[]] {
   const flattened = {};
   const temp = flatten(obj) as object;
-  for (const k of Object.keys(temp)) {
+  const tempKeys = Object.keys(temp).filter((key) => typeof temp[key] !== 'object' || !isEmptyObject(temp[key]));
+  for (const k of tempKeys) {
     // taken from https://stackoverflow.com/a/5555607
     const pos = k.lastIndexOf('.');
     const name = k.substring(0, pos);
