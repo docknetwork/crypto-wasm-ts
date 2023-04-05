@@ -63,18 +63,17 @@ export class Encoder {
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
   encodeMessageObject(messages: object, strict = false): [string[], Uint8Array[]] {
-    let [names, values] = flattenObjectToKeyValuesList(messages);
-
-    // Filter keys to remove empty objects
-    // this is done because schema generation removes empty objects + nothing to encode
-    names = names.filter((k, i) => typeof values[i] !== 'object' || !isEmptyObject(values[i]));
-    values = values.filter((k, i) => typeof values[i] !== 'object' || !isEmptyObject(values[i]));
-
+    const [names, values] = flattenObjectToKeyValuesList(messages);
     const encoded: Uint8Array[] = [];
-    for (let i = 0; i < names.length; i++) {
-      encoded.push(this.encodeMessage(names[i], values[i], strict));
+    for (let i = names.length - 1; i >= 0; i--) {
+      // Filter  to remove empty objects, this is done because schema generation removes empty objects + nothing to encode
+      if (typeof values[i] !== 'object' || !isEmptyObject(values[i])) {
+        encoded.push(this.encodeMessage(names[i], values[i], strict));
+      } else {
+        names.splice(i, 1);
+      }
     }
-    return [names, encoded];
+    return [names, encoded.reverse()];
   }
 
   encodeDefault(value: unknown, strict = false): Uint8Array {
