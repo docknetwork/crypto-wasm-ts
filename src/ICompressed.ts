@@ -8,7 +8,7 @@ export interface IUncompressed {
 /**
  * Interface for parameters with elliptic curve points in compressed form.
  * They can be converted into uncompressed form. Uncompressed data is larger in byte-size but
- * more CPU efficient to work with (in this lib's context)
+ * more CPU efficient to work with (in this lib's context) as the cost to decompress is avoided.
  */
 export interface ICompressed<UncompressedType> {
   readonly value: Uint8Array;

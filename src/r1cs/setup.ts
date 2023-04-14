@@ -7,7 +7,7 @@ import { ParsedR1CSFile, processParsedR1CSFile } from './index';
  */
 export class R1CSSnarkSetup {
   /**
-   * Create proving key
+   * Create proving key from a parsed R1CS file. Returns the compressed proving key.
    * @param parsedR1cs
    * @param commitWitnessCount - If not provided, uses the number of private inputs (only explicitly defined, not intermediate)
    * to the circuit
@@ -27,7 +27,7 @@ export class R1CSSnarkSetup {
       processedR1cs.numPrivate,
       processedR1cs.constraints as [],
       commitWitnessCount,
-      false
+      false   // return compressed key
     );
     return new LegoProvingKey(pk);
   }

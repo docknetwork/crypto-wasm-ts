@@ -470,6 +470,7 @@ describe('Presentation creation and verification', () => {
     builder1.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
     const pres1 = builder1.finalize();
 
+    // These checks are made by the verifier, i.e. verifier checks that the presentation is created from one credential
     expect(pres1.spec.credentials.length).toEqual(1);
     expect(pres1.spec.credentials[0].revealedAttributes).toEqual({
       credentialSubject: {
@@ -541,6 +542,9 @@ describe('Presentation creation and verification', () => {
     builder2.context = ctx;
     builder2.nonce = nonce;
     pres = builder2.finalize();
+
+    // These checks are made by the verifier, i.e. verifier checks that the nonce and context in the presentation are what's
+    // expected and the presentation is valid.
     expect(pres.context).toEqual(ctx);
     expect(areUint8ArraysEqual(pres.nonce as Uint8Array, nonce)).toEqual(true);
     checkResult(pres.verify([pk1]));
@@ -551,6 +555,9 @@ describe('Presentation creation and verification', () => {
 
     builder3.nonce = nonce;
     pres = builder3.finalize();
+
+    // These checks are made by the verifier, i.e. verifier checks that the nonce and context in the presentation are whats
+    // expected and the presentation is valid.
     expect(pres.context).not.toBeDefined();
     expect(areUint8ArraysEqual(pres.nonce as Uint8Array, nonce)).toEqual(true);
     checkResult(pres.verify([pk1]));
@@ -596,12 +603,15 @@ describe('Presentation creation and verification', () => {
       blockNo: 2010334
     });
     const pres3 = builder3.finalize();
+
     expect(pres3.spec.credentials[0].revealedAttributes).toEqual({
       credentialSubject: {
         fname: 'John',
         lessSensitive: { location: { country: 'USA' }, department: { location: { name: 'Somewhere' } } }
       }
     });
+    // This check is made by the verifier, i.e. verifier checks that the accumulator id, type, value and timestamp (`blockNo`)
+    // are as expected
     expect(pres3.spec.getStatus(0)).toEqual({
       id: 'dock:accumulator:accumId123',
       [TYPE_STR]: STATUS_TYPE_STR,
@@ -610,6 +620,7 @@ describe('Presentation creation and verification', () => {
       extra: { blockNo: 2010334 }
     });
 
+    // Verifier passes the accumulator public key for verification
     const acc = new Map();
     acc.set(0, accumulator3Pk);
     checkResult(pres3.verify([pk3], acc));
@@ -710,6 +721,9 @@ describe('Presentation creation and verification', () => {
         education: { university: { name: 'Example University', registrationNumber: 'XYZ-123-789' } }
       }
     });
+
+    // These checks are made by the verifier, i.e. verifier checks that the accumulator id, type, value and timestamp (`blockNo`)
+    // are as expected for both credentials
     expect(pres5.spec.getStatus(0)).toEqual({
       id: 'dock:accumulator:accumId123',
       [TYPE_STR]: STATUS_TYPE_STR,
@@ -880,6 +894,8 @@ describe('Presentation creation and verification', () => {
         lname: 'Smith'
       }
     });
+    // These checks are made by the verifier, i.e. verifier checks that the bounds (min, max) for each attribute in the
+    // presentation are what's expected and the presentation is valid.
     expect(pres1.spec.credentials[0].bounds).toEqual({
       credentialSubject: {
         timeOfBirth: {
@@ -900,6 +916,7 @@ describe('Presentation creation and verification', () => {
       }
     });
 
+    // Verifier passes the snark verification key for the presentation to verify
     const pp = new Map();
     pp.set(pkId, boundCheckVerifyingKey);
     checkResult(pres1.verify([pk1], undefined, pp));
@@ -952,6 +969,8 @@ describe('Presentation creation and verification', () => {
 
     const pres2 = builder8.finalize();
 
+    // These checks are made by the verifier, i.e. verifier checks that the bounds (min, max) for each attribute of the
+    // corresponding credential in the presentation are what's expected and the presentation is valid.
     expect(pres2.spec.credentials[0].bounds).toEqual({
       credentialSubject: {
         timeOfBirth: {
@@ -1036,6 +1055,7 @@ describe('Presentation creation and verification', () => {
 
     const pres1 = builder9.finalize();
 
+    // Verifier checks that the correct encryption key and other parameters were used by the prover
     expect(pres1.spec.credentials[0].verifiableEncryptions).toEqual({
       credentialSubject: {
         SSN: {
@@ -1047,6 +1067,9 @@ describe('Presentation creation and verification', () => {
       }
     });
 
+    // These checks are made by the verifier, i.e. verifier checks that the ciphertext for each required attribute is
+    // present in the presentation and the presentation is valid. The verifier will preserve the ciphertext to be later
+    // passed on to the decryptor
     // @ts-ignore
     expect(pres1.attributeCiphertexts.size).toEqual(1);
     // @ts-ignore
@@ -1167,6 +1190,8 @@ describe('Presentation creation and verification', () => {
     checkResult(recreatedPres2.verify([pk1, pk2, pk3], acc, pp1));
     expect(presJson2).toEqual(recreatedPres2.toJSON());
 
+    // These checks are made by the verifier, i.e. verifier checks that the ciphertext for each required attribute in the
+    // corresponding credential is present
     // @ts-ignore
     expect(pres2.attributeCiphertexts.size).toEqual(2);
     // @ts-ignore
@@ -1300,6 +1325,7 @@ describe('Presentation creation and verification', () => {
 
     const pres1 = builder11.finalize();
 
+    // Verifier checks that for the first credential, the bounds are satisfied and the attribute ciphertext is present
     expect(pres1.spec.credentials[0].bounds).toEqual({
       credentialSubject: {
         timeOfBirth: {
@@ -1330,6 +1356,7 @@ describe('Presentation creation and verification', () => {
       }
     });
 
+    // Verifier checks that for the second credential, the bounds are satisfied and the attribute ciphertext is present
     expect(pres1.spec.credentials[2].bounds).toEqual({
       credentialSubject: {
         lessSensitive: {

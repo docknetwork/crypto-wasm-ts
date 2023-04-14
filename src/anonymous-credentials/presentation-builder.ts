@@ -333,6 +333,7 @@ export class PresentationBuilder extends Versioned {
         ]);
       }
 
+      // Get encoded attributes which are used in bound check
       let attributeBounds: { [key: string]: string | IPresentedAttributeBounds } | undefined;
       const bounds = this.bounds.get(i);
       if (bounds !== undefined && bounds.size > 0) {
@@ -347,6 +348,7 @@ export class PresentationBuilder extends Versioned {
         unrevealedMsgsEncoded.set(i, encodedAttrs);
       }
 
+      // Get encoded attributes which are used in verifiable encryption
       let attributeEncs: { [key: string]: string | IPresentedAttributeVE } | undefined;
       const encs = this.verifEnc.get(i);
       if (encs !== undefined && encs.size > 0) {
@@ -412,7 +414,7 @@ export class PresentationBuilder extends Versioned {
       this.spec.attributeEqualities.push(eql);
     }
 
-    // For enforcing attribute bounds
+    // For enforcing attribute bounds, add statement and witness
     for (const [cId, bounds] of this.bounds.entries()) {
       const dataSortedByNameIdx: [number, string, IPresentedAttributeBounds][] = [];
       for (const [name, b] of bounds.entries()) {
