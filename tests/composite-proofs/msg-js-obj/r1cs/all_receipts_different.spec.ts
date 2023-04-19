@@ -81,7 +81,7 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     minAmountEncoded = encoder.encodeMessage('amount', minAmount);
     minDateEncoded = encoder.encodeMessage('date', minDate);
 
-    // This should ideally be done by the verifier but the verifier can publish only the Circom program and
+    // This can be done by the verifier or the verifier can publish only the Circom program and
     // prover can check that the same R1CS and WASM are generated.
     r1csForUnique = await parseR1CSFile('all_different_10.r1cs');
     wasmForUnique = getWasmBytes('all_different_10.wasm');

@@ -28,7 +28,7 @@ export interface ISigningOpts {
 }
 
 export const DefaultSigningOpts: ISigningOpts = {
-  requireSameFieldsAsSchema: true,
+  requireSameFieldsAsSchema: true
 };
 
 /**

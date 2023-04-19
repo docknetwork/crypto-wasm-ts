@@ -134,7 +134,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     encodedTime30DaysAgo = dateEncoder(time30DaysAgo);
     encodedTime2DaysAgo = dateEncoder(time2DaysAgo);
 
-    // This should ideally be done by the verifier but the verifier can publish only the Circom program and
+    // This can be done by the verifier or the verifier can publish only the Circom program and
     // prover can check that the same R1CS and WASM are generated.
     r1cs = await parseR1CSFile('greater_than_or_public_64.r1cs');
     wasm = getWasmBytes('greater_than_or_public_64.wasm');

@@ -103,7 +103,7 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
     encoder = new Encoder(encoders, defaultEncoder);
     encodedPubKeyHash = beHexToLeByteArray(pubKeyHash);
 
-    // This should ideally be done by the verifier but the verifier can publish only the Circom program and
+    // This can be done by the verifier or the verifier can publish only the Circom program and
     // prover can check that the same R1CS and WASM are generated.
     r1cs = await parseR1CSFile('mimc_hash_bls12_381.r1cs');
     wasm = getWasmBytes('mimc_hash_bls12_381.wasm');

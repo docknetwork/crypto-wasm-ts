@@ -56,13 +56,23 @@ describe('Verifiable encryption of signed messages', () => {
   const loadSnarkSetupFromFiles = true;
 
   it('do decryptor setup', () => {
-    if (loadSnarkSetupFromFiles && (chunkBitSize === 16)) {
+    if (loadSnarkSetupFromFiles && chunkBitSize === 16) {
       saverSk = new SaverSecretKey(readByteArrayFromFile('snark-setups/saver-secret-key-16.bin'));
-      saverEncGens = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-gens-16-uncompressed.bin'));
-      snarkProvingKey = new SaverProvingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin'));
-      snarkVerifyingKey = new SaverVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin'));
-      saverEk = new SaverEncryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin'));
-      saverDk = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin'));
+      saverEncGens = new SaverDecryptionKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-encryption-gens-16-uncompressed.bin')
+      );
+      snarkProvingKey = new SaverProvingKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin')
+      );
+      snarkVerifyingKey = new SaverVerifyingKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin')
+      );
+      saverEk = new SaverEncryptionKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin')
+      );
+      saverDk = new SaverDecryptionKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin')
+      );
     } else {
       const gens = SaverEncryptionGens.generate();
       // `chunkBitSize` is optional, it will default to reasonable good value.

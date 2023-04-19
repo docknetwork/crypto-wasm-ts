@@ -27,7 +27,7 @@ export class R1CSSnarkSetup {
       processedR1cs.numPrivate,
       processedR1cs.constraints as [],
       commitWitnessCount,
-      false   // return compressed key
+      false // return compressed key
     );
     return new LegoProvingKey(pk);
   }

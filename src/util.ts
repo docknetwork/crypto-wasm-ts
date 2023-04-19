@@ -1,5 +1,6 @@
 import { generateFieldElementFromBytes, generateRandomFieldElement } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
+import { LegoProvingKey } from './legosnark';
 
 export function isEmptyObject(obj) {
   if (!obj) {
@@ -101,4 +102,19 @@ export function areArraysEqual(arr1: string[] | number[] | boolean[], arr2: stri
   }
 
   return true;
+}
+
+export function getProvingAndVerifiyingKeyBytes(
+  provingKey: LegoProvingKey,
+  returnUncompressed: boolean
+): [Uint8Array, Uint8Array] {
+  let pkBytes, vkBytes;
+  if (returnUncompressed) {
+    pkBytes = provingKey.decompress().bytes;
+    vkBytes = provingKey.getVerifyingKeyUncompressed().bytes;
+  } else {
+    pkBytes = provingKey.bytes;
+    vkBytes = provingKey.getVerifyingKey().bytes;
+  }
+  return [pkBytes, vkBytes];
 }

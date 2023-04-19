@@ -3,9 +3,15 @@ import {
   Credential,
   CredentialBuilder,
   CredentialSchema,
-  MEM_CHECK_STR, ID_STR, REV_CHECK_STR, REV_ID_STR, SCHEMA_STR,
-  SIGNATURE_PARAMS_LABEL_BYTES, STATUS_TYPE_STR,
-  SUBJECT_STR, TYPE_STR
+  MEM_CHECK_STR,
+  ID_STR,
+  REV_CHECK_STR,
+  REV_ID_STR,
+  SCHEMA_STR,
+  SIGNATURE_PARAMS_LABEL_BYTES,
+  STATUS_TYPE_STR,
+  SUBJECT_STR,
+  TYPE_STR
 } from '../../src';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
@@ -79,7 +85,7 @@ describe('Credential signing and verification', () => {
     };
     res = validate(cred.toJSON(), schema);
     expect(res.valid).toEqual(false);
-    
+
     // NOTE: Probably makes sense to always have `required` as true in each object. Also to disallow extra keys.
   });
 
@@ -270,8 +276,8 @@ describe('Credential signing and verification', () => {
       [ID_STR]: 'dock:accumulator:accumId123',
       [REV_CHECK_STR]: MEM_CHECK_STR,
       [REV_ID_STR]: 'user:A-123',
-      [TYPE_STR]: STATUS_TYPE_STR,
-    })
+      [TYPE_STR]: STATUS_TYPE_STR
+    });
     // In practice there will be an accumulator as well
   });
 
@@ -315,9 +321,9 @@ describe('Credential signing and verification', () => {
       }
     ];
     builder.setTopLevelField('issuer', {
-      name: "An issuer",
-      desc: "Just an issuer",
-      logo: "https://images.example-issuer.com/logo.png"
+      name: 'An issuer',
+      desc: 'Just an issuer',
+      logo: 'https://images.example-issuer.com/logo.png'
     });
     builder.setTopLevelField('issuanceDate', 1662010849700);
     builder.setTopLevelField('expirationDate', 1662011950934);
@@ -326,7 +332,7 @@ describe('Credential signing and verification', () => {
 
     checkResult(cred.verify(pk));
     checkJsonConvForCred(cred, pk);
-  })
+  });
 
   it('json-ld validation', async () => {
     const schema = getExampleSchema(8);
@@ -353,20 +359,23 @@ describe('Credential signing and verification', () => {
 
     const credWithCtx = cred.toJSONWithJsonLdContext();
     let normalized = await jsonld.normalize(credWithCtx);
-    expect(normalized).not.toEqual("");
+    expect(normalized).not.toEqual('');
 
     const credWithoutCtx = cred.toJSON();
     normalized = await jsonld.normalize(credWithoutCtx);
-    expect(normalized).toEqual("");
-  })
+    expect(normalized).toEqual('');
+  });
 
   it('for credential with relaxed schema validation', () => {
     // The schema does not match the credential exactly
 
     let builder = getExampleBuilder(1);
-    const ns = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
+      $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         credentialSubject: {
@@ -383,7 +392,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
-        proof: CredentialSchema.essential().properties.proof,
+        proof: CredentialSchema.essential().properties.proof
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -393,9 +402,12 @@ describe('Credential signing and verification', () => {
     check(builder, sk, pk);
 
     builder = getExampleBuilder(2);
-    const ns1 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns1 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns1.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
+      $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         credentialSubject: {
@@ -421,7 +433,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
-        proof: CredentialSchema.essential().properties.proof,
+        proof: CredentialSchema.essential().properties.proof
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -431,9 +443,12 @@ describe('Credential signing and verification', () => {
     check(builder, sk, pk);
 
     builder = getExampleBuilder(3);
-    const ns2 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns2 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns2.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
+      $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         credentialSubject: {
@@ -469,7 +484,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
-        proof: CredentialSchema.essential().properties.proof,
+        proof: CredentialSchema.essential().properties.proof
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -479,9 +494,12 @@ describe('Credential signing and verification', () => {
     check(builder, sk, pk);
 
     builder = getExampleBuilder(4);
-    const ns3 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns3 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns3.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
+      $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         credentialSubject: {
@@ -517,7 +535,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
-        proof: CredentialSchema.essential().properties.proof,
+        proof: CredentialSchema.essential().properties.proof
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -528,9 +546,12 @@ describe('Credential signing and verification', () => {
 
     // With top level fields
     builder = getExampleBuilder(5);
-    const ns4 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns4 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns4.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
+      $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         credentialSubject: {
@@ -580,7 +601,7 @@ describe('Credential signing and verification', () => {
         issuanceDate: { type: 'string' },
         types: {
           type: 'array',
-          items: [ { type: 'string' }, { type: 'string' } ]
+          items: [{ type: 'string' }, { type: 'string' }]
         }
       },
       definitions: {
@@ -592,9 +613,12 @@ describe('Credential signing and verification', () => {
 
     // Credential with array of objects and schema has extra fields which would be removed
     builder = getExampleBuilder(6);
-    const ns5 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns5 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns5.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
+      $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         credentialSubject: {
@@ -654,7 +678,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
-        proof: CredentialSchema.essential().properties.proof,
+        proof: CredentialSchema.essential().properties.proof
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -665,9 +689,12 @@ describe('Credential signing and verification', () => {
 
     // Credential with array of object, string and array and schema has extra fields which would be removed
     builder = getExampleBuilder(7);
-    const ns6 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns6 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns6.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
+      $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         credentialSubject: {
@@ -720,7 +747,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
-        proof: CredentialSchema.essential().properties.proof,
+        proof: CredentialSchema.essential().properties.proof
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -731,9 +758,12 @@ describe('Credential signing and verification', () => {
 
     // Some fields missing and some extra in credential
     builder = getExampleBuilder(8);
-    const ns7 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns7 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns7.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
+      $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         credentialSubject: {
@@ -766,7 +796,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
-        proof: CredentialSchema.essential().properties.proof,
+        proof: CredentialSchema.essential().properties.proof
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -776,9 +806,12 @@ describe('Credential signing and verification', () => {
     check(builder, sk, pk);
 
     builder = getExampleBuilder(9);
-    const ns8 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns8 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns8.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
+      $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
       properties: {
         credentialSubject: {
@@ -810,7 +843,7 @@ describe('Credential signing and verification', () => {
         },
         cryptoVersion: { type: 'string' },
         credentialSchema: { type: 'string' },
-        proof: CredentialSchema.essential().properties.proof,
+        proof: CredentialSchema.essential().properties.proof
       },
       definitions: {
         encryptableString: { type: 'string' },
@@ -819,10 +852,13 @@ describe('Credential signing and verification', () => {
     });
 
     builder = getExampleBuilder(10);
-    const ns9 = CredentialSchema.generateAppropriateSchema(builder.serializeForSigning(), builder.schema as CredentialSchema);
+    const ns9 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
     expect(ns9.jsonSchema).toEqual({
-      '$schema': 'http://json-schema.org/draft-07/schema#',
-      '$id': 'https://ld.dock.io/examples/resident-card-schema.json',
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      $id: 'https://ld.dock.io/examples/resident-card-schema.json',
       title: 'Resident Card Example',
       type: 'object',
       properties: {
@@ -835,7 +871,7 @@ describe('Credential signing and verification', () => {
             id: { type: 'string' },
             type: {
               type: 'array',
-              items: [ { type: 'string' }, { type: 'string' } ]
+              items: [{ type: 'string' }, { type: 'string' }]
             }
           },
           required: []
@@ -845,12 +881,12 @@ describe('Credential signing and verification', () => {
         proof: CredentialSchema.essential().properties.proof,
         '@context': {
           type: 'array',
-          items: [ { type: 'string' }, { type: 'string' }, { type: 'string' } ]
+          items: [{ type: 'string' }, { type: 'string' }, { type: 'string' }]
         },
         id: { type: 'string' },
         type: {
           type: 'array',
-          items: [ { type: 'string' }, { type: 'string' } ]
+          items: [{ type: 'string' }, { type: 'string' }]
         },
         identifier: { type: 'string' },
         name: { type: 'string' },
@@ -860,9 +896,9 @@ describe('Credential signing and verification', () => {
 
     function check(builder: CredentialBuilder, sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2) {
       expect(() => builder.sign(sk)).toThrow();
-      expect(() => builder.sign(sk, undefined, {requireSameFieldsAsSchema: true})).toThrow();
+      expect(() => builder.sign(sk, undefined, { requireSameFieldsAsSchema: true })).toThrow();
 
-      const cred = builder.sign(sk, undefined, {requireSameFieldsAsSchema: false});
+      const cred = builder.sign(sk, undefined, { requireSameFieldsAsSchema: false });
 
       checkResult(cred.verify(pk));
 

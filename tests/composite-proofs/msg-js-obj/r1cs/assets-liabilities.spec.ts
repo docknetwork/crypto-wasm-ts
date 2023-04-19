@@ -7,7 +7,8 @@ import {
   createWitnessEqualityMetaStatement,
   EncodeFunc,
   Encoder,
-  encodeRevealedMsgs, flattenObjectToKeyValuesList,
+  encodeRevealedMsgs,
+  flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
@@ -116,7 +117,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     // Important to encode the bound with the same encoder as attributes
     minDiffEncoded = Encoder.positiveIntegerEncoder()(minDiff);
 
-    // This should ideally be done by the verifier but the verifier can publish only the Circom program and
+    // This can be done by the verifier or the verifier can publish only the Circom program and
     // prover can check that the same R1CS and WASM are generated.
     r1cs = await parseR1CSFile('difference_of_array_sum_20_20.r1cs');
     wasm = getWasmBytes('difference_of_array_sum_20_20.wasm');
@@ -175,7 +176,9 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
         }
       });
       signedLiabilities.push(signMessageObject(liabilityAttributes[i], sk, liablSigParams, encoder));
-      checkResult(verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, liablSigParams, encoder));
+      checkResult(
+        verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, liablSigParams, encoder)
+      );
     }
   });
 

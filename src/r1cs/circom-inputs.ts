@@ -1,12 +1,14 @@
 /**
  * Prepare inputs given to the Circom program for feeding into composite proof system.
+ * NOTE: The functions `setPrivateInput`, `setPrivateArrayInput`, `setPublicInput` and `setPublicArrayInput` MUST be called
+ * in the same order as the inputs (circuit variables) are defined in the program
  */
 export class CircomInputs {
   // Mapping of input (signal) name to value(s)
   wires: Map<string, Uint8Array[]>;
-  // Names of private inputs. Must be in the order that they are defined in the program
+  // Names of private inputs. Must be in the order that they are defined in the program.
   privates: string[];
-  // Names of public inputs.
+  // Names of public inputs. Must be in the order that they are defined in the program.
   publics: string[];
 
   constructor() {

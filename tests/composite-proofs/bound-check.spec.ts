@@ -56,7 +56,7 @@ describe('Bound check of signed messages', () => {
 
   // Setting it to false will make the test run the SNARK setups making tests quite slow
   const loadSnarkSetupFromFiles = true;
-  
+
   it('do verifier setup', () => {
     [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
   });

@@ -7,7 +7,9 @@ import {
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  KeypairG2, LegoProvingKeyUncompressed, LegoVerifyingKeyUncompressed,
+  KeypairG2,
+  LegoProvingKeyUncompressed,
+  LegoVerifyingKeyUncompressed,
   MetaStatements,
   QuasiProofSpecG1,
   SaverChunkedCommitmentGens,
@@ -57,13 +59,23 @@ describe('Verifiable encryption using SAVER', () => {
     // Setup for decryptor
     let saverEncGens, saverSk, saverProvingKey, saverVerifyingKey, saverEk, saverDk;
     const chunkBitSize = 16;
-    if (loadSnarkSetupFromFiles && (chunkBitSize === 16)) {
+    if (loadSnarkSetupFromFiles && chunkBitSize === 16) {
       saverSk = new SaverSecretKey(readByteArrayFromFile('snark-setups/saver-secret-key-16.bin'));
-      saverEncGens = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-gens-16-uncompressed.bin'));
-      saverProvingKey = new SaverProvingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin'));
-      saverVerifyingKey = new SaverVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin'));
-      saverEk = new SaverEncryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin'));
-      saverDk = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin'));
+      saverEncGens = new SaverDecryptionKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-encryption-gens-16-uncompressed.bin')
+      );
+      saverProvingKey = new SaverProvingKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin')
+      );
+      saverVerifyingKey = new SaverVerifyingKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin')
+      );
+      saverEk = new SaverEncryptionKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin')
+      );
+      saverDk = new SaverDecryptionKeyUncompressed(
+        readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin')
+      );
     } else {
       const encGens = SaverEncryptionGens.generate();
       // `chunkBitSize` is optional, it will default to reasonable good value.
@@ -79,12 +91,15 @@ describe('Verifiable encryption using SAVER', () => {
     // Verifier creates SNARK proving and verification key
     let boundCheckProvingKey, boundCheckVerifyingKey;
     if (loadSnarkSetupFromFiles) {
-      boundCheckProvingKey = new LegoProvingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-proving-key-uncompressed.bin'));
-      boundCheckVerifyingKey = new LegoVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-verifying-key-uncompressed.bin'));
+      boundCheckProvingKey = new LegoProvingKeyUncompressed(
+        readByteArrayFromFile('snark-setups/bound-check-proving-key-uncompressed.bin')
+      );
+      boundCheckVerifyingKey = new LegoVerifyingKeyUncompressed(
+        readByteArrayFromFile('snark-setups/bound-check-verifying-key-uncompressed.bin')
+      );
     } else {
       [boundCheckProvingKey, boundCheckVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
     }
-
 
     console.info('Bound check setup done');
 

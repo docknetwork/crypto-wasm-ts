@@ -22,6 +22,35 @@ export interface IPresentedAttributeVE {
   snarkKeyId: string;
 }
 
+/**
+ * A mapping of one private variable of the Circom circuit to one or more attributes
+ */
+export interface ICircuitPrivateVars {
+  varName: string;
+  // A circuit variable can be a single value or an array and thus map to one or more attributes
+  attributeName: { [key: string]: null | object } | { [key: string]: null | object }[];
+}
+
+/**
+ * A mapping of one public variable of the Circom circuit to one or more values
+ */
+export interface ICircuitPublicVars {
+  varName: string;
+  // A circuit variable can be a single value or an array and thus map to one or more values
+  value: Uint8Array | Uint8Array[];
+}
+
+/**
+ * R1CS public inputs, private attribute names involved in circuit.
+ */
+export interface ICircomPredicate {
+  privateVars: ICircuitPrivateVars[];
+  publicVars: ICircuitPublicVars[];
+  // Used to identify the circuit and associated R1CS and WASM files
+  circuitId: string;
+  snarkKeyId: string;
+}
+
 export interface IPresentedCredential {
   version: string;
   schema: string;
@@ -31,6 +60,8 @@ export interface IPresentedCredential {
   bounds?: { [key: string]: string | IPresentedAttributeBounds };
   // Verifiable encryption of any attributes
   verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE };
+  // Predicates proved using Circom. Can be over any number of attributes
+  circomPredicates?: ICircomPredicate[];
 }
 
 /**
@@ -57,7 +88,8 @@ export class PresentationSpecification {
     revealedAttributes: object,
     status?: IPresentedStatus,
     bounds?: { [key: string]: string | IPresentedAttributeBounds },
-    verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE }
+    verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE },
+    circomPredicates?: ICircomPredicate[]
   ) {
     const ps = {
       version,
@@ -72,6 +104,9 @@ export class PresentationSpecification {
     }
     if (verifiableEncryptions !== undefined) {
       ps['verifiableEncryptions'] = verifiableEncryptions;
+    }
+    if (circomPredicates !== undefined) {
+      ps['circomPredicates'] = circomPredicates;
     }
     this.credentials.push(ps);
   }
@@ -104,6 +139,9 @@ export class PresentationSpecification {
       }
       if (pc.verifiableEncryptions !== undefined) {
         curJ['verifiableEncryptions'] = pc.verifiableEncryptions;
+      }
+      if (pc.circomPredicates !== undefined) {
+        curJ['circomPredicates'] = pc.circomPredicates;
       }
       // @ts-ignore
       j.credentials.push(curJ);

@@ -112,7 +112,7 @@ export function checkResult(result: VerifyResult) {
 }
 
 /**
- *
+ * Convert relative path from `tests` folder to absolute path.
  * @param relativePath - Path relative to tests folder
  */
 function relPathToAbsPath(relativePath: string): string {
@@ -139,11 +139,17 @@ export function readByteArrayFromFile(relativePath: string): Uint8Array {
   return fs.readFileSync(relPathToAbsPath(relativePath));
 }
 
-export function getBoundCheckSnarkKeys(loadSnarkSetupFromFiles: boolean): [LegoProvingKeyUncompressed, LegoVerifyingKeyUncompressed] {
+export function getBoundCheckSnarkKeys(
+  loadSnarkSetupFromFiles: boolean
+): [LegoProvingKeyUncompressed, LegoVerifyingKeyUncompressed] {
   let snarkProvingKey: LegoProvingKeyUncompressed, snarkVerifyingKey: LegoVerifyingKeyUncompressed;
   if (loadSnarkSetupFromFiles) {
-    snarkProvingKey = new LegoProvingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-proving-key-uncompressed.bin'));
-    snarkVerifyingKey = new LegoVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/bound-check-verifying-key-uncompressed.bin'));
+    snarkProvingKey = new LegoProvingKeyUncompressed(
+      readByteArrayFromFile('snark-setups/bound-check-proving-key-uncompressed.bin')
+    );
+    snarkVerifyingKey = new LegoVerifyingKeyUncompressed(
+      readByteArrayFromFile('snark-setups/bound-check-verifying-key-uncompressed.bin')
+    );
   } else {
     const pk = BoundCheckSnarkSetup();
     snarkProvingKey = pk.decompress();

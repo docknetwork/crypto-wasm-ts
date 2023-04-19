@@ -7,7 +7,8 @@ import {
   createWitnessEqualityMetaStatement,
   EncodeFunc,
   Encoder,
-  encodeRevealedMsgs, flattenObjectToKeyValuesList,
+  encodeRevealedMsgs,
+  flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
@@ -82,7 +83,7 @@ describe('Proving that yearly income calculated from monthly payslips is less th
     // Important to encode the bound with the same encoder as attributes
     salaryLimitEncoded = encoder.encodeMessage('salary.amount', salaryLimit);
 
-    // This should ideally be done by the verifier but the verifier can publish only the Circom program and
+    // This can be done by the verifier or the verifier can publish only the Circom program and
     // prover can check that the same R1CS and WASM are generated.
     r1cs = await parseR1CSFile('sum_12_less_than_public.r1cs');
     wasm = getWasmBytes('sum_12_less_than_public.wasm');

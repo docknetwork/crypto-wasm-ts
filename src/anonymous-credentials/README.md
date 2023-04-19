@@ -51,4 +51,3 @@ See these [tests](../../tests/anonymous-credentials/presentation.spec.ts) for ex
 - Blind credential issuance
 - Accumulator usage in general, i.e. without using credentialStatus field.
 - Pseudonyms in presentation
-- Circom predicates

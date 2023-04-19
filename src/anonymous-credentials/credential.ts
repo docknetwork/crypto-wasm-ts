@@ -65,7 +65,7 @@ export class Credential extends Versioned {
   static applyDefaultProofMetadataIfNeeded(s: object) {
     if (!s['proof']) {
       s['proof'] = {
-        type: CRED_PROOF_TYPE,
+        type: CRED_PROOF_TYPE
       };
     }
   }

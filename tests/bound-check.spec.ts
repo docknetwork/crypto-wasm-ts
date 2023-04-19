@@ -1,6 +1,4 @@
-import {
-  BoundCheckSnarkSetup
-} from '../src';
+import { BoundCheckSnarkSetup } from '../src';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkLegoProvingKey } from './utils';
 

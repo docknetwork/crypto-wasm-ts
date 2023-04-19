@@ -6,6 +6,7 @@ import {
   SaverProvingKey,
   SaverProvingKeyUncompressed
 } from '../saver';
+import { R1CS } from '@docknetwork/crypto-wasm';
 
 export type StringOrObject = string | object;
 // Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation.
@@ -18,7 +19,9 @@ export type PredicateParamType =
   | SaverProvingKey
   | SaverProvingKeyUncompressed
   | SaverEncryptionKey
-  | SaverChunkedCommitmentGens;
+  | SaverChunkedCommitmentGens
+  | R1CS
+  | Uint8Array;
 
 export type FlattenedSchema = [string[], object[]];
 export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext };

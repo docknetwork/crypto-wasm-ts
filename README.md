@@ -1286,7 +1286,11 @@ The workflow is this:
 4. Use the R1CS and WASM files from step 2 and proving key from step 3 to create a LegoGroth16 proof.
 5. Use the verification key from step 3 to verify the LegoGroth16 proof.
 
-The steps 1-3 are done by the verifier and the result of these steps, i.e. the program (`.circom` file), R1CS (`.r1cs` file), WASM (`.wasm` file), proving and verification key are shared with any potential prover (published or shared P2P). Step 4 is done by the prover and step 5 again by the verifier.
+The steps 1-3 are done by the verifier and the result of these steps, i.e. the program (`.circom` file), R1CS (`.r1cs` file), 
+WASM (`.wasm` file), proving and verification key are shared with any potential prover (published or shared P2P). Step 4 is 
+done by the prover and step 5 again by the verifier. Since R1CS and WASM files are harder to inspect that Circom programs, 
+to guard against a verifier tricking the prover to prove unintended predicates (and thus reveal more information than required), 
+a prover can take the Circom program and generate the R1CS and WASM files himself (do step 2 as well).
 
 See some of the following tests for Circom usage:
 

@@ -83,7 +83,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     encoder = new Encoder(undefined, defaultEncoder);
     encodedGrades = allowedGrades.map((g: string) => encoder.encodeDefault(g));
 
-    // This should ideally be done by the verifier but the verifier can publish only the Circom program and
+    // This can be done by the verifier or the verifier can publish only the Circom program and
     // prover can check that the same R1CS and WASM are generated.
     r1cs = await parseR1CSFile('set_membership_5_public.r1cs');
     wasm = getWasmBytes('set_membership_5_public.wasm');

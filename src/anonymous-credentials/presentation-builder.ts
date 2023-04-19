@@ -13,6 +13,8 @@ import {
   Witnesses
 } from '../composite-proof';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
+import { CircomInputs, getR1CS, ParsedR1CSFile } from '../r1cs';
+import { R1CS } from '@docknetwork/crypto-wasm';
 import { CredentialSchema, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
@@ -32,6 +34,8 @@ import {
   STATUS_TYPE_STR
 } from './types-and-consts';
 import {
+  ICircomPredicate,
+  ICircuitPrivateVars,
   IPresentedAttributeBounds,
   IPresentedAttributeVE,
   IPresentedStatus,
@@ -75,11 +79,18 @@ export class PresentationBuilder extends Versioned {
   // Each credential has only one accumulator for status
   credStatuses: Map<number, [AccumulatorWitness, Uint8Array, AccumulatorPublicKey, object]>;
 
-  // Bounds on attribute. The key of the map is the credential index and for the inner map is the attribute and value of map denotes min, max, an identifier of the snark proving key which the verifier knows as well to use corresponding verifying key
+  // Bounds on attribute. The key of the map is the credential index and for the inner map is the attribute and value of map
+  // denotes min, max, an identifier of the snark proving key which the verifier knows as well to use corresponding verifying key
   bounds: Map<number, Map<string, IPresentedAttributeBounds>>;
 
   // Verifiable encryption of attributes
   verifEnc: Map<number, Map<string, IPresentedAttributeVE>>;
+
+  // Predicates expressed as Circom programs. For each credential, store a tuple of R1CS, WASM bytes and attributes used in circuit
+  circomPredicates: Map<
+    number,
+    [[string, string | string[]][], [string, Uint8Array | Uint8Array[]][], string, string][]
+  >;
 
   // Parameters for predicates like snark proving key for bound check, verifiable encryption, Circom program
   predicateParams: Map<string, PredicateParamType>;
@@ -93,6 +104,7 @@ export class PresentationBuilder extends Versioned {
     this.bounds = new Map();
     this.verifEnc = new Map();
     this.predicateParams = new Map();
+    this.circomPredicates = new Map();
     this.spec = new PresentationSpecification();
   }
 
@@ -238,6 +250,36 @@ export class PresentationBuilder extends Versioned {
     this.verifEnc.set(credIdx, v);
   }
 
+  enforceCircomPredicate(
+    credIdx: number,
+    // For each circuit private variable name, give its corresponding attribute names
+    circuitPrivateVars: [string, string | string[]][],
+    // For each circuit public variable name, give its corresponding values
+    circuitPublicVars: [string, Uint8Array | Uint8Array[]][],
+    circuitId: string,
+    provingKeyId: string,
+    r1cs?: R1CS | ParsedR1CSFile,
+    wasmBytes?: Uint8Array,
+    provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
+  ) {
+    if (circuitPrivateVars.length == 0) {
+      throw new Error('Provide at least one private variable mapping');
+    }
+    this.validateCredIndex(credIdx);
+    this.updatePredicateParams(provingKeyId, provingKey);
+    this.updatePredicateParams(
+      PresentationBuilder.r1csParamId(circuitId),
+      r1cs !== undefined ? getR1CS(r1cs) : undefined
+    );
+    this.updatePredicateParams(PresentationBuilder.wasmParamId(circuitId), wasmBytes);
+    let predicates = this.circomPredicates.get(credIdx);
+    if (predicates === undefined) {
+      predicates = [];
+    }
+    predicates.push([circuitPrivateVars, circuitPublicVars, circuitId, provingKeyId]);
+    this.circomPredicates.set(credIdx, predicates);
+  }
+
   /**
    * Create a presentation
    */
@@ -266,7 +308,8 @@ export class PresentationBuilder extends Versioned {
     // Reset spec state (incase this method is called more than once)
     this.spec.reset();
 
-    // Create statements and witnesses for proving possession of each credential, i.e. proof of knowledge of BBS+ sigs
+    // Create statements and witnesses for proving possession of each credential, i.e. proof of knowledge of BBS+ sigs.
+    // Also collect encoded attributes used in any predicate
     for (let i = 0; i < numCreds; i++) {
       const cred = this.credentials[i][0];
       const schema = cred.schema as CredentialSchema;
@@ -369,12 +412,70 @@ export class PresentationBuilder extends Versioned {
         unrevealedMsgsEncoded.set(i, encodedAttrs);
       }
 
+      function circomAttrForSpec(attrName: string, encodedAttrs: Map<number, Uint8Array>): object {
+        const nameIdx = flattenedSchema[0].indexOf(attrName as string);
+        encodedAttrs.set(nameIdx, unrevealedAttrsEncoded.get(nameIdx) as Uint8Array);
+        return unflatten({ [attrName]: null });
+      }
+
+      // Get encoded attributes used in predicates expressed as Circom programs
+      let predicatesForSpec: ICircomPredicate[] | undefined;
+      const predicates = this.circomPredicates.get(i);
+      if (predicates !== undefined && predicates.length > 0) {
+        predicatesForSpec = [];
+        const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
+        predicates.forEach((predicate) => {
+          const privateVars = predicate[0];
+          const privateVarsForSpec: ICircuitPrivateVars[] = [];
+          privateVars.forEach(([varName, attrName]) => {
+            if (Array.isArray(attrName)) {
+              const attributeName = [];
+              attrName.forEach((a) => {
+                // @ts-ignore
+                attributeName.push(circomAttrForSpec(a, encodedAttrs));
+              });
+              privateVarsForSpec.push({
+                varName,
+                attributeName
+              });
+            } else {
+              privateVarsForSpec.push({
+                varName,
+                // @ts-ignore
+                attributeName: circomAttrForSpec(attrName, encodedAttrs)
+              });
+            }
+          });
+          // @ts-ignore
+          predicatesForSpec.push({
+            privateVars: privateVarsForSpec,
+            publicVars: predicate[1].map(([n, v]) => {
+              return {
+                varName: n,
+                value: v
+              };
+            }),
+            circuitId: predicate[2],
+            snarkKeyId: predicate[3]
+          });
+        });
+        unrevealedMsgsEncoded.set(i, encodedAttrs);
+      }
+
       const ver = revealedAtts[CRYPTO_VERSION_STR];
       const sch = revealedAtts[SCHEMA_STR];
       delete revealedAtts[CRYPTO_VERSION_STR];
       delete revealedAtts[SCHEMA_STR];
       delete revealedAtts[STATUS_STR];
-      this.spec.addPresentedCredential(ver, sch, revealedAtts, presentedStatus, attributeBounds, attributeEncs);
+      this.spec.addPresentedCredential(
+        ver,
+        sch,
+        revealedAtts,
+        presentedStatus,
+        attributeBounds,
+        attributeEncs,
+        predicatesForSpec
+      );
 
       flattenedSchemas.push(flattenedSchema);
     }
@@ -408,7 +509,7 @@ export class PresentationBuilder extends Versioned {
       metaStatements.addWitnessEquality(witnessEq);
     });
 
-    // For enforcing attribute equalities
+    // Create meta-statements for enforcing attribute equalities
     for (const eql of this.attributeEqualities) {
       metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
       this.spec.attributeEqualities.push(eql);
@@ -421,6 +522,7 @@ export class PresentationBuilder extends Versioned {
         const nameIdx = flattenedSchemas[cId][0].indexOf(name);
         dataSortedByNameIdx.push([nameIdx, name, b]);
       }
+      // Sort by attribute index so that both prover and verifier create statements and witnesses in the same order
       dataSortedByNameIdx.sort(function (a, b) {
         return a[0] - b[0];
       });
@@ -429,19 +531,7 @@ export class PresentationBuilder extends Versioned {
         const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
 
         const param = this.predicateParams.get(paramId);
-        if (param instanceof LegoProvingKey) {
-          if (!setupParamsTrk.isTrackingParam(paramId)) {
-            setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkProvingKey(param));
-          }
-        } else if (param instanceof LegoProvingKeyUncompressed) {
-          if (!setupParamsTrk.isTrackingParam(paramId)) {
-            setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkProvingKeyUncompressed(param));
-          }
-        } else {
-          throw new Error(
-            `Predicate param id ${paramId} (for credential index ${cId}) was expected to be a Legosnark proving key but was ${param}`
-          );
-        }
+        this.addLegoProvingKeyToTracker(paramId, param, setupParamsTrk, cId);
         const statement = Statement.boundCheckProverFromSetupParamRefs(
           transformedMin,
           transformedMax,
@@ -462,13 +552,14 @@ export class PresentationBuilder extends Versioned {
     // For adding ciphertexts corresponding to verifiably encrypted attributes in the presentation
     const credAttrToSId = new Map<number, Map<string, number>>();
 
-    // For enforcing attribute encryption
+    // For enforcing attribute encryption, add statement and witness
     for (const [cId, verEnc] of this.verifEnc.entries()) {
       const dataSortedByNameIdx: [number, string, IPresentedAttributeVE][] = [];
       for (const [name, ve] of verEnc.entries()) {
         const nameIdx = flattenedSchemas[cId][0].indexOf(name);
         dataSortedByNameIdx.push([nameIdx, name, ve]);
       }
+      // Sort by attribute index so that both prover and verifier create statements and witnesses in the same order
       dataSortedByNameIdx.sort(function (a, b) {
         return a[0] - b[0];
       });
@@ -513,6 +604,68 @@ export class PresentationBuilder extends Versioned {
       if (attrToSid.size > 0) {
         credAttrToSId.set(cId, attrToSid);
       }
+    }
+
+    // For enforcing Circom predicates, add statement and witness
+    for (const [cId, predicates] of this.circomPredicates.entries()) {
+      predicates.forEach(([privateVars, publicVars, circuitId, snarkKeyId]) => {
+        const snarkKey = this.predicateParams.get(snarkKeyId);
+        const r1csId = PresentationBuilder.r1csParamId(circuitId);
+        const r1cs = this.predicateParams.get(r1csId);
+        const wasmId = PresentationBuilder.wasmParamId(circuitId);
+        const wasm = this.predicateParams.get(wasmId);
+        this.addLegoProvingKeyToTracker(snarkKeyId, snarkKey, setupParamsTrk, cId);
+        if (r1cs === undefined || wasm === undefined) {
+          throw new Error('Both WASM and R1CS should be present');
+        }
+        if (!setupParamsTrk.isTrackingParam(r1csId)) {
+          setupParamsTrk.addForParamId(r1csId, SetupParam.r1cs(r1cs as R1CS));
+        }
+        if (!setupParamsTrk.isTrackingParam(wasmId)) {
+          setupParamsTrk.addForParamId(wasmId, SetupParam.bytes(wasm as Uint8Array));
+        }
+
+        const statement = Statement.r1csCircomProverFromSetupParamRefs(
+          setupParamsTrk.indexForParam(r1csId),
+          setupParamsTrk.indexForParam(wasmId),
+          setupParamsTrk.indexForParam(snarkKeyId)
+        );
+        const sIdx = statements.add(statement);
+
+        function addWitnessEqualityAndReturnEncodedAttr(name: string): Uint8Array {
+          const nameIdx = flattenedSchemas[cId][0].indexOf(name);
+          const witnessEq = new WitnessEqualityMetaStatement();
+          witnessEq.addWitnessRef(cId, nameIdx);
+          witnessEq.addWitnessRef(sIdx, predicateWitnessIdx++);
+          metaStatements.addWitnessEquality(witnessEq);
+          return unrevealedMsgsEncoded.get(cId)?.get(nameIdx) as Uint8Array;
+        }
+
+        let predicateWitnessIdx = 0;
+        const circuitInputs = new CircomInputs();
+        // For each private input, set its value as the corresponding attribute and set the witness equality
+        privateVars.forEach(([varName, name]) => {
+          if (Array.isArray(name)) {
+            circuitInputs.setPrivateArrayInput(
+              varName,
+              name.map((n) => {
+                return addWitnessEqualityAndReturnEncodedAttr(n);
+              })
+            );
+          } else {
+            circuitInputs.setPrivateInput(varName, addWitnessEqualityAndReturnEncodedAttr(name));
+          }
+        });
+
+        publicVars.forEach(([varName, value]) => {
+          if (Array.isArray(value)) {
+            circuitInputs.setPublicArrayInput(varName, value);
+          } else {
+            circuitInputs.setPublicInput(varName, value);
+          }
+        });
+        witnesses.add(Witness.r1csCircomWitness(circuitInputs));
+      });
     }
 
     // The version and spec are also added to the proof thus binding these to the proof cryptographically.
@@ -580,6 +733,35 @@ export class PresentationBuilder extends Versioned {
         throw new Error(`Predicate params already exists for id ${id}`);
       }
       this.predicateParams.set(id, val);
+    }
+  }
+
+  static r1csParamId(circuitId: string): string {
+    return `${circuitId}__r1cs__`;
+  }
+
+  static wasmParamId(circuitId: string): string {
+    return `${circuitId}__wasm__`;
+  }
+
+  private addLegoProvingKeyToTracker(
+    paramId: string,
+    param: PredicateParamType | undefined,
+    setupParamsTrk: SetupParamsTracker,
+    credentialIdx: number
+  ) {
+    if (param instanceof LegoProvingKey) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkProvingKey(param));
+      }
+    } else if (param instanceof LegoProvingKeyUncompressed) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkProvingKeyUncompressed(param));
+      }
+    } else {
+      throw new Error(
+        `Predicate param id ${paramId} (for credential index ${credentialIdx}) was expected to be a Legosnark proving key but was ${param}`
+      );
     }
   }
 }

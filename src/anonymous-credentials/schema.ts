@@ -644,16 +644,16 @@ export class CredentialSchema extends Versioned {
           properties: {
             id: {
               type: 'string'
-            },
-          },
+            }
+          }
         },
         proof: {
           type: 'object',
           properties: {
             type: {
               type: 'string'
-            },
-          },
+            }
+          }
         }
       }
     };

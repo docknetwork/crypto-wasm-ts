@@ -9,11 +9,14 @@ import {
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MembershipWitness,
-  PositiveAccumulator, randomFieldElement, SaverChunkedCommitmentGens,
+  PositiveAccumulator,
+  randomFieldElement,
+  SaverChunkedCommitmentGens,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
   SaverEncryptionKeyUncompressed,
-  SaverProvingKeyUncompressed, SaverSecretKey,
+  SaverProvingKeyUncompressed,
+  SaverSecretKey,
   SaverVerifyingKeyUncompressed,
   SignatureParamsG1
 } from '../../src';
@@ -29,7 +32,10 @@ import {
   REV_ID_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  SUBJECT_STR, dockSaverEncryptionGensUncompressed, TYPE_STR, STATUS_TYPE_STR
+  SUBJECT_STR,
+  dockSaverEncryptionGensUncompressed,
+  TYPE_STR,
+  STATUS_TYPE_STR
 } from '../../src';
 import {
   areUint8ArraysEqual,
@@ -41,7 +47,6 @@ import {
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 import { checkSchemaFromJson, getExampleBuilder, getExampleSchema } from './utils';
 import { Presentation } from '../../src/anonymous-credentials/presentation';
-
 
 // Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
 async function prefillAccumulator(
@@ -109,10 +114,18 @@ describe('Presentation creation and verification', () => {
     if (saverProvingKey === undefined) {
       if (loadSnarkSetupFromFiles) {
         saverSk = new SaverSecretKey(readByteArrayFromFile('snark-setups/saver-secret-key-16.bin'));
-        saverProvingKey = new SaverProvingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin'));
-        saverVerifyingKey = new SaverVerifyingKeyUncompressed(readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin'));
-        saverEk = new SaverEncryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin'));
-        saverDk = new SaverDecryptionKeyUncompressed(readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin'));
+        saverProvingKey = new SaverProvingKeyUncompressed(
+          readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin')
+        );
+        saverVerifyingKey = new SaverVerifyingKeyUncompressed(
+          readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin')
+        );
+        saverEk = new SaverEncryptionKeyUncompressed(
+          readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin')
+        );
+        saverDk = new SaverDecryptionKeyUncompressed(
+          readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin')
+        );
       } else {
         const encGens = dockSaverEncryptionGens();
         const [saverSnarkPk, saverSec, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
@@ -314,32 +327,28 @@ describe('Presentation creation and verification', () => {
 
     const schema5 = CredentialSchema.essential();
     const subjectItem = {
-        type: 'object',
-        properties: {
-          name: {type: "string"},
-          location: {
-            type: 'object',
-            properties: {
-              name: {type: "string"},
-              geo: {
-                type: 'object',
-                properties: {
-                  lat: {type: 'number',minimum: -90, multipleOf: 0.001},
-                  long: {type: 'number',minimum: -180, multipleOf: 0.001}
-                }
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        location: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            geo: {
+              type: 'object',
+              properties: {
+                lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+                long: { type: 'number', minimum: -180, multipleOf: 0.001 }
               }
             }
           }
         }
+      }
     };
 
     schema5.properties[SUBJECT_STR] = {
       type: 'array',
-      items: [
-        subjectItem,
-        subjectItem,
-        subjectItem
-      ]
+      items: [subjectItem, subjectItem, subjectItem]
     };
     const credSchema5 = new CredentialSchema(schema5);
     const builder5 = new CredentialBuilder();
@@ -383,40 +392,36 @@ describe('Presentation creation and verification', () => {
     const subjectItem2 = {
       type: 'object',
       properties: {
-        name: {type: "string"},
+        name: { type: 'string' },
         location: {
           type: 'object',
           properties: {
-            name: {type: "string"},
+            name: { type: 'string' },
             geo: {
-              type: "object",
+              type: 'object',
               properties: {
-                lat: {type: 'number', minimum: -90, multipleOf: 0.001},
-                long: {type: 'number', minimum: -180, multipleOf: 0.001}
+                lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+                long: { type: 'number', minimum: -180, multipleOf: 0.001 }
               }
-            },
+            }
           }
         }
       }
     };
     schema6.properties[SUBJECT_STR] = {
       type: 'array',
-      items: [
-        subjectItem2,
-        subjectItem2,
-        subjectItem2
-      ]
+      items: [subjectItem2, subjectItem2, subjectItem2]
     };
     schema6.properties['issuer'] = {
       type: 'object',
       properties: {
-        name: {type: "string"},
-        desc: {type: "string"},
-        logo: {type: "string"}
+        name: { type: 'string' },
+        desc: { type: 'string' },
+        logo: { type: 'string' }
       }
     };
-    schema6.properties['issuanceDate'] = {type: 'integer', minimum: 0};
-    schema6.properties['expirationDate'] = {type: 'integer', minimum: 0};
+    schema6.properties['issuanceDate'] = { type: 'integer', minimum: 0 };
+    schema6.properties['expirationDate'] = { type: 'integer', minimum: 0 };
 
     const credSchema6 = new CredentialSchema(schema6);
     const builder6 = new CredentialBuilder();
@@ -454,9 +459,9 @@ describe('Presentation creation and verification', () => {
       }
     ];
     builder6.setTopLevelField('issuer', {
-      name: "An issuer",
-      desc: "Just an issuer",
-      logo: "https://images.example-issuer.com/logo.png"
+      name: 'An issuer',
+      desc: 'Just an issuer',
+      logo: 'https://images.example-issuer.com/logo.png'
     });
     builder6.setTopLevelField('issuanceDate', 1662010849700);
     builder6.setTopLevelField('expirationDate', 1662011950934);
@@ -505,7 +510,7 @@ describe('Presentation creation and verification', () => {
     }
 
     function check(credBuilder: CredentialBuilder, sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2) {
-      const credential = credBuilder.sign(sk, undefined, {requireSameFieldsAsSchema: false});
+      const credential = credBuilder.sign(sk, undefined, { requireSameFieldsAsSchema: false });
       checkResult(credential.verify(pk1));
       const builder7 = new PresentationBuilder();
       expect(builder7.addCredential(credential, pk)).toEqual(0);
@@ -566,7 +571,14 @@ describe('Presentation creation and verification', () => {
   it('from a nested credential - `credential2`', () => {
     const builder2 = new PresentationBuilder();
     expect(builder2.addCredential(credential2, pk2)).toEqual(0);
-    builder2.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.location.country', 'credentialSubject.physical.BMI']));
+    builder2.markAttributesRevealed(
+      0,
+      new Set<string>([
+        'credentialSubject.fname',
+        'credentialSubject.location.country',
+        'credentialSubject.physical.BMI'
+      ])
+    );
     const pres2 = builder2.finalize();
 
     expect(pres2.spec.credentials.length).toEqual(1);
@@ -597,7 +609,11 @@ describe('Presentation creation and verification', () => {
     expect(builder3.addCredential(credential3, pk3)).toEqual(0);
     builder3.markAttributesRevealed(
       0,
-      new Set<string>(['credentialSubject.fname', 'credentialSubject.lessSensitive.location.country', 'credentialSubject.lessSensitive.department.location.name'])
+      new Set<string>([
+        'credentialSubject.fname',
+        'credentialSubject.lessSensitive.location.country',
+        'credentialSubject.lessSensitive.department.location.name'
+      ])
     );
     builder3.addAccumInfoForCredStatus(0, accumulator3Witness, accumulator3.accumulated, accumulator3Pk, {
       blockNo: 2010334
@@ -642,7 +658,14 @@ describe('Presentation creation and verification', () => {
     expect(builder4.addCredential(credential2, pk2)).toEqual(1);
 
     builder4.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
-    builder4.markAttributesRevealed(1, new Set<string>(['credentialSubject.fname', 'credentialSubject.location.country', 'credentialSubject.physical.BMI']));
+    builder4.markAttributesRevealed(
+      1,
+      new Set<string>([
+        'credentialSubject.fname',
+        'credentialSubject.location.country',
+        'credentialSubject.physical.BMI'
+      ])
+    );
 
     builder4.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
     builder4.markAttributesEqual([0, 'credentialSubject.city'], [1, 'credentialSubject.location.city']);
@@ -690,11 +713,18 @@ describe('Presentation creation and verification', () => {
 
     builder5.markAttributesRevealed(
       0,
-      new Set<string>(['credentialSubject.fname', 'credentialSubject.lessSensitive.location.country', 'credentialSubject.lessSensitive.department.location.name'])
+      new Set<string>([
+        'credentialSubject.fname',
+        'credentialSubject.lessSensitive.location.country',
+        'credentialSubject.lessSensitive.department.location.name'
+      ])
     );
     builder5.markAttributesRevealed(
       1,
-      new Set<string>(['credentialSubject.education.university.name', 'credentialSubject.education.university.registrationNumber'])
+      new Set<string>([
+        'credentialSubject.education.university.name',
+        'credentialSubject.education.university.registrationNumber'
+      ])
     );
 
     builder5.markAttributesEqual([0, 'credentialSubject.sensitive.SSN'], [1, 'credentialSubject.sensitive.SSN']);
@@ -765,14 +795,28 @@ describe('Presentation creation and verification', () => {
     expect(builder6.addCredential(credential4, pk4)).toEqual(3);
 
     builder6.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
-    builder6.markAttributesRevealed(1, new Set<string>(['credentialSubject.fname', 'credentialSubject.location.country', 'credentialSubject.physical.BMI']));
+    builder6.markAttributesRevealed(
+      1,
+      new Set<string>([
+        'credentialSubject.fname',
+        'credentialSubject.location.country',
+        'credentialSubject.physical.BMI'
+      ])
+    );
     builder6.markAttributesRevealed(
       2,
-      new Set<string>(['credentialSubject.fname', 'credentialSubject.lessSensitive.location.country', 'credentialSubject.lessSensitive.department.location.name'])
+      new Set<string>([
+        'credentialSubject.fname',
+        'credentialSubject.lessSensitive.location.country',
+        'credentialSubject.lessSensitive.department.location.name'
+      ])
     );
     builder6.markAttributesRevealed(
       3,
-      new Set<string>(['credentialSubject.education.university.name', 'credentialSubject.education.university.registrationNumber'])
+      new Set<string>([
+        'credentialSubject.education.university.name',
+        'credentialSubject.education.university.registrationNumber'
+      ])
     );
 
     builder6.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
@@ -855,7 +899,7 @@ describe('Presentation creation and verification', () => {
 
   it('from credentials and proving bounds on attributes', () => {
     setupBoundCheck();
-    
+
     const pkId = 'random';
 
     // ------------------- Presentation with 1 credential -----------------------------------------
@@ -934,13 +978,24 @@ describe('Presentation creation and verification', () => {
     expect(builder8.addCredential(credential3, pk3)).toEqual(2);
 
     builder8.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
-    builder8.markAttributesRevealed(1, new Set<string>(['credentialSubject.fname', 'credentialSubject.location.country']));
+    builder8.markAttributesRevealed(
+      1,
+      new Set<string>(['credentialSubject.fname', 'credentialSubject.location.country'])
+    );
     builder8.markAttributesRevealed(
       2,
-      new Set<string>(['credentialSubject.fname', 'credentialSubject.lessSensitive.location.country', 'credentialSubject.lessSensitive.department.location.name'])
+      new Set<string>([
+        'credentialSubject.fname',
+        'credentialSubject.lessSensitive.location.country',
+        'credentialSubject.lessSensitive.department.location.name'
+      ])
     );
 
-    builder8.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN'], [2, 'credentialSubject.sensitive.SSN']);
+    builder8.markAttributesEqual(
+      [0, 'credentialSubject.SSN'],
+      [1, 'credentialSubject.sensitive.SSN'],
+      [2, 'credentialSubject.sensitive.SSN']
+    );
     builder8.markAttributesEqual([0, 'credentialSubject.timeOfBirth'], [1, 'credentialSubject.timeOfBirth']);
     builder8.markAttributesEqual([0, 'credentialSubject.BMI'], [1, 'credentialSubject.physical.BMI']);
     builder8.markAttributesEqual([0, 'credentialSubject.score'], [1, 'credentialSubject.score']);
@@ -1051,7 +1106,17 @@ describe('Presentation creation and verification', () => {
     expect(builder9.addCredential(credential1, pk1)).toEqual(0);
 
     builder9.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
-    builder9.verifiablyEncrypt(0, 'credentialSubject.SSN', chunkBitSize, commGensId, ekId, snarkPkId, commGens, saverEk, saverProvingKey);
+    builder9.verifiablyEncrypt(
+      0,
+      'credentialSubject.SSN',
+      chunkBitSize,
+      commGensId,
+      ekId,
+      snarkPkId,
+      commGens,
+      saverEk,
+      saverProvingKey
+    );
 
     const pres1 = builder9.finalize();
 
@@ -1117,13 +1182,24 @@ describe('Presentation creation and verification', () => {
     expect(builder10.addCredential(credential3, pk3)).toEqual(2);
 
     builder10.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
-    builder10.markAttributesRevealed(1, new Set<string>(['credentialSubject.fname', 'credentialSubject.location.country']));
+    builder10.markAttributesRevealed(
+      1,
+      new Set<string>(['credentialSubject.fname', 'credentialSubject.location.country'])
+    );
     builder10.markAttributesRevealed(
       2,
-      new Set<string>(['credentialSubject.fname', 'credentialSubject.lessSensitive.location.country', 'credentialSubject.lessSensitive.department.location.name'])
+      new Set<string>([
+        'credentialSubject.fname',
+        'credentialSubject.lessSensitive.location.country',
+        'credentialSubject.lessSensitive.department.location.name'
+      ])
     );
 
-    builder10.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN'], [2, 'credentialSubject.sensitive.SSN']);
+    builder10.markAttributesEqual(
+      [0, 'credentialSubject.SSN'],
+      [1, 'credentialSubject.sensitive.SSN'],
+      [2, 'credentialSubject.sensitive.SSN']
+    );
     builder10.markAttributesEqual([0, 'credentialSubject.userId'], [1, 'credentialSubject.sensitive.userId']);
 
     builder10.addAccumInfoForCredStatus(2, accumulator3Witness, accumulator3.accumulated, accumulator3Pk, {
@@ -1259,13 +1335,24 @@ describe('Presentation creation and verification', () => {
     expect(builder11.addCredential(credential3, pk3)).toEqual(2);
 
     builder11.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
-    builder11.markAttributesRevealed(1, new Set<string>(['credentialSubject.fname', 'credentialSubject.location.country']));
+    builder11.markAttributesRevealed(
+      1,
+      new Set<string>(['credentialSubject.fname', 'credentialSubject.location.country'])
+    );
     builder11.markAttributesRevealed(
       2,
-      new Set<string>(['credentialSubject.fname', 'credentialSubject.lessSensitive.location.country', 'credentialSubject.lessSensitive.department.location.name'])
+      new Set<string>([
+        'credentialSubject.fname',
+        'credentialSubject.lessSensitive.location.country',
+        'credentialSubject.lessSensitive.department.location.name'
+      ])
     );
 
-    builder11.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN'], [2, 'credentialSubject.sensitive.SSN']);
+    builder11.markAttributesEqual(
+      [0, 'credentialSubject.SSN'],
+      [1, 'credentialSubject.sensitive.SSN'],
+      [2, 'credentialSubject.sensitive.SSN']
+    );
     builder11.markAttributesEqual([0, 'credentialSubject.timeOfBirth'], [1, 'credentialSubject.timeOfBirth']);
     builder11.markAttributesEqual([0, 'credentialSubject.BMI'], [1, 'credentialSubject.physical.BMI']);
     builder11.markAttributesEqual([0, 'credentialSubject.score'], [1, 'credentialSubject.score']);
@@ -1280,7 +1367,14 @@ describe('Presentation creation and verification', () => {
     expect(minTime).toBeLessThan(credential1.subject['timeOfBirth']);
     // @ts-ignore
     expect(maxTime).toBeGreaterThan(credential1.subject['timeOfBirth']);
-    builder11.enforceBounds(0, 'credentialSubject.timeOfBirth', minTime, maxTime, boundCheckSnarkId, boundCheckProvingKey);
+    builder11.enforceBounds(
+      0,
+      'credentialSubject.timeOfBirth',
+      minTime,
+      maxTime,
+      boundCheckSnarkId,
+      boundCheckProvingKey
+    );
 
     const [minBMI, maxBMI] = [10, 40];
     // @ts-ignore
@@ -1301,14 +1395,26 @@ describe('Presentation creation and verification', () => {
     expect(minLat).toBeLessThan(credential3.subject.lessSensitive.department.location.geo.lat);
     // @ts-ignore
     expect(maxLat).toBeGreaterThan(credential3.subject.lessSensitive.department.location.geo.lat);
-    builder11.enforceBounds(2, 'credentialSubject.lessSensitive.department.location.geo.lat', minLat, maxLat, boundCheckSnarkId);
+    builder11.enforceBounds(
+      2,
+      'credentialSubject.lessSensitive.department.location.geo.lat',
+      minLat,
+      maxLat,
+      boundCheckSnarkId
+    );
 
     const [minLong, maxLong] = [-10, 85];
     // @ts-ignore
     expect(minLong).toBeLessThan(credential3.subject.lessSensitive.department.location.geo.long);
     // @ts-ignore
     expect(maxLong).toBeGreaterThan(credential3.subject.lessSensitive.department.location.geo.long);
-    builder11.enforceBounds(2, 'credentialSubject.lessSensitive.department.location.geo.long', minLong, maxLong, boundCheckSnarkId);
+    builder11.enforceBounds(
+      2,
+      'credentialSubject.lessSensitive.department.location.geo.long',
+      minLong,
+      maxLong,
+      boundCheckSnarkId
+    );
 
     builder11.verifiablyEncrypt(
       0,
@@ -1418,7 +1524,15 @@ describe('Presentation creation and verification', () => {
   it('from a credential with subject as an array `credential5`', () => {
     const builder1 = new PresentationBuilder();
     expect(builder1.addCredential(credential5, pk1)).toEqual(0);
-    builder1.markAttributesRevealed(0, new Set<string>(['credentialSubject.0.name', 'credentialSubject.1.name', 'credentialSubject.1.location.name', 'credentialSubject.2.location.name']));
+    builder1.markAttributesRevealed(
+      0,
+      new Set<string>([
+        'credentialSubject.0.name',
+        'credentialSubject.1.name',
+        'credentialSubject.1.location.name',
+        'credentialSubject.2.location.name'
+      ])
+    );
     const pres1 = builder1.finalize();
 
     expect(pres1.spec.credentials.length).toEqual(1);
@@ -1430,12 +1544,12 @@ describe('Presentation creation and verification', () => {
         {
           name: 'Random-1',
           location: {
-            name: 'Somewhere-1',
+            name: 'Somewhere-1'
           }
         },
         {
           location: {
-            name: 'Somewhere-2',
+            name: 'Somewhere-2'
           }
         }
       ]
@@ -1449,14 +1563,29 @@ describe('Presentation creation and verification', () => {
 
     const builder2 = new PresentationBuilder();
     expect(builder2.addCredential(credential5, pk1)).toEqual(0);
-    builder2.markAttributesRevealed(0, new Set<string>(['credentialSubject.0.name', 'credentialSubject.1.name', 'credentialSubject.1.location.name', 'credentialSubject.2.location.name']));
+    builder2.markAttributesRevealed(
+      0,
+      new Set<string>([
+        'credentialSubject.0.name',
+        'credentialSubject.1.name',
+        'credentialSubject.1.location.name',
+        'credentialSubject.2.location.name'
+      ])
+    );
 
     const [minLat0, maxLat0] = [-30, 50];
     // @ts-ignore
     expect(minLat0).toBeLessThan(credential5.subject[0].location.geo.lat);
     // @ts-ignore
     expect(maxLat0).toBeGreaterThan(credential5.subject[0].location.geo.lat);
-    builder2.enforceBounds(0, 'credentialSubject.0.location.geo.lat', minLat0, maxLat0, boundCheckSnarkId, boundCheckProvingKey);
+    builder2.enforceBounds(
+      0,
+      'credentialSubject.0.location.geo.lat',
+      minLat0,
+      maxLat0,
+      boundCheckSnarkId,
+      boundCheckProvingKey
+    );
 
     const [minLong0, maxLong0] = [1, 10.5];
     // @ts-ignore
@@ -1503,12 +1632,12 @@ describe('Presentation creation and verification', () => {
         {
           name: 'Random-1',
           location: {
-            name: 'Somewhere-1',
+            name: 'Somewhere-1'
           }
         },
         {
           location: {
-            name: 'Somewhere-2',
+            name: 'Somewhere-2'
           }
         }
       ]
@@ -1579,7 +1708,16 @@ describe('Presentation creation and verification', () => {
   it('from a credential with subject as an array and top-level custom fields `credential6`', () => {
     const builder1 = new PresentationBuilder();
     expect(builder1.addCredential(credential6, pk1)).toEqual(0);
-    builder1.markAttributesRevealed(0, new Set<string>(['credentialSubject.0.name', 'credentialSubject.1.name', 'credentialSubject.1.location.name', 'credentialSubject.2.location.name', 'issuer.desc']));
+    builder1.markAttributesRevealed(
+      0,
+      new Set<string>([
+        'credentialSubject.0.name',
+        'credentialSubject.1.name',
+        'credentialSubject.1.location.name',
+        'credentialSubject.2.location.name',
+        'issuer.desc'
+      ])
+    );
     const pres1 = builder1.finalize();
 
     expect(pres1.spec.credentials.length).toEqual(1);
@@ -1591,12 +1729,12 @@ describe('Presentation creation and verification', () => {
         {
           name: 'Random-1',
           location: {
-            name: 'Somewhere-1',
+            name: 'Somewhere-1'
           }
         },
         {
           location: {
-            name: 'Somewhere-2',
+            name: 'Somewhere-2'
           }
         }
       ],
@@ -1613,14 +1751,30 @@ describe('Presentation creation and verification', () => {
 
     const builder2 = new PresentationBuilder();
     expect(builder2.addCredential(credential6, pk1)).toEqual(0);
-    builder2.markAttributesRevealed(0, new Set<string>(['credentialSubject.0.name', 'credentialSubject.1.name', 'credentialSubject.1.location.name', 'credentialSubject.2.location.name', 'issuer.desc']));
+    builder2.markAttributesRevealed(
+      0,
+      new Set<string>([
+        'credentialSubject.0.name',
+        'credentialSubject.1.name',
+        'credentialSubject.1.location.name',
+        'credentialSubject.2.location.name',
+        'issuer.desc'
+      ])
+    );
 
     const [minIssuanceDate, maxIssuanceDate] = [1662010848700, 1662010849900];
     // @ts-ignore
     expect(minIssuanceDate).toBeLessThan(credential6.getTopLevelField('issuanceDate'));
     // @ts-ignore
     expect(maxIssuanceDate).toBeGreaterThan(credential6.getTopLevelField('issuanceDate'));
-    builder2.enforceBounds(0, 'issuanceDate', minIssuanceDate, maxIssuanceDate, boundCheckSnarkId, boundCheckProvingKey);
+    builder2.enforceBounds(
+      0,
+      'issuanceDate',
+      minIssuanceDate,
+      maxIssuanceDate,
+      boundCheckSnarkId,
+      boundCheckProvingKey
+    );
 
     const [minExpDate, maxExpDate] = [1662011940000, 1662011980000];
     // @ts-ignore
@@ -1638,12 +1792,12 @@ describe('Presentation creation and verification', () => {
         {
           name: 'Random-1',
           location: {
-            name: 'Somewhere-1',
+            name: 'Somewhere-1'
           }
         },
         {
           location: {
-            name: 'Somewhere-2',
+            name: 'Somewhere-2'
           }
         }
       ],
@@ -1672,5 +1826,5 @@ describe('Presentation creation and verification', () => {
     const recreatedPres = Presentation.fromJSON(presJson);
     checkResult(recreatedPres.verify([pk1], undefined, pp));
     expect(presJson).toEqual(recreatedPres.toJSON());
-  })
+  });
 });

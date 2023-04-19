@@ -1,5 +1,5 @@
 import { Versioned } from './versioned';
-import { IPresentedCredential, PresentationSpecification } from './presentation-specification';
+import { ICircomPredicate, IPresentedCredential, PresentationSpecification } from './presentation-specification';
 import {
   CompositeProofG1,
   MetaStatements,
@@ -41,6 +41,8 @@ import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import { SaverCiphertext } from '../saver';
 import b58 from 'bs58';
 import { SetupParamsTracker } from './setup-params-tracker';
+import { PresentationBuilder } from './presentation-builder';
+import { flattenObjectToKeyValuesList } from '../util';
 
 export class Presentation extends Versioned {
   readonly spec: PresentationSpecification;
@@ -72,12 +74,14 @@ export class Presentation extends Versioned {
    *
    * @param publicKeys - Array of keys in the order of credentials in the presentation.
    * @param accumulatorPublicKeys - Mapping credential index -> accumulator public key
-   * @param predicateParams
+   * @param predicateParams - Setup params for various predicates
+   * @param circomOutputs - Values for the outputs variables of the Circom programs used for predicates
    */
   verify(
     publicKeys: BBSPlusPublicKeyG2[],
     accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
-    predicateParams?: Map<string, PredicateParamType>
+    predicateParams?: Map<string, PredicateParamType>,
+    circomOutputs?: Map<number, Uint8Array[][]>
   ): VerifyResult {
     const numCreds = this.spec.credentials.length;
     if (publicKeys.length != numCreds) {
@@ -97,6 +101,7 @@ export class Presentation extends Versioned {
 
     const boundsAux: [number, object][] = [];
     const verEncAux: [number, object][] = [];
+    const circomAux: [number, ICircomPredicate[]][] = [];
 
     const setupParamsTrk = new SetupParamsTracker();
 
@@ -132,6 +137,9 @@ export class Presentation extends Versioned {
       if (presentedCred.verifiableEncryptions !== undefined) {
         verEncAux.push([i, presentedCred.verifiableEncryptions]);
       }
+      if (presentedCred.circomPredicates !== undefined) {
+        circomAux.push([i, presentedCred.circomPredicates]);
+      }
     }
 
     credStatusAux.forEach(([i, t, accum]) => {
@@ -162,19 +170,7 @@ export class Presentation extends Versioned {
 
         const paramId = bounds[1][j]['paramId'];
         const param = predicateParams?.get(paramId);
-        if (param instanceof LegoVerifyingKey) {
-          if (!setupParamsTrk.isTrackingParam(paramId)) {
-            setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkVerifyingKey(param));
-          }
-        } else if (param instanceof LegoVerifyingKeyUncompressed) {
-          if (!setupParamsTrk.isTrackingParam(paramId)) {
-            setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkVerifyingKeyUncompressed(param));
-          }
-        } else {
-          throw new Error(
-            `Predicate param id ${paramId} was expected to be a Legosnark verifying key but was ${param}`
-          );
-        }
+        Presentation.addLegoVerifyingKeyToTracker(paramId, param, setupParamsTrk);
         const statement = Statement.boundCheckVerifierFromSetupParamRefs(
           transformedMin,
           transformedMax,
@@ -239,6 +235,49 @@ export class Presentation extends Versioned {
         witnessEq.addWitnessRef(i, nameIdx);
         witnessEq.addWitnessRef(sIdx, 0);
         metaStatements.addWitnessEquality(witnessEq);
+      });
+    });
+
+    circomAux.forEach(([i, predicates]) => {
+      const outputs = circomOutputs?.get(i);
+      predicates.forEach((pred, j) => {
+        const param = predicateParams?.get(pred.snarkKeyId);
+        Presentation.addLegoVerifyingKeyToTracker(pred.snarkKeyId, param, setupParamsTrk);
+
+        let publicInputs = pred.publicVars.flatMap((pv) => {
+          return pv.value;
+        });
+        if (outputs !== undefined && outputs.length > j) {
+          publicInputs = outputs[j].concat(publicInputs);
+        }
+        const unqId = `circom-outputs-${i}__${j}`;
+        setupParamsTrk.addForParamId(unqId, SetupParam.fieldElementVec(publicInputs));
+
+        const statement = Statement.r1csCircomVerifierFromSetupParamRefs(
+          setupParamsTrk.indexForParam(unqId),
+          setupParamsTrk.indexForParam(pred.snarkKeyId)
+        );
+        const sIdx = statements.add(statement);
+
+        function addWitnessEquality(attributeName: object) {
+          const attr = flattenObjectToKeyValuesList(attributeName) as object;
+          const nameIdx = flattenedSchemas[i][0].indexOf(attr[0][0]);
+          const witnessEq = new WitnessEqualityMetaStatement();
+          witnessEq.addWitnessRef(i, nameIdx);
+          witnessEq.addWitnessRef(sIdx, predicateWitnessIdx++);
+          metaStatements.addWitnessEquality(witnessEq);
+        }
+
+        let predicateWitnessIdx = 0;
+        pred.privateVars.forEach((privateVars) => {
+          if (Array.isArray(privateVars.attributeName)) {
+            privateVars.attributeName.forEach((a) => {
+              addWitnessEquality(a)
+            });
+          } else {
+            addWitnessEquality(privateVars.attributeName)
+          }
+        });
       });
     });
 
@@ -342,7 +381,8 @@ export class Presentation extends Versioned {
         cred['revealedAttributes'],
         status,
         cred['bounds'],
-        cred['verifiableEncryptions']
+        cred['verifiableEncryptions'],
+        cred['circomPredicates']
       );
     }
     presSpec.attributeEqualities = spec['attributeEqualities'];
@@ -382,5 +422,23 @@ export class Presentation extends Versioned {
         Presentation.fromBs58(v[k], ret[k]);
       }
     });
+  }
+
+  private static addLegoVerifyingKeyToTracker(
+    paramId: string,
+    param: PredicateParamType | undefined,
+    setupParamsTrk: SetupParamsTracker
+  ) {
+    if (param instanceof LegoVerifyingKey) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkVerifyingKey(param));
+      }
+    } else if (param instanceof LegoVerifyingKeyUncompressed) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkVerifyingKeyUncompressed(param));
+      }
+    } else {
+      throw new Error(`Predicate param id ${paramId} was expected to be a Legosnark verifying key but was ${param}`);
+    }
   }
 }
