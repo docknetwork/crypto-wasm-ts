@@ -121,7 +121,7 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
         });
       }
 
-      const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
       const statementsProver = new Statements();
       statementsProver.add(statement1);
 
@@ -129,7 +129,7 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
       const proofSpecProver = new ProofSpecG1(statementsProver, new MetaStatements());
       expect(proofSpecProver.isValid()).toEqual(true);
 
-      const witness1 = Witness.bbsSignature(signed.signature, unrevealedMsgs, false);
+      const witness1 = Witness.bbsPlusSignature(signed.signature, unrevealedMsgs, false);
       const witnesses = new Witnesses();
       witnesses.add(witness1);
 
@@ -141,7 +141,7 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
       const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
       checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-      const statement2 = Statement.bbsSignature(sigParams, pk, revealedMsgsFromVerifier, false);
+      const statement2 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgsFromVerifier, false);
       const statementsVerifier = new Statements();
       statementsVerifier.add(statement2);
 
@@ -212,7 +212,7 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
     );
     expect(revealedMsgsRaw1).toEqual({ fname: 'John', BMI: 23.25, country: 'USA' });
 
-    const statement1 = Statement.bbsSignature(sigParams1, pk1, revealedMsgs1, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
@@ -230,7 +230,7 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
       score: -13.5
     });
 
-    const statement2 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
+    const statement2 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
 
     const statementsProver = new Statements();
     statementsProver.add(statement1);
@@ -240,8 +240,8 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
     const proofSpecProver = new ProofSpecG1(statementsProver, new MetaStatements());
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsSignature(signed1.signature, unrevealedMsgs1, false);
-    const witness2 = Witness.bbsSignature(signed2.signature, unrevealedMsgs2, false);
+    const witness1 = Witness.bbsPlusSignature(signed1.signature, unrevealedMsgs1, false);
+    const witness2 = Witness.bbsPlusSignature(signed2.signature, unrevealedMsgs2, false);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
     witnesses.add(witness2);
@@ -254,8 +254,8 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
     const revealedMsgs2FromVerifier = encodeRevealedMsgs(revealedMsgsRaw2, attributes2Struct, encoder);
     checkMapsEqual(revealedMsgs2, revealedMsgs2FromVerifier);
 
-    const statement3 = Statement.bbsSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
-    const statement4 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
+    const statement3 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
+    const statement4 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
     const statementsVerifier = new Statements();
     statementsVerifier.add(statement3);
     statementsVerifier.add(statement4);
@@ -347,7 +347,7 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
     );
     expect(revealedMsgsRaw1).toEqual({ fname: 'John', BMI: 23.25, country: 'USA' });
 
-    const statement1 = Statement.bbsSignature(sigParams1, pk1, revealedMsgs1, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
@@ -364,7 +364,7 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
       }
     });
 
-    const statement2 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
+    const statement2 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
 
     const [revealedMsgs3, unrevealedMsgs3, revealedMsgsRaw3] = getRevealedAndUnrevealed(
       attributes3,
@@ -387,7 +387,7 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
       rank: 6
     });
 
-    const statement3 = Statement.bbsSignature(sigParams3, pk3, revealedMsgs3, false);
+    const statement3 = Statement.bbsPlusSignature(sigParams3, pk3, revealedMsgs3, false);
 
     const statementsProver = new Statements();
     const sIdx1 = statementsProver.add(statement1);
@@ -480,9 +480,9 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsSignature(signed1.signature, unrevealedMsgs1, false);
-    const witness2 = Witness.bbsSignature(signed2.signature, unrevealedMsgs2, false);
-    const witness3 = Witness.bbsSignature(signed3.signature, unrevealedMsgs3, false);
+    const witness1 = Witness.bbsPlusSignature(signed1.signature, unrevealedMsgs1, false);
+    const witness2 = Witness.bbsPlusSignature(signed2.signature, unrevealedMsgs2, false);
+    const witness3 = Witness.bbsPlusSignature(signed3.signature, unrevealedMsgs3, false);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
     witnesses.add(witness2);
@@ -498,9 +498,9 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
     const revealedMsgs3FromVerifier = encodeRevealedMsgs(revealedMsgsRaw3, attributes3Struct, encoder);
     checkMapsEqual(revealedMsgs3, revealedMsgs3FromVerifier);
 
-    const statement4 = Statement.bbsSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
-    const statement5 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
-    const statement6 = Statement.bbsSignature(sigParams3, pk3, revealedMsgs3FromVerifier, false);
+    const statement4 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
+    const statement5 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
+    const statement6 = Statement.bbsPlusSignature(sigParams3, pk3, revealedMsgs3FromVerifier, false);
     const statementsVerifier = new Statements();
     const sIdx4 = statementsVerifier.add(statement4);
     const sIdx5 = statementsVerifier.add(statement5);

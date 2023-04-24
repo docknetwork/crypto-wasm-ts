@@ -123,7 +123,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'John' });
 
-    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -141,7 +141,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsSignature(signed1.signature, unrevealedMsgs, false);
+    const witness1 = Witness.bbsPlusSignature(signed1.signature, unrevealedMsgs, false);
 
     const inputs = new CircomInputs();
     inputs.setPrivateInput('x', signed1.encodedMessages['grade']);
@@ -158,7 +158,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement3 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement3 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
     // generateFieldElementFromNumber(1) because membership is being check, use generateFieldElementFromNumber(0) for checking non-membership
     const pub = [generateFieldElementFromNumber(1), ...encodedGrades];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
@@ -198,7 +198,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'Carol' });
 
-    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -216,7 +216,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsSignature(signed2.signature, unrevealedMsgs, false);
+    const witness1 = Witness.bbsPlusSignature(signed2.signature, unrevealedMsgs, false);
 
     const inputs = new CircomInputs();
     inputs.setPrivateInput('x', signed2.encodedMessages['grade']);
@@ -233,7 +233,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement3 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement3 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
     const pub = [generateFieldElementFromNumber(1), ...encodedGrades];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
 

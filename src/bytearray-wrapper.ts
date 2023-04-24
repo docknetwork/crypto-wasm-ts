@@ -11,6 +11,10 @@ export class BytearrayWrapper {
     this.value = value;
   }
 
+  static fromBytes(bytes: Uint8Array) {
+    return new this(bytes)
+  }
+
   /**
    * Return the wrapped bytearray
    */

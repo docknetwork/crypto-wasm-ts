@@ -90,7 +90,7 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
     // User wants to prove knowledge of 2 signatures and hence 2 statements
 
     // Statement for signature of 1st signer, not revealing any messages to the verifier
-    const statement1 = Statement.bbsSignature(params1, pk1, new Map(), true);
+    const statement1 = Statement.bbsPlusSignature(params1, pk1, new Map(), true);
 
     // Statement for signature of 2nd signer, revealing 1 message to the verifier
     const revealedMsgIndices: Set<number> = new Set();
@@ -104,7 +104,7 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
         unrevealedMsgs2.set(i, messages2[i]);
       }
     }
-    const statement2 = Statement.bbsSignature(params2, pk2, revealedMsgs, true);
+    const statement2 = Statement.bbsPlusSignature(params2, pk2, revealedMsgs, true);
 
     const statements = new Statements();
     const sId1 = statements.add(statement1);
@@ -133,10 +133,10 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
 
     // Using the messages and signature from 1st signer
     const unrevealedMsgs1 = new Map(messages1.map((m, i) => [i, m]));
-    const witness1 = Witness.bbsSignature(sig1, unrevealedMsgs1, true);
+    const witness1 = Witness.bbsPlusSignature(sig1, unrevealedMsgs1, true);
 
     // Using the messages and signature from 2nd signer
-    const witness2 = Witness.bbsSignature(sig2, unrevealedMsgs2, true);
+    const witness2 = Witness.bbsPlusSignature(sig2, unrevealedMsgs2, true);
 
     const witnesses = new Witnesses();
     witnesses.add(witness1);

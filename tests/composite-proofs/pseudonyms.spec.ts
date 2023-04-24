@@ -150,7 +150,7 @@ describe('Register using pseudonym not bound to any attributes', () => {
 
     // User using its pseudonym at service provider 1
     {
-      const statement1 = Statement.bbsSignature(sigParams, sigPk, new Map(), false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, new Map(), false);
       const statement2 = Statement.pseudonym(pseudonym1, base1);
       const statements = new Statements();
       statements.add(statement1);
@@ -158,7 +158,7 @@ describe('Register using pseudonym not bound to any attributes', () => {
 
       const proofSpec = new ProofSpecG1(statements, new MetaStatements());
 
-      const witness1 = Witness.bbsSignature(sig, unrevealed, false);
+      const witness1 = Witness.bbsPlusSignature(sig, unrevealed, false);
       const witness2 = Witness.pseudonym(secretKey);
       const witnesses = new Witnesses();
       witnesses.add(witness1);
@@ -171,7 +171,7 @@ describe('Register using pseudonym not bound to any attributes', () => {
 
     // User using its pseudonym at service provider 2
     {
-      const statement1 = Statement.bbsSignature(sigParams, sigPk, new Map(), false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, new Map(), false);
       const statement2 = Statement.pseudonym(pseudonym2, base2);
       const statements = new Statements();
       statements.add(statement1);
@@ -179,7 +179,7 @@ describe('Register using pseudonym not bound to any attributes', () => {
 
       const proofSpec = new ProofSpecG1(statements, new MetaStatements());
 
-      const witness1 = Witness.bbsSignature(sig, unrevealed, false);
+      const witness1 = Witness.bbsPlusSignature(sig, unrevealed, false);
       const witness2 = Witness.pseudonym(secretKey);
       const witnesses = new Witnesses();
       witnesses.add(witness1);
@@ -304,7 +304,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
     // User using its pseudonym at service provider 1
     {
-      const statement1 = Statement.bbsSignature(sigParams, sigPk, revealed, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealed, false);
       const statement2 = Statement.attributeBoundPseudonym(pseudonym1, bases1ForAttributes, base1ForSecretKey);
       const statements = new Statements();
       statements.add(statement1);
@@ -322,7 +322,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
 
-      const witness1 = Witness.bbsSignature(sig, unrevealed, false);
+      const witness1 = Witness.bbsPlusSignature(sig, unrevealed, false);
       const witness2 = Witness.attributeBoundPseudonym(attributesPseudonym1, secretKey);
       const witnesses = new Witnesses();
       witnesses.add(witness1);
@@ -335,7 +335,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
     // User using its pseudonym at service provider 2
     {
-      const statement1 = Statement.bbsSignature(sigParams, sigPk, revealed, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealed, false);
       const statement2 = Statement.attributeBoundPseudonym(pseudonym2, bases2ForAttributes, base2ForSecretKey);
       const statements = new Statements();
       statements.add(statement1);
@@ -361,7 +361,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
 
-      const witness1 = Witness.bbsSignature(sig, unrevealed, false);
+      const witness1 = Witness.bbsPlusSignature(sig, unrevealed, false);
       const witness2 = Witness.attributeBoundPseudonym(attributesPseudonym2, secretKey);
       const witnesses = new Witnesses();
       witnesses.add(witness1);
@@ -374,7 +374,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
     // User using its pseudonym at service provider 3
     {
-      const statement1 = Statement.bbsSignature(sigParams, sigPk, revealed, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealed, false);
       const statement2 = Statement.attributeBoundPseudonym(pseudonym3, bases3ForAttributes);
       const statements = new Statements();
       statements.add(statement1);
@@ -400,7 +400,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
 
-      const witness1 = Witness.bbsSignature(sig, unrevealed, false);
+      const witness1 = Witness.bbsPlusSignature(sig, unrevealed, false);
       const witness2 = Witness.attributeBoundPseudonym(attributesPseudonym3);
       const witnesses = new Witnesses();
       witnesses.add(witness1);

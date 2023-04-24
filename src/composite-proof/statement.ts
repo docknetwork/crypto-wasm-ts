@@ -1,11 +1,11 @@
 import {
   generateAccumulatorMembershipStatement,
   generatePedersenCommitmentG1Statement,
-  generatePoKBBSSignatureStatement,
+  generatePoKBBSPlusSignatureStatement,
   generateAccumulatorNonMembershipStatement,
   generateWitnessEqualityMetaStatement,
   generatePedersenCommitmentG1StatementFromParamRefs,
-  generatePoKBBSSignatureStatementFromParamRefs,
+  generatePoKBBSPlusSignatureStatementFromParamRefs,
   generateAccumulatorMembershipStatementFromParamRefs,
   generateAccumulatorNonMembershipStatementFromParamRefs,
   generateSaverProverStatement,
@@ -76,30 +76,30 @@ export class Statement {
    * @param revealedMessages
    * @param encodeMessages
    */
-  static bbsSignature(
+  static bbsPlusSignature(
     sigParams: SignatureParamsG1,
     publicKey: BBSPlusPublicKeyG2,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSSignatureStatement(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
+    return generatePoKBBSPlusSignatureStatement(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
   }
 
   /**
-   * Same as `Statement.bbsSignature` but does not take the parameters directly but a reference to them as indices in the
+   * Same as `Statement.bbsPlusSignature` but does not take the parameters directly but a reference to them as indices in the
    * array of `SetupParam`
    * @param sigParamsRef
    * @param publicKeyRef
    * @param revealedMessages
    * @param encodeMessages
    */
-  static bbsSignatureFromSetupParamRefs(
+  static bbsPlusSignatureFromSetupParamRefs(
     sigParamsRef: number,
     publicKeyRef: number,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSSignatureStatementFromParamRefs(sigParamsRef, publicKeyRef, revealedMessages, encodeMessages);
+    return generatePoKBBSPlusSignatureStatementFromParamRefs(sigParamsRef, publicKeyRef, revealedMessages, encodeMessages);
   }
 
   /**

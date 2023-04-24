@@ -157,8 +157,8 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
 
     const proverSetupParams: SetupParam[] = [];
     // Setup params for the BBS+ signaure
-    proverSetupParams.push(SetupParam.bbsSignatureParamsG1(sigParams));
-    proverSetupParams.push(SetupParam.bbsSignaturePublicKeyG2(sigPk));
+    proverSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParams));
+    proverSetupParams.push(SetupParam.bbsPlusSignaturePublicKeyG2(sigPk));
     // Setup params for the uniqueness check SNARK
     proverSetupParams.push(SetupParam.r1cs(r1csForUnique));
     proverSetupParams.push(SetupParam.bytes(wasmForUnique));
@@ -173,7 +173,7 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     // 1 statement for proving knowledge of 1 signature (receipt)
     const sIdxs: number[] = [];
     for (let i = 0; i < numReceipts; i++) {
-      sIdxs.push(statementsProver.add(Statement.bbsSignatureFromSetupParamRefs(0, 1, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(Statement.bbsPlusSignatureFromSetupParamRefs(0, 1, revealedMsgs[i], false)));
     }
 
     // Statement to prove uniqueness of all receipt-ids
@@ -214,7 +214,7 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
 
     const witnesses = new Witnesses();
     for (let i = 0; i < numReceipts; i++) {
-      witnesses.add(Witness.bbsSignature(signed[i].signature, unrevealedMsgs[i], false));
+      witnesses.add(Witness.bbsPlusSignature(signed[i].signature, unrevealedMsgs[i], false));
     }
 
     const inputs1 = new CircomInputs();
@@ -251,8 +251,8 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     }
 
     const verifierSetupParams: SetupParam[] = [];
-    verifierSetupParams.push(SetupParam.bbsSignatureParamsG1(sigParams));
-    verifierSetupParams.push(SetupParam.bbsSignaturePublicKeyG2(sigPk));
+    verifierSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParams));
+    verifierSetupParams.push(SetupParam.bbsPlusSignaturePublicKeyG2(sigPk));
     // generateFieldElementFromNumber(1) as uniqueness check passes, i.e. all ids are different
     verifierSetupParams.push(SetupParam.fieldElementVec([generateFieldElementFromNumber(1)]));
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(verifyingKeyForUniqueness));
@@ -267,7 +267,7 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     const sIdxVs: number[] = [];
     for (let i = 0; i < numReceipts; i++) {
       sIdxVs.push(
-        statementsVerifier.add(Statement.bbsSignatureFromSetupParamRefs(0, 1, revealedMsgsFromVerifier[i], false))
+        statementsVerifier.add(Statement.bbsPlusSignatureFromSetupParamRefs(0, 1, revealedMsgsFromVerifier[i], false))
       );
     }
 

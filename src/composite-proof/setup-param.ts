@@ -1,5 +1,5 @@
 import {
-  generateSetupParamForBBSSignatureParametersG1,
+  generateSetupParamForBBSPlusSignatureParametersG1,
   generateSetupParamForPedersenCommitmentKeyG1,
   generateSetupParamForBBSPublicKeyG2,
   generateSetupParamForVbAccumulatorParams,
@@ -47,11 +47,11 @@ import { getR1CS, ParsedR1CSFile } from '../r1cs';
  * to be passed to several `Statement`s as it avoids the need of having several copies of the setup parameter.
  */
 export class SetupParam extends BytearrayWrapper {
-  static bbsSignatureParamsG1(params: SignatureParamsG1): SetupParam {
-    return new SetupParam(generateSetupParamForBBSSignatureParametersG1(params.value));
+  static bbsPlusSignatureParamsG1(params: SignatureParamsG1): SetupParam {
+    return new SetupParam(generateSetupParamForBBSPlusSignatureParametersG1(params.value));
   }
 
-  static bbsSignaturePublicKeyG2(publicKey: BBSPlusPublicKeyG2): SetupParam {
+  static bbsPlusSignaturePublicKeyG2(publicKey: BBSPlusPublicKeyG2): SetupParam {
     return new SetupParam(generateSetupParamForBBSPublicKeyG2(publicKey.value));
   }
 

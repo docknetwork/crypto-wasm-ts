@@ -317,8 +317,8 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 2) accumulator membership and
       // 3) opening of commitment in the blind signature request.
 
-      const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
-      const witness1 = Witness.bbsSignature(credential, unrevealedMsgs, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
+      const witness1 = Witness.bbsPlusSignature(credential, unrevealedMsgs, false);
 
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
@@ -395,14 +395,14 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 4) accumulator membership for credential1,
       // 5) opening of commitment in the blind signature request.
 
-      const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
-      const witness1 = Witness.bbsSignature(credential, unrevealedMsgs, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
+      const witness1 = Witness.bbsPlusSignature(credential, unrevealedMsgs, false);
 
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
-      const statement3 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
-      const witness3 = Witness.bbsSignature(credential2, unrevealedMsgs2, false);
+      const statement3 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
+      const witness3 = Witness.bbsPlusSignature(credential2, unrevealedMsgs2, false);
 
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
       const witness4 = Witness.accumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
@@ -500,7 +500,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const indicesToCommit: number[] = [];
       indicesToCommit.push(0);
       const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
-      const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const statement3 = Statement.pedersenCommitmentG1(bases, blindSigReq.commitment);
 
@@ -564,9 +564,9 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const indicesToCommit: number[] = [];
       indicesToCommit.push(0);
       const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
-      const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const statement3 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
+      const statement3 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
       const statement5 = Statement.pedersenCommitmentG1(bases, blindSigReq.commitment);
 
@@ -646,20 +646,20 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 5) knowledge of a signature in credential2,
       // 6) accumulator membership for credential2,
 
-      const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
-      const witness1 = Witness.bbsSignature(credential, unrevealedMsgs, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
+      const witness1 = Witness.bbsPlusSignature(credential, unrevealedMsgs, false);
 
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
-      const statement3 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
-      const witness3 = Witness.bbsSignature(credential2, unrevealedMsgs2, false);
+      const statement3 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
+      const witness3 = Witness.bbsPlusSignature(credential2, unrevealedMsgs2, false);
 
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
       const witness4 = Witness.accumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
 
-      const statement5 = Statement.bbsSignature(sigParams3, pk3, revealedMsgs3, false);
-      const witness5 = Witness.bbsSignature(credential3, unrevealedMsgs3, false);
+      const statement5 = Statement.bbsPlusSignature(sigParams3, pk3, revealedMsgs3, false);
+      const witness5 = Witness.bbsPlusSignature(credential3, unrevealedMsgs3, false);
 
       const statement6 = Statement.accumulatorMembership(accumParams3, accumPk3, prk3, accumulated3);
       const witness6 = Witness.accumulatorMembership(unrevealedMsgs3.get(1) as Uint8Array, membershipWitness3);
@@ -742,11 +742,11 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 5) knowledge of a signature in credential2,
       // 6) accumulator membership for credential2,
 
-      const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
+      const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const statement3 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
+      const statement3 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
-      const statement5 = Statement.bbsSignature(sigParams3, pk3, revealedMsgs3, false);
+      const statement5 = Statement.bbsPlusSignature(sigParams3, pk3, revealedMsgs3, false);
       const statement6 = Statement.accumulatorMembership(accumParams3, accumPk3, prk3, accumulated3);
 
       const statements = new Statements();

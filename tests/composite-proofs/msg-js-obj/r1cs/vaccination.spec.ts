@@ -182,8 +182,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     );
     expect(revealedMsgsRawT).toEqual({ fname: 'John', test: { type: 'Antigen', result: 'Negative' } });
 
-    const statement1 = Statement.bbsSignature(sigParamsV, sigPk, revealedMsgsV, false);
-    const statement2 = Statement.bbsSignature(sigParamsT, sigPk, revealedMsgsT, false);
+    const statement1 = Statement.bbsPlusSignature(sigParamsV, sigPk, revealedMsgsV, false);
+    const statement2 = Statement.bbsPlusSignature(sigParamsT, sigPk, revealedMsgsT, false);
     const statement3 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -218,8 +218,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsSignature(vaccinationAttributesSigned.signature, unrevealedMsgsV, false));
-    witnesses.add(Witness.bbsSignature(testAttributesSigned.signature, unrevealedMsgsT, false));
+    witnesses.add(Witness.bbsPlusSignature(vaccinationAttributesSigned.signature, unrevealedMsgsV, false));
+    witnesses.add(Witness.bbsPlusSignature(testAttributesSigned.signature, unrevealedMsgsT, false));
 
     const inputs = new CircomInputs();
     inputs.setPrivateInput('in1', vaccinationAttributesSigned.encodedMessages['vaccination.date']);
@@ -236,8 +236,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     const revealedMsgsFromVerifierT = encodeRevealedMsgs(revealedMsgsRawT, diseaseTestAttributesStruct, encoder);
     checkMapsEqual(revealedMsgsT, revealedMsgsFromVerifierT);
 
-    const statement4 = Statement.bbsSignature(sigParamsV, sigPk, revealedMsgsFromVerifierV, false);
-    const statement5 = Statement.bbsSignature(sigParamsT, sigPk, revealedMsgsFromVerifierT, false);
+    const statement4 = Statement.bbsPlusSignature(sigParamsV, sigPk, revealedMsgsFromVerifierV, false);
+    const statement5 = Statement.bbsPlusSignature(sigParamsT, sigPk, revealedMsgsFromVerifierT, false);
     const pub = [generateFieldElementFromNumber(checkShouldPass ? 1 : 0), encodedTime30DaysAgo, encodedTime2DaysAgo];
     const statement6 = Statement.r1csCircomVerifier(pub, verifyingKey);
 

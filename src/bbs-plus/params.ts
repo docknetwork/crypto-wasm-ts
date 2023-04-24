@@ -1,17 +1,17 @@
 import {
-  generateSignatureParamsG1,
-  generateSignatureParamsG2,
-  bbsSignatureParamsG1ToBytes,
-  bbsSignatureParamsG2ToBytes,
-  bbsSignatureParamsG1FromBytes,
-  isSignatureParamsG2Valid,
-  isSignatureParamsG1Valid,
-  bbsSignatureParamsG2FromBytes,
-  bbsAdaptSigParamsG1ForMsgCount,
-  bbsAdaptSigParamsG2ForMsgCount,
-  bbsCommitMsgsInG1,
+  bbsPlusGenerateSignatureParamsG1,
+  bbsPlusGenerateSignatureParamsG2,
+  bbsPlusSignatureParamsG1ToBytes,
+  bbsPlusSignatureParamsG2ToBytes,
+  bbsPlusSignatureParamsG1FromBytes,
+  bbsPlusIsSignatureParamsG2Valid,
+  bbsPlusIsSignatureParamsG1Valid,
+  bbsPlusSignatureParamsG2FromBytes,
+  bbsPlusAdaptSigParamsG1ForMsgCount,
+  bbsPlusAdaptSigParamsG2ForMsgCount,
+  bbsPlusCommitMsgsInG1,
   generateRandomFieldElement,
-  BbsSigParams
+  BbsPlusSigParams
 } from '@docknetwork/crypto-wasm';
 
 /**
@@ -19,9 +19,9 @@ import {
  */
 export abstract class SignatureParams {
   label?: Uint8Array;
-  value: BbsSigParams;
+  value: BbsPlusSigParams;
 
-  constructor(params: BbsSigParams, label?: Uint8Array) {
+  constructor(params: BbsPlusSigParams, label?: Uint8Array) {
     this.value = params;
     this.label = label;
   }
@@ -78,7 +78,7 @@ export abstract class SignatureParams {
 
 export class SignatureParamsG1 extends SignatureParams {
   static generate(numMessages: number, label?: Uint8Array): SignatureParamsG1 {
-    const params = generateSignatureParamsG1(numMessages, label);
+    const params = bbsPlusGenerateSignatureParamsG1(numMessages, label);
     return new SignatureParamsG1(params, label);
   }
 
@@ -87,15 +87,15 @@ export class SignatureParamsG1 extends SignatureParams {
   }
 
   toBytes(): Uint8Array {
-    return bbsSignatureParamsG1ToBytes(this.value);
+    return bbsPlusSignatureParamsG1ToBytes(this.value);
   }
 
   isValid(): boolean {
-    return isSignatureParamsG1Valid(this.value);
+    return bbsPlusIsSignatureParamsG1Valid(this.value);
   }
 
-  static valueFromBytes(bytes: Uint8Array): BbsSigParams {
-    return bbsSignatureParamsG1FromBytes(bytes);
+  static valueFromBytes(bytes: Uint8Array): BbsPlusSigParams {
+    return bbsPlusSignatureParamsG1FromBytes(bytes);
   }
 
   /**
@@ -116,7 +116,7 @@ export class SignatureParamsG1 extends SignatureParams {
         h: this.value.h.slice(0, newMsgCount)
       };
     } else {
-      newParams = bbsAdaptSigParamsG1ForMsgCount(this.value, this.label, newMsgCount);
+      newParams = bbsPlusAdaptSigParamsG1ForMsgCount(this.value, this.label, newMsgCount);
     }
     return new SignatureParamsG1(newParams, this.label);
   }
@@ -133,14 +133,14 @@ export class SignatureParamsG1 extends SignatureParams {
     blinding?: Uint8Array
   ): [Uint8Array, Uint8Array] {
     const b = blinding === undefined ? generateRandomFieldElement() : blinding;
-    const commitment = bbsCommitMsgsInG1(messageToCommit, b, this.value, encodeMessages);
+    const commitment = bbsPlusCommitMsgsInG1(messageToCommit, b, this.value, encodeMessages);
     return [commitment, b];
   }
 }
 
 export class SignatureParamsG2 extends SignatureParams {
   static generate(numMessages: number, label?: Uint8Array) {
-    const params = generateSignatureParamsG2(numMessages, label);
+    const params = bbsPlusGenerateSignatureParamsG2(numMessages, label);
     return new SignatureParamsG2(params, label);
   }
 
@@ -149,15 +149,15 @@ export class SignatureParamsG2 extends SignatureParams {
   }
 
   isValid(): boolean {
-    return isSignatureParamsG2Valid(this.value);
+    return bbsPlusIsSignatureParamsG2Valid(this.value);
   }
 
   toBytes(): Uint8Array {
-    return bbsSignatureParamsG2ToBytes(this.value);
+    return bbsPlusSignatureParamsG2ToBytes(this.value);
   }
 
-  static valueFromBytes(bytes: Uint8Array): BbsSigParams {
-    return bbsSignatureParamsG2FromBytes(bytes);
+  static valueFromBytes(bytes: Uint8Array): BbsPlusSigParams {
+    return bbsPlusSignatureParamsG2FromBytes(bytes);
   }
 
   /**
@@ -168,7 +168,7 @@ export class SignatureParamsG2 extends SignatureParams {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
-    const newParams = bbsAdaptSigParamsG2ForMsgCount(this.value, this.label, newMsgCount);
+    const newParams = bbsPlusAdaptSigParamsG2ForMsgCount(this.value, this.label, newMsgCount);
     return new SignatureParamsG2(newParams, this.label);
   }
 }
