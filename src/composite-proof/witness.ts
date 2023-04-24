@@ -1,6 +1,6 @@
 import {
   generatePedersenCommitmentWitness,
-  generatePoKBBSSignatureWitness,
+  generatePoKBBSPlusSignatureWitness,
   generateAccumulatorMembershipWitness,
   generateAccumulatorNonMembershipWitness,
   generateSaverWitness,
@@ -29,12 +29,12 @@ export class Witness {
    * @param unrevealedMessages
    * @param encodeMessages
    */
-  static bbsSignature(
+  static bbsPlusSignature(
     signature: SignatureG1,
     unrevealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSSignatureWitness(signature.value, unrevealedMessages, encodeMessages);
+    return generatePoKBBSPlusSignatureWitness(signature.value, unrevealedMessages, encodeMessages);
   }
 
   /**

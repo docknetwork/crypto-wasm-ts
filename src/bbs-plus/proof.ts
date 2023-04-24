@@ -4,21 +4,21 @@
 import { SignatureG1 } from './signature';
 import { SignatureParamsG1 } from './params';
 import {
-  bbsInitializeProofOfKnowledgeOfSignature,
-  bbsGenProofOfKnowledgeOfSignature,
-  bbsChallengeContributionFromProtocol,
-  bbsChallengeContributionFromProof,
-  bbsVerifyProofOfKnowledgeOfSignature,
-  BbsPoKSigProtocol,
+  bbsPlusInitializeProofOfKnowledgeOfSignature,
+  bbsPlusGenProofOfKnowledgeOfSignature,
+  bbsPlusChallengeContributionFromProtocol,
+  bbsPlusChallengeContributionFromProof,
+  bbsPlusVerifyProofOfKnowledgeOfSignature,
+  BbsPlusPoKSigProtocol,
   VerifyResult
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2 } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 
 export class PoKSigProtocol {
-  value: BbsPoKSigProtocol;
+  value: BbsPlusPoKSigProtocol;
 
-  constructor(protocol: BbsPoKSigProtocol) {
+  constructor(protocol: BbsPlusPoKSigProtocol) {
     this.value = protocol;
   }
 
@@ -39,7 +39,7 @@ export class PoKSigProtocol {
     }
     const b = blindings === undefined ? new Map<number, Uint8Array>() : blindings;
     const r = revealed === undefined ? new Set<number>() : revealed;
-    const protocol = bbsInitializeProofOfKnowledgeOfSignature(
+    const protocol = bbsPlusInitializeProofOfKnowledgeOfSignature(
       signature.value,
       params.value,
       messages,
@@ -51,7 +51,7 @@ export class PoKSigProtocol {
   }
 
   generateProof(challenge: Uint8Array): PoKSigProof {
-    return new PoKSigProof(bbsGenProofOfKnowledgeOfSignature(this.value, challenge));
+    return new PoKSigProof(bbsPlusGenProofOfKnowledgeOfSignature(this.value, challenge));
   }
 
   challengeContribution(
@@ -60,7 +60,7 @@ export class PoKSigProtocol {
     revealedMsgs?: Map<number, Uint8Array>
   ): Uint8Array {
     const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsChallengeContributionFromProtocol(this.value, r, params.value, encodeMessages);
+    return bbsPlusChallengeContributionFromProtocol(this.value, r, params.value, encodeMessages);
   }
 }
 
@@ -73,7 +73,7 @@ export class PoKSigProof extends BytearrayWrapper {
     revealedMsgs?: Map<number, Uint8Array>
   ): VerifyResult {
     const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsVerifyProofOfKnowledgeOfSignature(
+    return bbsPlusVerifyProofOfKnowledgeOfSignature(
       this.value,
       r,
       challenge,
@@ -89,6 +89,6 @@ export class PoKSigProof extends BytearrayWrapper {
     revealedMsgs?: Map<number, Uint8Array>
   ): Uint8Array {
     const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsChallengeContributionFromProof(this.value, r, params.value, encodeMessages);
+    return bbsPlusChallengeContributionFromProof(this.value, r, params.value, encodeMessages);
   }
 }

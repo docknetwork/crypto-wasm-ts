@@ -465,7 +465,7 @@ Since there is only 1 kind of proof, i.e. the knowledge of BBS+ signature and th
 
 ```ts
 // Create a BBS+ signature, true indicates that attributes/messages are arbitrary bytes and should be encoded first
-const statement1 = Statement.bbsSignature(params, pk, revealedMsgs, true);
+const statement1 = Statement.bbsPlusSignature(params, pk, revealedMsgs, true);
 const statements = new Statements();
 statements.add(statement1);
 
@@ -485,7 +485,7 @@ const proofSpec = new ProofSpecG1(statements, ms, [], context);
 Prover creates `Witness` using the signature and hidden attributes 
 
 ```ts
-const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, true);
+const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, true);
 const witnesses = new Witnesses();
 witnesses.add(witness1);
 ```
@@ -549,7 +549,7 @@ revealing _employer_ attribute, which is at index 3.
 
 ```ts
 // Statement for signature of 1st signer, not revealing any messages to the verifier
-const statement1 = Statement.bbsSignature(params1, pk1, new Map(), true);
+const statement1 = Statement.bbsPlusSignature(params1, pk1, new Map(), true);
 
 // Statement for signature of 2nd signer, revealing 1 message to the verifier
 const revealedMsgIndices: Set<number> = new Set();
@@ -563,7 +563,7 @@ for (let i = 0; i < messageCount2; i++) {
     unrevealedMsgs2.set(i, messages2[i]);
   }
 }
-const statement2 = Statement.bbsSignature(params2, pk2, revealedMsgs, true);
+const statement2 = Statement.bbsPlusSignature(params2, pk2, revealedMsgs, true);
 
 // Collect all the statements
 const statements = new Statements();
@@ -610,10 +610,10 @@ The prover creates the witnesses with both signatures and messages that he is hi
 ```ts
 // Using the messages and signature from 1st signer
 const unrevealedMsgs1 = new Map(messages1.map((m, i) => [i, m]));
-const witness1 = Witness.bbsSignature(sig1, unrevealedMsgs1, true);
+const witness1 = Witness.bbsPlusSignature(sig1, unrevealedMsgs1, true);
 
 // Using the messages and signature from 2nd signer
-const witness2 = Witness.bbsSignature(sig2, unrevealedMsgs2, true);
+const witness2 = Witness.bbsPlusSignature(sig2, unrevealedMsgs2, true);
 
 const witnesses = new Witnesses();
 witnesses.add(witness1);
@@ -692,7 +692,7 @@ const provingKey = Accumulator.generateMembershipProvingKey(stringToBytes('Our p
 The prover needs to prove 2 `Statement`s, knowledge of BBS+ signature and knowledge of accumulator member and corresponding witness.
 
 ```ts
-const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
 const statement2 = Statement.accumulatorMembership(accumParams, accumKeypair.public_key, provingKey, accumulator.accumulated);
 const statements = new Statements();
 statements.add(statement1);
@@ -721,7 +721,7 @@ The prover creates `Witness`es for all statements and then creates the proof. Th
 the member and the accumulator witness. 
 
 ```ts
-const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
+const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
 const witness2 = Witness.accumulatorMembership(encodedMessages[userIdIdx], accumWitness);
 const witnesses = new Witnesses();
 witnesses.add(witness1);
@@ -912,7 +912,7 @@ For creating the proof of knowledge of the BBS+ signature and verifiably encrypt
 
 ```ts
 // Signer's parameters
-let sigParams: BbsSigParams, sigPk: BBSPlusPublicKeyG2, sig: SignatureG1;
+let sigParams: BbsPlusSigParams, sigPk: BBSPlusPublicKeyG2, sig: SignatureG1;
 // Signed messages
 let messages: Uint8Array[];
 ...
@@ -934,7 +934,7 @@ const saverEk = encryptionKey.decompress();
 const snarkProvingKey = snarkPk.decompress();
 ...
 ...
-const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
 const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, snarkProvingKey, chunkBitSize);
 
 const proverStatements = new Statements();
@@ -964,11 +964,11 @@ metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 ```
 
 The prover then creates witness for both statements. The message `messages[encMsgIdx]` passed to `Witness.saver` is the
-message being encrypted. `unrevealedMsgs` passed to `Witness.bbsSignature` is created from `messages` and consists of
+message being encrypted. `unrevealedMsgs` passed to `Witness.bbsPlusSignature` is created from `messages` and consists of
 messages not being revealed to the verifier.
 
 ```ts
-const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
+const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
 const witness2 = Witness.saver(messages[encMsgIdx]);
 const witnesses = new Witnesses();
 witnesses.add(witness1);
@@ -990,7 +990,7 @@ Similarly, the verifier also creates 2 statements and the same meta statement to
 // Get the uncompressed verifying key from the compressed proving key.
 const snarkVerifyingKey = snarkPk.getVerifyingKeyUncompressed();
 
-const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
 const statement2 = Statement.saverVerifier(saverEncGens, commGens, saverEk, snarkVerifyingKey, chunkBitSize);
 const verifierStatements = new Statements();
 verifierStatements.add(statement1);
@@ -1077,7 +1077,7 @@ For creating the proof of knowledge of the BBS+ signature and one of the signed 
 
 ```ts
 // Signer's parameters
-let sigParams: BbsSigParams, sigPk: BBSPlusPublicKeyG2, sig: SignatureG1;
+let sigParams: BbsPlusSigParams, sigPk: BBSPlusPublicKeyG2, sig: SignatureG1;
 // Signed messages
 let messages: Uint8Array[];
 ...
@@ -1086,7 +1086,7 @@ let min: number, max: number;
 ...
 // Decompress the proving key 
 const snarkProvingKey = provingKey.decompress();
-const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
 const statement2 = Statement.boundCheckProver(min, max, snarkProvingKey);
 const proverStatements = new Statements();
 proverStatements.add(statement1);
@@ -1112,11 +1112,11 @@ metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 ```
 
 The prover then creates witness for both statements. The message `messages[msgIdx]` passed to `Witness.boundCheckLegoGroth16` is the
-bounded message. `unrevealedMsgs` passed to `Witness.bbsSignature` is created from `messages` and consists of
+bounded message. `unrevealedMsgs` passed to `Witness.bbsPlusSignature` is created from `messages` and consists of
 messages not being revealed to the verifier.
 
 ```ts
-const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
+const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
 const witness2 = Witness.boundCheckLegoGroth16(messages[msgIdx]);
 const witnesses = new Witnesses();
 witnesses.add(witness1);
@@ -1138,7 +1138,7 @@ Similarly, the verifier also creates 2 statements and the same meta statement to
 // Get the uncompressed verifying key from the compressed proving key.
 const snarkVerifyingKey = provingKey.getVerifyingKeyUncompressed();
 
-const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
 const statement2 = Statement.boundCheckVerifier(min, max, snarkVerifyingKey);
 const verifierStatements = new Statements();
 verifierStatements.add(statement1);

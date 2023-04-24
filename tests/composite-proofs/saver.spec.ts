@@ -175,7 +175,7 @@ describe('Verifiable encryption of signed messages', () => {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
-    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, snarkProvingKey, chunkBitSize);
 
     const proverStatements = new Statements();
@@ -188,7 +188,7 @@ describe('Verifiable encryption of signed messages', () => {
     const metaStatements = new MetaStatements();
     metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 
-    const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
+    const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
     const witness2 = Witness.saver(messages[encMsgIdx]);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
@@ -232,8 +232,8 @@ describe('Verifiable encryption of signed messages', () => {
     proverSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
     proverSetupParams.push(SetupParam.saverProvingKeyUncompressed(snarkProvingKey));
 
-    const statement1 = Statement.bbsSignature(sigParams1, sigPk1, revealedMsgs1, false);
-    const statement2 = Statement.bbsSignature(sigParams2, sigPk2, revealedMsgs2, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedMsgs1, false);
+    const statement2 = Statement.bbsPlusSignature(sigParams2, sigPk2, revealedMsgs2, false);
     const statement3 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
     const statement4 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
 
@@ -256,8 +256,8 @@ describe('Verifiable encryption of signed messages', () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsSignature(sig1, unrevealedMsgs1, false));
-    witnesses.add(Witness.bbsSignature(sig2, unrevealedMsgs2, false));
+    witnesses.add(Witness.bbsPlusSignature(sig1, unrevealedMsgs1, false));
+    witnesses.add(Witness.bbsPlusSignature(sig2, unrevealedMsgs2, false));
     witnesses.add(Witness.saver(messages1[encMsgIdx]));
     witnesses.add(Witness.saver(messages2[encMsgIdx]));
 

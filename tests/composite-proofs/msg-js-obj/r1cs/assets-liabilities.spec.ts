@@ -235,9 +235,9 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
     // Better to create setup params array once as knowledge of a lot of signatures will be proved
     const proverSetupParams: SetupParam[] = [];
-    proverSetupParams.push(SetupParam.bbsSignatureParamsG1(sigParamsAssets));
-    proverSetupParams.push(SetupParam.bbsSignatureParamsG1(sigParamsLiabilities));
-    proverSetupParams.push(SetupParam.bbsSignaturePublicKeyG2(sigPk));
+    proverSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParamsAssets));
+    proverSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParamsLiabilities));
+    proverSetupParams.push(SetupParam.bbsPlusSignaturePublicKeyG2(sigPk));
     proverSetupParams.push(SetupParam.r1cs(r1cs));
     proverSetupParams.push(SetupParam.bytes(wasm));
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(provingKey));
@@ -247,10 +247,10 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     // Statements to prove possesion of credentials
     const sIdxs: number[] = [];
     for (let i = 0; i < numAssetCredentials; i++) {
-      sIdxs.push(statementsProver.add(Statement.bbsSignatureFromSetupParamRefs(0, 2, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(Statement.bbsPlusSignatureFromSetupParamRefs(0, 2, revealedMsgs[i], false)));
     }
     for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-      sIdxs.push(statementsProver.add(Statement.bbsSignatureFromSetupParamRefs(1, 2, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(Statement.bbsPlusSignatureFromSetupParamRefs(1, 2, revealedMsgs[i], false)));
     }
 
     // For proving the relation between assets and liabilities.
@@ -316,11 +316,11 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
     const witnesses = new Witnesses();
     for (let i = 0; i < numAssetCredentials; i++) {
-      witnesses.add(Witness.bbsSignature(signedAssets[i].signature, unrevealedMsgs[i], false));
+      witnesses.add(Witness.bbsPlusSignature(signedAssets[i].signature, unrevealedMsgs[i], false));
     }
     for (let i = 0; i < numLiabilityCredentials; i++) {
       witnesses.add(
-        Witness.bbsSignature(signedLiabilities[i].signature, unrevealedMsgs[numAssetCredentials + i], false)
+        Witness.bbsPlusSignature(signedLiabilities[i].signature, unrevealedMsgs[numAssetCredentials + i], false)
       );
     }
 
@@ -366,9 +366,9 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     }
 
     const verifierSetupParams: SetupParam[] = [];
-    verifierSetupParams.push(SetupParam.bbsSignatureParamsG1(sigParamsAssets));
-    verifierSetupParams.push(SetupParam.bbsSignatureParamsG1(sigParamsLiabilities));
-    verifierSetupParams.push(SetupParam.bbsSignaturePublicKeyG2(sigPk));
+    verifierSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParamsAssets));
+    verifierSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParamsLiabilities));
+    verifierSetupParams.push(SetupParam.bbsPlusSignaturePublicKeyG2(sigPk));
 
     // generateFieldElementFromNumber(1) as the condition "sum of assets - sum of liabilities > minDiff" should be true,
     // if "sum of assets - sum of liabilities <= minDiff" was being checked, then use generateFieldElementFromNumber(0)
@@ -380,12 +380,12 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     const sIdxVs: number[] = [];
     for (let i = 0; i < numAssetCredentials; i++) {
       sIdxVs.push(
-        statementsVerifier.add(Statement.bbsSignatureFromSetupParamRefs(0, 2, revealedMsgsFromVerifier[i], false))
+        statementsVerifier.add(Statement.bbsPlusSignatureFromSetupParamRefs(0, 2, revealedMsgsFromVerifier[i], false))
       );
     }
     for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
       sIdxVs.push(
-        statementsVerifier.add(Statement.bbsSignatureFromSetupParamRefs(1, 2, revealedMsgsFromVerifier[i], false))
+        statementsVerifier.add(Statement.bbsPlusSignatureFromSetupParamRefs(1, 2, revealedMsgsFromVerifier[i], false))
       );
     }
 

@@ -181,14 +181,14 @@ describe('Accumulator', () => {
       revealedNames1,
       encoder
     );
-    const statement1 = Statement.bbsSignature(sigParams1, pk1, revealedMsgs1, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
       revealedNames2,
       encoder
     );
-    const statement2 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2, false);
+    const statement2 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
 
     const statement3 = Statement.accumulatorMembership(
       accumParams1,
@@ -236,8 +236,8 @@ describe('Accumulator', () => {
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsSignature(signed1.signature, unrevealedMsgs1, false);
-    const witness2 = Witness.bbsSignature(signed2.signature, unrevealedMsgs2, false);
+    const witness1 = Witness.bbsPlusSignature(signed1.signature, unrevealedMsgs1, false);
+    const witness2 = Witness.bbsPlusSignature(signed2.signature, unrevealedMsgs2, false);
     const witness3 = Witness.accumulatorMembership(signed1.encodedMessages['user-id'], accumWitness1);
     const witness4 = Witness.accumulatorMembership(signed2.encodedMessages['sensitive.user-id'], accumWitness2);
 
@@ -255,8 +255,8 @@ describe('Accumulator', () => {
     const revealedMsgs2FromVerifier = encodeRevealedMsgs(revealedMsgsRaw2, attributes2Struct, encoder);
     checkMapsEqual(revealedMsgs2, revealedMsgs2FromVerifier);
 
-    const statement5 = Statement.bbsSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
-    const statement6 = Statement.bbsSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
+    const statement5 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
+    const statement6 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
     const statement7 = Statement.accumulatorMembership(
       accumParams1,
       accumKeypair1.publicKey,

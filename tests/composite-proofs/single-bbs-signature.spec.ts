@@ -60,7 +60,7 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
       }
     }
 
-    const statement1 = Statement.bbsSignature(params, pk, revealedMsgs, true);
+    const statement1 = Statement.bbsPlusSignature(params, pk, revealedMsgs, true);
     const statements = new Statements();
     statements.add(statement1);
 
@@ -71,7 +71,7 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
     const proofSpec = new ProofSpecG1(statements, new MetaStatements(), [], context);
     expect(proofSpec.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, true);
+    const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, true);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
 

@@ -154,7 +154,7 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
     expect(revealedMsgsRaw).toEqual({ fname: 'John' });
 
     console.time('Proof generate');
-    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -172,7 +172,7 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsSignature(signed.signature, unrevealedMsgs, false);
+    const witness1 = Witness.bbsPlusSignature(signed.signature, unrevealedMsgs, false);
 
     const inputs = new CircomInputs();
     inputs.setPrivateInput('in', signed.encodedMessages['verySensitive.publicKey']);
@@ -191,7 +191,7 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement3 = Statement.bbsSignature(sigParams, sigPk, revealedMsgsFromVerifier, false);
+    const statement3 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgsFromVerifier, false);
     const pub = [encodedPubKeyHash];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
 

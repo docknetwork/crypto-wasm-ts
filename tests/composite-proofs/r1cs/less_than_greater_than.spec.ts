@@ -94,7 +94,7 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
     const publicMax = generateFieldElementFromNumber(5000);
 
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, new Set<number>());
-    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(ltR1cs, ltWasm, ltProvingKey);
     const statement3 = Statement.r1csCircomProver(ltPubR1cs, ltPubWasm, ltPubProvingKey);
 
@@ -120,7 +120,7 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
     metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
-    const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
+    const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
 
     const inputs1 = new CircomInputs();
     inputs1.setPrivateInput('a', messages[1]);
@@ -165,8 +165,8 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
     const [revealedMsgs2, unrevealedMsgs2] = getRevealedUnrevealed(messages2, new Set<number>());
 
-    const statement1 = Statement.bbsSignature(sigParams1, sigPk1, revealedMsgs1, false);
-    const statement2 = Statement.bbsSignature(sigParams2, sigPk2, revealedMsgs2, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedMsgs1, false);
+    const statement2 = Statement.bbsPlusSignature(sigParams2, sigPk2, revealedMsgs2, false);
 
     const statement3 = Statement.r1csCircomProver(ltR1cs, ltWasm, ltProvingKey);
 
@@ -187,8 +187,8 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
     metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
 
-    const witness1 = Witness.bbsSignature(sig1, unrevealedMsgs1, false);
-    const witness2 = Witness.bbsSignature(sig2, unrevealedMsgs2, false);
+    const witness1 = Witness.bbsPlusSignature(sig1, unrevealedMsgs1, false);
+    const witness2 = Witness.bbsPlusSignature(sig2, unrevealedMsgs2, false);
 
     const inputs = new CircomInputs();
     inputs.setPrivateInput('a', messages1[2]);

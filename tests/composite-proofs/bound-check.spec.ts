@@ -121,7 +121,7 @@ describe('Bound check of signed messages', () => {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
-    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.boundCheckProver(min1, max1, snarkProvingKey);
     const proverStatements = new Statements();
     proverStatements.add(statement1);
@@ -133,7 +133,7 @@ describe('Bound check of signed messages', () => {
     const metaStatements = new MetaStatements();
     metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 
-    const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
+    const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
     const witness2 = Witness.boundCheckLegoGroth16(messages[msgIdx]);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
@@ -169,8 +169,8 @@ describe('Bound check of signed messages', () => {
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
     const [revealedMsgs2, unrevealedMsgs2] = getRevealedUnrevealed(messages2, new Set<number>());
 
-    const statement1 = Statement.bbsSignature(sigParams1, sigPk1, revealedMsgs1, false);
-    const statement2 = Statement.bbsSignature(sigParams2, sigPk2, revealedMsgs2, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedMsgs1, false);
+    const statement2 = Statement.bbsPlusSignature(sigParams2, sigPk2, revealedMsgs2, false);
     const statement3 = Statement.boundCheckProverFromSetupParamRefs(min1, max1, 0);
     const statement4 = Statement.boundCheckProverFromSetupParamRefs(min2, max2, 0);
     const statement5 = Statement.boundCheckProverFromSetupParamRefs(min3, max3, 0);
@@ -207,8 +207,8 @@ describe('Bound check of signed messages', () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq4));
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsSignature(sig1, unrevealedMsgs1, false));
-    witnesses.add(Witness.bbsSignature(sig2, unrevealedMsgs2, false));
+    witnesses.add(Witness.bbsPlusSignature(sig1, unrevealedMsgs1, false));
+    witnesses.add(Witness.bbsPlusSignature(sig2, unrevealedMsgs2, false));
     witnesses.add(Witness.boundCheckLegoGroth16(messages1[msgIdx]));
     witnesses.add(Witness.boundCheckLegoGroth16(messages1[msgIdx + 1]));
     witnesses.add(Witness.boundCheckLegoGroth16(messages2[msgIdx]));
@@ -267,7 +267,7 @@ describe('Bound check of signed messages', () => {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(attributes, revealedIndices);
-    const statement1 = Statement.bbsSignature(sigParams1, sigPk1, revealedAttrs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedAttrs, false);
     // For proving birth date was after `bornAfter`
     const statement2 = Statement.boundCheckProverFromSetupParamRefs(bornAfter, now, 0);
     // For proving issuance date was between `earliestIssuance` and `latestIssuance`
@@ -302,7 +302,7 @@ describe('Bound check of signed messages', () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsSignature(sig, unrevealedAttrs, false));
+    witnesses.add(Witness.bbsPlusSignature(sig, unrevealedAttrs, false));
     witnesses.add(Witness.boundCheckLegoGroth16(attributes[2]));
     witnesses.add(Witness.boundCheckLegoGroth16(attributes[3]));
     witnesses.add(Witness.boundCheckLegoGroth16(attributes[4]));
@@ -441,7 +441,7 @@ describe('Bound check of signed messages', () => {
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
 
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(encodedAttributes, new Set<number>());
-    const statement1 = Statement.bbsSignature(sigParams1, sigPk1, revealedAttrs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedAttrs, false);
 
     const statement2 = Statement.boundCheckProverFromSetupParamRefs(transMin1, transMax1, 0);
     const statement3 = Statement.boundCheckProverFromSetupParamRefs(transMin2, transMax2, 0);
@@ -466,7 +466,7 @@ describe('Bound check of signed messages', () => {
     }
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsSignature(sig, unrevealedAttrs, false));
+    witnesses.add(Witness.bbsPlusSignature(sig, unrevealedAttrs, false));
     for (let i = 0; i < encodedAttributes.length; i++) {
       witnesses.add(Witness.boundCheckLegoGroth16(encodedAttributes[i]));
     }

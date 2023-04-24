@@ -130,7 +130,7 @@ describe('Verifiable encryption using SAVER', () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'John', lname: 'Smith', country: 'USA' });
 
-    const statement1 = Statement.bbsSignature(sigParams, pk, revealedMsgs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
     const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, saverProvingKey, chunkBitSize);
     const statement3 = Statement.boundCheckProver(timeMin, timeMax, boundCheckProvingKey);
 
@@ -154,7 +154,7 @@ describe('Verifiable encryption using SAVER', () => {
     // The prover should independently construct this `ProofSpec`
     const proofSpecProver = new QuasiProofSpecG1(statementsProver, metaStmtsProver);
 
-    const witness1 = Witness.bbsSignature(signed.signature, unrevealedMsgs, false);
+    const witness1 = Witness.bbsPlusSignature(signed.signature, unrevealedMsgs, false);
     const witness2 = Witness.saver(signed.encodedMessages['SSN']);
     const witness3 = Witness.boundCheckLegoGroth16(signed.encodedMessages['timeOfBirth']);
     const witnesses = new Witnesses();
@@ -168,7 +168,7 @@ describe('Verifiable encryption using SAVER', () => {
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributes1Struct, GlobalEncoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement4 = Statement.bbsSignature(sigParams, pk, revealedMsgsFromVerifier, false);
+    const statement4 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgsFromVerifier, false);
     const statement5 = Statement.saverVerifier(saverEncGens, commGens, saverEk, saverVerifyingKey, chunkBitSize);
     const statement6 = Statement.boundCheckVerifier(timeMin, timeMax, boundCheckVerifyingKey);
 

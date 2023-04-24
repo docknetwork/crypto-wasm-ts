@@ -346,13 +346,13 @@ export class PresentationBuilder extends Versioned {
         revealedNames,
         schema.encoder
       );
-      const statement = Statement.bbsSignatureFromSetupParamRefs(
-        setupParamsTrk.add(SetupParam.bbsSignatureParamsG1(sigParams.adapt(numAttribs))),
-        setupParamsTrk.add(SetupParam.bbsSignaturePublicKeyG2(this.credentials[i][1])),
+      const statement = Statement.bbsPlusSignatureFromSetupParamRefs(
+        setupParamsTrk.add(SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(numAttribs))),
+        setupParamsTrk.add(SetupParam.bbsPlusSignaturePublicKeyG2(this.credentials[i][1])),
         revealedAttrsEncoded,
         false
       );
-      const witness = Witness.bbsSignature(cred.signature as SignatureG1, unrevealedAttrsEncoded, false);
+      const witness = Witness.bbsPlusSignature(cred.signature as SignatureG1, unrevealedAttrsEncoded, false);
       statements.add(statement);
       witnesses.add(witness);
 

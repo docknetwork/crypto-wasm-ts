@@ -72,7 +72,7 @@ describe('Proof with R1CS and Circom circuits: set membership check', () => {
     ];
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, new Set<number>());
 
-    const statement1 = Statement.bbsSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const proverStatements = new Statements();
@@ -89,7 +89,7 @@ describe('Proof with R1CS and Circom circuits: set membership check', () => {
     const proofSpecProver = new ProofSpecG1(proverStatements, metaStatements);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsSignature(sig, unrevealedMsgs, false);
+    const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
 
     const inputs = new CircomInputs();
     inputs.setPrivateInput('x', messages[2]);

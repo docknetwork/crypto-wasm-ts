@@ -163,8 +163,8 @@ describe('Proving that yearly income calculated from monthly payslips is less th
     }
 
     const proverSetupParams: SetupParam[] = [];
-    proverSetupParams.push(SetupParam.bbsSignatureParamsG1(sigParams));
-    proverSetupParams.push(SetupParam.bbsSignaturePublicKeyG2(sigPk));
+    proverSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParams));
+    proverSetupParams.push(SetupParam.bbsPlusSignaturePublicKeyG2(sigPk));
     proverSetupParams.push(SetupParam.r1cs(r1cs));
     proverSetupParams.push(SetupParam.bytes(wasm));
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(provingKey));
@@ -173,7 +173,7 @@ describe('Proving that yearly income calculated from monthly payslips is less th
 
     const sIdxs: number[] = [];
     for (let i = 0; i < numPayslips; i++) {
-      sIdxs.push(statementsProver.add(Statement.bbsSignatureFromSetupParamRefs(0, 1, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(Statement.bbsPlusSignatureFromSetupParamRefs(0, 1, revealedMsgs[i], false)));
     }
 
     sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(2, 3, 4)));
@@ -215,7 +215,7 @@ describe('Proving that yearly income calculated from monthly payslips is less th
 
     const witnesses = new Witnesses();
     for (let i = 0; i < numPayslips; i++) {
-      witnesses.add(Witness.bbsSignature(signed[i].signature, unrevealedMsgs[i], false));
+      witnesses.add(Witness.bbsPlusSignature(signed[i].signature, unrevealedMsgs[i], false));
     }
 
     const inputs = new CircomInputs();
@@ -239,8 +239,8 @@ describe('Proving that yearly income calculated from monthly payslips is less th
     }
 
     const verifierSetupParams: SetupParam[] = [];
-    verifierSetupParams.push(SetupParam.bbsSignatureParamsG1(sigParams));
-    verifierSetupParams.push(SetupParam.bbsSignaturePublicKeyG2(sigPk));
+    verifierSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParams));
+    verifierSetupParams.push(SetupParam.bbsPlusSignaturePublicKeyG2(sigPk));
 
     // To prove not less than, i.e. <= or >, replace `generateFieldElementFromNumber(1)` with `generateFieldElementFromNumber(0)`
     // as 1 indicates success of the check, 0 indicates failure of the check
@@ -253,7 +253,7 @@ describe('Proving that yearly income calculated from monthly payslips is less th
     const sIdxVs: number[] = [];
     for (let i = 0; i < numPayslips; i++) {
       sIdxVs.push(
-        statementsVerifier.add(Statement.bbsSignatureFromSetupParamRefs(0, 1, revealedMsgsFromVerifier[i], false))
+        statementsVerifier.add(Statement.bbsPlusSignatureFromSetupParamRefs(0, 1, revealedMsgsFromVerifier[i], false))
       );
     }
 

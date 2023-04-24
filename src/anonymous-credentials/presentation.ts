@@ -117,9 +117,9 @@ export class Presentation extends Versioned {
         sigParams = sigParams.adapt(numAttribs);
         maxAttribs = numAttribs;
       }
-      const statement = Statement.bbsSignatureFromSetupParamRefs(
-        setupParamsTrk.add(SetupParam.bbsSignatureParamsG1(sigParams.adapt(numAttribs))),
-        setupParamsTrk.add(SetupParam.bbsSignaturePublicKeyG2(publicKeys[i])),
+      const statement = Statement.bbsPlusSignatureFromSetupParamRefs(
+        setupParamsTrk.add(SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(numAttribs))),
+        setupParamsTrk.add(SetupParam.bbsPlusSignaturePublicKeyG2(publicKeys[i])),
         revealedEncoded,
         false
       );
