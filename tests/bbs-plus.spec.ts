@@ -93,7 +93,7 @@ describe('BBS+ signature', () => {
     expect(pk.isValid()).toEqual(true);
 
     const pk1 = sk.generatePublicKeyG2(params);
-    expect(pk.value).toEqual(pk1.value);
+    expect([...pk.value]).toEqual([...pk1.value]);
 
     const sig = SignatureG1.generate(messages, sk, params, true);
     expect(sig.verify(messages, pk, params, true).verified).toEqual(true);
@@ -175,7 +175,7 @@ describe('BBS+ signature', () => {
       if (req.blindedIndices.indexOf(i) === -1) {
         knownMessages.set(i, messages[i]);
       }
-    }
+  }
 
     let blindSig = BlindSignatureG1.generate(req.commitment, knownMessages, sk, params, true);
 
