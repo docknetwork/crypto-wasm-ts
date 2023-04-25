@@ -1,7 +1,7 @@
 import {
   generateSetupParamForBBSPlusSignatureParametersG1,
   generateSetupParamForPedersenCommitmentKeyG1,
-  generateSetupParamForBBSPublicKeyG2,
+  generateSetupParamForBBSPublicKey,
   generateSetupParamForVbAccumulatorParams,
   generateSetupParamForVbAccumulatorPublicKey,
   generateSetupParamForVbAccumulatorNonMemProvingKey,
@@ -52,7 +52,7 @@ export class SetupParam extends BytearrayWrapper {
   }
 
   static bbsPlusSignaturePublicKeyG2(publicKey: BBSPlusPublicKeyG2): SetupParam {
-    return new SetupParam(generateSetupParamForBBSPublicKeyG2(publicKey.value));
+    return new SetupParam(generateSetupParamForBBSPublicKey(publicKey.value));
   }
 
   static vbAccumulatorParams(params: AccumulatorParams): SetupParam {
