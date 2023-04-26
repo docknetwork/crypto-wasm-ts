@@ -12,7 +12,7 @@ import {
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
-  KeypairG2,
+  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
@@ -20,7 +20,7 @@ import {
   ProofSpecG1,
   R1CSSnarkSetup,
   SetupParam,
-  SignatureParamsG1,
+  BBSPlusSignatureParamsG1,
   SignedMessages,
   signMessageObject,
   Statement,
@@ -102,8 +102,8 @@ describe('Proving that yearly income calculated from monthly payslips is less th
   it('signers signs attributes', () => {
     const numAttrs = Object.keys(flattenObjectToKeyValuesList(payslipAttributesStruct)).length;
     // Issuing multiple credentials with the same number of attributes so create sig. params only once for faster execution
-    let params = SignatureParamsG1.generate(numAttrs, label);
-    const keypair = KeypairG2.generate(params);
+    let params = BBSPlusSignatureParamsG1.generate(numAttrs, label);
+    const keypair = BBSPlusKeypairG2.generate(params);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
 

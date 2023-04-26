@@ -6,7 +6,7 @@ import {
   bbsPlusIsPublicKeyG2Valid,
   bbsPlusIsPublicKeyG1Valid
 } from '@docknetwork/crypto-wasm';
-import { SignatureParamsG1, SignatureParamsG2 } from './params';
+import { BBSPlusSignatureParamsG1, BBSPlusSignatureParamsG2 } from './params';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 
 export abstract class BBSPlusPublicKey extends BytearrayWrapper {
@@ -26,11 +26,11 @@ export class BBSPlusPublicKeyG2 extends BBSPlusPublicKey {
 }
 
 export class BBSPlusSecretKey extends BytearrayWrapper {
-  generatePublicKeyG1(params: SignatureParamsG2): BBSPlusPublicKeyG1 {
+  generatePublicKeyG1(params: BBSPlusSignatureParamsG2): BBSPlusPublicKeyG1 {
     return new BBSPlusPublicKeyG1(bbsPlusGeneratePublicKeyG1(this.value, params.value));
   }
 
-  generatePublicKeyG2(params: SignatureParamsG1): BBSPlusPublicKeyG2 {
+  generatePublicKeyG2(params: BBSPlusSignatureParamsG1): BBSPlusPublicKeyG2 {
     return new BBSPlusPublicKeyG2(bbsPlusGeneratePublicKeyG2(this.value, params.value));
   }
 }
@@ -53,16 +53,16 @@ export abstract class BBSPlusKeypair {
   }
 }
 
-export class KeypairG1 extends BBSPlusKeypair {
-  static generate(params: SignatureParamsG2, seed?: Uint8Array): KeypairG1 {
+export class BBSPlusKeypairG1 extends BBSPlusKeypair {
+  static generate(params: BBSPlusSignatureParamsG2, seed?: Uint8Array): BBSPlusKeypairG1 {
     const keypair = bbsPlusGenerateKeyPairG1(params.value, seed);
-    return new KeypairG1(new BBSPlusSecretKey(keypair.secret_key), new BBSPlusPublicKeyG1(keypair.public_key));
+    return new BBSPlusKeypairG1(new BBSPlusSecretKey(keypair.secret_key), new BBSPlusPublicKeyG1(keypair.public_key));
   }
 }
 
-export class KeypairG2 extends BBSPlusKeypair {
-  static generate(params: SignatureParamsG1, seed?: Uint8Array): KeypairG2 {
+export class BBSPlusKeypairG2 extends BBSPlusKeypair {
+  static generate(params: BBSPlusSignatureParamsG1, seed?: Uint8Array): BBSPlusKeypairG2 {
     const keypair = bbsPlusGenerateKeyPairG2(params.value, seed);
-    return new KeypairG2(new BBSPlusSecretKey(keypair.secret_key), new BBSPlusPublicKeyG2(keypair.public_key));
+    return new BBSPlusKeypairG2(new BBSPlusSecretKey(keypair.secret_key), new BBSPlusPublicKeyG2(keypair.public_key));
   }
 }

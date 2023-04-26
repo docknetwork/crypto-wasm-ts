@@ -4,11 +4,11 @@ import { flatten, unflatten } from 'flat';
 import {
   BBSPlusPublicKeyG2,
   BBSPlusSecretKey,
-  BlindSignatureG1,
-  BlindSignatureRequest,
+  BBSPlusBlindSignatureG1,
+  BBSPlusBlindSignatureRequest,
   Encoder,
-  SignatureG1,
-  SignatureParamsG1,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
   Statement,
   Witness,
   WitnessEqualityMetaStatement
@@ -24,9 +24,9 @@ export function flattenMessageStructure(msgStructure: MessageStructure): object 
 }
 
 export function getAdaptedSignatureParamsForMessages(
-  params: SignatureParamsG1,
+  params: BBSPlusSignatureParamsG1,
   msgStructure: MessageStructure
-): SignatureParamsG1 {
+): BBSPlusSignatureParamsG1 {
   const flattened = flattenMessageStructure(msgStructure);
   return params.adapt(Object.keys(flattened).length);
 }
@@ -38,12 +38,12 @@ export class SigParamsGetter {
     this.defaultLabel = defaultLabel;
   }
 
-  getSigParamsOfRequiredSize(msgCount: number, labelOrParams?: Uint8Array | SignatureParamsG1): SignatureParamsG1 {
+  getSigParamsOfRequiredSize(msgCount: number, labelOrParams?: Uint8Array | BBSPlusSignatureParamsG1): BBSPlusSignatureParamsG1 {
     if (labelOrParams === undefined && this.defaultLabel === undefined) {
       throw new Error(`No default label or argument to create signature params of size of size ${msgCount}`);
     }
-    let sigParams: SignatureParamsG1;
-    if (labelOrParams instanceof SignatureParamsG1) {
+    let sigParams: BBSPlusSignatureParamsG1;
+    if (labelOrParams instanceof BBSPlusSignatureParamsG1) {
       if (labelOrParams.supportedMessageCount() !== msgCount) {
         if (labelOrParams.label === undefined) {
           throw new Error(
@@ -56,9 +56,9 @@ export class SigParamsGetter {
         sigParams = labelOrParams;
       }
     } else if (labelOrParams !== undefined) {
-      sigParams = SignatureParamsG1.generate(msgCount, labelOrParams);
+      sigParams = BBSPlusSignatureParamsG1.generate(msgCount, labelOrParams);
     } else {
-      sigParams = SignatureParamsG1.generate(msgCount, this.defaultLabel);
+      sigParams = BBSPlusSignatureParamsG1.generate(msgCount, this.defaultLabel);
     }
     return sigParams;
   }
@@ -71,10 +71,10 @@ export class SigParamsGetter {
  */
 export function getSigParamsOfRequiredSize(
   msgCount: number,
-  labelOrParams: Uint8Array | SignatureParamsG1
-): SignatureParamsG1 {
-  let sigParams: SignatureParamsG1;
-  if (labelOrParams instanceof SignatureParamsG1) {
+  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1
+): BBSPlusSignatureParamsG1 {
+  let sigParams: BBSPlusSignatureParamsG1;
+  if (labelOrParams instanceof BBSPlusSignatureParamsG1) {
     if (labelOrParams.supportedMessageCount() !== msgCount) {
       if (labelOrParams.label === undefined) {
         throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
@@ -85,27 +85,27 @@ export function getSigParamsOfRequiredSize(
       sigParams = labelOrParams;
     }
   } else {
-    sigParams = SignatureParamsG1.generate(msgCount, labelOrParams);
+    sigParams = BBSPlusSignatureParamsG1.generate(msgCount, labelOrParams);
   }
   return sigParams;
 }
 
 export function getSigParamsForMsgStructure(
   msgStructure: MessageStructure,
-  labelOrParams: Uint8Array | SignatureParamsG1
-): SignatureParamsG1 {
+  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1
+): BBSPlusSignatureParamsG1 {
   const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
   return getSigParamsOfRequiredSize(msgCount, labelOrParams);
 }
 
 export interface SignedMessages {
   encodedMessages: { [key: string]: Uint8Array };
-  signature: SignatureG1;
+  signature: BBSPlusSignatureG1;
 }
 
 export interface BlindSignedMessages {
   encodedMessages: { [key: string]: Uint8Array };
-  signature: BlindSignatureG1;
+  signature: BBSPlusBlindSignatureG1;
 }
 
 /**
@@ -119,14 +119,14 @@ export interface BlindSignedMessages {
 export function signMessageObject(
   messages: object,
   secretKey: BBSPlusSecretKey,
-  labelOrParams: Uint8Array | SignatureParamsG1,
+  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
   encoder: Encoder
 ): SignedMessages {
   const [names, encodedValues] = encoder.encodeMessageObject(messages);
   const msgCount = names.length;
 
   const sigParams = getSigParamsOfRequiredSize(msgCount, labelOrParams);
-  const signature = SignatureG1.generate(encodedValues, secretKey, sigParams, false);
+  const signature = BBSPlusSignatureG1.generate(encodedValues, secretKey, sigParams, false);
 
   // Encoded message as an object with key as the flattened name
   const encodedMessages: { [key: string]: Uint8Array } = {};
@@ -151,9 +151,9 @@ export function signMessageObject(
  */
 export function verifyMessageObject(
   messages: object,
-  signature: SignatureG1,
+  signature: BBSPlusSignatureG1,
   publicKey: BBSPlusPublicKeyG2,
-  labelOrParams: Uint8Array | SignatureParamsG1,
+  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
   encoder: Encoder
 ): VerifyResult {
   const [_, encodedValues] = encoder.encodeMessageObject(messages);
@@ -241,10 +241,10 @@ export function encodeRevealedMsgs(
 export function genBlindSigRequestAndWitness(
   hiddenMsgNames: Set<string>,
   messages: object,
-  labelOrParams: Uint8Array | SignatureParamsG1,
+  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
   encoder: Encoder,
   blinding?: Uint8Array
-): [Uint8Array, BlindSignatureRequest, Uint8Array] {
+): [Uint8Array, BBSPlusBlindSignatureRequest, Uint8Array] {
   const [names, encodedValues] = encoder.encodeMessageObject(messages);
   const hiddenMsgs = new Map<number, Uint8Array>();
   let found = 0;
@@ -263,7 +263,7 @@ export function genBlindSigRequestAndWitness(
     );
   }
   const sigParams = getSigParamsOfRequiredSize(names.length, labelOrParams);
-  const [blinding_, request] = BlindSignatureG1.generateRequest(hiddenMsgs, sigParams, false, blinding);
+  const [blinding_, request] = BBSPlusBlindSignatureG1.generateRequest(hiddenMsgs, sigParams, false, blinding);
   const committeds = [blinding_];
   for (const i of request.blindedIndices) {
     committeds.push(hiddenMsgs.get(i) as Uint8Array);
@@ -278,8 +278,8 @@ export function genBlindSigRequestAndWitness(
  * @param sigParams
  */
 export function getStatementForBlindSigRequest(
-  request: BlindSignatureRequest,
-  sigParams: SignatureParamsG1
+  request: BBSPlusBlindSignatureRequest,
+  sigParams: BBSPlusSignatureParamsG1
 ): Uint8Array {
   const commKey = sigParams.getParamsForIndices(request.blindedIndices);
   return Statement.pedersenCommitmentG1(commKey, request.commitment);
@@ -295,11 +295,11 @@ export function getStatementForBlindSigRequest(
  * @param encoder
  */
 export function blindSignMessageObject(
-  blindSigRequest: BlindSignatureRequest,
+  blindSigRequest: BBSPlusBlindSignatureRequest,
   knownMessages: object,
   secretKey: BBSPlusSecretKey,
   msgStructure: MessageStructure,
-  labelOrParams: Uint8Array | SignatureParamsG1,
+  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
   encoder: Encoder
 ): BlindSignedMessages {
   const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
@@ -327,7 +327,7 @@ export function blindSignMessageObject(
   }
 
   const sigParams = getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
-  const blindSig = BlindSignatureG1.generate(
+  const blindSig = BBSPlusBlindSignatureG1.generate(
     blindSigRequest.commitment,
     knownMessagesEncoded,
     secretKey,

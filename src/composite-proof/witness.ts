@@ -7,7 +7,7 @@ import {
   generateBoundCheckWitness,
   generateR1CSCircomWitness
 } from '@docknetwork/crypto-wasm';
-import { SignatureG1 } from '../bbs-plus';
+import { BBSPlusSignatureG1 } from '../bbs-plus';
 import { MembershipWitness, NonMembershipWitness } from '../accumulator';
 import { CircomInputs } from '../r1cs';
 
@@ -30,7 +30,7 @@ export class Witness {
    * @param encodeMessages
    */
   static bbsPlusSignature(
-    signature: SignatureG1,
+    signature: BBSPlusSignatureG1,
     unrevealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {

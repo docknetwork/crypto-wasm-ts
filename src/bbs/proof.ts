@@ -1,35 +1,35 @@
 /**
  * Proof of knowledge of signature protocol
  */
-import { BBSPlusSignatureG1 } from './signature';
-import { BBSPlusSignatureParamsG1 } from './params';
+import { BBSSignature } from './signature';
+import { BBSSignatureParams } from './params';
 import {
-  bbsPlusInitializeProofOfKnowledgeOfSignature,
-  bbsPlusGenProofOfKnowledgeOfSignature,
-  bbsPlusChallengeContributionFromProtocol,
-  bbsPlusChallengeContributionFromProof,
-  bbsPlusVerifyProofOfKnowledgeOfSignature,
-  BbsPlusPoKSigProtocol,
+  bbsInitializeProofOfKnowledgeOfSignature,
+  bbsGenProofOfKnowledgeOfSignature,
+  bbsChallengeContributionFromProtocol,
+  bbsChallengeContributionFromProof,
+  bbsVerifyProofOfKnowledgeOfSignature,
+  BbsPoKSigProtocol,
   VerifyResult
 } from '@docknetwork/crypto-wasm';
-import { BBSPlusPublicKeyG2 } from './keys';
+import { BBSPublicKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 
-export class BBSPlusPoKSignatureProtocol {
-  value: BbsPlusPoKSigProtocol;
+export class BBSPoKSignatureProtocol {
+  value: BbsPoKSigProtocol;
 
-  constructor(protocol: BbsPlusPoKSigProtocol) {
+  constructor(protocol: BbsPoKSigProtocol) {
     this.value = protocol;
   }
 
   static initialize(
     messages: Uint8Array[],
-    signature: BBSPlusSignatureG1,
-    params: BBSPlusSignatureParamsG1,
+    signature: BBSSignature,
+    params: BBSSignatureParams,
     encodeMessages: boolean,
     blindings?: Map<number, Uint8Array>,
     revealed?: Set<number>
-  ): BBSPlusPoKSignatureProtocol {
+  ): BBSPoKSignatureProtocol {
     if (messages.length !== params.supportedMessageCount()) {
       throw new Error(
         `Number of messages ${
@@ -39,7 +39,7 @@ export class BBSPlusPoKSignatureProtocol {
     }
     const b = blindings === undefined ? new Map<number, Uint8Array>() : blindings;
     const r = revealed === undefined ? new Set<number>() : revealed;
-    const protocol = bbsPlusInitializeProofOfKnowledgeOfSignature(
+    const protocol = bbsInitializeProofOfKnowledgeOfSignature(
       signature.value,
       params.value,
       messages,
@@ -47,33 +47,33 @@ export class BBSPlusPoKSignatureProtocol {
       r,
       encodeMessages
     );
-    return new BBSPlusPoKSignatureProtocol(protocol);
+    return new BBSPoKSignatureProtocol(protocol);
   }
 
-  generateProof(challenge: Uint8Array): PoKSigProof {
-    return new PoKSigProof(bbsPlusGenProofOfKnowledgeOfSignature(this.value, challenge));
+  generateProof(challenge: Uint8Array): BBSPoKSigProof {
+    return new BBSPoKSigProof(bbsGenProofOfKnowledgeOfSignature(this.value, challenge));
   }
 
   challengeContribution(
-    params: BBSPlusSignatureParamsG1,
+    params: BBSSignatureParams,
     encodeMessages: boolean,
     revealedMsgs?: Map<number, Uint8Array>
   ): Uint8Array {
     const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsPlusChallengeContributionFromProtocol(this.value, r, params.value, encodeMessages);
+    return bbsChallengeContributionFromProtocol(this.value, r, params.value, encodeMessages);
   }
 }
 
-export class PoKSigProof extends BytearrayWrapper {
+export class BBSPoKSigProof extends BytearrayWrapper {
   verify(
     challenge: Uint8Array,
-    publicKey: BBSPlusPublicKeyG2,
-    params: BBSPlusSignatureParamsG1,
+    publicKey: BBSPublicKey,
+    params: BBSSignatureParams,
     encodeMessages: boolean,
     revealedMsgs?: Map<number, Uint8Array>
   ): VerifyResult {
     const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsPlusVerifyProofOfKnowledgeOfSignature(
+    return bbsVerifyProofOfKnowledgeOfSignature(
       this.value,
       r,
       challenge,
@@ -84,11 +84,11 @@ export class PoKSigProof extends BytearrayWrapper {
   }
 
   challengeContribution(
-    params: BBSPlusSignatureParamsG1,
+    params: BBSSignatureParams,
     encodeMessages: boolean,
     revealedMsgs?: Map<number, Uint8Array>
   ): Uint8Array {
     const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsPlusChallengeContributionFromProof(this.value, r, params.value, encodeMessages);
+    return bbsChallengeContributionFromProof(this.value, r, params.value, encodeMessages);
   }
 }

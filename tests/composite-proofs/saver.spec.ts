@@ -3,7 +3,7 @@ import {
   BBSPlusPublicKeyG2,
   BBSPlusSecretKey,
   CompositeProofG1, dockSaverEncryptionGensUncompressed,
-  KeypairG2,
+  BBSPlusKeypairG2,
   MetaStatement,
   MetaStatements,
   QuasiProofSpecG1,
@@ -17,8 +17,8 @@ import {
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
   SetupParam,
-  SignatureG1,
-  SignatureParamsG1,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
@@ -39,14 +39,14 @@ describe('Verifiable encryption of signed messages', () => {
     saverDk: SaverDecryptionKeyUncompressed,
     saverEncGens: SaverEncryptionGensUncompressed;
   // There are 2 signers
-  let sigParams1: SignatureParamsG1,
+  let sigParams1: BBSPlusSignatureParamsG1,
     sigSk1: BBSPlusSecretKey,
     sigPk1: BBSPlusPublicKeyG2,
-    sigParams2: SignatureParamsG1,
+    sigParams2: BBSPlusSignatureParamsG1,
     sigSk2: BBSPlusSecretKey,
     sigPk2: BBSPlusPublicKeyG2;
   let messages1AsStrings: string[], messages2AsStrings: string[];
-  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: SignatureG1, sig2: SignatureG1;
+  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: BBSPlusSignatureG1, sig2: BBSPlusSignatureG1;
 
   beforeAll(async () => {
     await initializeWasm();
@@ -123,22 +123,22 @@ describe('Verifiable encryption of signed messages', () => {
     messages1 = [];
     messages2 = [];
     for (let i = 0; i < messageCount; i++) {
-      messages1.push(SignatureG1.reversibleEncodeStringForSigning(messages1AsStrings[i]));
-      messages2.push(SignatureG1.reversibleEncodeStringForSigning(messages2AsStrings[i]));
+      messages1.push(BBSPlusSignatureG1.reversibleEncodeStringForSigning(messages1AsStrings[i]));
+      messages2.push(BBSPlusSignatureG1.reversibleEncodeStringForSigning(messages2AsStrings[i]));
     }
 
-    sigParams1 = SignatureParamsG1.generate(messageCount);
-    const sigKeypair1 = KeypairG2.generate(sigParams1);
+    sigParams1 = BBSPlusSignatureParamsG1.generate(messageCount);
+    const sigKeypair1 = BBSPlusKeypairG2.generate(sigParams1);
     sigSk1 = sigKeypair1.secretKey;
     sigPk1 = sigKeypair1.publicKey;
 
-    sigParams2 = SignatureParamsG1.generate(messageCount);
-    const sigKeypair2 = KeypairG2.generate(sigParams2);
+    sigParams2 = BBSPlusSignatureParamsG1.generate(messageCount);
+    const sigKeypair2 = BBSPlusKeypairG2.generate(sigParams2);
     sigSk2 = sigKeypair2.secretKey;
     sigPk2 = sigKeypair2.publicKey;
 
-    sig1 = SignatureG1.generate(messages1, sigSk1, sigParams1, false);
-    sig2 = SignatureG1.generate(messages2, sigSk2, sigParams2, false);
+    sig1 = BBSPlusSignatureG1.generate(messages1, sigSk1, sigParams1, false);
+    sig2 = BBSPlusSignatureG1.generate(messages2, sigSk2, sigParams2, false);
     expect(sig1.verify(messages1, sigPk1, sigParams1, false).verified).toEqual(true);
     expect(sig2.verify(messages2, sigPk2, sigParams2, false).verified).toEqual(true);
   });
@@ -160,11 +160,11 @@ describe('Verifiable encryption of signed messages', () => {
   }
 
   function proveAndVerifySingle(
-    sigParams: SignatureParamsG1,
+    sigParams: BBSPlusSignatureParamsG1,
     sigPk: BBSPlusPublicKeyG2,
     messages: Uint8Array[],
     messagesAsStrings: string[],
-    sig: SignatureG1,
+    sig: BBSPlusSignatureG1,
     label: string
   ) {
     const gens = SaverChunkedCommitmentGens.generate(stringToBytes(label));
@@ -207,7 +207,7 @@ describe('Verifiable encryption of signed messages', () => {
     decryptAndVerify(proof, 1, messages[encMsgIdx]);
 
     // Message can be successfully decoded to the original string
-    const decoded = SignatureG1.reversibleDecodeStringForSigning(messages[encMsgIdx]);
+    const decoded = BBSPlusSignatureG1.reversibleDecodeStringForSigning(messages[encMsgIdx]);
     expect(decoded).toEqual(messagesAsStrings[encMsgIdx]);
   }
 

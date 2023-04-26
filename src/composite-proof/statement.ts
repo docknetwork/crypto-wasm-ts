@@ -22,7 +22,7 @@ import {
   generateR1CSCircomVerifierStatementFromParamRefs,
   R1CS
 } from '@docknetwork/crypto-wasm';
-import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
   getChunkBitSize,
   SaverChunkedCommitmentGens,
@@ -77,7 +77,7 @@ export class Statement {
    * @param encodeMessages
    */
   static bbsPlusSignature(
-    sigParams: SignatureParamsG1,
+    sigParams: BBSPlusSignatureParamsG1,
     publicKey: BBSPlusPublicKeyG2,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean

@@ -17,7 +17,7 @@ import {
 /**
  * Signature parameters.
  */
-export abstract class SignatureParams {
+export abstract class BBSPlusSignatureG1Params {
   label?: Uint8Array;
   value: BbsPlusSigParams;
 
@@ -76,14 +76,14 @@ export abstract class SignatureParams {
   }
 }
 
-export class SignatureParamsG1 extends SignatureParams {
-  static generate(numMessages: number, label?: Uint8Array): SignatureParamsG1 {
+export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureG1Params {
+  static generate(numMessages: number, label?: Uint8Array): BBSPlusSignatureParamsG1 {
     const params = bbsPlusGenerateSignatureParamsG1(numMessages, label);
-    return new SignatureParamsG1(params, label);
+    return new BBSPlusSignatureParamsG1(params, label);
   }
 
   static generateAsBytes(numMessages: number, label?: Uint8Array): Uint8Array {
-    return SignatureParamsG1.generate(numMessages, label).toBytes();
+    return BBSPlusSignatureParamsG1.generate(numMessages, label).toBytes();
   }
 
   toBytes(): Uint8Array {
@@ -102,7 +102,7 @@ export class SignatureParamsG1 extends SignatureParams {
    * Transform current signature params to sign a different number of messages. Needs the `label` field to be present
    * @param newMsgCount
    */
-  adapt(newMsgCount: number): SignatureParamsG1 {
+  adapt(newMsgCount: number): BBSPlusSignatureParamsG1 {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
@@ -118,7 +118,7 @@ export class SignatureParamsG1 extends SignatureParams {
     } else {
       newParams = bbsPlusAdaptSigParamsG1ForMsgCount(this.value, this.label, newMsgCount);
     }
-    return new SignatureParamsG1(newParams, this.label);
+    return new BBSPlusSignatureParamsG1(newParams, this.label);
   }
 
   /**
@@ -138,14 +138,14 @@ export class SignatureParamsG1 extends SignatureParams {
   }
 }
 
-export class SignatureParamsG2 extends SignatureParams {
+export class BBSPlusSignatureParamsG2 extends BBSPlusSignatureG1Params {
   static generate(numMessages: number, label?: Uint8Array) {
     const params = bbsPlusGenerateSignatureParamsG2(numMessages, label);
-    return new SignatureParamsG2(params, label);
+    return new BBSPlusSignatureParamsG2(params, label);
   }
 
   static generateAsBytes(numMessages: number, label?: Uint8Array): Uint8Array {
-    return SignatureParamsG2.generate(numMessages, label).toBytes();
+    return BBSPlusSignatureParamsG2.generate(numMessages, label).toBytes();
   }
 
   isValid(): boolean {
@@ -164,11 +164,11 @@ export class SignatureParamsG2 extends SignatureParams {
    * Transform current signature params to sign a different number of messages. Needs the `label` field to be present
    * @param newMsgCount
    */
-  adapt(newMsgCount: number): SignatureParamsG2 {
+  adapt(newMsgCount: number): BBSPlusSignatureParamsG2 {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
     const newParams = bbsPlusAdaptSigParamsG2ForMsgCount(this.value, this.label, newMsgCount);
-    return new SignatureParamsG2(newParams, this.label);
+    return new BBSPlusSignatureParamsG2(newParams, this.label);
   }
 }

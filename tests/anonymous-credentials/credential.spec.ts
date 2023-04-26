@@ -13,7 +13,7 @@ import {
   SUBJECT_STR,
   TYPE_STR
 } from '../../src';
-import { BBSPlusPublicKeyG2, BBSPlusSecretKey, KeypairG2, SignatureParamsG1 } from '../../src';
+import { BBSPlusPublicKeyG2, BBSPlusSecretKey, BBSPlusKeypairG2, BBSPlusSignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
 import { checkSchemaFromJson, getExampleBuilder, getExampleSchema } from './utils';
 import * as jsonld from 'jsonld';
@@ -24,8 +24,8 @@ describe('Credential signing and verification', () => {
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
-    const keypair = KeypairG2.generate(params);
+    const params = BBSPlusSignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
+    const keypair = BBSPlusKeypairG2.generate(params);
     sk = keypair.sk;
     pk = keypair.pk;
   });

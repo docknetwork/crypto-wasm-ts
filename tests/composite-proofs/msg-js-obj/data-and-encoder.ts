@@ -1,7 +1,7 @@
 // Data used by various tests
 
 // 1st attribute set. This is a flat JS object.
-import { EncodeFunc, Encoder, SignatureG1 } from '../../../src';
+import { EncodeFunc, Encoder, BBSPlusSignatureG1 } from '../../../src';
 import { stringToBytes } from '../../utils';
 
 export const attributes1 = {
@@ -154,7 +154,7 @@ export const attributes3Struct = {
 // The default encoder
 export const defaultEncoder = (v: unknown) => {
   // @ts-ignore
-  return SignatureG1.encodeMessageForSigning(stringToBytes(v.toString()));
+  return BBSPlusSignatureG1.encodeMessageForSigning(stringToBytes(v.toString()));
 };
 
 // Create an encoder for attributes with various kinds of values.
@@ -183,11 +183,11 @@ encoders.set('lessSensitive.department.location.geo.long', Encoder.decimalNumber
 
 encoders.set('SSN', (v: unknown) => {
   // @ts-ignore
-  return SignatureG1.reversibleEncodeStringForSigning(v);
+  return BBSPlusSignatureG1.reversibleEncodeStringForSigning(v);
 });
 encoders.set('sensitive.SSN', (v: unknown) => {
   // @ts-ignore
-  return SignatureG1.reversibleEncodeStringForSigning(v);
+  return BBSPlusSignatureG1.reversibleEncodeStringForSigning(v);
 });
 
 encoders.set('rank', Encoder.positiveIntegerEncoder());

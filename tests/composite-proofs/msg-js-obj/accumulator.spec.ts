@@ -11,11 +11,11 @@ import {
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   IAccumulatorState,
-  KeypairG2,
+  BBSPlusKeypairG2,
   MetaStatements,
   PositiveAccumulator,
   ProofSpecG1,
-  SignatureParamsG1,
+  BBSPlusSignatureParamsG1,
   signMessageObject,
   Statement,
   Statements,
@@ -65,16 +65,16 @@ describe('Accumulator', () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = SignatureParamsG1.generate(1, label1);
-    const keypair1 = KeypairG2.generate(params1);
+    let params1 = BBSPlusSignatureParamsG1.generate(1, label1);
+    const keypair1 = BBSPlusKeypairG2.generate(params1);
     const sk1 = keypair1.secretKey;
     const pk1 = keypair1.publicKey;
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = SignatureParamsG1.generate(1, label2);
-    const keypair2 = KeypairG2.generate(params2);
+    let params2 = BBSPlusSignatureParamsG1.generate(1, label2);
+    const keypair2 = BBSPlusKeypairG2.generate(params2);
     const sk2 = keypair2.secretKey;
     const pk2 = keypair2.publicKey;
 

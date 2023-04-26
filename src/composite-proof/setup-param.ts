@@ -18,7 +18,7 @@ import {
   generateSetupParamForBytes,
   generateSetupParamForFieldElemVec
 } from '@docknetwork/crypto-wasm';
-import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
   SaverChunkedCommitmentGens,
   SaverChunkedCommitmentGensUncompressed,
@@ -47,7 +47,7 @@ import { getR1CS, ParsedR1CSFile } from '../r1cs';
  * to be passed to several `Statement`s as it avoids the need of having several copies of the setup parameter.
  */
 export class SetupParam extends BytearrayWrapper {
-  static bbsPlusSignatureParamsG1(params: SignatureParamsG1): SetupParam {
+  static bbsPlusSignatureParamsG1(params: BBSPlusSignatureParamsG1): SetupParam {
     return new SetupParam(generateSetupParamForBBSPlusSignatureParametersG1(params.value));
   }
 

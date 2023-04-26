@@ -1,15 +1,15 @@
 import {
   AttributeBoundPseudonym,
   CompositeProofG1,
-  KeypairG2,
+  BBSPlusKeypairG2,
   MetaStatement,
   MetaStatements,
   ProofSpecG1,
   Pseudonym,
   PseudonymBases,
-  Signature,
-  SignatureG1,
-  SignatureParamsG1,
+  BBSPlusSignature,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
@@ -35,7 +35,7 @@ function getAttributes(): Uint8Array[] {
   // Encode attributes for signing as well as adding to the accumulator
   const encodedAttributes: Uint8Array[] = [];
   for (let i = 0; i < attributes.length; i++) {
-    encodedAttributes.push(Signature.encodeMessageForSigning(attributes[i]));
+    encodedAttributes.push(BBSPlusSignatureG1.encodeMessageForSigning(attributes[i]));
   }
 
   return encodedAttributes;
@@ -136,14 +136,14 @@ describe('Register using pseudonym not bound to any attributes', () => {
     // User gets a credential (attributes + signature)
     const encodedAttributes = getAttributes();
     const label = stringToBytes('My sig params in g1');
-    const sigParams = SignatureParamsG1.generate(encodedAttributes.length, label);
+    const sigParams = BBSPlusSignatureParamsG1.generate(encodedAttributes.length, label);
 
     // Signers keys
-    const sigKeypair = KeypairG2.generate(sigParams);
+    const sigKeypair = BBSPlusKeypairG2.generate(sigParams);
     const sigSk = sigKeypair.secretKey;
     const sigPk = sigKeypair.publicKey;
 
-    const sig = SignatureG1.generate(encodedAttributes, sigSk, sigParams, false);
+    const sig = BBSPlusSignatureG1.generate(encodedAttributes, sigSk, sigParams, false);
 
     // Prover is not revealing any attribute
     const [_, unrevealed] = getRevealedUnrevealed(encodedAttributes, new Set());
@@ -288,14 +288,14 @@ describe('Using pseudonym bound to some attributes', () => {
 
   it('Usage along with credential', () => {
     const label = stringToBytes('My sig params in g1');
-    const sigParams = SignatureParamsG1.generate(encodedAttributes.length, label);
+    const sigParams = BBSPlusSignatureParamsG1.generate(encodedAttributes.length, label);
 
     // Signers keys
-    const sigKeypair = KeypairG2.generate(sigParams);
+    const sigKeypair = BBSPlusKeypairG2.generate(sigParams);
     const sigSk = sigKeypair.secretKey;
     const sigPk = sigKeypair.publicKey;
 
-    const sig = SignatureG1.generate(encodedAttributes, sigSk, sigParams, false);
+    const sig = BBSPlusSignatureG1.generate(encodedAttributes, sigSk, sigParams, false);
 
     // Prover is not revealing 1 attribute
     const revealedIndices = new Set<number>();
