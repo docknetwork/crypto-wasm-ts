@@ -1,13 +1,13 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from '../utils';
 import {
-  BlindSignatureG1,
+  BBSPlusBlindSignatureG1,
   CompositeProofG1,
-  KeypairG2,
+  BBSPlusKeypairG2,
   MetaStatements,
   ProofSpecG1,
-  Signature,
-  SignatureParamsG1,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
@@ -23,10 +23,10 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
     const messageCount = 5;
 
     const label = stringToBytes('My sig params in g1');
-    const params = SignatureParamsG1.generate(messageCount, label);
+    const params = BBSPlusSignatureParamsG1.generate(messageCount, label);
 
     // Signers keys
-    const keypair = KeypairG2.generate(params);
+    const keypair = BBSPlusKeypairG2.generate(params);
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 
@@ -43,7 +43,7 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
 
     // Blind signature request will contain a Pedersen commitment, and it can be given a blinding of choice
     // or it can generate on its own.
-    const [blinding, request] = BlindSignatureG1.generateRequest(blindedMessages, params, true);
+    const [blinding, request] = BBSPlusBlindSignatureG1.generateRequest(blindedMessages, params, true);
 
     expect(request.blindedIndices).toEqual(blindedIndices);
 
@@ -61,7 +61,7 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
     const committeds = [blinding];
     for (const i of blindedIndices) {
       // The messages are encoded before committing
-      committeds.push(Signature.encodeMessageForSigning(blindedMessages.get(i)));
+      committeds.push(BBSPlusSignatureG1.encodeMessageForSigning(blindedMessages.get(i)));
     }
     const witness1 = Witness.pedersenCommitment(committeds);
     const witnesses = new Witnesses();
@@ -76,7 +76,7 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
     knownMessages.set(3, stringToBytes('john.smith@emample.com'));
     knownMessages.set(4, stringToBytes('New York'));
     // Signer is convinced that user knows the opening to the commitment
-    const blindSig = BlindSignatureG1.generate(request.commitment, knownMessages, sk, params, true);
+    const blindSig = BBSPlusBlindSignatureG1.generate(request.commitment, knownMessages, sk, params, true);
 
     // User unblind the signature
     const sig = blindSig.unblind(blinding);

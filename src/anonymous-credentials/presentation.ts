@@ -9,7 +9,7 @@ import {
   Statements,
   WitnessEqualityMetaStatement
 } from '../composite-proof';
-import { BBSPlusPublicKeyG2, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { CredentialSchema, ValueType } from './schema';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
@@ -89,7 +89,7 @@ export class Presentation extends Versioned {
     }
 
     let maxAttribs = 2; // version and schema
-    let sigParams = SignatureParamsG1.generate(maxAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
+    let sigParams = BBSPlusSignatureParamsG1.generate(maxAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
 
     const statements = new Statements();
     const metaStatements = new MetaStatements();

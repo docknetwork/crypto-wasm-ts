@@ -4,8 +4,8 @@ import {
   Encoder,
   flattenObjectToKeyValuesList,
   getSigParamsOfRequiredSize,
-  SignatureG1,
-  SignatureParamsG1,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
   SigParamsGetter
 } from '../../../src';
 import { stringToBytes } from '../../utils';
@@ -37,7 +37,7 @@ describe('Utils', () => {
   });
 
   it('Signature params getter', () => {
-    const params1 = SignatureParamsG1.generate(2);
+    const params1 = BBSPlusSignatureParamsG1.generate(2);
 
     expect(() => getSigParamsOfRequiredSize(1, params1)).toThrow();
     expect(() => getSigParamsOfRequiredSize(3, params1)).toThrow();
@@ -46,7 +46,7 @@ describe('Utils', () => {
     expect(() => getSigParamsOfRequiredSize(2, stringToBytes('some label'))).not.toThrow();
     expect(() => getSigParamsOfRequiredSize(3, stringToBytes('some label'))).not.toThrow();
 
-    const params2 = SignatureParamsG1.generate(2, stringToBytes('label2'));
+    const params2 = BBSPlusSignatureParamsG1.generate(2, stringToBytes('label2'));
     expect(() => getSigParamsOfRequiredSize(1, params2)).not.toThrow();
     expect(() => getSigParamsOfRequiredSize(2, params2)).not.toThrow();
     expect(() => getSigParamsOfRequiredSize(3, params2)).not.toThrow();
@@ -89,7 +89,7 @@ describe('Utils', () => {
 
     const defaultEncoder = (v: unknown) => {
       // @ts-ignore
-      return SignatureG1.encodeMessageForSigning(stringToBytes(v.toString()));
+      return BBSPlusSignatureG1.encodeMessageForSigning(stringToBytes(v.toString()));
     };
     const encoder2 = new Encoder(undefined, defaultEncoder);
     expect(() => encoder2.encodeMessage('bar', 6)).not.toThrow();

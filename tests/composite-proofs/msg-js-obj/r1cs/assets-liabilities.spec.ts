@@ -12,7 +12,7 @@ import {
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
-  KeypairG2,
+  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
@@ -20,7 +20,7 @@ import {
   QuasiProofSpecG1,
   R1CSSnarkSetup,
   SetupParam,
-  SignatureParamsG1,
+  BBSPlusSignatureParamsG1,
   SignedMessages,
   signMessageObject,
   Statement,
@@ -133,9 +133,9 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     const numAssetAttrs = Object.keys(flattenObjectToKeyValuesList(assetAttributesStruct)[0]).length;
     const numLiablAttrs = Object.keys(flattenObjectToKeyValuesList(liabilitiesAttributesStruct)[0]).length;
     // Issuing multiple credentials with the same number of attributes so create sig. params only once for faster execution
-    let assetSigParams = SignatureParamsG1.generate(numAssetAttrs, label);
-    let liablSigParams = SignatureParamsG1.generate(numLiablAttrs, label);
-    const keypair = KeypairG2.generate(assetSigParams);
+    let assetSigParams = BBSPlusSignatureParamsG1.generate(numAssetAttrs, label);
+    let liablSigParams = BBSPlusSignatureParamsG1.generate(numLiablAttrs, label);
+    const keypair = BBSPlusKeypairG2.generate(assetSigParams);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
 

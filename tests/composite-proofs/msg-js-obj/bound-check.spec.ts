@@ -1,7 +1,6 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getBoundCheckSnarkKeys, readByteArrayFromFile, stringToBytes } from '../../utils';
+import { checkResult, getBoundCheckSnarkKeys, stringToBytes } from '../../utils';
 import {
-  BoundCheckSnarkSetup,
   CompositeProofG1,
   createWitnessEqualityMetaStatement,
   Encoder,
@@ -9,13 +8,11 @@ import {
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  KeypairG2,
-  LegoProvingKeyUncompressed,
-  LegoVerifyingKeyUncompressed,
+  BBSPlusKeypairG2,
   MetaStatements,
   ProofSpecG1,
   SetupParam,
-  SignatureParamsG1,
+  BBSPlusSignatureParamsG1,
   signMessageObject,
   Statement,
   Statements,
@@ -52,24 +49,24 @@ describe('Range proof using LegoGroth16', () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = SignatureParamsG1.generate(1, label1);
-    const keypair1 = KeypairG2.generate(params1);
+    let params1 = BBSPlusSignatureParamsG1.generate(1, label1);
+    const keypair1 = BBSPlusKeypairG2.generate(params1);
     const sk1 = keypair1.secretKey;
     const pk1 = keypair1.publicKey;
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = SignatureParamsG1.generate(1, label2);
-    const keypair2 = KeypairG2.generate(params2);
+    let params2 = BBSPlusSignatureParamsG1.generate(1, label2);
+    const keypair2 = BBSPlusKeypairG2.generate(params2);
     const sk2 = keypair2.secretKey;
     const pk2 = keypair2.publicKey;
 
     // 3rd signer's setup
     const label3 = stringToBytes('Sig params label 3');
     // Message count shouldn't matter as `label3` is known
-    let params3 = SignatureParamsG1.generate(1, label3);
-    const keypair3 = KeypairG2.generate(params3);
+    let params3 = BBSPlusSignatureParamsG1.generate(1, label3);
+    const keypair3 = BBSPlusKeypairG2.generate(params3);
     const sk3 = keypair3.secretKey;
     const pk3 = keypair3.publicKey;
 

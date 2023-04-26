@@ -8,7 +8,7 @@ import {
   STATUS_STR,
   SUBJECT_STR
 } from './types-and-consts';
-import { BBSPlusPublicKeyG2, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { verifyMessageObject } from '../sign-verify-js-objs';
 import { isEmptyObject } from '../util';
@@ -20,14 +20,14 @@ export class Credential extends Versioned {
   readonly subject: object | object[];
   readonly credentialStatus?: object;
   readonly topLevelFields: Map<string, unknown>;
-  readonly signature: SignatureG1;
+  readonly signature: BBSPlusSignatureG1;
 
   constructor(
     version: string,
     schema: CredentialSchema,
     subject: object,
     topLevelFields: Map<string, unknown>,
-    sig: SignatureG1,
+    sig: BBSPlusSignatureG1,
     credStatus?: object
   ) {
     super(version);
@@ -38,7 +38,7 @@ export class Credential extends Versioned {
     this.credentialStatus = credStatus;
   }
 
-  verify(publicKey: BBSPlusPublicKeyG2, signatureParams?: SignatureParamsG1): VerifyResult {
+  verify(publicKey: BBSPlusPublicKeyG2, signatureParams?: BBSPlusSignatureParamsG1): VerifyResult {
     const cred = this.serializeForSigning();
     return verifyMessageObject(
       cred,
@@ -149,7 +149,7 @@ export class Credential extends Versioned {
       }
     }
 
-    const sig = new SignatureG1(b58.decode(proofValue as string));
+    const sig = new BBSPlusSignatureG1(b58.decode(proofValue as string));
     const topLevelFields = new Map<string, unknown>();
     Object.keys(custom).forEach((k) => {
       topLevelFields.set(k, custom[k]);

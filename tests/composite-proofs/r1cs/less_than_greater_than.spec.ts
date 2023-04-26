@@ -5,7 +5,7 @@ import {
   BBSPlusSecretKey,
   CircomInputs,
   CompositeProofG1,
-  KeypairG2,
+  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatement,
@@ -13,8 +13,8 @@ import {
   ParsedR1CSFile,
   QuasiProofSpecG1,
   R1CSSnarkSetup,
-  SignatureG1,
-  SignatureParamsG1,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
@@ -32,13 +32,13 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
   let ltPubProvingKey: LegoProvingKeyUncompressed, ltPubVerifyingKey: LegoVerifyingKeyUncompressed;
 
   // There are 2 signers
-  let sigParams1: SignatureParamsG1,
+  let sigParams1: BBSPlusSignatureParamsG1,
     sigSk1: BBSPlusSecretKey,
     sigPk1: BBSPlusPublicKeyG2,
-    sigParams2: SignatureParamsG1,
+    sigParams2: BBSPlusSignatureParamsG1,
     sigSk2: BBSPlusSecretKey,
     sigPk2: BBSPlusPublicKeyG2;
-  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: SignatureG1, sig2: SignatureG1;
+  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: BBSPlusSignatureG1, sig2: BBSPlusSignatureG1;
 
   const messageCount = 5;
 
@@ -62,13 +62,13 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
   });
 
   it('do signers setup', () => {
-    sigParams1 = SignatureParamsG1.generate(messageCount);
-    const sigKeypair1 = KeypairG2.generate(sigParams1);
+    sigParams1 = BBSPlusSignatureParamsG1.generate(messageCount);
+    const sigKeypair1 = BBSPlusKeypairG2.generate(sigParams1);
     sigSk1 = sigKeypair1.secretKey;
     sigPk1 = sigKeypair1.publicKey;
 
-    sigParams2 = SignatureParamsG1.generate(messageCount);
-    const sigKeypair2 = KeypairG2.generate(sigParams2);
+    sigParams2 = BBSPlusSignatureParamsG1.generate(messageCount);
+    const sigKeypair2 = BBSPlusKeypairG2.generate(sigParams2);
     sigSk2 = sigKeypair2.secretKey;
     sigPk2 = sigKeypair2.publicKey;
 
@@ -79,17 +79,17 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
       messages2.push(generateFieldElementFromNumber(2000 + i));
     }
 
-    sig1 = SignatureG1.generate(messages1, sigSk1, sigParams1, false);
-    sig2 = SignatureG1.generate(messages2, sigSk2, sigParams2, false);
+    sig1 = BBSPlusSignatureG1.generate(messages1, sigSk1, sigParams1, false);
+    sig2 = BBSPlusSignatureG1.generate(messages2, sigSk2, sigParams2, false);
     expect(sig1.verify(messages1, sigPk1, sigParams1, false).verified).toEqual(true);
     expect(sig2.verify(messages2, sigPk2, sigParams2, false).verified).toEqual(true);
   });
 
   function proveAndVerifyLessThan(
-    sigParams: SignatureParamsG1,
+    sigParams: BBSPlusSignatureParamsG1,
     sigPk: BBSPlusPublicKeyG2,
     messages: Uint8Array[],
-    sig: SignatureG1
+    sig: BBSPlusSignatureG1
   ) {
     const publicMax = generateFieldElementFromNumber(5000);
 

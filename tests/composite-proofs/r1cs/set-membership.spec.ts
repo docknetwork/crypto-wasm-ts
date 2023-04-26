@@ -3,7 +3,7 @@ import {
   BBSPlusSecretKey,
   CircomInputs,
   CompositeProofG1,
-  KeypairG2,
+  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatement,
@@ -11,8 +11,8 @@ import {
   ParsedR1CSFile,
   ProofSpecG1,
   R1CSSnarkSetup,
-  SignatureG1,
-  SignatureParamsG1,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
@@ -28,8 +28,8 @@ describe('Proof with R1CS and Circom circuits: set membership check', () => {
 
   let provingKey: LegoProvingKeyUncompressed, verifyingKey: LegoVerifyingKeyUncompressed;
 
-  let sigParams: SignatureParamsG1, sigSk: BBSPlusSecretKey, sigPk: BBSPlusPublicKeyG2;
-  let messages: Uint8Array[], sig: SignatureG1;
+  let sigParams: BBSPlusSignatureParamsG1, sigSk: BBSPlusSecretKey, sigPk: BBSPlusPublicKeyG2;
+  let messages: Uint8Array[], sig: BBSPlusSignatureG1;
 
   const messageCount = 5;
 
@@ -48,8 +48,8 @@ describe('Proof with R1CS and Circom circuits: set membership check', () => {
   });
 
   it('do signers setup', () => {
-    sigParams = SignatureParamsG1.generate(messageCount);
-    const sigKeypair1 = KeypairG2.generate(sigParams);
+    sigParams = BBSPlusSignatureParamsG1.generate(messageCount);
+    const sigKeypair1 = BBSPlusKeypairG2.generate(sigParams);
     sigSk = sigKeypair1.secretKey;
     sigPk = sigKeypair1.publicKey;
 
@@ -58,7 +58,7 @@ describe('Proof with R1CS and Circom circuits: set membership check', () => {
       messages.push(generateFieldElementFromNumber(1000 + i));
     }
 
-    sig = SignatureG1.generate(messages, sigSk, sigParams, false);
+    sig = BBSPlusSignatureG1.generate(messages, sigSk, sigParams, false);
     expect(sig.verify(messages, sigPk, sigParams, false).verified).toEqual(true);
   });
 

@@ -9,14 +9,14 @@ import {
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   getSigParamsForMsgStructure,
-  KeypairG2,
+  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
   ProofSpecG1,
   R1CSSnarkSetup,
-  SignatureParamsG1,
+  BBSPlusSignatureParamsG1,
   SignedMessages,
   signMessageObject,
   Statement,
@@ -97,8 +97,8 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
 
   it('signers signs attributes', () => {
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParamsG1.generate(1, label);
-    const keypair = KeypairG2.generate(params);
+    let params = BBSPlusSignatureParamsG1.generate(1, label);
+    const keypair = BBSPlusKeypairG2.generate(params);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
 

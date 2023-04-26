@@ -5,7 +5,7 @@ import {
   BBSPlusPublicKeyG2,
   BBSPlusSecretKey,
   IAccumulatorState,
-  KeypairG2,
+  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MembershipWitness,
@@ -18,7 +18,7 @@ import {
   SaverProvingKeyUncompressed,
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
-  SignatureParamsG1
+  BBSPlusSignatureParamsG1
 } from '../../src';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
@@ -140,11 +140,11 @@ describe('Presentation creation and verification', () => {
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
-    const keypair1 = KeypairG2.generate(params);
-    const keypair2 = KeypairG2.generate(params);
-    const keypair3 = KeypairG2.generate(params);
-    const keypair4 = KeypairG2.generate(params);
+    const params = BBSPlusSignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
+    const keypair1 = BBSPlusKeypairG2.generate(params);
+    const keypair2 = BBSPlusKeypairG2.generate(params);
+    const keypair3 = BBSPlusKeypairG2.generate(params);
+    const keypair4 = BBSPlusKeypairG2.generate(params);
     sk1 = keypair1.sk;
     pk1 = keypair1.pk;
     sk2 = keypair2.sk;

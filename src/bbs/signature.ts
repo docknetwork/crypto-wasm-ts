@@ -1,20 +1,19 @@
-import { BBSPlusSignatureParamsG1 } from './params';
+import { BBSSignatureParams } from './params';
 import {
-  bbsPlusBlindSignG1,
-  bbsPlusEncodeMessageForSigning,
-  bbsPlusSignG1,
-  bbsPlusUnblindSigG1,
-  bbsPlusVerifyG1,
+  bbsEncodeMessageForSigning,
+  bbsVerify,
+  bbsSign,
   generateRandomFieldElement,
   fieldElementAsBytes,
   generateFieldElementFromNumber,
-  VerifyResult
+  VerifyResult,
 } from '@docknetwork/crypto-wasm';
-import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
+import { BBSPublicKey, BBSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import LZUTF8 from 'lzutf8';
+import { bbsBlindSign } from '@docknetwork/crypto-wasm';
 
-export abstract class BBSPlusSignature extends BytearrayWrapper {
+export class BBSSignature extends BytearrayWrapper {
   // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
   static readonly maxEncodedLength = 32;
   static readonly textEncoder = new TextEncoder();
@@ -26,7 +25,7 @@ export abstract class BBSPlusSignature extends BytearrayWrapper {
    * @param message
    */
   static encodeMessageForSigning(message: Uint8Array): Uint8Array {
-    return bbsPlusEncodeMessageForSigning(message);
+    return bbsEncodeMessageForSigning(message);
   }
 
   /**
@@ -49,14 +48,14 @@ export abstract class BBSPlusSignature extends BytearrayWrapper {
    * like public keys, DIDs, UUIDs, etc. are designed to be random and thus won't be compressed
    */
   static reversibleEncodeStringForSigning(message: string, compress = false): Uint8Array {
-    const bytes = compress ? LZUTF8.compress(message) : BBSPlusSignatureG1.textEncoder.encode(message);
-    if (bytes.length > BBSPlusSignatureG1.maxEncodedLength) {
-      throw new Error(`Expects a string with at most ${BBSPlusSignatureG1.maxEncodedLength} bytes`);
+    const bytes = compress ? LZUTF8.compress(message) : BBSSignature.textEncoder.encode(message);
+    if (bytes.length > BBSSignature.maxEncodedLength) {
+      throw new Error(`Expects a string with at most ${BBSSignature.maxEncodedLength} bytes`);
     }
     // Create a little-endian representation
-    const fieldElementBytes = new Uint8Array(BBSPlusSignatureG1.maxEncodedLength);
+    const fieldElementBytes = new Uint8Array(BBSSignature.maxEncodedLength);
     fieldElementBytes.set(bytes);
-    fieldElementBytes.set(new Uint8Array(BBSPlusSignatureG1.maxEncodedLength - bytes.length), bytes.length);
+    fieldElementBytes.set(new Uint8Array(BBSSignature.maxEncodedLength - bytes.length), bytes.length);
     return fieldElementAsBytes(fieldElementBytes, true);
   }
 
@@ -69,22 +68,22 @@ export abstract class BBSPlusSignature extends BytearrayWrapper {
    * @param decompress - whether to decompress the bytes before converting to a string
    */
   static reversibleDecodeStringForSigning(message: Uint8Array, decompress = false): string {
-    if (message.length > BBSPlusSignatureG1.maxEncodedLength) {
-      throw new Error(`Expects a message with at most ${BBSPlusSignatureG1.maxEncodedLength} bytes`);
+    if (message.length > BBSSignature.maxEncodedLength) {
+      throw new Error(`Expects a message with at most ${BBSSignature.maxEncodedLength} bytes`);
     }
     if (decompress) {
       const strippedMsg = message.slice(0, message.indexOf(0));
       const str = LZUTF8.decompress(strippedMsg) as string;
-      if (str.length > BBSPlusSignatureG1.maxEncodedLength) {
+      if (str.length > BBSSignature.maxEncodedLength) {
         throw new Error(
-          `Expects a message that can be decompressed to at most ${BBSPlusSignatureG1.maxEncodedLength} bytes but decompressed size was ${str.length}`
+          `Expects a message that can be decompressed to at most ${BBSSignature.maxEncodedLength} bytes but decompressed size was ${str.length}`
         );
       }
       return str;
     } else {
-      const decoded = BBSPlusSignatureG1.textDecoder.decode(message);
+      const decoded = BBSSignature.textDecoder.decode(message);
       const chars: string[] = [];
-      for (let i = 0; i < BBSPlusSignatureG1.maxEncodedLength; i++) {
+      for (let i = 0; i < BBSSignature.maxEncodedLength; i++) {
         // If a null character found then stop looking further
         if (decoded.charCodeAt(i) == 0) {
           break;
@@ -94,9 +93,7 @@ export abstract class BBSPlusSignature extends BytearrayWrapper {
       return chars.join('');
     }
   }
-}
 
-export class BBSPlusSignatureG1 extends BBSPlusSignature {
   /**
    * Signer creates a new signature
    * @param messages - Ordered list of messages. Order and contents should be kept same for both signer and verifier
@@ -104,12 +101,7 @@ export class BBSPlusSignatureG1 extends BBSPlusSignature {
    * @param params
    * @param encodeMessages - If true, the messages are encoded as field elements otherwise they are assumed to be already encoded.
    */
-  static generate(
-    messages: Uint8Array[],
-    secretKey: BBSPlusSecretKey,
-    params: BBSPlusSignatureParamsG1,
-    encodeMessages: boolean
-  ): BBSPlusSignatureG1 {
+  static generate(messages: Uint8Array[], secretKey: BBSSecretKey, params: BBSSignatureParams, encodeMessages: boolean): BBSSignature {
     if (messages.length !== params.supportedMessageCount()) {
       throw new Error(
         `Number of messages ${
@@ -117,8 +109,8 @@ export class BBSPlusSignatureG1 extends BBSPlusSignature {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsPlusSignG1(messages, secretKey.value, params.value, encodeMessages);
-    return new BBSPlusSignatureG1(sig);
+    const sig = bbsSign(messages, secretKey.value, params.value, encodeMessages);
+    return new BBSSignature(sig);
   }
 
   /**
@@ -130,8 +122,8 @@ export class BBSPlusSignatureG1 extends BBSPlusSignature {
    */
   verify(
     messages: Uint8Array[],
-    publicKey: BBSPlusPublicKeyG2,
-    params: BBSPlusSignatureParamsG1,
+    publicKey: BBSPublicKey,
+    params: BBSSignatureParams,
     encodeMessages: boolean
   ): VerifyResult {
     if (messages.length !== params.supportedMessageCount()) {
@@ -141,11 +133,11 @@ export class BBSPlusSignatureG1 extends BBSPlusSignature {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    return bbsPlusVerifyG1(messages, this.value, publicKey.value, params.value, encodeMessages);
+    return bbsVerify(messages, this.value, publicKey.value, params.value, encodeMessages);
   }
 }
 
-export abstract class BBSPlusBlindSignature extends BytearrayWrapper {
+export class BBSBlindSignature extends BytearrayWrapper {
   /**
    * Generate blinding for creating the commitment used in the request for blind signature
    * @param seed - Optional seed to serve as entropy for the blinding.
@@ -153,9 +145,7 @@ export abstract class BBSPlusBlindSignature extends BytearrayWrapper {
   static generateBlinding(seed?: Uint8Array): Uint8Array {
     return generateRandomFieldElement(seed);
   }
-}
 
-export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
   /**
    * Generates a blind signature over the commitment of unknown messages and known messages
    * @param commitment - Commitment over unknown messages sent by the requester of the blind signature. Its assumed that
@@ -168,10 +158,10 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
   static generate(
     commitment: Uint8Array,
     knownMessages: Map<number, Uint8Array>,
-    secretKey: BBSPlusSecretKey,
-    params: BBSPlusSignatureParamsG1,
+    secretKey: BBSSecretKey,
+    params: BBSSignatureParams,
     encodeMessages: boolean
-  ): BBSPlusBlindSignatureG1 {
+  ): BBSBlindSignature {
     if (knownMessages.size >= params.supportedMessageCount()) {
       throw new Error(
         `Number of messages ${
@@ -179,36 +169,50 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
         } must be less than ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsPlusBlindSignG1(commitment, knownMessages, secretKey.value, params.value, encodeMessages);
-    return new BBSPlusBlindSignatureG1(sig);
+    const sig = bbsBlindSign(commitment, knownMessages, secretKey.value, params.value, encodeMessages);
+    return new BBSBlindSignature(sig);
   }
 
-  /**
-   * Unblind the blind signature to get a regular signature that can be verified
-   * @param blinding
+    /**
+   * Verify the signature
+   * @param messages - Ordered list of messages. Order and contents should be kept same for both signer and verifier
+   * @param publicKey
+   * @param params
+   * @param encodeMessages - If true, the messages are encoded as field elements otherwise they are assumed to be already encoded.
    */
-  unblind(blinding: Uint8Array): BBSPlusSignatureG1 {
-    const sig = bbsPlusUnblindSigG1(this.value, blinding);
-    return new BBSPlusSignatureG1(sig);
+  verify(
+    messages: Uint8Array[],
+    publicKey: BBSPublicKey,
+    params: BBSSignatureParams,
+    encodeMessages: boolean
+  ): VerifyResult {
+    if (messages.length !== params.supportedMessageCount()) {
+      throw new Error(
+        `Number of messages ${
+          messages.length
+        } is different from ${params.supportedMessageCount()} supported by the signature params`
+      );
+    }
+    return bbsVerify(messages, this.value, publicKey.value, params.value, encodeMessages);
   }
 
   /**
    * Generate a request for a blind signature
    * @param messagesToBlind - messages the requester wants to hide from the signer. The key of the map is the index of the
    * message as per the params.
+   * @param blindings - If not provided, a random blinding is generated
    * @param params
-   * @param encodeMessages
-   * @param blinding - If not provided, a random blinding is generated
-   * @param unblindedMessages - Any messages that the requester wishes to inform the signer about. This is for informational
+   * @param h
+   * @param revealedMessages - Any messages that the requester wishes to inform the signer about. This is for informational
    * purpose only and has no cryptographic use.
    */
   static generateRequest(
     messagesToBlind: Map<number, Uint8Array>,
-    params: BBSPlusSignatureParamsG1,
+    params: BBSSignatureParams,
     encodeMessages: boolean,
     blinding?: Uint8Array,
     unblindedMessages?: Map<number, Uint8Array>
-  ): [Uint8Array, BBSPlusBlindSignatureRequest] {
+  ): [Uint8Array, BBSBlindSignatureRequest] {
     const [commitment, b] = params.commitToMessages(messagesToBlind, encodeMessages, blinding);
     const blindedIndices: number[] = [];
     for (const k of messagesToBlind.keys()) {
@@ -223,7 +227,7 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
 /**
  * Structure to send to the signer to request a blind signature
  */
-export interface BBSPlusBlindSignatureRequest {
+export interface BBSBlindSignatureRequest {
   /**
    * The commitment to the blinded messages
    */

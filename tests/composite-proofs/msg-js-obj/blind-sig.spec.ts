@@ -6,10 +6,10 @@ import {
   genBlindSigRequestAndWitness,
   getAdaptedSignatureParamsForMessages,
   getStatementForBlindSigRequest,
-  KeypairG2,
+  BBSPlusKeypairG2,
   MetaStatements,
   ProofSpecG1,
-  SignatureParamsG1,
+  BBSPlusSignatureParamsG1,
   Statements,
   verifyMessageObject,
   Witnesses
@@ -37,8 +37,8 @@ describe('Requesting blind signatures', () => {
 
     const label = stringToBytes('Sig params label - this is public');
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParamsG1.generate(1, label);
-    const keypair = KeypairG2.generate(params);
+    let params = BBSPlusSignatureParamsG1.generate(1, label);
+    const keypair = BBSPlusKeypairG2.generate(params);
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 

@@ -7,7 +7,7 @@ import {
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  KeypairG2,
+  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
@@ -20,8 +20,8 @@ import {
   SaverProvingKeyUncompressed,
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
-  SignatureG1,
-  SignatureParamsG1,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
   signMessageObject,
   Statement,
   Statements,
@@ -48,8 +48,8 @@ describe('Verifiable encryption using SAVER', () => {
 
     const label = stringToBytes('Sig params label - this is public');
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParamsG1.generate(1, label);
-    const keypair = KeypairG2.generate(params);
+    let params = BBSPlusSignatureParamsG1.generate(1, label);
+    const keypair = BBSPlusKeypairG2.generate(params);
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 
@@ -193,7 +193,7 @@ describe('Verifiable encryption using SAVER', () => {
     ).toEqual(true);
 
     // Message can be successfully decoded to the original string
-    const decoded = SignatureG1.reversibleDecodeStringForSigning(signed.encodedMessages['SSN']);
+    const decoded = BBSPlusSignatureG1.reversibleDecodeStringForSigning(signed.encodedMessages['SSN']);
     expect(decoded).toEqual(attributes1['SSN']);
   });
 });

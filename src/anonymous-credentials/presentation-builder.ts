@@ -1,6 +1,6 @@
 import { Versioned } from './versioned';
 import { Credential } from './credential';
-import { BBSPlusPublicKeyG2, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
   CompositeProofG1,
   MetaStatements,
@@ -288,7 +288,7 @@ export class PresentationBuilder extends Versioned {
     // Tracking maximum attributes across all credentials so that new values for signatures
     // params are only created when the need be. Check definition of `adapt` for more details.
     let maxAttribs = 2; // version and schema
-    let sigParams = SignatureParamsG1.generate(maxAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
+    let sigParams = BBSPlusSignatureParamsG1.generate(maxAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
 
     const statements = new Statements();
     const metaStatements = new MetaStatements();
@@ -352,7 +352,7 @@ export class PresentationBuilder extends Versioned {
         revealedAttrsEncoded,
         false
       );
-      const witness = Witness.bbsPlusSignature(cred.signature as SignatureG1, unrevealedAttrsEncoded, false);
+      const witness = Witness.bbsPlusSignature(cred.signature as BBSPlusSignatureG1, unrevealedAttrsEncoded, false);
       statements.add(statement);
       witnesses.add(witness);
 

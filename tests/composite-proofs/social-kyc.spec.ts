@@ -1,11 +1,11 @@
 import {
   CompositeProofG1,
-  KeypairG2,
+  BBSPlusKeypairG2,
   MetaStatements,
   ProofSpecG1,
-  Signature,
-  BlindSignatureG1,
-  SignatureParamsG1,
+  BBSPlusSignatureG1,
+  BBSPlusBlindSignatureG1,
+  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
@@ -31,7 +31,7 @@ describe('Social KYC (Know Your Customer)', () => {
   // credential will contain the user's secret id which he will hide from the issuer, thus gets a blinded credential.
 
   // Issuer's parameters
-  let sigParams: SignatureParamsG1;
+  let sigParams: BBSPlusSignatureParamsG1;
   // Issuers secret key and public keys
   let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
   // Commitment key for commitment posted on social profile.
@@ -44,10 +44,10 @@ describe('Social KYC (Know Your Customer)', () => {
     // Load the WASM module
     await initializeWasm();
 
-    sigParams = SignatureParamsG1.generate(attributeCount);
+    sigParams = BBSPlusSignatureParamsG1.generate(attributeCount);
 
     // Generate keys
-    const sigKeypair = KeypairG2.generate(sigParams);
+    const sigKeypair = BBSPlusKeypairG2.generate(sigParams);
     sk = sigKeypair.secretKey;
     pk = sigKeypair.publicKey;
 
@@ -68,7 +68,7 @@ describe('Social KYC (Know Your Customer)', () => {
     blindedAttributes.set(0, stringToBytes('my-secret-id'));
 
     // Generate a blind signature request
-    const [blinding, request] = BlindSignatureG1.generateRequest(blindedAttributes, sigParams, true);
+    const [blinding, request] = BBSPlusBlindSignatureG1.generateRequest(blindedAttributes, sigParams, true);
 
     // The proof is created for 2 statements.
 
@@ -96,7 +96,7 @@ describe('Social KYC (Know Your Customer)', () => {
     const committeds = [blinding];
     for (const i of blindedIndices) {
       // The attributes are encoded before committing
-      committeds.push(Signature.encodeMessageForSigning(blindedAttributes.get(i)));
+      committeds.push(BBSPlusSignatureG1.encodeMessageForSigning(blindedAttributes.get(i)));
     }
     const witness2 = Witness.pedersenCommitment(committeds);
     const witnesses = new Witnesses();
@@ -118,7 +118,7 @@ describe('Social KYC (Know Your Customer)', () => {
     knownAttributes.set(4, stringToBytes('5000'));
 
     // Issuer is convinced that user knows the opening to the both commitments
-    const blindSig = BlindSignatureG1.generate(request.commitment, knownAttributes, sk, sigParams, true);
+    const blindSig = BBSPlusBlindSignatureG1.generate(request.commitment, knownAttributes, sk, sigParams, true);
 
     // // User unblinds the signature and now has valid credential
     const sig = blindSig.unblind(blinding);

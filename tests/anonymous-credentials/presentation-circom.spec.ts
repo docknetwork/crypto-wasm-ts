@@ -5,8 +5,8 @@ import {
   CredentialSchema,
   PresentationBuilder,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  SignatureParamsG1,
-  KeypairG2,
+  BBSPlusSignatureParamsG1,
+  BBSPlusKeypairG2,
   BBSPlusSecretKey,
   BBSPlusPublicKeyG2,
   ParsedR1CSFile,
@@ -39,8 +39,8 @@ describe('Presentation creation and verification with Circom predicates', () => 
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
-    const keypair = KeypairG2.generate(params);
+    const params = BBSPlusSignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
+    const keypair = BBSPlusKeypairG2.generate(params);
     sk = keypair.sk;
     pk = keypair.pk;
 

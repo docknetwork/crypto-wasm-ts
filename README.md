@@ -199,7 +199,7 @@ Before messages can be signed, 2 things are needed:
   Generating a keypair once signature parameters are created.
 
   ```ts
-  const keypair1 = KeypairG2.generate(paramsDeterministc);
+  const keypair1 = BBSPlusKeypairG2.generate(paramsDeterministc);
   const sk = keypair.secretKey;
   const pk = keypair.publicKey;
   ```

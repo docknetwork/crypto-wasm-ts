@@ -1,4 +1,4 @@
-import { BBSPlusSecretKey, SignatureG1, SignatureParamsG1 } from '../bbs-plus';
+import { BBSPlusSecretKey, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { signMessageObject } from '../sign-verify-js-objs';
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
@@ -45,7 +45,7 @@ export class CredentialBuilder extends Versioned {
   _credStatus?: object;
   _encodedAttributes?: { [key: string]: Uint8Array };
   _topLevelFields: Map<string, unknown>;
-  _sig?: SignatureG1;
+  _sig?: BBSPlusSignatureG1;
 
   constructor() {
     super(CredentialBuilder.VERSION);
@@ -94,7 +94,7 @@ export class CredentialBuilder extends Versioned {
     };
   }
 
-  get signature(): SignatureG1 | undefined {
+  get signature(): BBSPlusSignatureG1 | undefined {
     return this._sig;
   }
 
@@ -124,7 +124,7 @@ export class CredentialBuilder extends Versioned {
    */
   sign(
     secretKey: BBSPlusSecretKey,
-    signatureParams?: SignatureParamsG1,
+    signatureParams?: BBSPlusSignatureParamsG1,
     signingOpts?: Partial<ISigningOpts>
   ): Credential {
     if (signingOpts === undefined) {
