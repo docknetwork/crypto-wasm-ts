@@ -2,7 +2,7 @@ import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, getBoundCheckSnarkKeys, readByteArrayFromFile, stringToBytes } from '../../utils';
 import {
   BoundCheckSnarkSetup,
-  CompositeProofG1,
+  CompositeProofG1, dockSaverEncryptionGensUncompressed,
   encodeRevealedMsgs,
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
@@ -61,9 +61,7 @@ describe('Verifiable encryption using SAVER', () => {
     const chunkBitSize = 16;
     if (loadSnarkSetupFromFiles && chunkBitSize === 16) {
       saverSk = new SaverSecretKey(readByteArrayFromFile('snark-setups/saver-secret-key-16.bin'));
-      saverEncGens = new SaverDecryptionKeyUncompressed(
-        readByteArrayFromFile('snark-setups/saver-encryption-gens-16-uncompressed.bin')
-      );
+      saverEncGens = dockSaverEncryptionGensUncompressed();
       saverProvingKey = new SaverProvingKeyUncompressed(
         readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin')
       );
@@ -89,17 +87,7 @@ describe('Verifiable encryption using SAVER', () => {
     }
 
     // Verifier creates SNARK proving and verification key
-    let boundCheckProvingKey, boundCheckVerifyingKey;
-    if (loadSnarkSetupFromFiles) {
-      boundCheckProvingKey = new LegoProvingKeyUncompressed(
-        readByteArrayFromFile('snark-setups/bound-check-proving-key-uncompressed.bin')
-      );
-      boundCheckVerifyingKey = new LegoVerifyingKeyUncompressed(
-        readByteArrayFromFile('snark-setups/bound-check-verifying-key-uncompressed.bin')
-      );
-    } else {
-      [boundCheckProvingKey, boundCheckVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
-    }
+    const [boundCheckProvingKey, boundCheckVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
 
     console.info('Bound check setup done');
 
