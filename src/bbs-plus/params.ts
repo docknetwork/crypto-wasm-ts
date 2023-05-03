@@ -13,11 +13,16 @@ import {
   generateRandomFieldElement,
   BbsPlusSigParams
 } from '@docknetwork/crypto-wasm';
+import { IParams, MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { BBSPlusPublicKeyG1, BBSPlusSecretKey } from './keys';
+import { BBSPlusSignatureG1 } from './signature';
+import { Encoder } from '../encoder';
+import { VerifyResult } from '@docknetwork/crypto-wasm';
 
 /**
  * Signature parameters.
  */
-export abstract class BBSPlusSignatureG1Params {
+export abstract class BBSPlusSignatureG1Params implements IParams {
   label?: Uint8Array;
   value: BbsPlusSigParams;
 
@@ -30,6 +35,8 @@ export abstract class BBSPlusSignatureG1Params {
 
   abstract toBytes(): Uint8Array;
   abstract isValid(): boolean;
+
+  abstract adapt(newMsgCount: number): this;
 
   /**
    * Number of messages that these params support and can be signed. If less or more messages are to be signed, use
@@ -102,12 +109,12 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureG1Params {
    * Transform current signature params to sign a different number of messages. Needs the `label` field to be present
    * @param newMsgCount
    */
-  adapt(newMsgCount: number): BBSPlusSignatureParamsG1 {
+  adapt(newMsgCount: number): this {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
     let newParams;
-
+  
     if (newMsgCount <= this.supportedMessageCount()) {
       newParams = {
         g1: this.value.g1,
@@ -118,7 +125,7 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureG1Params {
     } else {
       newParams = bbsPlusAdaptSigParamsG1ForMsgCount(this.value, this.label, newMsgCount);
     }
-    return new BBSPlusSignatureParamsG1(newParams, this.label);
+    return new (this.constructor as any)(newParams, this.label);
   }
 
   /**
@@ -135,6 +142,88 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureG1Params {
     const b = blinding === undefined ? generateRandomFieldElement() : blinding;
     const commitment = bbsPlusCommitMsgsInG1(messageToCommit, b, this.value, encodeMessages);
     return [commitment, b];
+  }
+
+  static signMessageObject(
+    messages: Object,
+    secretKey: BBSPlusSecretKey,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+    encoder: Encoder
+  ): SignedMessages<BBSPlusSignatureG1> {
+    const [names, encodedValues] = encoder.encodeMessageObject(messages);
+    const msgCount = names.length;
+  
+    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    const signature = BBSPlusSignatureG1.generate(encodedValues, secretKey, sigParams, false);
+  
+    // Encoded message as an object with key as the flattened name
+    const encodedMessages: { [key: string]: Uint8Array } = {};
+    for (let i = 0; i < msgCount; i++) {
+      encodedMessages[names[i]] = encodedValues[i];
+    }
+  
+    return {
+      encodedMessages,
+      signature
+    };
+  }
+
+  /**
+   * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
+   * to signing and then verifies the signature.
+   * @param messages
+   * @param signature
+   * @param publicKey
+   * @param labelOrParams
+   * @param encoder
+   */
+  static verifyMessageObject(
+    messages: object,
+    signature: BBSPlusSignatureG1,
+    publicKey: BBSPlusPublicKeyG1,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+    encoder: Encoder
+  ): VerifyResult {
+    const [_, encodedValues] = encoder.encodeMessageObject(messages);
+    const msgCount = encodedValues.length;
+
+    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    return signature.verify(encodedValues, publicKey, sigParams, false);
+  }
+
+  /**
+  * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
+  * @param msgCount
+  * @param labelOrParams
+  */
+  static getSigParamsOfRequiredSize(
+    msgCount: number,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1
+  ): BBSPlusSignatureParamsG1 {
+    let sigParams;
+    if (labelOrParams instanceof this) {
+      labelOrParams = labelOrParams as BBSPlusSignatureParamsG1;
+      if (labelOrParams.supportedMessageCount() !== msgCount) {
+        if (labelOrParams.label === undefined) {
+          throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
+        } else {
+          sigParams = labelOrParams.adapt(msgCount);
+        }
+      } else {
+        sigParams = labelOrParams;
+      }
+    } else {
+      sigParams = this.generate(msgCount, labelOrParams as Uint8Array);
+    }
+    return sigParams;
+  }
+
+  static getSigParamsForMsgStructure(
+    msgStructure: MessageStructure,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+  ): BBSPlusSignatureParamsG1 {
+    const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
+    return this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
   }
 }
 
@@ -164,11 +253,11 @@ export class BBSPlusSignatureParamsG2 extends BBSPlusSignatureG1Params {
    * Transform current signature params to sign a different number of messages. Needs the `label` field to be present
    * @param newMsgCount
    */
-  adapt(newMsgCount: number): BBSPlusSignatureParamsG2 {
+  adapt(newMsgCount: number): this {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
     const newParams = bbsPlusAdaptSigParamsG2ForMsgCount(this.value, this.label, newMsgCount);
-    return new BBSPlusSignatureParamsG2(newParams, this.label);
+    return new (this.constructor as any)(newParams, this.label);
   }
 }

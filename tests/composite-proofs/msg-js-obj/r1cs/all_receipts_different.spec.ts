@@ -9,7 +9,7 @@ import {
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  getSigParamsForMsgStructure,
+
   BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
@@ -20,13 +20,14 @@ import {
   SetupParam,
   BBSPlusSignatureParamsG1,
   SignedMessages,
-  signMessageObject,
+
   Statement,
   Statements,
-  verifyMessageObject,
+
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses
+  Witnesses,
+  BBSPlusSignatureG1
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
@@ -68,7 +69,7 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
   // There are 10 receipts in total
   const numReceipts = 10;
   const receiptsAttributes: object[] = [];
-  const signed: SignedMessages[] = [];
+  const signed: SignedMessages<BBSPlusSignatureG1>[] = [];
 
   beforeAll(async () => {
     await initializeWasm();
@@ -118,8 +119,8 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
         amount: minAmount + Math.ceil(Math.random() * 100),
         otherDetails: Math.random().toString(36).slice(2, 20) // https://stackoverflow.com/a/38622545
       });
-      signed.push(signMessageObject(receiptsAttributes[i], sk, params, encoder));
-      checkResult(verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, params, encoder));
+      signed.push(BBSPlusSignatureParamsG1.signMessageObject(receiptsAttributes[i], sk, params, encoder));
+      checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, params, encoder));
     }
   });
 
@@ -141,7 +142,7 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     const revealedNames = new Set<string>();
     revealedNames.add('posId');
 
-    const sigParams = getSigParamsForMsgStructure(receiptAttributesStruct, label);
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(receiptAttributesStruct, label);
 
     const revealedMsgs: Map<number, Uint8Array>[] = [];
     const unrevealedMsgs: Map<number, Uint8Array>[] = [];

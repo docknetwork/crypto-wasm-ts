@@ -1,6 +1,8 @@
 import {
   generatePedersenCommitmentWitness,
   generatePoKBBSPlusSignatureWitness,
+  generatePoKPSSignatureWitness,
+  generatePoKBBSSignatureWitness,
   generateAccumulatorMembershipWitness,
   generateAccumulatorNonMembershipWitness,
   generateSaverWitness,
@@ -10,6 +12,8 @@ import {
 import { BBSPlusSignatureG1 } from '../bbs-plus';
 import { MembershipWitness, NonMembershipWitness } from '../accumulator';
 import { CircomInputs } from '../r1cs';
+import { PSSignature } from '../ps';
+import { BBSSignature } from '../bbs';
 
 /**
  * Private data known only to the prover whose knowledge is being proved in a proof.
@@ -21,6 +25,33 @@ export class Witness {
    */
   static pedersenCommitment(elements: Uint8Array[]): Uint8Array {
     return generatePedersenCommitmentWitness(elements);
+  }
+
+  /**
+   * Signature and messages of PS signature
+   * @param signature
+   * @param unrevealedMessages
+   * @param encodeMessages
+   */
+  static psSignature(
+    signature: PSSignature,
+    unrevealedMessages: Map<number, Uint8Array>
+  ): Uint8Array {
+    return generatePoKPSSignatureWitness(signature.value, unrevealedMessages);
+  }
+
+  /**
+   * Signature and messages of BBS signature
+   * @param signature
+   * @param unrevealedMessages
+   * @param encodeMessages
+   */
+  static bbsSignature(
+    signature: BBSSignature,
+    unrevealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSSignatureWitness(signature.value, unrevealedMessages, encodeMessages);
   }
 
   /**

@@ -174,7 +174,7 @@ describe('BBS+ signature', () => {
       if (req.blindedIndices.indexOf(i) === -1) {
         knownMessages.set(i, messages[i]);
       }
-  }
+    }
 
     let blindSig = BBSPlusBlindSignatureG1.generate(req.commitment, knownMessages, sk, params, true);
 

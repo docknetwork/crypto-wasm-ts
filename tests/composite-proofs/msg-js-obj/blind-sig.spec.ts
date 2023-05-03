@@ -1,18 +1,17 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, stringToBytes } from '../../utils';
 import {
-  blindSignMessageObject,
   CompositeProofG1,
-  genBlindSigRequestAndWitness,
   getAdaptedSignatureParamsForMessages,
-  getStatementForBlindSigRequest,
   BBSPlusKeypairG2,
   MetaStatements,
   ProofSpecG1,
   BBSPlusSignatureParamsG1,
   Statements,
-  verifyMessageObject,
-  Witnesses
+  Witnesses,
+  BBSPlusBlindSignatureG1,
+  Witness,
+  getBBSPlusStatementForBlindSigRequest
 } from '../../../src';
 import {
   attributes1,
@@ -121,14 +120,40 @@ describe('Requesting blind signatures', () => {
       rank: 6
     };
 
-    for (const [attributes, attributesStruct, hiddenAttrNames, knownAttributes] of [
+    for (let [attributes, attributesStruct, hiddenAttrNames, knownAttributes] of [
       [attributes1, attributes1Struct, hiddenAttrNames1, knownAttributes1],
       [attributes2, attributes2Struct, hiddenAttrNames2, knownAttributes2],
       [attributes3, attributes3Struct, hiddenAttrNames3, knownAttributes3]
     ]) {
-      const sigParams = getAdaptedSignatureParamsForMessages(params, attributesStruct);
+      hiddenAttrNames = hiddenAttrNames as Set<any>;
+      let sigParams = getAdaptedSignatureParamsForMessages(params, attributesStruct);
 
-      // The user generates a blind signature request which will be sent to the signer. The blinding and witness are not
+      const [names, encodedValues] = GlobalEncoder.encodeMessageObject(attributes);
+      const hiddenMsgs = new Map<number, Uint8Array>();
+      let found = 0;
+      hiddenAttrNames.forEach((n) => {
+        const i = names.indexOf(n);
+        if (i !== -1) {
+          hiddenMsgs.set(i, encodedValues[i]);
+          found++;
+        }
+      });
+      if (hiddenAttrNames.size !== found) {
+        throw new Error(
+          `Some of the hidden message names were not found in the given messages object, ${
+            hiddenAttrNames.size - found
+          } missing names`
+        );
+      }
+      sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(names.length, sigParams);
+      const [blinding, request] = BBSPlusBlindSignatureG1.generateRequest(hiddenMsgs, sigParams, false);
+      const committeds = [blinding];
+      for (const i of request.blindedIndices) {
+        committeds.push(hiddenMsgs.get(i) as Uint8Array);
+      }
+      const witness1 = Witness.pedersenCommitment(committeds);
+
+      /*// The user generates a blind signature request which will be sent to the signer. The blinding and witness are not
       // shared with the signer but used later in the proof and unblinding of signature
       const [blinding, request, witness1] = genBlindSigRequestAndWitness(
         // @ts-ignore
@@ -136,10 +161,10 @@ describe('Requesting blind signatures', () => {
         attributes,
         sigParams,
         GlobalEncoder
-      );
+      );*/
 
       // The user creates a proof of knowledge of the blinded attributes.
-      const statement1 = getStatementForBlindSigRequest(request, sigParams);
+      const statement1 = getBBSPlusStatementForBlindSigRequest(request, sigParams);
       const proverStatements = new Statements();
       proverStatements.add(statement1);
 
@@ -153,7 +178,7 @@ describe('Requesting blind signatures', () => {
 
       // The signer is the verifier of the user's proof here. Uses the blind signature request to create the statement
       // and proof spec independently.
-      const statement2 = getStatementForBlindSigRequest(request, sigParams);
+      const statement2 = getBBSPlusStatementForBlindSigRequest(request, sigParams);
       const verifierStatements = new Statements();
       verifierStatements.add(statement2);
 
@@ -165,7 +190,7 @@ describe('Requesting blind signatures', () => {
 
       // Signer generates the blind signature using the signature request and attributes known to him. It sends the blind
       // signature to the user
-      const blingSignature = blindSignMessageObject(
+      const blingSignature = BBSPlusBlindSignatureG1.blindSignMessageObject(
         request,
         knownAttributes,
         sk,
@@ -178,7 +203,7 @@ describe('Requesting blind signatures', () => {
       const unblindedSig = blingSignature.signature.unblind(blinding);
 
       // The unblinded signature can now be used in the usual verification process
-      checkResult(verifyMessageObject(attributes, unblindedSig, pk, sigParams, GlobalEncoder));
+      checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes, unblindedSig, pk, sigParams, GlobalEncoder));
 
       // Proof of knowledge of signature can be created and verified as usual.
     }

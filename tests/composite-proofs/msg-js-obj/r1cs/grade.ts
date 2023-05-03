@@ -8,7 +8,7 @@ import {
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  getSigParamsForMsgStructure,
+
   BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
@@ -18,10 +18,10 @@ import {
   R1CSSnarkSetup,
   BBSPlusSignatureParamsG1,
   SignedMessages,
-  signMessageObject,
+
   Statement,
   Statements,
-  verifyMessageObject,
+
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses
@@ -37,8 +37,8 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
   const label = stringToBytes('Sig params label');
   let sigPk: BBSPlusPublicKeyG2;
 
-  let signed1: SignedMessages;
-  let signed2: SignedMessages;
+  let signed1: SignedMessages<BBSPlusSignatureG1>;
+  let signed2: SignedMessages<BBSPlusSignatureG1>;
 
   const allowedGrades = ['A+', 'A', 'B+', 'B', 'C'];
   let encodedGrades: Uint8Array[];
@@ -102,11 +102,11 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
 
-    signed1 = signMessageObject(attributes1, sk, label, encoder);
-    checkResult(verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder));
+    signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk, label, encoder);
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder));
 
-    signed2 = signMessageObject(attributes2, sk, label, encoder);
-    checkResult(verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder));
+    signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk, label, encoder);
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder));
   });
 
   it('proof verifies when grade is either A+, A, B+, B or C', () => {
@@ -115,7 +115,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = getSigParamsForMsgStructure(attributesStruct, label);
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames,
@@ -190,7 +190,7 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = getSigParamsForMsgStructure(attributesStruct, label);
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes2,
       revealedNames,

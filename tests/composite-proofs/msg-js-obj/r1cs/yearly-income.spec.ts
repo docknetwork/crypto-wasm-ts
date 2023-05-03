@@ -11,7 +11,7 @@ import {
   flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  getSigParamsForMsgStructure,
+
   BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
@@ -22,13 +22,14 @@ import {
   SetupParam,
   BBSPlusSignatureParamsG1,
   SignedMessages,
-  signMessageObject,
+
   Statement,
   Statements,
-  verifyMessageObject,
+
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses
+  Witnesses,
+  BBSPlusSignatureG1
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
@@ -65,7 +66,7 @@ describe('Proving that yearly income calculated from monthly payslips is less th
 
   const numPayslips = 12;
   const payslipAttributes: object[] = [];
-  const signed: SignedMessages[] = [];
+  const signed: SignedMessages<BBSPlusSignatureG1>[] = [];
 
   const salaryLimit = 25000;
   let salaryLimitEncoded: Uint8Array;
@@ -124,8 +125,8 @@ describe('Proving that yearly income calculated from monthly payslips is less th
           amount: Math.floor(Math.random() * 2000) // salary will be under 2000
         }
       });
-      signed.push(signMessageObject(payslipAttributes[i], sk, params, encoder));
-      checkResult(verifyMessageObject(payslipAttributes[i], signed[i].signature, sigPk, params, encoder));
+      signed.push(BBSPlusSignatureParamsG1.signMessageObject(payslipAttributes[i], sk, params, encoder));
+      checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(payslipAttributes[i], signed[i].signature, sigPk, params, encoder));
     }
   });
 
@@ -148,7 +149,7 @@ describe('Proving that yearly income calculated from monthly payslips is less th
     revealedNames.add('salary.year');
     revealedNames.add('salary.month');
 
-    const sigParams = getSigParamsForMsgStructure(payslipAttributesStruct, label);
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(payslipAttributesStruct, label);
 
     const revealedMsgs: Map<number, Uint8Array>[] = [];
     const unrevealedMsgs: Map<number, Uint8Array>[] = [];

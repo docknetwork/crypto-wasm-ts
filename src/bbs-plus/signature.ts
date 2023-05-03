@@ -13,6 +13,8 @@ import {
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import LZUTF8 from 'lzutf8';
+import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { Encoder } from '../encoder';
 
 export abstract class BBSPlusSignature extends BytearrayWrapper {
   // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
@@ -167,20 +169,28 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
    */
   static generate(
     commitment: Uint8Array,
-    knownMessages: Map<number, Uint8Array>,
+    revealedMessages: Map<number, Uint8Array>,
     secretKey: BBSPlusSecretKey,
     params: BBSPlusSignatureParamsG1,
     encodeMessages: boolean
   ): BBSPlusBlindSignatureG1 {
-    if (knownMessages.size >= params.supportedMessageCount()) {
+    if (revealedMessages.size >= params.supportedMessageCount()) {
       throw new Error(
         `Number of messages ${
-          knownMessages.size
+          revealedMessages.size
         } must be less than ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsPlusBlindSignG1(commitment, knownMessages, secretKey.value, params.value, encodeMessages);
+    const sig = bbsPlusBlindSignG1(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
     return new BBSPlusBlindSignatureG1(sig);
+  }
+
+  static fromRequest(
+    { commitment, unblindedMessages }: BBSPlusBlindSignatureRequest,
+    secretKey: BBSPlusSecretKey,
+    params: BBSPlusSignatureParamsG1
+  ): BBSPlusBlindSignatureG1 {
+    return this.generate(commitment, unblindedMessages || new Map(), secretKey, params, false);
   }
 
   /**
@@ -218,6 +228,62 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
     blindedIndices.sort();
     return [b, { commitment, blindedIndices, unblindedMessages }];
   }
+
+/**
+ * Used by the signer to create a blind signature
+ * @param blindSigRequest - The blind sig request sent by user.
+ * @param knownMessages - The messages known to the signer
+ * @param secretKey
+ * @param msgStructure
+ * @param labelOrParams
+ * @param encoder
+ */
+ static blindSignMessageObject(
+  blindSigRequest: BBSPlusBlindSignatureRequest,
+  knownMessages: object,
+  secretKey: BBSPlusSecretKey,
+  msgStructure: MessageStructure,
+  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+  encoder: Encoder
+): SignedMessages<BBSPlusBlindSignatureG1> {
+  const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
+  const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
+
+  const knownMessagesEncoded = new Map<number, Uint8Array>();
+  const encodedMessages: { [key: string]: Uint8Array } = {};
+  flattenedAllNames.forEach((n, i) => {
+    const j = flattenedUnblindedNames.indexOf(n);
+    if (j > -1) {
+      knownMessagesEncoded.set(i, encodedValues[j]);
+      encodedMessages[n] = encodedValues[j];
+    }
+  });
+
+  if (flattenedUnblindedNames.length !== knownMessagesEncoded.size) {
+    throw new Error(
+      `Message structure incompatible with knownMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${knownMessagesEncoded.size}`
+    );
+  }
+  if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
+    throw new Error(
+      `Message structure likely incompatible with knownMessages and blindSigRequest. ${flattenedAllNames.length} != (${knownMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
+    );
+  }
+
+  const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
+  const signature = this.generate(
+    blindSigRequest.commitment,
+    knownMessagesEncoded,
+    secretKey,
+    sigParams,
+    false
+  );
+
+  return {
+    encodedMessages,
+    signature
+  };
+}
 }
 
 /**

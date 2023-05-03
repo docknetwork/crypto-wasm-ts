@@ -1,5 +1,4 @@
 import { BBSPlusSecretKey, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
-import { signMessageObject } from '../sign-verify-js-objs';
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
@@ -134,7 +133,7 @@ export class CredentialBuilder extends Versioned {
     const cred = this.updateSchemaIfNeeded(signingOpts);
     const schema = this.schema as CredentialSchema;
 
-    const signed = signMessageObject(
+    const signed = BBSPlusSignatureParamsG1.signMessageObject(
       cred,
       secretKey,
       signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,

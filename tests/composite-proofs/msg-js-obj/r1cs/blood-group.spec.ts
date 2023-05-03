@@ -8,7 +8,7 @@ import {
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  getSigParamsForMsgStructure,
+
   BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
@@ -18,13 +18,14 @@ import {
   R1CSSnarkSetup,
   BBSPlusSignatureParamsG1,
   SignedMessages,
-  signMessageObject,
+
   Statement,
   Statements,
-  verifyMessageObject,
+
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses
+  Witnesses,
+  BBSPlusSignatureG1
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
@@ -39,9 +40,9 @@ describe('Proving that blood group is not AB-', () => {
   let sigPk: BBSPlusPublicKeyG2;
 
   // CredentialBuilder for the user with blood group AB+
-  let signed1: SignedMessages;
+  let signed1: SignedMessages<BBSPlusSignatureG1>;
   // CredentialBuilder for the user with blood group AB-
-  let signed2: SignedMessages;
+  let signed2: SignedMessages<BBSPlusSignatureG1>;
 
   let r1cs: ParsedR1CSFile;
   let wasm: Uint8Array;
@@ -120,11 +121,11 @@ describe('Proving that blood group is not AB-', () => {
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
 
-    signed1 = signMessageObject(attributes1, sk, label, encoder);
-    checkResult(verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder));
+    signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk, label, encoder);
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder));
 
-    signed2 = signMessageObject(attributes2, sk, label, encoder);
-    checkResult(verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder));
+    signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk, label, encoder);
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder));
   });
 
   it('proof verifies when blood groups is not AB-', () => {
@@ -133,7 +134,7 @@ describe('Proving that blood group is not AB-', () => {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = getSigParamsForMsgStructure(attributesStruct, label);
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames,
@@ -204,7 +205,7 @@ describe('Proving that blood group is not AB-', () => {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = getSigParamsForMsgStructure(attributesStruct, label);
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes2,
       revealedNames,

@@ -1,4 +1,4 @@
-import { bbsCommitMsgs } from '@docknetwork/crypto-wasm';
+import { VerifyResult, bbsCommitMsgs } from '@docknetwork/crypto-wasm';
 import { generateRandomFieldElement } from '@docknetwork/crypto-wasm';
 import {
   bbsGenerateSignatureParams,
@@ -8,6 +8,10 @@ import {
   bbsAdaptSigParamsForMsgCount,
   BbsSigParams
 } from '@docknetwork/crypto-wasm';
+import { BBSSignature } from './signature';
+import { BBSPublicKey, BBSSecretKey } from './keys';
+import { Encoder } from '../encoder';
+import { SignedMessages } from '../sign-verify-js-objs';
 
 /**
  * Signature parameters.
@@ -78,6 +82,80 @@ export class BBSSignatureParams {
       newParams = bbsAdaptSigParamsForMsgCount(this.value, this.label, newMsgCount);
     }
     return new BBSSignatureParams(newParams, this.label);
+  }
+
+  static signMessageObject(
+    messages: Object,
+    secretKey: BBSSecretKey,
+    labelOrParams: Uint8Array | BBSSignatureParams,
+    encoder: Encoder
+  ): SignedMessages<BBSSignature> {
+    const [names, encodedValues] = encoder.encodeMessageObject(messages);
+    const msgCount = names.length;
+  
+    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    const signature = BBSSignature.generate(encodedValues, secretKey, sigParams, false);
+  
+    // Encoded message as an object with key as the flattened name
+    const encodedMessages: { [key: string]: Uint8Array } = {};
+    for (let i = 0; i < msgCount; i++) {
+      encodedMessages[names[i]] = encodedValues[i];
+    }
+  
+    return {
+      encodedMessages,
+      signature
+    };
+  }
+
+  /**
+   * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
+   * to signing and then verifies the signature.
+   * @param messages
+   * @param signature
+   * @param publicKey
+   * @param labelOrParams
+   * @param encoder
+   */
+  static verifyMessageObject(
+    messages: object,
+    signature: BBSSignature,
+    publicKey: BBSPublicKey,
+    labelOrParams: Uint8Array | BBSSignatureParams,
+    encoder: Encoder
+  ): VerifyResult {
+    const [_, encodedValues] = encoder.encodeMessageObject(messages);
+    const msgCount = encodedValues.length;
+
+    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    return signature.verify(encodedValues, publicKey, sigParams, false);
+  }
+
+  /**
+  * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
+  * @param msgCount
+  * @param labelOrParams
+  */
+  static getSigParamsOfRequiredSize(
+    msgCount: number,
+    labelOrParams: Uint8Array | BBSSignatureParams
+  ): BBSSignatureParams {
+    let sigParams;
+    if (labelOrParams instanceof this) {
+      labelOrParams = labelOrParams as BBSSignatureParams;
+      if (labelOrParams.supportedMessageCount() !== msgCount) {
+        if (labelOrParams.label === undefined) {
+          throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
+        } else {
+          sigParams = labelOrParams.adapt(msgCount);
+        }
+      } else {
+        sigParams = labelOrParams;
+      }
+    } else {
+      sigParams = this.generate(msgCount, labelOrParams as Uint8Array);
+    }
+    return sigParams;
   }
 
   /**

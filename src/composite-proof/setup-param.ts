@@ -1,7 +1,8 @@
 import {
   generateSetupParamForBBSPlusSignatureParametersG1,
+  generateSetupParamForBBSSignatureParameters,
   generateSetupParamForPedersenCommitmentKeyG1,
-  generateSetupParamForBBSPublicKey,
+  generateSetupParamForBBSPlusPublicKeyG2,
   generateSetupParamForVbAccumulatorParams,
   generateSetupParamForVbAccumulatorPublicKey,
   generateSetupParamForVbAccumulatorNonMemProvingKey,
@@ -40,6 +41,7 @@ import {
 import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { getR1CS, ParsedR1CSFile } from '../r1cs';
+import { BBSPublicKey, BBSSignatureParams } from '../bbs';
 
 /**
  * Represents (public) setup parameters of different protocols. Different setup parameters can be wrapped in this and
@@ -51,8 +53,12 @@ export class SetupParam extends BytearrayWrapper {
     return new SetupParam(generateSetupParamForBBSPlusSignatureParametersG1(params.value));
   }
 
+  static bbsSignatureParams(params: BBSSignatureParams): SetupParam {
+    return new SetupParam(generateSetupParamForBBSSignatureParameters(params.value));
+  }
+
   static bbsPlusSignaturePublicKeyG2(publicKey: BBSPlusPublicKeyG2): SetupParam {
-    return new SetupParam(generateSetupParamForBBSPublicKey(publicKey.value));
+    return new SetupParam(generateSetupParamForBBSPlusPublicKeyG2(publicKey.value));
   }
 
   static vbAccumulatorParams(params: AccumulatorParams): SetupParam {
