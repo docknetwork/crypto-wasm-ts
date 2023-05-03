@@ -12,6 +12,8 @@ import { BBSPublicKey, BBSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import LZUTF8 from 'lzutf8';
 import { bbsBlindSign } from '@docknetwork/crypto-wasm';
+import { Encoder } from '../bbs-plus';
+import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
 
 export class BBSSignature extends BytearrayWrapper {
   // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
@@ -221,6 +223,62 @@ export class BBSBlindSignature extends BytearrayWrapper {
 
     blindedIndices.sort();
     return [b, { commitment, blindedIndices, unblindedMessages }];
+  }
+  
+  /**
+   * Used by the signer to create a blind signature
+   * @param blindSigRequest - The blind sig request sent by user.
+   * @param knownMessages - The messages known to the signer
+   * @param secretKey
+   * @param msgStructure
+   * @param labelOrParams
+   * @param encoder
+   */
+   static blindSignMessageObject(
+    blindSigRequest: BBSBlindSignatureRequest,
+    knownMessages: object,
+    secretKey: BBSSecretKey,
+    msgStructure: MessageStructure,
+    labelOrParams: Uint8Array | BBSSignatureParams,
+    encoder: Encoder
+  ): SignedMessages<BBSBlindSignature> {
+    const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
+    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
+  
+    const knownMessagesEncoded = new Map<number, Uint8Array>();
+    const encodedMessages: { [key: string]: Uint8Array } = {};
+    flattenedAllNames.forEach((n, i) => {
+      const j = flattenedUnblindedNames.indexOf(n);
+      if (j > -1) {
+        knownMessagesEncoded.set(i, encodedValues[j]);
+        encodedMessages[n] = encodedValues[j];
+      }
+    });
+  
+    if (flattenedUnblindedNames.length !== knownMessagesEncoded.size) {
+      throw new Error(
+        `Message structure incompatible with knownMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${knownMessagesEncoded.size}`
+      );
+    }
+    if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
+      throw new Error(
+        `Message structure likely incompatible with knownMessages and blindSigRequest. ${flattenedAllNames.length} != (${knownMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
+      );
+    }
+  
+    const sigParams = BBSSignatureParams.getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
+    const blindSig = this.generate(
+      blindSigRequest.commitment,
+      knownMessagesEncoded,
+      secretKey,
+      sigParams,
+      false
+    );
+  
+    return {
+      encodedMessages,
+      signature: blindSig
+    };
   }
 }
 

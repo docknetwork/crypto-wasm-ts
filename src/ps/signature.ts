@@ -15,6 +15,8 @@ import {
 import { PSPublicKey, PSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import LZUTF8 from 'lzutf8';
+import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { Encoder } from '../encoder';
 
 export class PSSignature extends BytearrayWrapper {
   // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
@@ -180,7 +182,7 @@ export class PSBlindSignature extends BytearrayWrapper {
     blindings: Map<number, Uint8Array>,
     params: PSSignatureParams,
     h: Uint8Array,
-    revealedMessages: Map<number, Uint8Array> = new Map(),
+    revealedMessages: Map<number, Uint8Array> = new Map()
   ): PSBlindSignatureRequest {
     const commitments = new Map(
       [...messagesToBlind.entries()].map(([idx, message]) => {
@@ -196,6 +198,78 @@ export class PSBlindSignature extends BytearrayWrapper {
 
     return { commitments, revealedMessages };
   }
+
+  /**
+   * Used by the signer to create a blind signature
+   * @param blindSigRequest - The blind sig request sent by user.
+   * @param knownMessages - The messages known to the signer
+   * @param secretKey
+   * @param msgStructure
+   * @param h
+   * @param encoder
+   */
+  static blindSignMessageObject(
+    blindSigRequest: PSBlindSignatureRequest,
+    knownMessages: object,
+    secretKey: PSSecretKey,
+    msgStructure: MessageStructure,
+    h: Uint8Array,
+    encoder: Encoder
+  ): SignedMessages<PSBlindSignature> {
+    const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
+    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
+
+    const knownMessagesEncoded = new Map<number, Uint8Array>();
+    const encodedMessages: { [key: string]: Uint8Array } = {};
+    flattenedAllNames.forEach((n, i) => {
+      const j = flattenedUnblindedNames.indexOf(n);
+      if (j > -1) {
+        knownMessagesEncoded.set(i, encodedValues[j]);
+        encodedMessages[n] = encodedValues[j];
+      }
+    });
+
+    if (flattenedUnblindedNames.length !== knownMessagesEncoded.size) {
+      throw new Error(
+        `Message structure incompatible with knownMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${knownMessagesEncoded.size}`
+      );
+    }
+    if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.revealedMessages.size) {
+      throw new Error(
+        `Message structure likely incompatible with knownMessages and blindSigRequest. ${flattenedAllNames.length} != (${knownMessagesEncoded.size} + ${blindSigRequest.commitments.size})`
+      );
+    }
+    const msgIter = {
+      [Symbol.iterator]() {
+        let lastIdx = 0;
+
+        return {
+          next() {
+            const idx = lastIdx++;
+
+            const revealedMessage = blindSigRequest.revealedMessages.get(idx);
+            if (revealedMessage != null) {
+              return { value: { RevealedMessage: revealedMessage }, done: false };
+            }
+
+            const commitment = blindSigRequest.commitments.get(idx);
+            if (commitment != null) {
+              return { value: { BlindedMessage: commitment }, done: false };
+            }
+
+            return { value: undefined as any, done: true };
+          }
+        };
+      }
+    };
+
+    const signature = this.generate(msgIter, secretKey, h);
+
+    return {
+      encodedMessages,
+      signature
+    };
+  }
 }
 
 /**
@@ -203,13 +277,13 @@ export class PSBlindSignature extends BytearrayWrapper {
  */
 export interface PSBlindSignatureRequest {
   /**
-   * The commitment to the blinded messages
+   * The commitments for the blinded messages
    */
   commitments: Map<number, Uint8Array>;
   /**
    * The messages which are known to the signer. Here the key is message index (as per the `SignatureParams`). This is not
    * mandatory as the signer might already know the messages to sign. This is used when the requester wants to inform the
-   * signer of some or all of the message
+   * signer of some or all of the messages
    */
   revealedMessages: Map<number, Uint8Array>;
 }

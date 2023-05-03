@@ -1,166 +1,38 @@
 // Utilities for signing and proving when working with messages as JS objects.
 
 import { flatten, unflatten } from 'flat';
-import {
-  BBSPlusPublicKeyG2,
-  BBSPlusSecretKey,
-  BBSPlusBlindSignatureG1,
-  BBSPlusBlindSignatureRequest,
-  Encoder,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
-  Statement,
-  Witness,
-  WitnessEqualityMetaStatement
-} from './index';
-import { VerifyResult } from '@docknetwork/crypto-wasm';
+import { Encoder } from './encoder';
+import { Statement, WitnessEqualityMetaStatement } from './composite-proof/statement';
+import { BBSPlusBlindSignatureRequest, BBSPlusSignatureParamsG1 } from './bbs-plus';
+import { BBSBlindSignatureRequest, BBSSignatureParams } from './bbs';
+import { PSBlindSignatureRequest, PSSignatureParams } from './ps';
 
 // The following `ts-ignore` shouldn't be necessary as per https://github.com/microsoft/TypeScript/pull/33050 but it still is (on TS 4.8)
 // @ts-ignore
 export type MessageStructure = Record<string, null | MessageStructure>;
 
+export interface SignedMessages<Signature> {
+  encodedMessages: { [key: string]: Uint8Array };
+  signature: Signature;
+}
+
 export function flattenMessageStructure(msgStructure: MessageStructure): object {
   return flatten(msgStructure);
 }
 
-export function getAdaptedSignatureParamsForMessages(
-  params: BBSPlusSignatureParamsG1,
+export interface IParams {
+  label?: Uint8Array;
+
+  supportedMessageCount(): number;
+  adapt(messageCount: number): this;
+}
+
+export function getAdaptedSignatureParamsForMessages<Params extends IParams>(
+  params: Params,
   msgStructure: MessageStructure
-): BBSPlusSignatureParamsG1 {
+): Params {
   const flattened = flattenMessageStructure(msgStructure);
   return params.adapt(Object.keys(flattened).length);
-}
-
-export class SigParamsGetter {
-  defaultLabel?: Uint8Array;
-
-  constructor(defaultLabel?: Uint8Array) {
-    this.defaultLabel = defaultLabel;
-  }
-
-  getSigParamsOfRequiredSize(msgCount: number, labelOrParams?: Uint8Array | BBSPlusSignatureParamsG1): BBSPlusSignatureParamsG1 {
-    if (labelOrParams === undefined && this.defaultLabel === undefined) {
-      throw new Error(`No default label or argument to create signature params of size of size ${msgCount}`);
-    }
-    let sigParams: BBSPlusSignatureParamsG1;
-    if (labelOrParams instanceof BBSPlusSignatureParamsG1) {
-      if (labelOrParams.supportedMessageCount() !== msgCount) {
-        if (labelOrParams.label === undefined) {
-          throw new Error(
-            `Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`
-          );
-        } else {
-          sigParams = labelOrParams.adapt(msgCount);
-        }
-      } else {
-        sigParams = labelOrParams;
-      }
-    } else if (labelOrParams !== undefined) {
-      sigParams = BBSPlusSignatureParamsG1.generate(msgCount, labelOrParams);
-    } else {
-      sigParams = BBSPlusSignatureParamsG1.generate(msgCount, this.defaultLabel);
-    }
-    return sigParams;
-  }
-}
-
-/**
- * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
- * @param msgCount
- * @param labelOrParams
- */
-export function getSigParamsOfRequiredSize(
-  msgCount: number,
-  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1
-): BBSPlusSignatureParamsG1 {
-  let sigParams: BBSPlusSignatureParamsG1;
-  if (labelOrParams instanceof BBSPlusSignatureParamsG1) {
-    if (labelOrParams.supportedMessageCount() !== msgCount) {
-      if (labelOrParams.label === undefined) {
-        throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
-      } else {
-        sigParams = labelOrParams.adapt(msgCount);
-      }
-    } else {
-      sigParams = labelOrParams;
-    }
-  } else {
-    sigParams = BBSPlusSignatureParamsG1.generate(msgCount, labelOrParams);
-  }
-  return sigParams;
-}
-
-export function getSigParamsForMsgStructure(
-  msgStructure: MessageStructure,
-  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1
-): BBSPlusSignatureParamsG1 {
-  const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
-  return getSigParamsOfRequiredSize(msgCount, labelOrParams);
-}
-
-export interface SignedMessages {
-  encodedMessages: { [key: string]: Uint8Array };
-  signature: BBSPlusSignatureG1;
-}
-
-export interface BlindSignedMessages {
-  encodedMessages: { [key: string]: Uint8Array };
-  signature: BBSPlusBlindSignatureG1;
-}
-
-/**
- * Takes messages as a JS object, flattens it, encodes the values and creates a BBS+ signature in group G1. Returns the
- * encoded messages and the signature.
- * @param messages
- * @param secretKey
- * @param labelOrParams
- * @param encoder
- */
-export function signMessageObject(
-  messages: object,
-  secretKey: BBSPlusSecretKey,
-  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
-  encoder: Encoder
-): SignedMessages {
-  const [names, encodedValues] = encoder.encodeMessageObject(messages);
-  const msgCount = names.length;
-
-  const sigParams = getSigParamsOfRequiredSize(msgCount, labelOrParams);
-  const signature = BBSPlusSignatureG1.generate(encodedValues, secretKey, sigParams, false);
-
-  // Encoded message as an object with key as the flattened name
-  const encodedMessages: { [key: string]: Uint8Array } = {};
-  for (let i = 0; i < msgCount; i++) {
-    encodedMessages[names[i]] = encodedValues[i];
-  }
-
-  return {
-    encodedMessages,
-    signature
-  };
-}
-
-/**
- * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
- * to signing and then verifies the signature.
- * @param messages
- * @param signature
- * @param publicKey
- * @param labelOrParams
- * @param encoder
- */
-export function verifyMessageObject(
-  messages: object,
-  signature: BBSPlusSignatureG1,
-  publicKey: BBSPlusPublicKeyG2,
-  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
-  encoder: Encoder
-): VerifyResult {
-  const [_, encodedValues] = encoder.encodeMessageObject(messages);
-  const msgCount = encodedValues.length;
-
-  const sigParams = getSigParamsOfRequiredSize(msgCount, labelOrParams);
-  return signature.verify(encodedValues, publicKey, sigParams, false);
 }
 
 /**
@@ -237,11 +109,13 @@ export function encodeRevealedMsgs(
  * @param labelOrParams
  * @param encoder
  * @param blinding - Optional, if not provided, its generated randomly
- */
-export function genBlindSigRequestAndWitness(
+ 
+export function genBlindSigRequestAndWitness<S, P extends IParams, PB extends ParamsBuilder>(
   hiddenMsgNames: Set<string>,
   messages: object,
-  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+  labelOrParams: Uint8Array | P,
+  paramsBuilder: PB,
+  signatureScheme: S,
   encoder: Encoder,
   blinding?: Uint8Array
 ): [Uint8Array, BBSPlusBlindSignatureRequest, Uint8Array] {
@@ -262,83 +136,15 @@ export function genBlindSigRequestAndWitness(
       } missing names`
     );
   }
-  const sigParams = getSigParamsOfRequiredSize(names.length, labelOrParams);
-  const [blinding_, request] = BBSPlusBlindSignatureG1.generateRequest(hiddenMsgs, sigParams, false, blinding);
+  const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(names.length, labelOrParams, paramsBuilder);
+  const [blinding_, request] = signatureScheme.generateRequest(hiddenMsgs, sigParams, blinding);
   const committeds = [blinding_];
   for (const i of request.blindedIndices) {
     committeds.push(hiddenMsgs.get(i) as Uint8Array);
   }
   const witness = Witness.pedersenCommitment(committeds);
   return [blinding_, request, witness];
-}
-
-/**
- * Get the statement to be used in composite proof for the blind signature request
- * @param request
- * @param sigParams
- */
-export function getStatementForBlindSigRequest(
-  request: BBSPlusBlindSignatureRequest,
-  sigParams: BBSPlusSignatureParamsG1
-): Uint8Array {
-  const commKey = sigParams.getParamsForIndices(request.blindedIndices);
-  return Statement.pedersenCommitmentG1(commKey, request.commitment);
-}
-
-/**
- * Used by the signer to create a blind signature
- * @param blindSigRequest - The blind sig request sent by user.
- * @param knownMessages - The messages known to the signer
- * @param secretKey
- * @param msgStructure
- * @param labelOrParams
- * @param encoder
- */
-export function blindSignMessageObject(
-  blindSigRequest: BBSPlusBlindSignatureRequest,
-  knownMessages: object,
-  secretKey: BBSPlusSecretKey,
-  msgStructure: MessageStructure,
-  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
-  encoder: Encoder
-): BlindSignedMessages {
-  const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
-  const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
-
-  const knownMessagesEncoded = new Map<number, Uint8Array>();
-  const encodedMessages: { [key: string]: Uint8Array } = {};
-  flattenedAllNames.forEach((n, i) => {
-    const j = flattenedUnblindedNames.indexOf(n);
-    if (j > -1) {
-      knownMessagesEncoded.set(i, encodedValues[j]);
-      encodedMessages[n] = encodedValues[j];
-    }
-  });
-
-  if (flattenedUnblindedNames.length !== knownMessagesEncoded.size) {
-    throw new Error(
-      `Message structure incompatible with knownMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${knownMessagesEncoded.size}`
-    );
-  }
-  if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
-    throw new Error(
-      `Message structure likely incompatible with knownMessages and blindSigRequest. ${flattenedAllNames.length} != (${knownMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
-    );
-  }
-
-  const sigParams = getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
-  const blindSig = BBSPlusBlindSignatureG1.generate(
-    blindSigRequest.commitment,
-    knownMessagesEncoded,
-    secretKey,
-    sigParams,
-    false
-  );
-  return {
-    encodedMessages: encodedMessages,
-    signature: blindSig
-  };
-}
+}*/
 
 /**
  * Check if the given structure is compatible with the given messages object.
@@ -392,4 +198,43 @@ export function createWitnessEqualityMetaStatement(
     indices.forEach((i) => ms.addWitnessRef(sIdx, i));
   }
   return ms;
+}
+
+/**
+ * Get the statement to be used in composite proof for the blind signature request
+ * @param request
+ * @param sigParams
+ */
+export function getBBSStatementForBlindSig(
+  request: BBSBlindSignatureRequest,
+  sigParams: BBSSignatureParams
+): Uint8Array {
+  const commKey = sigParams.getParamsForIndices(request.blindedIndices);
+  return Statement.pedersenCommitmentG1(commKey, request.commitment);
+}
+
+/**
+ * Get the statement to be used in composite proof for the blind signature request
+ * @param request
+ * @param sigParams
+ */
+export function getBBSPlusStatementForBlindSigRequest(
+  request: BBSPlusBlindSignatureRequest,
+  sigParams: BBSPlusSignatureParamsG1
+): Uint8Array {
+  const commKey = sigParams.getParamsForIndices(request.blindedIndices);
+  return Statement.pedersenCommitmentG1(commKey, request.commitment);
+}
+
+/**
+ * Get the statement to be used in composite proof for the blind signature request
+ * @param request
+ * @param sigParams
+ */
+export function getPSStatementsForBlindSig(
+  request: PSBlindSignatureRequest,
+  sigParams: PSSignatureParams
+): Uint8Array[] {
+  const commKey = sigParams.getParamsForIndices([...request.commitments.keys()]);
+  return [] //Statement.pedersenCommitmentG1(commKey, request.commitments);
 }

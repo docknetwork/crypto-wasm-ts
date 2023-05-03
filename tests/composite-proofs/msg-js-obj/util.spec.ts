@@ -3,10 +3,8 @@ import {
   EncodeFunc,
   Encoder,
   flattenObjectToKeyValuesList,
-  getSigParamsOfRequiredSize,
   BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
-  SigParamsGetter
+  BBSPlusSignatureParamsG1
 } from '../../../src';
 import { stringToBytes } from '../../utils';
 
@@ -39,30 +37,17 @@ describe('Utils', () => {
   it('Signature params getter', () => {
     const params1 = BBSPlusSignatureParamsG1.generate(2);
 
-    expect(() => getSigParamsOfRequiredSize(1, params1)).toThrow();
-    expect(() => getSigParamsOfRequiredSize(3, params1)).toThrow();
-    expect(() => getSigParamsOfRequiredSize(2, params1)).not.toThrow();
-    expect(() => getSigParamsOfRequiredSize(1, stringToBytes('some label'))).not.toThrow();
-    expect(() => getSigParamsOfRequiredSize(2, stringToBytes('some label'))).not.toThrow();
-    expect(() => getSigParamsOfRequiredSize(3, stringToBytes('some label'))).not.toThrow();
+    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(1, params1)).toThrow();
+    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(3, params1)).toThrow();
+    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(2, params1)).not.toThrow();
+    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(1, stringToBytes('some label'))).not.toThrow();
+    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(2, stringToBytes('some label'))).not.toThrow();
+    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(3, stringToBytes('some label'))).not.toThrow();
 
     const params2 = BBSPlusSignatureParamsG1.generate(2, stringToBytes('label2'));
-    expect(() => getSigParamsOfRequiredSize(1, params2)).not.toThrow();
-    expect(() => getSigParamsOfRequiredSize(2, params2)).not.toThrow();
-    expect(() => getSigParamsOfRequiredSize(3, params2)).not.toThrow();
-
-    const pg1 = new SigParamsGetter();
-    expect(() => pg1.getSigParamsOfRequiredSize(2)).toThrow();
-    expect(() => pg1.getSigParamsOfRequiredSize(1, params1)).toThrow();
-    expect(() => pg1.getSigParamsOfRequiredSize(3, params1)).toThrow();
-    expect(() => pg1.getSigParamsOfRequiredSize(2, params1)).not.toThrow();
-    expect(() => pg1.getSigParamsOfRequiredSize(1, stringToBytes('some label'))).not.toThrow();
-    expect(() => pg1.getSigParamsOfRequiredSize(2, stringToBytes('some label'))).not.toThrow();
-    expect(() => pg1.getSigParamsOfRequiredSize(3, stringToBytes('some label'))).not.toThrow();
-
-    const pg2 = new SigParamsGetter(stringToBytes('a label'));
-    expect(() => pg2.getSigParamsOfRequiredSize(2)).not.toThrow();
-    expect(() => pg2.getSigParamsOfRequiredSize(5)).not.toThrow();
+    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(1, params2)).not.toThrow();
+    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(2, params2)).not.toThrow();
+    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(3, params2)).not.toThrow();
   });
 
   it('encoder works', () => {

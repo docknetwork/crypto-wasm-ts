@@ -11,7 +11,7 @@ import {
   flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  getSigParamsForMsgStructure,
+
   BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
@@ -22,13 +22,14 @@ import {
   SetupParam,
   BBSPlusSignatureParamsG1,
   SignedMessages,
-  signMessageObject,
+
   Statement,
   Statements,
-  verifyMessageObject,
+
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses
+  Witnesses,
+  BBSPlusSignatureG1
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
@@ -90,9 +91,9 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
   const liabilityAttributes: object[] = [];
 
   // Array of assets credentials (encoded and signed)
-  const signedAssets: SignedMessages[] = [];
+  const signedAssets: SignedMessages<BBSPlusSignatureG1>[] = [];
   // Array of liabilities credentials (encoded and signed)
-  const signedLiabilities: SignedMessages[] = [];
+  const signedLiabilities: SignedMessages<BBSPlusSignatureG1>[] = [];
 
   // Minimum expected different between assets and liabilities
   const minDiff = 10000;
@@ -156,8 +157,8 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
           id5: (i + 5) * 10000
         }
       });
-      signedAssets.push(signMessageObject(assetAttributes[i], sk, assetSigParams, encoder));
-      checkResult(verifyMessageObject(assetAttributes[i], signedAssets[i].signature, sigPk, assetSigParams, encoder));
+      signedAssets.push(BBSPlusSignatureParamsG1.signMessageObject(assetAttributes[i], sk, assetSigParams, encoder));
+      checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(assetAttributes[i], signedAssets[i].signature, sigPk, assetSigParams, encoder));
     }
 
     for (let i = 0; i < numLiabilityCredentials; i++) {
@@ -175,9 +176,9 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
           id4: (i + 4) * 100
         }
       });
-      signedLiabilities.push(signMessageObject(liabilityAttributes[i], sk, liablSigParams, encoder));
+      signedLiabilities.push(BBSPlusSignatureParamsG1.signMessageObject(liabilityAttributes[i], sk, liablSigParams, encoder));
       checkResult(
-        verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, liablSigParams, encoder)
+        BBSPlusSignatureParamsG1.verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, liablSigParams, encoder)
       );
     }
   });
@@ -208,8 +209,8 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParamsAssets = getSigParamsForMsgStructure(assetAttributesStruct, label);
-    const sigParamsLiabilities = getSigParamsForMsgStructure(liabilitiesAttributesStruct, label);
+    const sigParamsAssets = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(assetAttributesStruct, label);
+    const sigParamsLiabilities = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(liabilitiesAttributesStruct, label);
 
     console.time('Proof generate');
     // Prepare revealed and unrevealed attributes

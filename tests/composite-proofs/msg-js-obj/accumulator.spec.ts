@@ -16,10 +16,10 @@ import {
   PositiveAccumulator,
   ProofSpecG1,
   BBSPlusSignatureParamsG1,
-  signMessageObject,
+
   Statement,
   Statements,
-  verifyMessageObject,
+
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses,
@@ -110,7 +110,7 @@ describe('Accumulator', () => {
     // Sign and verify all signatures
 
     // Signer 1 signs the attributes
-    const signed1 = signMessageObject(attributes1, sk1, label1, encoder);
+    const signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk1, label1, encoder);
 
     // Accumulator manager 1 generates the witness for the accumulator member, i.e. attribute signed1.encodedMessages['user-id']
     // and gives the witness to the user.
@@ -120,7 +120,7 @@ describe('Accumulator', () => {
       accumState1
     );
 
-    checkResult(verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator1 = PositiveAccumulator.fromAccumulated(accumulator1.accumulated);
@@ -134,7 +134,7 @@ describe('Accumulator', () => {
     ).toEqual(true);
 
     // Signer 2 signs the attributes
-    const signed2 = signMessageObject(attributes2, sk2, label2, encoder);
+    const signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk2, label2, encoder);
 
     // Accumulator manager 2 generates the witness and gives it to the user
     const accumWitness2 = await accumulator2.membershipWitness(
@@ -143,7 +143,7 @@ describe('Accumulator', () => {
       accumState2
     );
 
-    checkResult(verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator2 = PositiveAccumulator.fromAccumulated(accumulator2.accumulated);

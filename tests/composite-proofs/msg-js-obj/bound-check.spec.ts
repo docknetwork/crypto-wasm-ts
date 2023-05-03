@@ -13,10 +13,10 @@ import {
   ProofSpecG1,
   SetupParam,
   BBSPlusSignatureParamsG1,
-  signMessageObject,
+
   Statement,
   Statements,
-  verifyMessageObject,
+
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses
@@ -71,14 +71,14 @@ describe('Range proof using LegoGroth16', () => {
     const pk3 = keypair3.publicKey;
 
     // Sign and verify all signatures
-    const signed1 = signMessageObject(attributes1, sk1, label1, GlobalEncoder);
-    checkResult(verifyMessageObject(attributes1, signed1.signature, pk1, label1, GlobalEncoder));
+    const signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk1, label1, GlobalEncoder);
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, pk1, label1, GlobalEncoder));
 
-    const signed2 = signMessageObject(attributes2, sk2, label2, GlobalEncoder);
-    checkResult(verifyMessageObject(attributes2, signed2.signature, pk2, label2, GlobalEncoder));
+    const signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk2, label2, GlobalEncoder);
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, pk2, label2, GlobalEncoder));
 
-    const signed3 = signMessageObject(attributes3, sk3, label3, GlobalEncoder);
-    checkResult(verifyMessageObject(attributes3, signed3.signature, pk3, label3, GlobalEncoder));
+    const signed3 = BBSPlusSignatureParamsG1.signMessageObject(attributes3, sk3, label3, GlobalEncoder);
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes3, signed3.signature, pk3, label3, GlobalEncoder));
 
     // Verifier creates SNARK proving and verification key
     const [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);

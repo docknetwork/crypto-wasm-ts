@@ -10,7 +10,6 @@ import {
 } from './types-and-consts';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
-import { verifyMessageObject } from '../sign-verify-js-objs';
 import { isEmptyObject } from '../util';
 import b58 from 'bs58';
 
@@ -40,7 +39,7 @@ export class Credential extends Versioned {
 
   verify(publicKey: BBSPlusPublicKeyG2, signatureParams?: BBSPlusSignatureParamsG1): VerifyResult {
     const cred = this.serializeForSigning();
-    return verifyMessageObject(
+    return BBSPlusSignatureParamsG1.verifyMessageObject(
       cred,
       this.signature,
       publicKey,

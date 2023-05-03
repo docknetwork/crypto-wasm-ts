@@ -22,10 +22,10 @@ import {
   SaverVerifyingKeyUncompressed,
   BBSPlusSignatureG1,
   BBSPlusSignatureParamsG1,
-  signMessageObject,
+
   Statement,
   Statements,
-  verifyMessageObject,
+
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses
@@ -53,8 +53,8 @@ describe('Verifiable encryption using SAVER', () => {
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 
-    const signed = signMessageObject(attributes1, sk, label, GlobalEncoder);
-    checkResult(verifyMessageObject(attributes1, signed.signature, pk, label, GlobalEncoder));
+    const signed = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk, label, GlobalEncoder);
+    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed.signature, pk, label, GlobalEncoder));
 
     // Setup for decryptor
     let saverEncGens, saverSk, saverProvingKey, saverVerifyingKey, saverEk, saverDk;

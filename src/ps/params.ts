@@ -4,8 +4,13 @@ import {
   psSignatureParamsFromBytes,
   psIsSignatureParamsValid,
   psAdaptSignatureParamsForMsgCount,
-  PSSigParams
+  PSSigParams,
+  VerifyResult
 } from '@docknetwork/crypto-wasm';
+import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { PSPublicKey, PSSecretKey } from './keys';
+import { PSSignature } from './signature';
+import { Encoder } from '../encoder';
 
 /**
  * Signature parameters.
@@ -60,6 +65,88 @@ export class PSSignatureParams {
       newParams = psAdaptSignatureParamsForMsgCount(this.value, this.label, newMsgCount);
     }
     return new PSSignatureParams(newParams, this.label);
+  }
+
+  static signMessageObject(
+    messages: Object,
+    secretKey: PSSecretKey,
+    labelOrParams: Uint8Array | PSSignatureParams,
+    encoder: Encoder
+  ): SignedMessages<PSSignature> {
+    const [names, encodedValues] = encoder.encodeMessageObject(messages);
+    const msgCount = names.length;
+  
+    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    const signature = PSSignature.generate(encodedValues, secretKey, sigParams);
+  
+    // Encoded message as an object with key as the flattened name
+    const encodedMessages: { [key: string]: Uint8Array } = {};
+    for (let i = 0; i < msgCount; i++) {
+      encodedMessages[names[i]] = encodedValues[i];
+    }
+  
+    return {
+      encodedMessages,
+      signature
+    };
+  }
+
+  /**
+   * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
+   * to signing and then verifies the signature.
+   * @param messages
+   * @param signature
+   * @param publicKey
+   * @param labelOrParams
+   * @param encoder
+   */
+  static verifyMessageObject(
+    messages: object,
+    signature: PSSignature,
+    publicKey: PSPublicKey,
+    labelOrParams: Uint8Array | PSSignatureParams,
+    encoder: Encoder
+  ): VerifyResult {
+    const [_, encodedValues] = encoder.encodeMessageObject(messages);
+    const msgCount = encodedValues.length;
+
+    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    return signature.verify(encodedValues, publicKey, sigParams);
+  }
+
+  /**
+  * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
+  * @param msgCount
+  * @param labelOrParams
+  */
+  static getSigParamsOfRequiredSize(
+    msgCount: number,
+    labelOrParams: Uint8Array | PSSignatureParams
+  ): PSSignatureParams {
+    let sigParams;
+    if (labelOrParams instanceof this) {
+      labelOrParams = labelOrParams as PSSignatureParams;
+      if (labelOrParams.supportedMessageCount() !== msgCount) {
+        if (labelOrParams.label === undefined) {
+          throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
+        } else {
+          sigParams = labelOrParams.adapt(msgCount);
+        }
+      } else {
+        sigParams = labelOrParams;
+      }
+    } else {
+      sigParams = this.generate(msgCount, labelOrParams as Uint8Array);
+    }
+    return sigParams;
+  }
+
+  static getSigParamsForMsgStructure(
+    msgStructure: MessageStructure,
+    labelOrParams: Uint8Array | PSSignatureParams,
+  ): PSSignatureParams {
+    const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
+    return this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
   }
 
   /**

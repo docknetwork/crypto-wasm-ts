@@ -18,7 +18,6 @@ import {
   NonMembershipWitness,
   PositiveAccumulator,
   ProofSpecG1,
-  BBSPlusSignature,
   BBSPlusSignatureG1,
   BBSPlusSignatureParamsG1,
   Statement,
