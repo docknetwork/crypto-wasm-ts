@@ -17,6 +17,8 @@ import {
   KeyPair,
   Signature,
   SignatureParams,
+  buildStatement,
+  buildWitness,
 } from '../scheme'
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 
@@ -87,7 +89,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
 
     const provingKey = Accumulator.generateMembershipProvingKey(stringToBytes('Our proving key'));
 
-    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.accumulatorMembership(
       accumParams,
       accumKeypair.publicKey,
@@ -114,7 +116,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     const proofSpec = new ProofSpecG1(statements, metaStatements, [], context);
     expect(proofSpec.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
+    const witness1 = buildWitness(sig, unrevealedMsgs, false);
     const witness2 = Witness.accumulatorMembership(encodedMessages[userIdIdx], accumWitness);
     const witnesses = new Witnesses();
     witnesses.add(witness1);

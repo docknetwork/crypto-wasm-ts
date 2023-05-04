@@ -8,6 +8,7 @@ import {
   BBSPlusSignatureG1,
   BBSPlusSignatureParamsG1
 } from '../src';
+import { Signature } from './scheme';
 import { getRevealedUnrevealed, stringToBytes } from './utils';
 
 function getMessages(count: number): Uint8Array[] {
@@ -178,7 +179,7 @@ describe('BBS+ signature', () => {
 
     let blindSig = BBSPlusBlindSignatureG1.generate(req.commitment, knownMessages, sk, params, true);
 
-    let sig = blindSig.unblind(blinding);
+    let sig: Signature = typeof blindSig.unblind === 'function' ? blindSig.unblind(blinding): blindSig;
     expect(sig.verify(messages, pk, params, true).verified).toEqual(true);
   });
 

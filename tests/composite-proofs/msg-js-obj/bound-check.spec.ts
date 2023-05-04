@@ -8,11 +8,9 @@ import {
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  BBSPlusKeypairG2,
   MetaStatements,
   ProofSpecG1,
   SetupParam,
-  BBSPlusSignatureParamsG1,
 
   Statement,
   Statements,
@@ -31,6 +29,7 @@ import {
   GlobalEncoder
 } from './data-and-encoder';
 import { checkMapsEqual } from './index';
+import { buildStatement, buildWitness, KeyPair, SignatureParams, } from '../../scheme';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -49,36 +48,36 @@ describe('Range proof using LegoGroth16', () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = BBSPlusSignatureParamsG1.generate(1, label1);
-    const keypair1 = BBSPlusKeypairG2.generate(params1);
+    let params1 = SignatureParams.generate(1, label1);
+    const keypair1 = KeyPair.generate(params1);
     const sk1 = keypair1.secretKey;
     const pk1 = keypair1.publicKey;
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = BBSPlusSignatureParamsG1.generate(1, label2);
-    const keypair2 = BBSPlusKeypairG2.generate(params2);
+    let params2 = SignatureParams.generate(1, label2);
+    const keypair2 = KeyPair.generate(params2);
     const sk2 = keypair2.secretKey;
     const pk2 = keypair2.publicKey;
 
     // 3rd signer's setup
     const label3 = stringToBytes('Sig params label 3');
     // Message count shouldn't matter as `label3` is known
-    let params3 = BBSPlusSignatureParamsG1.generate(1, label3);
-    const keypair3 = BBSPlusKeypairG2.generate(params3);
+    let params3 = SignatureParams.generate(1, label3);
+    const keypair3 = KeyPair.generate(params3);
     const sk3 = keypair3.secretKey;
     const pk3 = keypair3.publicKey;
 
     // Sign and verify all signatures
-    const signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk1, label1, GlobalEncoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, pk1, label1, GlobalEncoder));
+    const signed1 = SignatureParams.signMessageObject(attributes1, sk1, label1, GlobalEncoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, GlobalEncoder));
 
-    const signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk2, label2, GlobalEncoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, pk2, label2, GlobalEncoder));
+    const signed2 = SignatureParams.signMessageObject(attributes2, sk2, label2, GlobalEncoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, GlobalEncoder));
 
-    const signed3 = BBSPlusSignatureParamsG1.signMessageObject(attributes3, sk3, label3, GlobalEncoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes3, signed3.signature, pk3, label3, GlobalEncoder));
+    const signed3 = SignatureParams.signMessageObject(attributes3, sk3, label3, GlobalEncoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes3, signed3.signature, pk3, label3, GlobalEncoder));
 
     // Verifier creates SNARK proving and verification key
     const [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
@@ -143,7 +142,7 @@ describe('Range proof using LegoGroth16', () => {
     );
     expect(revealedMsgsRaw1).toEqual({ fname: 'John', country: 'USA' });
 
-    const statement1 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1, false);
+    const statement1 = buildStatement(sigParams1, pk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
@@ -152,7 +151,7 @@ describe('Range proof using LegoGroth16', () => {
     );
     expect(revealedMsgsRaw2).toEqual({ fname: 'John', location: { country: 'USA' } });
 
-    const statement2 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
+    const statement2 = buildStatement(sigParams2, pk2, revealedMsgs2, false);
 
     const [revealedMsgs3, unrevealedMsgs3, revealedMsgsRaw3] = getRevealedAndUnrevealed(
       attributes3,
@@ -171,7 +170,7 @@ describe('Range proof using LegoGroth16', () => {
       }
     });
 
-    const statement3 = Statement.bbsPlusSignature(sigParams3, pk3, revealedMsgs3, false);
+    const statement3 = buildStatement(sigParams3, pk3, revealedMsgs3, false);
 
     // Construct statements for bound check
     const statement4 = Statement.boundCheckProverFromSetupParamRefs(timeMin, timeMax, 0);
@@ -286,9 +285,9 @@ describe('Range proof using LegoGroth16', () => {
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver, proverSetupParams);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsPlusSignature(signed1.signature, unrevealedMsgs1, false);
-    const witness2 = Witness.bbsPlusSignature(signed2.signature, unrevealedMsgs2, false);
-    const witness3 = Witness.bbsPlusSignature(signed3.signature, unrevealedMsgs3, false);
+    const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
+    const witness2 = buildWitness(signed2.signature, unrevealedMsgs2, false);
+    const witness3 = buildWitness(signed3.signature, unrevealedMsgs3, false);
 
     const witnesses = new Witnesses();
     witnesses.add(witness1);
@@ -316,9 +315,9 @@ describe('Range proof using LegoGroth16', () => {
     const revealedMsgs3FromVerifier = encodeRevealedMsgs(revealedMsgsRaw3, attributes3Struct, GlobalEncoder);
     checkMapsEqual(revealedMsgs3, revealedMsgs3FromVerifier);
 
-    const statement11 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
-    const statement12 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
-    const statement13 = Statement.bbsPlusSignature(sigParams3, pk3, revealedMsgs3FromVerifier, false);
+    const statement11 = buildStatement(sigParams1, pk1, revealedMsgs1FromVerifier, false);
+    const statement12 = buildStatement(sigParams2, pk2, revealedMsgs2FromVerifier, false);
+    const statement13 = buildStatement(sigParams3, pk3, revealedMsgs3FromVerifier, false);
 
     // Construct statements for bound check
     const statement14 = Statement.boundCheckVerifierFromSetupParamRefs(timeMin, timeMax, 0);

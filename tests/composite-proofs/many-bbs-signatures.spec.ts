@@ -2,19 +2,18 @@ import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from '../utils';
 import {
   CompositeProofG1,
-  BBSPlusKeypairG2,
   MetaStatement,
   MetaStatements,
   ProofSpecG1,
-  Statement,
   Statements,
-  Witness,
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
 import {
+  KeyPair,
   Signature,
   SignatureParams,
+  buildStatement,
   buildWitness,
 } from '../scheme'
 
@@ -69,12 +68,12 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
     const params2 = SignatureParams.generate(messageCount2, label2);
 
     // Signer 1 keys
-    const keypair1 = BBSPlusKeypairG2.generate(params1);
+    const keypair1 = KeyPair.generate(params1);
     const sk1 = keypair1.secretKey;
     const pk1 = keypair1.publicKey;
 
     // Signer 2 keys
-    const keypair2 = BBSPlusKeypairG2.generate(params2);
+    const keypair2 = KeyPair.generate(params2);
     const sk2 = keypair2.secretKey;
     const pk2 = keypair2.publicKey;
 
@@ -93,7 +92,7 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
     // User wants to prove knowledge of 2 signatures and hence 2 statements
 
     // Statement for signature of 1st signer, not revealing any messages to the verifier
-    const statement1 = Statement.bbsPlusSignature(params1, pk1, new Map(), true);
+    const statement1 = buildStatement(params1, pk1, new Map(), true);
 
     // Statement for signature of 2nd signer, revealing 1 message to the verifier
     const revealedMsgIndices: Set<number> = new Set();
@@ -107,7 +106,7 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
         unrevealedMsgs2.set(i, messages2[i]);
       }
     }
-    const statement2 = Statement.bbsPlusSignature(params2, pk2, revealedMsgs, true);
+    const statement2 = buildStatement(params2, pk2, revealedMsgs, true);
 
     const statements = new Statements();
     const sId1 = statements.add(statement1);

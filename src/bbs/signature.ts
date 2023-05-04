@@ -141,14 +141,6 @@ export class BBSSignature extends BytearrayWrapper {
 
 export class BBSBlindSignature extends BytearrayWrapper {
   /**
-   * Generate blinding for creating the commitment used in the request for blind signature
-   * @param seed - Optional seed to serve as entropy for the blinding.
-   */
-  static generateBlinding(seed?: Uint8Array): Uint8Array {
-    return generateRandomFieldElement(seed);
-  }
-
-  /**
    * Generates a blind signature over the commitment of unknown messages and known messages
    * @param commitment - Commitment over unknown messages sent by the requester of the blind signature. Its assumed that
    * the signers has verified the knowledge of committed messages
@@ -202,9 +194,8 @@ export class BBSBlindSignature extends BytearrayWrapper {
    * Generate a request for a blind signature
    * @param messagesToBlind - messages the requester wants to hide from the signer. The key of the map is the index of the
    * message as per the params.
-   * @param blindings - If not provided, a random blinding is generated
    * @param params
-   * @param h
+   * @param encodedMessages
    * @param revealedMessages - Any messages that the requester wishes to inform the signer about. This is for informational
    * purpose only and has no cryptographic use.
    */
@@ -212,17 +203,16 @@ export class BBSBlindSignature extends BytearrayWrapper {
     messagesToBlind: Map<number, Uint8Array>,
     params: BBSSignatureParams,
     encodeMessages: boolean,
-    blinding?: Uint8Array,
     unblindedMessages?: Map<number, Uint8Array>
-  ): [Uint8Array, BBSBlindSignatureRequest] {
-    const [commitment, b] = params.commitToMessages(messagesToBlind, encodeMessages, blinding);
+  ): BBSBlindSignatureRequest {
+    const commitment = params.commitToMessages(messagesToBlind, encodeMessages);
     const blindedIndices: number[] = [];
     for (const k of messagesToBlind.keys()) {
       blindedIndices.push(k);
     }
 
     blindedIndices.sort();
-    return [b, { commitment, blindedIndices, unblindedMessages }];
+    return { commitment, blindedIndices, unblindedMessages };
   }
   
   /**

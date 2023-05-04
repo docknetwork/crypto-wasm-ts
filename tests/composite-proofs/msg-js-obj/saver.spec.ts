@@ -1,15 +1,12 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, getBoundCheckSnarkKeys, readByteArrayFromFile, stringToBytes } from '../../utils';
 import {
-  BoundCheckSnarkSetup,
   CompositeProofG1, dockSaverEncryptionGensUncompressed,
   encodeRevealedMsgs,
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-  BBSPlusKeypairG2,
-  LegoProvingKeyUncompressed,
-  LegoVerifyingKeyUncompressed,
+
   MetaStatements,
   QuasiProofSpecG1,
   SaverChunkedCommitmentGens,
@@ -20,8 +17,6 @@ import {
   SaverProvingKeyUncompressed,
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
 
   Statement,
   Statements,
@@ -32,6 +27,7 @@ import {
 } from '../../../src';
 import { attributes1, attributes1Struct, GlobalEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
+import { buildStatement, buildWitness, KeyPair, Signature, SignatureParams } from '../../scheme';
 
 describe('Verifiable encryption using SAVER', () => {
   beforeAll(async () => {
@@ -48,13 +44,13 @@ describe('Verifiable encryption using SAVER', () => {
 
     const label = stringToBytes('Sig params label - this is public');
     // Message count shouldn't matter as `label` is known
-    let params = BBSPlusSignatureParamsG1.generate(1, label);
-    const keypair = BBSPlusKeypairG2.generate(params);
+    let params = SignatureParams.generate(1, label);
+    const keypair = KeyPair.generate(params);
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 
-    const signed = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk, label, GlobalEncoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed.signature, pk, label, GlobalEncoder));
+    const signed = SignatureParams.signMessageObject(attributes1, sk, label, GlobalEncoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes1, signed.signature, pk, label, GlobalEncoder));
 
     // Setup for decryptor
     let saverEncGens, saverSk, saverProvingKey, saverVerifyingKey, saverEk, saverDk;
@@ -118,7 +114,7 @@ describe('Verifiable encryption using SAVER', () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'John', lname: 'Smith', country: 'USA' });
 
-    const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
+    const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
     const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, saverProvingKey, chunkBitSize);
     const statement3 = Statement.boundCheckProver(timeMin, timeMax, boundCheckProvingKey);
 
@@ -142,7 +138,7 @@ describe('Verifiable encryption using SAVER', () => {
     // The prover should independently construct this `ProofSpec`
     const proofSpecProver = new QuasiProofSpecG1(statementsProver, metaStmtsProver);
 
-    const witness1 = Witness.bbsPlusSignature(signed.signature, unrevealedMsgs, false);
+    const witness1 = buildWitness(signed.signature, unrevealedMsgs, false);
     const witness2 = Witness.saver(signed.encodedMessages['SSN']);
     const witness3 = Witness.boundCheckLegoGroth16(signed.encodedMessages['timeOfBirth']);
     const witnesses = new Witnesses();
@@ -156,7 +152,7 @@ describe('Verifiable encryption using SAVER', () => {
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributes1Struct, GlobalEncoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement4 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgsFromVerifier, false);
+    const statement4 = buildStatement(sigParams, pk, revealedMsgsFromVerifier, false);
     const statement5 = Statement.saverVerifier(saverEncGens, commGens, saverEk, saverVerifyingKey, chunkBitSize);
     const statement6 = Statement.boundCheckVerifier(timeMin, timeMax, boundCheckVerifyingKey);
 
@@ -193,7 +189,7 @@ describe('Verifiable encryption using SAVER', () => {
     ).toEqual(true);
 
     // Message can be successfully decoded to the original string
-    const decoded = BBSPlusSignatureG1.reversibleDecodeStringForSigning(signed.encodedMessages['SSN']);
+    const decoded = Signature.reversibleDecodeStringForSigning(signed.encodedMessages['SSN']);
     expect(decoded).toEqual(attributes1['SSN']);
   });
 });

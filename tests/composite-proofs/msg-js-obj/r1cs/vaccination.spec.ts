@@ -1,8 +1,6 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
-  BBSPlusPublicKeyG2,
-  BBSPlusSecretKey,
   CircomInputs,
   CompositeProofG1,
   createWitnessEqualityMetaStatement,
@@ -11,27 +9,30 @@ import {
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-
-  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
   ProofSpecG1,
   R1CSSnarkSetup,
-  BBSPlusSignatureParamsG1,
   SignedMessages,
-
   Statement,
   Statements,
-
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
-import { BBSPlusSignatureG1 } from '../../../../src/bbs-plus';
+import {
+  buildStatement,
+  buildWitness,
+  Signature,
+  KeyPair,
+  PublicKey,
+  SecretKey,
+  SignatureParams
+} from '../../../scheme';
 
 // Test for a scenario where a user wants to prove that he either got the vaccination less than 30 days ago or got
 // tested negative less than 2 days ago but does not reveal when these events happened or which of these conditions is true.
@@ -39,8 +40,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');
-  let sigPk: BBSPlusPublicKeyG2;
-  let sigSk: BBSPlusSecretKey;
+  let sigPk: PublicKey;
+  let sigSk: SecretKey;
 
   const secondsInADay = 24 * 60 * 60;
   // Time in seconds as of now
@@ -111,13 +112,13 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     }
   };
 
-  function sign(vDays: number, tDays: number): [SignedMessages<BBSPlusSignatureG1>, SignedMessages<BBSPlusSignatureG1>] {
+  function sign(vDays: number, tDays: number): [SignedMessages<Signature>, SignedMessages<Signature>] {
     vaccinationAttributes.vaccination.date = now - vDays * secondsInADay;
     diseaseTestAttributes.test.date = now - tDays * secondsInADay;
-    const signedV = BBSPlusSignatureParamsG1.signMessageObject(vaccinationAttributes, sigSk, label, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(vaccinationAttributes, signedV.signature, sigPk, label, encoder));
-    const signedT = BBSPlusSignatureParamsG1.signMessageObject(diseaseTestAttributes, sigSk, label, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(diseaseTestAttributes, signedT.signature, sigPk, label, encoder));
+    const signedV = SignatureParams.signMessageObject(vaccinationAttributes, sigSk, label, encoder);
+    checkResult(SignatureParams.verifyMessageObject(vaccinationAttributes, signedV.signature, sigPk, label, encoder));
+    const signedT = SignatureParams.signMessageObject(diseaseTestAttributes, sigSk, label, encoder);
+    checkResult(SignatureParams.verifyMessageObject(diseaseTestAttributes, signedT.signature, sigPk, label, encoder));
     return [signedV, signedT];
   }
 
@@ -141,8 +142,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     wasm = getWasmBytes('greater_than_or_public_64.wasm');
 
     // Message count shouldn't matter as `label` is known
-    let params = BBSPlusSignatureParamsG1.generate(1, label);
-    const keypair = BBSPlusKeypairG2.generate(params);
+    let params = SignatureParams.generate(1, label);
+    const keypair = KeyPair.generate(params);
     sigSk = keypair.secretKey;
     sigPk = keypair.publicKey;
   });
@@ -154,15 +155,15 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
   });
 
   function check(
-    vaccinationAttributesSigned: SignedMessages<BBSPlusSignatureG1>,
-    testAttributesSigned: SignedMessages<BBSPlusSignatureG1>,
+    vaccinationAttributesSigned: SignedMessages<Signature>,
+    testAttributesSigned: SignedMessages<Signature>,
     checkShouldPass: boolean
   ) {
     const revealedNamesV = new Set<string>();
     revealedNamesV.add('fname');
     revealedNamesV.add('vaccination.name');
 
-    const sigParamsV = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(vaccinationAttributesStruct, label);
+    const sigParamsV = SignatureParams.getSigParamsForMsgStructure(vaccinationAttributesStruct, label);
     const [revealedMsgsV, unrevealedMsgsV, revealedMsgsRawV] = getRevealedAndUnrevealed(
       vaccinationAttributes,
       revealedNamesV,
@@ -175,7 +176,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     revealedNamesT.add('test.type');
     revealedNamesT.add('test.result');
 
-    const sigParamsT = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(diseaseTestAttributesStruct, label);
+    const sigParamsT = SignatureParams.getSigParamsForMsgStructure(diseaseTestAttributesStruct, label);
     const [revealedMsgsT, unrevealedMsgsT, revealedMsgsRawT] = getRevealedAndUnrevealed(
       diseaseTestAttributes,
       revealedNamesT,
@@ -183,8 +184,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     );
     expect(revealedMsgsRawT).toEqual({ fname: 'John', test: { type: 'Antigen', result: 'Negative' } });
 
-    const statement1 = Statement.bbsPlusSignature(sigParamsV, sigPk, revealedMsgsV, false);
-    const statement2 = Statement.bbsPlusSignature(sigParamsT, sigPk, revealedMsgsT, false);
+    const statement1 = buildStatement(sigParamsV, sigPk, revealedMsgsV, false);
+    const statement2 = buildStatement(sigParamsT, sigPk, revealedMsgsT, false);
     const statement3 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -219,8 +220,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsPlusSignature(vaccinationAttributesSigned.signature, unrevealedMsgsV, false));
-    witnesses.add(Witness.bbsPlusSignature(testAttributesSigned.signature, unrevealedMsgsT, false));
+    witnesses.add(buildWitness(vaccinationAttributesSigned.signature, unrevealedMsgsV, false));
+    witnesses.add(buildWitness(testAttributesSigned.signature, unrevealedMsgsT, false));
 
     const inputs = new CircomInputs();
     inputs.setPrivateInput('in1', vaccinationAttributesSigned.encodedMessages['vaccination.date']);
@@ -237,8 +238,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     const revealedMsgsFromVerifierT = encodeRevealedMsgs(revealedMsgsRawT, diseaseTestAttributesStruct, encoder);
     checkMapsEqual(revealedMsgsT, revealedMsgsFromVerifierT);
 
-    const statement4 = Statement.bbsPlusSignature(sigParamsV, sigPk, revealedMsgsFromVerifierV, false);
-    const statement5 = Statement.bbsPlusSignature(sigParamsT, sigPk, revealedMsgsFromVerifierT, false);
+    const statement4 = buildStatement(sigParamsV, sigPk, revealedMsgsFromVerifierV, false);
+    const statement5 = buildStatement(sigParamsT, sigPk, revealedMsgsFromVerifierT, false);
     const pub = [generateFieldElementFromNumber(checkShouldPass ? 1 : 0), encodedTime30DaysAgo, encodedTime2DaysAgo];
     const statement6 = Statement.r1csCircomVerifier(pub, verifyingKey);
 

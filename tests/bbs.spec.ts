@@ -166,7 +166,8 @@ import {
       messagesToHide.set(1, messages[1]);
       messagesToHide.set(2, messages[2]);
   
-      let [blinding, req] = BBSBlindSignature.generateRequest(messagesToHide, params, true);
+      const req = BBSBlindSignature.generateRequest(messagesToHide, params, true);
+      const [blinding, request] = Array.isArray(req) ? req: [undefined, req];
   
       // Simulation of signer picking up known messages
       const knownMessages = new Map();

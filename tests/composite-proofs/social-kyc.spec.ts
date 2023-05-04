@@ -21,6 +21,7 @@ import {
   pedersenCommitmentG1
 } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from '../utils';
+import { Signature } from '../scheme';
 
 describe('Social KYC (Know Your Customer)', () => {
   // A social KYC (Know Your Customer) credential claims that the subject owns certain social media profile like a twitter
@@ -68,7 +69,8 @@ describe('Social KYC (Know Your Customer)', () => {
     blindedAttributes.set(0, stringToBytes('my-secret-id'));
 
     // Generate a blind signature request
-    const [blinding, request] = BBSPlusBlindSignatureG1.generateRequest(blindedAttributes, sigParams, true);
+    const req = BBSPlusBlindSignatureG1.generateRequest(blindedAttributes, sigParams, true);
+    const [blinding, request] = Array.isArray(req) ? req: [undefined, req];
 
     // The proof is created for 2 statements.
 
@@ -93,12 +95,12 @@ describe('Social KYC (Know Your Customer)', () => {
     const witness1 = Witness.pedersenCommitment([randomValueTweet]);
 
     // The witness to the Pedersen commitment contains the blinding at index 0 by convention and then the hidden attributes
-    const committeds = [blinding];
+    const committeds = [blinding].filter(Boolean);
     for (const i of blindedIndices) {
       // The attributes are encoded before committing
       committeds.push(BBSPlusSignatureG1.encodeMessageForSigning(blindedAttributes.get(i)));
     }
-    const witness2 = Witness.pedersenCommitment(committeds);
+    const witness2 = Witness.pedersenCommitment(committeds as any);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
     witnesses.add(witness2);
@@ -121,7 +123,7 @@ describe('Social KYC (Know Your Customer)', () => {
     const blindSig = BBSPlusBlindSignatureG1.generate(request.commitment, knownAttributes, sk, sigParams, true);
 
     // // User unblinds the signature and now has valid credential
-    const sig = blindSig.unblind(blinding);
+    const sig: Signature = typeof blindSig.unblind === 'function' ? blindSig.unblind(blinding!): blindSig;
 
     // Combine blinded and known attributes in an array
     const attributes = Array(blindedAttributes.size + knownAttributes.size);

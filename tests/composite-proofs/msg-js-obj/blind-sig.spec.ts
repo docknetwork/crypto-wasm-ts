@@ -200,10 +200,10 @@ describe('Requesting blind signatures', () => {
       );
 
       // User unblinds the blind signature
-      const unblindedSig = blingSignature.signature.unblind(blinding);
+      const unblindedSig = typeof blingSignature.signature.unblind === 'function' ? blingSignature.signature.unblind(blinding): blingSignature.signature;
 
       // The unblinded signature can now be used in the usual verification process
-      checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes, unblindedSig, pk, sigParams, GlobalEncoder));
+      checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes, unblindedSig as any, pk, sigParams, GlobalEncoder));
 
       // Proof of knowledge of signature can be created and verified as usual.
     }
