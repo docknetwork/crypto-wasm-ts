@@ -11,7 +11,7 @@ import {
 import { BBSSignature } from './signature';
 import { BBSPublicKey, BBSSecretKey } from './keys';
 import { Encoder } from '../encoder';
-import { SignedMessages } from '../sign-verify-js-objs';
+import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
 
 /**
  * Signature parameters.
@@ -42,12 +42,10 @@ export class BBSSignatureParams {
    */
   commitToMessages(
     messageToCommit: Map<number, Uint8Array>,
-    encodeMessages: boolean,
-    blinding?: Uint8Array
-  ): [Uint8Array, Uint8Array] {
-    const b = blinding === undefined ? generateRandomFieldElement() : blinding;
-    const commitment = bbsCommitMsgs(messageToCommit, b, this.value, encodeMessages);
-    return [commitment, b];
+    encodeMessages: boolean
+  ): Uint8Array {
+    const commitment = bbsCommitMsgs(messageToCommit, this.value, encodeMessages);
+    return commitment;
   }
 
   toBytes(): Uint8Array {
@@ -187,6 +185,14 @@ export class BBSSignatureParams {
       p.push(this.value.h[i]);
     }
     return p;
+  }
+
+  static getSigParamsForMsgStructure(
+    msgStructure: MessageStructure,
+    labelOrParams: Uint8Array | BBSSignatureParams,
+  ): BBSSignatureParams {
+    const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
+    return this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
   }
 
   toJSON(): string {

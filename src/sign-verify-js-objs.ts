@@ -6,6 +6,7 @@ import { Statement, WitnessEqualityMetaStatement } from './composite-proof/state
 import { BBSPlusBlindSignatureRequest, BBSPlusSignatureParamsG1 } from './bbs-plus';
 import { BBSBlindSignatureRequest, BBSSignatureParams } from './bbs';
 import { PSBlindSignatureRequest, PSSignatureParams } from './ps';
+import { Witness } from './composite-proof/witness';
 
 // The following `ts-ignore` shouldn't be necessary as per https://github.com/microsoft/TypeScript/pull/33050 but it still is (on TS 4.8)
 // @ts-ignore
@@ -222,8 +223,6 @@ export function getBBSPlusStatementForBlindSigRequest(
   request: BBSPlusBlindSignatureRequest,
   sigParams: BBSPlusSignatureParamsG1
 ): Uint8Array {
-  console.log(request.commitment, request.blindedIndices, sigParams);
-  if (request.commitment.length !== 48) throw 1
   const commKey = sigParams.getParamsForIndices(request.blindedIndices);
   return Statement.pedersenCommitmentG1(commKey, request.commitment);
 }

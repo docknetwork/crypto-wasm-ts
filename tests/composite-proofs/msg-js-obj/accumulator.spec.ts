@@ -11,11 +11,9 @@ import {
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   IAccumulatorState,
-  BBSPlusKeypairG2,
   MetaStatements,
   PositiveAccumulator,
   ProofSpecG1,
-  BBSPlusSignatureParamsG1,
 
   Statement,
   Statements,
@@ -29,6 +27,7 @@ import { checkResult, stringToBytes } from '../../utils';
 import { InMemoryState } from '../../../src/accumulator/in-memory-persistence';
 import { attributes1, attributes1Struct, attributes2, attributes2Struct, defaultEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
+import { buildStatement, buildWitness, KeyPair, SignatureParams } from '../../scheme';
 
 describe('Accumulator', () => {
   beforeAll(async () => {
@@ -65,16 +64,16 @@ describe('Accumulator', () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = BBSPlusSignatureParamsG1.generate(1, label1);
-    const keypair1 = BBSPlusKeypairG2.generate(params1);
+    let params1 = SignatureParams.generate(1, label1);
+    const keypair1 = KeyPair.generate(params1);
     const sk1 = keypair1.secretKey;
     const pk1 = keypair1.publicKey;
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = BBSPlusSignatureParamsG1.generate(1, label2);
-    const keypair2 = BBSPlusKeypairG2.generate(params2);
+    let params2 = SignatureParams.generate(1, label2);
+    const keypair2 = KeyPair.generate(params2);
     const sk2 = keypair2.secretKey;
     const pk2 = keypair2.publicKey;
 
@@ -110,7 +109,7 @@ describe('Accumulator', () => {
     // Sign and verify all signatures
 
     // Signer 1 signs the attributes
-    const signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk1, label1, encoder);
+    const signed1 = SignatureParams.signMessageObject(attributes1, sk1, label1, encoder);
 
     // Accumulator manager 1 generates the witness for the accumulator member, i.e. attribute signed1.encodedMessages['user-id']
     // and gives the witness to the user.
@@ -120,7 +119,7 @@ describe('Accumulator', () => {
       accumState1
     );
 
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
+    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator1 = PositiveAccumulator.fromAccumulated(accumulator1.accumulated);
@@ -134,7 +133,7 @@ describe('Accumulator', () => {
     ).toEqual(true);
 
     // Signer 2 signs the attributes
-    const signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk2, label2, encoder);
+    const signed2 = SignatureParams.signMessageObject(attributes2, sk2, label2, encoder);
 
     // Accumulator manager 2 generates the witness and gives it to the user
     const accumWitness2 = await accumulator2.membershipWitness(
@@ -143,7 +142,7 @@ describe('Accumulator', () => {
       accumState2
     );
 
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
+    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator2 = PositiveAccumulator.fromAccumulated(accumulator2.accumulated);
@@ -181,14 +180,14 @@ describe('Accumulator', () => {
       revealedNames1,
       encoder
     );
-    const statement1 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1, false);
+    const statement1 = buildStatement(sigParams1, pk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
       revealedNames2,
       encoder
     );
-    const statement2 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
+    const statement2 = buildStatement(sigParams2, pk2, revealedMsgs2, false);
 
     const statement3 = Statement.accumulatorMembership(
       accumParams1,
@@ -236,8 +235,8 @@ describe('Accumulator', () => {
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsPlusSignature(signed1.signature, unrevealedMsgs1, false);
-    const witness2 = Witness.bbsPlusSignature(signed2.signature, unrevealedMsgs2, false);
+    const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
+    const witness2 = buildWitness(signed2.signature, unrevealedMsgs2, false);
     const witness3 = Witness.accumulatorMembership(signed1.encodedMessages['user-id'], accumWitness1);
     const witness4 = Witness.accumulatorMembership(signed2.encodedMessages['sensitive.user-id'], accumWitness2);
 
@@ -255,8 +254,8 @@ describe('Accumulator', () => {
     const revealedMsgs2FromVerifier = encodeRevealedMsgs(revealedMsgsRaw2, attributes2Struct, encoder);
     checkMapsEqual(revealedMsgs2, revealedMsgs2FromVerifier);
 
-    const statement5 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
-    const statement6 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
+    const statement5 = buildStatement(sigParams1, pk1, revealedMsgs1FromVerifier, false);
+    const statement6 = buildStatement(sigParams2, pk2, revealedMsgs2FromVerifier, false);
     const statement7 = Statement.accumulatorMembership(
       accumParams1,
       accumKeypair1.publicKey,

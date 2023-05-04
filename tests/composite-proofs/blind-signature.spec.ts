@@ -14,6 +14,7 @@ import {
   KeyPair,
   Signature,
   SignatureParams,
+  getStatementForBlindSigRequest,
 } from '../scheme'
 
 describe('Getting a blind signature, i.e. signature where signer is not aware of certain attributes of the user', () => {
@@ -45,13 +46,13 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
 
     // Blind signature request will contain a Pedersen commitment, and it can be given a blinding of choice
     // or it can generate on its own.
-    const [blinding, request] = BlindSignature.generateRequest(blindedMessages, params, true);
+    const req = BlindSignature.generateRequest(blindedMessages, params, true);
+    const [blinding, request] = Array.isArray(req) ? req: [undefined, req];
 
     expect(request.blindedIndices).toEqual(blindedIndices);
 
     // Take parts of the sig params corresponding to the blinded messages
-    const commKey = params.getParamsForIndices(request.blindedIndices);
-    const statement1 = Statement.pedersenCommitmentG1(commKey, request.commitment);
+    const statement1 = getStatementForBlindSigRequest(request, params)
 
     const statements = new Statements();
     statements.add(statement1);
@@ -60,7 +61,7 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
     expect(proofSpec.isValid()).toEqual(true);
 
     // The witness to the Pedersen commitment contains the blinding at index 0 by convention and then the hidden messages
-    const committeds = [blinding];
+    const committeds: any[] = [blinding].filter(Boolean);
     for (const i of blindedIndices) {
       // The messages are encoded before committing
       committeds.push(Signature.encodeMessageForSigning(blindedMessages.get(i)));
@@ -81,7 +82,7 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
     const blindSig = BlindSignature.generate(request.commitment, knownMessages, sk, params, true);
 
     // User unblind the signature
-    const sig = blindSig.unblind(blinding);
+    const sig = typeof blindSig.unblind === 'function' ? blindSig.unblind(blinding): blindSig;
 
     // Combine blinded and known messages in an array
     const messages = Array(blindedMessages.size + knownMessages.size);
