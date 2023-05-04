@@ -2,16 +2,18 @@ import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from '../utils';
 import {
   CompositeProofG1,
-  BBSPlusKeypairG2,
   MetaStatements,
   ProofSpecG1,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
   Witnesses
 } from '../../src';
+import {
+  KeyPair,
+  Signature,
+  SignatureParams,
+} from '../scheme'
 
 describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
   it('works', async () => {
@@ -34,15 +36,15 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
     const messageCount = messages.length;
 
     const label = stringToBytes('My sig params in g1');
-    const params = BBSPlusSignatureParamsG1.generate(messageCount, label);
+    const params = SignatureParams.generate(messageCount, label);
 
     // Signers keys
-    const keypair = BBSPlusKeypairG2.generate(params);
+    const keypair = KeyPair.generate(params);
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 
     // Signer knows all the messages and signs
-    const sig = BBSPlusSignatureG1.generate(messages, sk, params, true);
+    const sig = Signature.generate(messages, sk, params, true);
     const result = sig.verify(messages, pk, params, true);
     expect(result.verified).toEqual(true);
 

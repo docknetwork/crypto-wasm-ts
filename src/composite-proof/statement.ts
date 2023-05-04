@@ -572,8 +572,8 @@ export class MetaStatement {
 export class Statements {
   values: Uint8Array[];
 
-  constructor() {
-    this.values = [];
+  constructor(statements: Uint8Array | Uint8Array[] = []) {
+    this.values = statements instanceof Array ? statements: [statements];
   }
 
   /**

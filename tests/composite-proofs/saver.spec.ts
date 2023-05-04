@@ -1,9 +1,6 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
-  BBSPlusPublicKeyG2,
-  BBSPlusSecretKey,
   CompositeProofG1, dockSaverEncryptionGensUncompressed,
-  BBSPlusKeypairG2,
   MetaStatement,
   MetaStatements,
   QuasiProofSpecG1,
@@ -17,8 +14,6 @@ import {
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
   SetupParam,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
@@ -26,6 +21,15 @@ import {
   Witnesses
 } from '../../src';
 import { areUint8ArraysEqual, getRevealedUnrevealed, readByteArrayFromFile, stringToBytes } from '../utils';
+import {
+  PublicKey,
+  KeyPair,
+  Signature,
+  SecretKey,
+  SignatureParams,
+  buildStatement,
+  buildWitness,
+} from '../scheme'
 
 describe('Verifiable encryption of signed messages', () => {
   const chunkBitSize = 16;
@@ -39,14 +43,14 @@ describe('Verifiable encryption of signed messages', () => {
     saverDk: SaverDecryptionKeyUncompressed,
     saverEncGens: SaverEncryptionGensUncompressed;
   // There are 2 signers
-  let sigParams1: BBSPlusSignatureParamsG1,
-    sigSk1: BBSPlusSecretKey,
-    sigPk1: BBSPlusPublicKeyG2,
-    sigParams2: BBSPlusSignatureParamsG1,
-    sigSk2: BBSPlusSecretKey,
-    sigPk2: BBSPlusPublicKeyG2;
+  let sigParams1: SignatureParams,
+    sigSk1: SecretKey,
+    sigPk1: PublicKey,
+    sigParams2: SignatureParams,
+    sigSk2: SecretKey,
+    sigPk2: PublicKey;
   let messages1AsStrings: string[], messages2AsStrings: string[];
-  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: BBSPlusSignatureG1, sig2: BBSPlusSignatureG1;
+  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: Signature, sig2: Signature;
 
   beforeAll(async () => {
     await initializeWasm();
@@ -123,22 +127,22 @@ describe('Verifiable encryption of signed messages', () => {
     messages1 = [];
     messages2 = [];
     for (let i = 0; i < messageCount; i++) {
-      messages1.push(BBSPlusSignatureG1.reversibleEncodeStringForSigning(messages1AsStrings[i]));
-      messages2.push(BBSPlusSignatureG1.reversibleEncodeStringForSigning(messages2AsStrings[i]));
+      messages1.push(Signature.reversibleEncodeStringForSigning(messages1AsStrings[i]));
+      messages2.push(Signature.reversibleEncodeStringForSigning(messages2AsStrings[i]));
     }
 
-    sigParams1 = BBSPlusSignatureParamsG1.generate(messageCount);
-    const sigKeypair1 = BBSPlusKeypairG2.generate(sigParams1);
+    sigParams1 = SignatureParams.generate(messageCount);
+    const sigKeypair1 = KeyPair.generate(sigParams1);
     sigSk1 = sigKeypair1.secretKey;
     sigPk1 = sigKeypair1.publicKey;
 
-    sigParams2 = BBSPlusSignatureParamsG1.generate(messageCount);
-    const sigKeypair2 = BBSPlusKeypairG2.generate(sigParams2);
+    sigParams2 = SignatureParams.generate(messageCount);
+    const sigKeypair2 = KeyPair.generate(sigParams2);
     sigSk2 = sigKeypair2.secretKey;
     sigPk2 = sigKeypair2.publicKey;
 
-    sig1 = BBSPlusSignatureG1.generate(messages1, sigSk1, sigParams1, false);
-    sig2 = BBSPlusSignatureG1.generate(messages2, sigSk2, sigParams2, false);
+    sig1 = Signature.generate(messages1, sigSk1, sigParams1, false);
+    sig2 = Signature.generate(messages2, sigSk2, sigParams2, false);
     expect(sig1.verify(messages1, sigPk1, sigParams1, false).verified).toEqual(true);
     expect(sig2.verify(messages2, sigPk2, sigParams2, false).verified).toEqual(true);
   });
@@ -160,11 +164,11 @@ describe('Verifiable encryption of signed messages', () => {
   }
 
   function proveAndVerifySingle(
-    sigParams: BBSPlusSignatureParamsG1,
-    sigPk: BBSPlusPublicKeyG2,
+    sigParams: SignatureParams,
+    sigPk: PublicKey,
     messages: Uint8Array[],
     messagesAsStrings: string[],
-    sig: BBSPlusSignatureG1,
+    sig: Signature,
     label: string
   ) {
     const gens = SaverChunkedCommitmentGens.generate(stringToBytes(label));
@@ -173,7 +177,7 @@ describe('Verifiable encryption of signed messages', () => {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
-    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, snarkProvingKey, chunkBitSize);
 
     const proverStatements = new Statements();
@@ -186,7 +190,7 @@ describe('Verifiable encryption of signed messages', () => {
     const metaStatements = new MetaStatements();
     metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 
-    const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
+    const witness1 = buildWitness(sig, unrevealedMsgs, false);
     const witness2 = Witness.saver(messages[encMsgIdx]);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
@@ -207,7 +211,7 @@ describe('Verifiable encryption of signed messages', () => {
     decryptAndVerify(proof, 1, messages[encMsgIdx]);
 
     // Message can be successfully decoded to the original string
-    const decoded = BBSPlusSignatureG1.reversibleDecodeStringForSigning(messages[encMsgIdx]);
+    const decoded = Signature.reversibleDecodeStringForSigning(messages[encMsgIdx]);
     expect(decoded).toEqual(messagesAsStrings[encMsgIdx]);
   }
 
@@ -230,8 +234,8 @@ describe('Verifiable encryption of signed messages', () => {
     proverSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
     proverSetupParams.push(SetupParam.saverProvingKeyUncompressed(snarkProvingKey));
 
-    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedMsgs1, false);
-    const statement2 = Statement.bbsPlusSignature(sigParams2, sigPk2, revealedMsgs2, false);
+    const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
+    const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
     const statement3 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
     const statement4 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
 
@@ -254,8 +258,8 @@ describe('Verifiable encryption of signed messages', () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsPlusSignature(sig1, unrevealedMsgs1, false));
-    witnesses.add(Witness.bbsPlusSignature(sig2, unrevealedMsgs2, false));
+    witnesses.add(buildWitness(sig1, unrevealedMsgs1, false));
+    witnesses.add(buildWitness(sig2, unrevealedMsgs2, false));
     witnesses.add(Witness.saver(messages1[encMsgIdx]));
     witnesses.add(Witness.saver(messages2[encMsgIdx]));
 

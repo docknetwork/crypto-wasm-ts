@@ -185,16 +185,21 @@ export class PSBlindSignature extends BytearrayWrapper {
     revealedMessages: Map<number, Uint8Array> = new Map()
   ): PSBlindSignatureRequest {
     const commitments = new Map(
-      [...messagesToBlind.entries()].map(([idx, message]) => {
-        let blinding = blindings.get(idx);
-        if (blinding == null) {
-          blinding = this.generateBlinding();
-          blindings.set(idx, blinding);
-        }
+      [...messagesToBlind.entries()]
+        .map(([idx, message]) => {
+          if (revealedMessages.has(idx)) {
+            return null as any;
+          }
+          let blinding = blindings.get(idx);
+          if (blinding == null) {
+            blinding = this.generateBlinding();
+            blindings.set(idx, blinding);
+          }
 
-        return [idx, psMessageCommitment(blinding, message, h, params.value)];
-      })
-    );
+          return [idx, psMessageCommitment(message, blinding, h, params.value)];
+        })
+        .filter(Boolean)
+    ) as any;
 
     return { commitments, revealedMessages };
   }

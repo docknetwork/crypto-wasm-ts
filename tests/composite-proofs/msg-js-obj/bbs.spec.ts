@@ -12,13 +12,12 @@ import {
   BBSKeypair,
   MetaStatements,
   ProofSpecG1,
-  BBSSignatureParams,
   Statement,
   Statements,
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses,
-  BBSPlusSignatureParamsG1
+  BBSSignatureParams
 } from '../../../src';
 import {
   attributes1,
@@ -65,8 +64,8 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
     ]) {
       expect(isValidMsgStructure(attributes, attributesStruct)).toEqual(true);
 
-      const signed = BBSPlusSignatureParamsG1.signMessageObject(attributes, sk, label, encoder);
-      checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes, signed.signature, pk, label, encoder));
+      const signed = BBSSignatureParams.signMessageObject(attributes, sk, label, encoder);
+      checkResult(BBSSignatureParams.verifyMessageObject(attributes, signed.signature, pk, label, encoder));
 
       // For debugging
       console.log(signedToHex(signed));
@@ -178,11 +177,11 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
     const encoder = new Encoder(undefined, defaultEncoder);
 
     // Sign and verify all signatures
-    const signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk1, label1, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
+    const signed1 = BBSSignatureParams.signMessageObject(attributes1, sk1, label1, encoder);
+    checkResult(BBSSignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
 
-    const signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk2, label2, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
+    const signed2 = BBSSignatureParams.signMessageObject(attributes2, sk2, label2, encoder);
+    checkResult(BBSSignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
 
     // Reveal
     // - first name ("fname" attribute) from both sets of signed attributes
@@ -297,14 +296,14 @@ describe('Signing and proof of knowledge of BBS+ signature', () => {
     const encoder = new Encoder(undefined, defaultEncoder);
 
     // Sign and verify all signatures
-    const signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk1, label1, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
+    const signed1 = BBSSignatureParams.signMessageObject(attributes1, sk1, label1, encoder);
+    checkResult(BBSSignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
 
-    const signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk2, label2, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
+    const signed2 = BBSSignatureParams.signMessageObject(attributes2, sk2, label2, encoder);
+    checkResult(BBSSignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
 
-    const signed3 = BBSPlusSignatureParamsG1.signMessageObject(attributes3, sk3, label3, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes3, signed3.signature, pk3, label3, encoder));
+    const signed3 = BBSSignatureParams.signMessageObject(attributes3, sk3, label3, encoder);
+    checkResult(BBSSignatureParams.verifyMessageObject(attributes3, signed3.signature, pk3, label3, encoder));
 
     // Reveal
     // - first name ("fname" attribute) from all 3 sets of signed attributes

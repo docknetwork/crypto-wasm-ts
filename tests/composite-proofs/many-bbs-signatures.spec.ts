@@ -6,14 +6,17 @@ import {
   MetaStatement,
   MetaStatements,
   ProofSpecG1,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
+import {
+  Signature,
+  SignatureParams,
+  buildWitness,
+} from '../scheme'
 
 describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of a specific attribute', () => {
   it('works', async () => {
@@ -59,11 +62,11 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
 
     // 1st Signer's params
     const label1 = stringToBytes('Label-1');
-    const params1 = BBSPlusSignatureParamsG1.generate(messageCount1, label1);
+    const params1 = SignatureParams.generate(messageCount1, label1);
 
     // 2nd Signer's params
     const label2 = stringToBytes('Label-2');
-    const params2 = BBSPlusSignatureParamsG1.generate(messageCount2, label2);
+    const params2 = SignatureParams.generate(messageCount2, label2);
 
     // Signer 1 keys
     const keypair1 = BBSPlusKeypairG2.generate(params1);
@@ -76,13 +79,13 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
     const pk2 = keypair2.publicKey;
 
     // 1st Signer signs
-    const sig1 = BBSPlusSignatureG1.generate(messages1, sk1, params1, true);
+    const sig1 = Signature.generate(messages1, sk1, params1, true);
     // User verifies signature from 1st signer
     const result1 = sig1.verify(messages1, pk1, params1, true);
     expect(result1.verified).toEqual(true);
 
     // 2nd Signer signs
-    const sig2 = BBSPlusSignatureG1.generate(messages2, sk2, params2, true);
+    const sig2 = Signature.generate(messages2, sk2, params2, true);
     // User verifies signature from 2nd signer
     const result2 = sig2.verify(messages2, pk2, params2, true);
     expect(result2.verified).toEqual(true);
@@ -133,10 +136,10 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
 
     // Using the messages and signature from 1st signer
     const unrevealedMsgs1 = new Map(messages1.map((m, i) => [i, m]));
-    const witness1 = Witness.bbsPlusSignature(sig1, unrevealedMsgs1, true);
+    const witness1 = buildWitness(sig1, unrevealedMsgs1, true);
 
     // Using the messages and signature from 2nd signer
-    const witness2 = Witness.bbsPlusSignature(sig2, unrevealedMsgs2, true);
+    const witness2 = buildWitness(sig2, unrevealedMsgs2, true);
 
     const witnesses = new Witnesses();
     witnesses.add(witness1);

@@ -3,20 +3,21 @@ import { stringToBytes } from '../utils';
 import {
   Accumulator,
   CompositeProofG1,
-  BBSPlusKeypairG2,
   MetaStatement,
   MetaStatements,
   PositiveAccumulator,
   ProofSpecG1,
-  BBSPlusSignature,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
+import {
+  KeyPair,
+  Signature,
+  SignatureParams,
+} from '../scheme'
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 
 describe('Proving knowledge of 1 BBS+ signature and a certain message in the accumulator', () => {
@@ -46,15 +47,15 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
         // Last one, i.e. user id is added to the accumulator so encode accordingly
         encodedMessages.push(Accumulator.encodeBytesAsAccumulatorMember(messages[i]));
       } else {
-        encodedMessages.push(BBSPlusSignatureG1.encodeMessageForSigning(messages[i]));
+        encodedMessages.push(Signature.encodeMessageForSigning(messages[i]));
       }
     }
 
     const label = stringToBytes('My sig params in g1');
-    const sigParams = BBSPlusSignatureParamsG1.generate(messageCount, label);
+    const sigParams = SignatureParams.generate(messageCount, label);
 
     // Signers keys
-    const sigKeypair = BBSPlusKeypairG2.generate(sigParams);
+    const sigKeypair = KeyPair.generate(sigParams);
     const sigSk = sigKeypair.secretKey;
     const sigPk = sigKeypair.publicKey;
 
@@ -63,7 +64,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
     const accumulator = PositiveAccumulator.initialize(accumParams);
     const state = new InMemoryState();
 
-    const sig = BBSPlusSignatureG1.generate(encodedMessages, sigSk, sigParams, false);
+    const sig = Signature.generate(encodedMessages, sigSk, sigParams, false);
     const result = sig.verify(encodedMessages, sigPk, sigParams, false);
     expect(result.verified).toEqual(true);
 

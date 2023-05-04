@@ -1,18 +1,12 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
-  BBSPlusPublicKeyG2,
-  BBSPlusSecretKey,
-  BoundCheckSnarkSetup,
   CompositeProofG1,
-  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatement,
   MetaStatements,
   QuasiProofSpecG1,
   SetupParam,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
@@ -23,9 +17,17 @@ import {
   checkResult,
   getRevealedUnrevealed,
   stringToBytes,
-  readByteArrayFromFile,
   getBoundCheckSnarkKeys
 } from '../utils';
+import {
+  KeyPair,
+  SecretKey,
+  PublicKey,
+  Signature,
+  SignatureParams,
+  buildWitness,
+  buildStatement,
+} from '../scheme';
 
 describe('Bound check of signed messages', () => {
   const messageCount = 5;
@@ -42,13 +44,13 @@ describe('Bound check of signed messages', () => {
 
   let snarkProvingKey: LegoProvingKeyUncompressed, snarkVerifyingKey: LegoVerifyingKeyUncompressed;
   // There are 2 signers
-  let sigParams1: BBSPlusSignatureParamsG1,
-    sigSk1: BBSPlusSecretKey,
-    sigPk1: BBSPlusPublicKeyG2,
-    sigParams2: BBSPlusSignatureParamsG1,
-    sigSk2: BBSPlusSecretKey,
-    sigPk2: BBSPlusPublicKeyG2;
-  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: BBSPlusSignatureG1, sig2: BBSPlusSignatureG1;
+  let sigParams1: SignatureParams,
+    sigSk1: SecretKey,
+    sigPk1: PublicKey,
+    sigParams2: SignatureParams,
+    sigSk2: SecretKey,
+    sigPk2: PublicKey;
+  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: Signature, sig2: Signature;
 
   beforeAll(async () => {
     await initializeWasm();
@@ -62,13 +64,13 @@ describe('Bound check of signed messages', () => {
   });
 
   it('do signers setup', () => {
-    sigParams1 = BBSPlusSignatureParamsG1.generate(messageCount);
-    const sigKeypair1 = BBSPlusKeypairG2.generate(sigParams1);
+    sigParams1 = SignatureParams.generate(messageCount);
+    const sigKeypair1 = KeyPair.generate(sigParams1);
     sigSk1 = sigKeypair1.secretKey;
     sigPk1 = sigKeypair1.publicKey;
 
-    sigParams2 = BBSPlusSignatureParamsG1.generate(messageCount);
-    const sigKeypair2 = BBSPlusKeypairG2.generate(sigParams2);
+    sigParams2 = SignatureParams.generate(messageCount);
+    const sigKeypair2 = KeyPair.generate(sigParams2);
     sigSk2 = sigKeypair2.secretKey;
     sigPk2 = sigKeypair2.publicKey;
 
@@ -84,8 +86,8 @@ describe('Bound check of signed messages', () => {
       }
     }
 
-    sig1 = BBSPlusSignatureG1.generate(messages1, sigSk1, sigParams1, false);
-    sig2 = BBSPlusSignatureG1.generate(messages2, sigSk2, sigParams2, false);
+    sig1 = Signature.generate(messages1, sigSk1, sigParams1, false);
+    sig2 = Signature.generate(messages2, sigSk2, sigParams2, false);
     expect(sig1.verify(messages1, sigPk1, sigParams1, false).verified).toEqual(true);
     expect(sig2.verify(messages2, sigPk2, sigParams2, false).verified).toEqual(true);
   });
@@ -113,15 +115,15 @@ describe('Bound check of signed messages', () => {
   });
 
   function proveAndVerifySingle(
-    sigParams: BBSPlusSignatureParamsG1,
-    sigPk: BBSPlusPublicKeyG2,
+    sigParams: SignatureParams,
+    sigPk: PublicKey,
     messages: Uint8Array[],
-    sig: BBSPlusSignatureG1
+    sig: Signature
   ) {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
-    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.boundCheckProver(min1, max1, snarkProvingKey);
     const proverStatements = new Statements();
     proverStatements.add(statement1);
@@ -133,7 +135,7 @@ describe('Bound check of signed messages', () => {
     const metaStatements = new MetaStatements();
     metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 
-    const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
+    const witness1 = buildWitness(sig, unrevealedMsgs, false);
     const witness2 = Witness.boundCheckLegoGroth16(messages[msgIdx]);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
@@ -169,8 +171,8 @@ describe('Bound check of signed messages', () => {
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
     const [revealedMsgs2, unrevealedMsgs2] = getRevealedUnrevealed(messages2, new Set<number>());
 
-    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedMsgs1, false);
-    const statement2 = Statement.bbsPlusSignature(sigParams2, sigPk2, revealedMsgs2, false);
+    const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
+    const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
     const statement3 = Statement.boundCheckProverFromSetupParamRefs(min1, max1, 0);
     const statement4 = Statement.boundCheckProverFromSetupParamRefs(min2, max2, 0);
     const statement5 = Statement.boundCheckProverFromSetupParamRefs(min3, max3, 0);
@@ -207,8 +209,8 @@ describe('Bound check of signed messages', () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq4));
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsPlusSignature(sig1, unrevealedMsgs1, false));
-    witnesses.add(Witness.bbsPlusSignature(sig2, unrevealedMsgs2, false));
+    witnesses.add(buildWitness(sig1, unrevealedMsgs1, false));
+    witnesses.add(buildWitness(sig2, unrevealedMsgs2, false));
     witnesses.add(Witness.boundCheckLegoGroth16(messages1[msgIdx]));
     witnesses.add(Witness.boundCheckLegoGroth16(messages1[msgIdx + 1]));
     witnesses.add(Witness.boundCheckLegoGroth16(messages2[msgIdx]));
@@ -252,14 +254,14 @@ describe('Bound check of signed messages', () => {
     const someDistantFuture = 1777746600000; // Timestamp from future
 
     const attributes: Uint8Array[] = [];
-    attributes.push(BBSPlusSignatureG1.encodeMessageForSigning(stringToBytes('John Smith'))); // Name
-    attributes.push(BBSPlusSignatureG1.encodeMessageForSigning(stringToBytes('123-456789-0'))); // SSN
-    attributes.push(BBSPlusSignatureG1.encodePositiveNumberForSigning(bornAfter + 100000)); // Birth date as no. of milliseconds since epoch
-    attributes.push(BBSPlusSignatureG1.encodePositiveNumberForSigning(earliestIssuance + 100000)); // Issuance date as no. of milliseconds since epoch
-    attributes.push(BBSPlusSignatureG1.encodePositiveNumberForSigning(now + 2000000)); // Expiration date as no. of milliseconds since epoch
+    attributes.push(Signature.encodeMessageForSigning(stringToBytes('John Smith'))); // Name
+    attributes.push(Signature.encodeMessageForSigning(stringToBytes('123-456789-0'))); // SSN
+    attributes.push(Signature.encodePositiveNumberForSigning(bornAfter + 100000)); // Birth date as no. of milliseconds since epoch
+    attributes.push(Signature.encodePositiveNumberForSigning(earliestIssuance + 100000)); // Issuance date as no. of milliseconds since epoch
+    attributes.push(Signature.encodePositiveNumberForSigning(now + 2000000)); // Expiration date as no. of milliseconds since epoch
 
     // Signer creates the signature and shares with prover
-    const sig = BBSPlusSignatureG1.generate(attributes, sigSk1, sigParams1, false);
+    const sig = Signature.generate(attributes, sigSk1, sigParams1, false);
 
     const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
@@ -267,7 +269,7 @@ describe('Bound check of signed messages', () => {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(attributes, revealedIndices);
-    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedAttrs, false);
+    const statement1 = buildStatement(sigParams1, sigPk1, revealedAttrs, false);
     // For proving birth date was after `bornAfter`
     const statement2 = Statement.boundCheckProverFromSetupParamRefs(bornAfter, now, 0);
     // For proving issuance date was between `earliestIssuance` and `latestIssuance`
@@ -302,7 +304,7 @@ describe('Bound check of signed messages', () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsPlusSignature(sig, unrevealedAttrs, false));
+    witnesses.add(buildWitness(sig, unrevealedAttrs, false));
     witnesses.add(Witness.boundCheckLegoGroth16(attributes[2]));
     witnesses.add(Witness.boundCheckLegoGroth16(attributes[3]));
     witnesses.add(Witness.boundCheckLegoGroth16(attributes[4]));
@@ -431,17 +433,17 @@ describe('Bound check of signed messages', () => {
     // Encode for signing
     const encodedAttributes: Uint8Array[] = [];
     for (let i = 0; i < transformedAttributes.length; i++) {
-      encodedAttributes.push(BBSPlusSignatureG1.encodePositiveNumberForSigning(transformedAttributes[i]));
+      encodedAttributes.push(Signature.encodePositiveNumberForSigning(transformedAttributes[i]));
     }
 
     // Signer creates the signature and shares with prover
-    const sig = BBSPlusSignatureG1.generate(encodedAttributes, sigSk1, sigParams1, false);
+    const sig = Signature.generate(encodedAttributes, sigSk1, sigParams1, false);
 
     const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
 
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(encodedAttributes, new Set<number>());
-    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedAttrs, false);
+    const statement1 = buildStatement(sigParams1, sigPk1, revealedAttrs, false);
 
     const statement2 = Statement.boundCheckProverFromSetupParamRefs(transMin1, transMax1, 0);
     const statement3 = Statement.boundCheckProverFromSetupParamRefs(transMin2, transMax2, 0);
@@ -466,7 +468,7 @@ describe('Bound check of signed messages', () => {
     }
 
     const witnesses = new Witnesses();
-    witnesses.add(Witness.bbsPlusSignature(sig, unrevealedAttrs, false));
+    witnesses.add(buildWitness(sig, unrevealedAttrs, false));
     for (let i = 0; i < encodedAttributes.length; i++) {
       witnesses.add(Witness.boundCheckLegoGroth16(encodedAttributes[i]));
     }
