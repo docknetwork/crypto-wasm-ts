@@ -205,7 +205,7 @@ export function createWitnessEqualityMetaStatement(
  * @param request
  * @param sigParams
  */
-export function getBBSStatementForBlindSig(
+export function getBBSStatementForBlindSigRequest(
   request: BBSBlindSignatureRequest,
   sigParams: BBSSignatureParams
 ): Uint8Array {
@@ -222,6 +222,8 @@ export function getBBSPlusStatementForBlindSigRequest(
   request: BBSPlusBlindSignatureRequest,
   sigParams: BBSPlusSignatureParamsG1
 ): Uint8Array {
+  console.log(request.commitment, request.blindedIndices, sigParams);
+  if (request.commitment.length !== 48) throw 1
   const commKey = sigParams.getParamsForIndices(request.blindedIndices);
   return Statement.pedersenCommitmentG1(commKey, request.commitment);
 }
@@ -231,7 +233,7 @@ export function getBBSPlusStatementForBlindSigRequest(
  * @param request
  * @param sigParams
  */
-export function getPSStatementsForBlindSig(
+export function getPSStatementsForBlindSigRequest(
   request: PSBlindSignatureRequest,
   sigParams: PSSignatureParams
 ): Uint8Array[] {

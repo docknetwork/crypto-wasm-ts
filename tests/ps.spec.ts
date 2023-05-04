@@ -7,8 +7,7 @@ import {
   PSPoKSignatureProtocol,
   PSSignature,
   PSSignatureParams,
-  PSSecretKey,
-  PSPublicKey
+  PSSecretKey
 } from '../src';
 import { getRevealedUnrevealed, stringToBytes } from './utils';
 
@@ -20,7 +19,7 @@ function getMessages(count: number): Uint8Array[] {
   return messages;
 }
 
-describe('BBS+ signature sunny day scenario', () => {
+describe('Pointcheval-Sanders signature sunny day scenario', () => {
   it('runs', async () => {
     // Load the WASM module
     await initializeWasm();
@@ -167,7 +166,7 @@ describe('BBS+ signature', () => {
     const knownMessages = new Map();
     for (let i = 0; i < messageCount; i++) {
         if (!messagesToHide.has(i)) {
-        knownMessages.set(i, messages[i]);
+          knownMessages.set(i, messages[i]);
         }
     }
 

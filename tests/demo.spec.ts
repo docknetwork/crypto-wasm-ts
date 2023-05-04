@@ -18,6 +18,7 @@ import {
   NonMembershipWitness,
   PositiveAccumulator,
   ProofSpecG1,
+  BBSPlusSignature,
   BBSPlusSignatureG1,
   BBSPlusSignatureParamsG1,
   Statement,
@@ -231,7 +232,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     function prepareMessagesForBlindSigning(messages: Uint8Array[]) {
       const encodedMessages: Uint8Array[] = [];
       for (const msg of messages) {
-        encodedMessages.push(BBSPlusSignatureG1.encodeMessageForSigning(msg));
+        encodedMessages.push(BBSPlusSignature.encodeMessageForSigning(msg));
       }
       return encodedMessages;
     }
@@ -254,7 +255,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       secret: Uint8Array,
       sigParams: BBSPlusSignatureParamsG1
     ): [Uint8Array, Uint8Array, Uint8Array, Uint8Array] {
-      const encodedSecret = BBSPlusSignatureG1.encodeMessageForSigning(secret);
+      const encodedSecret = BBSPlusSignature.encodeMessageForSigning(secret);
       const blinding = BBSPlusBlindSignature.generateBlinding();
       const indicesToCommit = new Set<number>();
       // Holder secret is at index 0
@@ -807,7 +808,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     ): [BBSPlusSignatureG1, Uint8Array[]] {
       const unblinded = blindedSig.unblind(blinding);
       let final: Uint8Array[] = [];
-      final.push(BBSPlusSignatureG1.encodeMessageForSigning(holderSecret));
+      final.push(BBSPlusSignature.encodeMessageForSigning(holderSecret));
       final = final.concat(msgs);
       const res1 = unblinded.verify(final, pk, sigParams, false);
       if (!res1.verified) {
