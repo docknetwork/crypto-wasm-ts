@@ -154,7 +154,7 @@ export class PSSignature extends BytearrayWrapper {
   static aggregate(signatures: Map<number, PSSignature>, h: Uint8Array): PSSignature {
     const rawSignatures = new Map([...signatures.entries()].map(([participant, sig]) => [participant, sig.value]));
 
-    return new PSSignature(psAggregateSignatures(rawSignatures, h) as any)
+    return new PSSignature(psAggregateSignatures(rawSignatures, h) as any);
   }
 }
 
@@ -192,9 +192,10 @@ export class PSBlindSignature extends BytearrayWrapper {
    * Generate a request for a blind signature
    * @param messagesToBlind - messages the requester wants to hide from the signer. The key of the map is the index of the
    * message as per the params.
-   * @param blindings - If not provided, a random blinding is generated
+   * @param blindings - If not provided, a random blindings will be generated for each message
    * @param params
    * @param h
+   * @param blinding
    * @param revealedMessages - Any messages that the requester wishes to inform the signer about. This is for informational
    * purpose only and has no cryptographic use.
    */
@@ -206,14 +207,9 @@ export class PSBlindSignature extends BytearrayWrapper {
     blinding: Uint8Array = generateRandomFieldElement(),
     revealedMessages: Map<number, Uint8Array> = new Map()
   ): [Uint8Array, PSBlindSignatureRequest] {
-    const hArr = params.getParamsForIndices([...messagesToBlind.keys()])
-    const commitment = psMultiMessageCommitment(
-      [...messagesToBlind.values()],
-      hArr,
-      params.value.g,
-      blinding
-    );
-    const commitments = new Map(
+    const hArr = params.getParamsForIndices([...messagesToBlind.keys()]);
+    const commitment = psMultiMessageCommitment([...messagesToBlind.values()], hArr, params.value.g, blinding);
+    const commitments: Map<number, Uint8Array> = new Map(
       [...messagesToBlind.entries()]
         .map(([idx, message]) => {
           if (revealedMessages.has(idx)) {
@@ -228,7 +224,7 @@ export class PSBlindSignature extends BytearrayWrapper {
           return [idx, psMessageCommitment(message, msgBlinding, h, params.value.g)];
         })
         .filter(Boolean)
-    ) as any;
+    );
 
     return [blinding, { commitment, commitments, revealedMessages }];
   }
@@ -342,7 +338,7 @@ export class PSBlindSignature extends BytearrayWrapper {
  * Structure to send to the signer to request a blind signature
  */
 export interface PSBlindSignatureRequest {
-   /**
+  /**
    * The commitment for the blinded messages
    */
   commitment: Uint8Array;
