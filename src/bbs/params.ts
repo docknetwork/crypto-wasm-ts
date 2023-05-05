@@ -35,10 +35,9 @@ export class BBSSignatureParams {
   }
 
   /**
-   * Commit to given messages and return the pair [blinding, commitment]
+   * Commit to given messages and return the commitment
    * @param messageToCommit
    * @param encodeMessages
-   * @param blinding - If not provided, a random blinding is generated
    */
   commitToMessages(
     messageToCommit: Map<number, Uint8Array>,

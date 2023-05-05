@@ -22,7 +22,7 @@ import { VerifyResult } from '@docknetwork/crypto-wasm';
 /**
  * Signature parameters.
  */
-export abstract class BBSPlusSignatureG1Params implements IParams {
+export abstract class BBSPlusSignatureParams implements IParams {
   label?: Uint8Array;
   value: BbsPlusSigParams;
 
@@ -83,7 +83,7 @@ export abstract class BBSPlusSignatureG1Params implements IParams {
   }
 }
 
-export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureG1Params {
+export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
   static generate(numMessages: number, label?: Uint8Array): BBSPlusSignatureParamsG1 {
     const params = bbsPlusGenerateSignatureParamsG1(numMessages, label);
     return new BBSPlusSignatureParamsG1(params, label);
@@ -227,7 +227,7 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureG1Params {
   }
 }
 
-export class BBSPlusSignatureParamsG2 extends BBSPlusSignatureG1Params {
+export class BBSPlusSignatureParamsG2 extends BBSPlusSignatureParams {
   static generate(numMessages: number, label?: Uint8Array) {
     const params = bbsPlusGenerateSignatureParamsG2(numMessages, label);
     return new BBSPlusSignatureParamsG2(params, label);
