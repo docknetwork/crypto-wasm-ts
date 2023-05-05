@@ -29,7 +29,7 @@ import {
   GlobalEncoder
 } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { buildStatement, buildWitness, KeyPair, SignatureParams, } from '../../scheme';
+import { buildStatement, buildWitness, isPS, KeyPair, SignatureParams, } from '../../scheme';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -48,7 +48,7 @@ describe('Range proof using LegoGroth16', () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = SignatureParams.generate(1, label1);
+    let params1 = SignatureParams.generate(100, label1);
     const keypair1 = KeyPair.generate(params1);
     const sk1 = keypair1.secretKey;
     const pk1 = keypair1.publicKey;
@@ -56,7 +56,7 @@ describe('Range proof using LegoGroth16', () => {
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = SignatureParams.generate(1, label2);
+    let params2 = SignatureParams.generate(100, label2);
     const keypair2 = KeyPair.generate(params2);
     const sk2 = keypair2.secretKey;
     const pk2 = keypair2.publicKey;
@@ -64,7 +64,7 @@ describe('Range proof using LegoGroth16', () => {
     // 3rd signer's setup
     const label3 = stringToBytes('Sig params label 3');
     // Message count shouldn't matter as `label3` is known
-    let params3 = SignatureParams.generate(1, label3);
+    let params3 = SignatureParams.generate(100, label3);
     const keypair3 = KeyPair.generate(params3);
     const sk3 = keypair3.secretKey;
     const pk3 = keypair3.publicKey;
@@ -131,6 +131,10 @@ describe('Range proof using LegoGroth16', () => {
     const sigParams2 = getAdaptedSignatureParamsForMessages(params2, attributes2Struct);
     const sigParams3 = getAdaptedSignatureParamsForMessages(params3, attributes3Struct);
 
+    const sigPk1 = isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()): pk1;
+    const sigPk2 = isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount()): pk2;
+    const sigPk3 = isPS() ? pk3.adaptForLess(sigParams3.supportedMessageCount()): pk3;
+
     // Prover needs to do many bound checks with the same verification key
     const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
@@ -142,7 +146,7 @@ describe('Range proof using LegoGroth16', () => {
     );
     expect(revealedMsgsRaw1).toEqual({ fname: 'John', country: 'USA' });
 
-    const statement1 = buildStatement(sigParams1, pk1, revealedMsgs1, false);
+    const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
@@ -151,7 +155,7 @@ describe('Range proof using LegoGroth16', () => {
     );
     expect(revealedMsgsRaw2).toEqual({ fname: 'John', location: { country: 'USA' } });
 
-    const statement2 = buildStatement(sigParams2, pk2, revealedMsgs2, false);
+    const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
 
     const [revealedMsgs3, unrevealedMsgs3, revealedMsgsRaw3] = getRevealedAndUnrevealed(
       attributes3,
@@ -170,7 +174,7 @@ describe('Range proof using LegoGroth16', () => {
       }
     });
 
-    const statement3 = buildStatement(sigParams3, pk3, revealedMsgs3, false);
+    const statement3 = buildStatement(sigParams3, sigPk3, revealedMsgs3, false);
 
     // Construct statements for bound check
     const statement4 = Statement.boundCheckProverFromSetupParamRefs(timeMin, timeMax, 0);
@@ -315,9 +319,9 @@ describe('Range proof using LegoGroth16', () => {
     const revealedMsgs3FromVerifier = encodeRevealedMsgs(revealedMsgsRaw3, attributes3Struct, GlobalEncoder);
     checkMapsEqual(revealedMsgs3, revealedMsgs3FromVerifier);
 
-    const statement11 = buildStatement(sigParams1, pk1, revealedMsgs1FromVerifier, false);
-    const statement12 = buildStatement(sigParams2, pk2, revealedMsgs2FromVerifier, false);
-    const statement13 = buildStatement(sigParams3, pk3, revealedMsgs3FromVerifier, false);
+    const statement11 = buildStatement(sigParams1, sigPk1, revealedMsgs1FromVerifier, false);
+    const statement12 = buildStatement(sigParams2, sigPk2, revealedMsgs2FromVerifier, false);
+    const statement13 = buildStatement(sigParams3, sigPk3, revealedMsgs3FromVerifier, false);
 
     // Construct statements for bound check
     const statement14 = Statement.boundCheckVerifierFromSetupParamRefs(timeMin, timeMax, 0);

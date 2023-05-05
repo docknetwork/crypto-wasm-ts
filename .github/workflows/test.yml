@@ -7,9 +7,45 @@ on:
   pull_request: {}
 
 jobs:
-  build_test:
+  test_bbs:
     name: Build test
     runs-on: ${{matrix.os}}
+    env:
+      TEST_SIGNATURE_SCHEME: 'BBS'
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 19.x]
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: yarn install --frozen-lockfile
+      - run: yarn build
+      - run: yarn test
+  test_bbs_plus:
+    name: Build test
+    runs-on: ${{matrix.os}}
+    env:
+      TEST_SIGNATURE_SCHEME: 'BBS+'
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 19.x]
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: yarn install --frozen-lockfile
+      - run: yarn build
+      - run: yarn test
+  test_ps:
+    name: Build test
+    runs-on: ${{matrix.os}}
+    env:
+      TEST_SIGNATURE_SCHEME: 'PS'
     strategy:
       matrix:
         node-version: [16.x, 18.x, 19.x]

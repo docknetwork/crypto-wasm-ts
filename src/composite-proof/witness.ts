@@ -125,16 +125,25 @@ export class Witness {
 export class Witnesses {
   values: Uint8Array[];
 
-  constructor() {
-    this.values = [];
+  constructor(values: Uint8Array | Uint8Array[] = []) {
+    this.values = Array.isArray(values) ? values: [values];
   }
 
   /**
-   * Add a new witness. Returns the index (id) of the added witness. This index is part of the witness reference.
+   * Add a new witness to the end of the list. Returns the index (id) of the added witness. This index is part of the witness reference.
    * @param witness
    */
   add(witness: Uint8Array): number {
     this.values.push(witness);
+    return this.values.length - 1;
+  }
+
+  /**
+   * Add a new witness to the beginning of the list. Returns the index (id) of the added witness. This index is part of the witness reference.
+   * @param witness
+   */
+  prepend(witness: Uint8Array): number {
+    this.values.unshift(witness);
     return this.values.length - 1;
   }
 }

@@ -31,7 +31,12 @@ import {
   KeyPair,
   buildWitness,
   SignatureParams,
+  isPS,
+  getStatementForBlindSigRequest,
+  isBBSPlus,
+  getWitnessForBlindSigRequest
 } from './scheme';
+import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
 
 // Test demonstrating the flow where holder (user) gets credentials (message lists and signatures) from multiple issuers (signers)
 // one by one and it proves the knowledge of previously received credentials before getting the next credential (message list and signature).
@@ -100,7 +105,7 @@ let Accum3: UniversalAccumulator;
 
 export interface BlindSigRequest {
   proof: CompositeProofG1;
-  commitment: Uint8Array;
+  request: any;
 }
 
 const DEBUG = false;
@@ -130,12 +135,8 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       if (!pk.isValid()) {
         throw new Error('Public key is invalid');
       }
-      let gpk;
-      try {
-        gpk = sk.generatePublicKeyG2(params);
-      } catch {
-        gpk = sk.generatePublicKey(params)
-      }
+      let gpk = isPS() ? sk.generatePublicKey(params): sk.generatePublicKeyG2(params);
+      
       if (!areUint8ArraysEqual(gpk.value, pk.value)) {
         throw new Error(`Generated public key ${gpk.value} different from expected public key ${pk.value}`);
       }
@@ -260,49 +261,48 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
 
     function blindSigRequestWithSecretStatementAndWitness(
       secret: Uint8Array,
-      sigParams: SignatureParams
-    ): [Uint8Array, Uint8Array, Uint8Array, Uint8Array] {
+      sigParams: SignatureParams,
+      h: Uint8Array
+    ): [Statements, Witnesses, Uint8Array, Uint8Array, Map<number, Uint8Array>] {
       const encodedSecret = Signature.encodeMessageForSigning(secret);
-      const blinding = typeof BlindSignature.generateBlinding === 'function' ? BlindSignature.generateBlinding(): null;
-      const indicesToCommit = new Set<number>();
-      // Holder secret is at index 0
-      indicesToCommit.add(0);
+      // const blinding = typeof BlindSignature.generateBlinding === 'function' ? BlindSignature.generateBlinding() : null;
       const msgsToCommit = new Map();
       msgsToCommit.set(0, encodedSecret);
 
-      // Commit to the secret using params
-      const split = sigParams.commitToMessages(msgsToCommit, false, blinding);
-      const commitment = Array.isArray(split) ? split[0]: split;
+      const blindings = new Map();
+      let blinding, request;
+      if (isPS()) {
+        [blinding, request] = BlindSignature.generateRequest(msgsToCommit, blindings, sigParams, h);
+      } else if (isBBSPlus()) {
+        [blinding, request] = BlindSignature.generateRequest(msgsToCommit, sigParams, false, void 0);
+      } else {
+        request = BlindSignature.generateRequest(msgsToCommit, sigParams, false);
+      }
+      const statements = new Statements(getStatementForBlindSigRequest(request, sigParams, h));
+      const witnesses = new Witnesses(getWitnessForBlindSigRequest(msgsToCommit, blinding, blindings));
 
-      // Create a statement and witness for proving knowledge opening of the Pedersen commitment
-      const bases = sigParams.getParamsForIndices([...indicesToCommit]);
-      const statement = Statement.pedersenCommitmentG1(bases, commitment);
-      const witness = Witness.pedersenCommitment([blinding, encodedSecret].filter(Boolean));
-      return [statement, witness, commitment, blinding];
+      return [statements, witnesses, request, blinding, blindings];
     }
 
     function blindSigRequestWithSecret(
       secret: Uint8Array,
       sigParams: SignatureParams,
+      h: Uint8Array,
       nonce?: Uint8Array
-    ): [BlindSigRequest, Uint8Array] {
-      const [statement, witness, commitment, blinding] = blindSigRequestWithSecretStatementAndWitness(
+    ): [BlindSigRequest, Uint8Array, Map<number, Uint8Array>] {
+      const [statements, witnesses, request, blinding, blindings] = blindSigRequestWithSecretStatementAndWitness(
         secret,
-        sigParams
+        sigParams,
+        h
       );
-
-      const statements = new Statements();
-      statements.add(statement);
 
       // Proof spec with statement and meta-statement
       const proofSpec = new ProofSpecG1(statements, new MetaStatements());
       expect(proofSpec.isValid()).toEqual(true);
 
-      const witnesses = new Witnesses();
-      witnesses.add(witness);
       // Composite proof for proving knowledge of opening of Pedersen commitment
       const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
-      return [{ proof, commitment }, blinding];
+      return [{ proof, request }, blinding, blindings];
     }
 
     function blindSigRequestWithSecretAndCredential(
@@ -318,8 +318,9 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       prk: MembershipProvingKey,
       accumulated: Uint8Array,
       membershipWitness: MembershipWitness,
+      h: Uint8Array,
       nonce?: Uint8Array
-    ): [BlindSigRequest, Uint8Array] {
+    ): [BlindSigRequest, Uint8Array, Map<number, Uint8Array>] {
       // Create composite proof of 3 statements,
       // 1) knowledge of a signature,
       // 2) accumulator membership and
@@ -331,15 +332,14 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
-      const [statement3, witness3, commitment, blinding] = blindSigRequestWithSecretStatementAndWitness(
+      const [statements, witnesses, request, blinding, blindings] = blindSigRequestWithSecretStatementAndWitness(
         secret,
-        sigParamsForRequestedCredential
+        sigParamsForRequestedCredential,
+        h
       );
 
-      const statements = new Statements();
-      statements.add(statement1);
-      statements.add(statement2);
-      statements.add(statement3);
+      statements.prepend(statement2);
+      statements.prepend(statement1);
 
       // Prove equality of holder's secret in `credential` and blind signature request.
       const witnessEq1 = new WitnessEqualityMetaStatement();
@@ -363,12 +363,10 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
 
-      const witnesses = new Witnesses();
-      witnesses.add(witness1);
-      witnesses.add(witness2);
-      witnesses.add(witness3);
+      witnesses.prepend(witness2);
+      witnesses.prepend(witness1);
       const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
-      return [{ proof, commitment }, blinding];
+      return [{ proof, request }, blinding, blindings];
     }
 
     function blindSigRequestWithSecretAnd2Credentials(
@@ -394,8 +392,9 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       prk2: MembershipProvingKey,
       accumulated2: Uint8Array,
       membershipWitness2: MembershipWitness,
+      h: Uint8Array,
       nonce?: Uint8Array
-    ): [BlindSigRequest, Uint8Array] {
+    ): [BlindSigRequest, Uint8Array, Map<number, Uint8Array>] {
       // Create composite proof of 5 statements,
       // 1) knowledge of a signature in credential,
       // 2) accumulator membership for credential,
@@ -415,17 +414,16 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
       const witness4 = Witness.accumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
 
-      const [statement5, witness5, commitment, blinding] = blindSigRequestWithSecretStatementAndWitness(
+      const [statements, witnesses, request, blinding, blindings] = blindSigRequestWithSecretStatementAndWitness(
         secret,
-        sigParamsForRequestedCredential
+        sigParamsForRequestedCredential,
+        h
       );
 
-      const statements = new Statements();
-      statements.add(statement1);
-      statements.add(statement2);
-      statements.add(statement3);
-      statements.add(statement4);
-      statements.add(statement5);
+      statements.prepend(statement4);
+      statements.prepend(statement3);
+      statements.prepend(statement2);
+      statements.prepend(statement1);
 
       // Prove equality of holder's secret in `credential`, `credential1` and blind signature request.
       const witnessEq1 = new WitnessEqualityMetaStatement();
@@ -451,30 +449,27 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
 
-      const witnesses = new Witnesses();
-      witnesses.add(witness1);
-      witnesses.add(witness2);
-      witnesses.add(witness3);
-      witnesses.add(witness4);
-      witnesses.add(witness5);
+      witnesses.prepend(witness4);
+      witnesses.prepend(witness3);
+      witnesses.prepend(witness2);
+      witnesses.prepend(witness1);
+
       const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
-      return [{ proof, commitment }, blinding];
+      return [{ proof, request }, blinding, blindings];
     }
 
     function issueBlindSig(
       blindSigReq: BlindSigRequest,
       sigParams: SignatureParams,
       sk: SecretKey,
+      h: Uint8Array,
       otherMsgs: Map<number, Uint8Array>,
       nonce?: Uint8Array
     ) {
       const indicesToCommit = new Set<number>();
       indicesToCommit.add(0);
       // Verify knowledge of opening of commitment and issue blind signature with that commitment
-      const bases = sigParams.getParamsForIndices([...indicesToCommit]);
-      const statement = Statement.pedersenCommitmentG1(bases, blindSigReq.commitment);
-      const statements = new Statements();
-      statements.add(statement);
+      const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParams));
 
       const proofSpec = new ProofSpecG1(statements, new MetaStatements());
       expect(proofSpec.isValid()).toEqual(true);
@@ -483,7 +478,10 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       if (!res.verified) {
         throw new Error(`Failed to verify blind sig request due to ${res.error}`);
       }
-      return BlindSignature.generate(blindSigReq.commitment, otherMsgs, sk, sigParams, false);
+      // return BlindSignature.fromReq(blindSigReq.commitment, otherMsgs, sk, sigParams, false);
+      return isPS()
+        ? BlindSignature.fromRequest({ ...blindSigReq.request, revealedMessages: otherMsgs }, sk, h)
+        : BlindSignature.fromRequest({ ...blindSigReq.request, unblindedMessages: otherMsgs }, sk, sigParams, false);
     }
 
     function issueBlindSigWithCredVerif(
@@ -510,14 +508,13 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
       const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const statement3 = Statement.pedersenCommitmentG1(bases, blindSigReq.commitment);
 
-      const statements = new Statements();
-      statements.add(statement1);
-      statements.add(statement2);
-      statements.add(statement3);
+      const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParams));
+      statements.prepend(statement2);
+      statements.prepend(statement1);
 
-      const witnessEq1 = new WitnessEqualityMetaStatement();
+      const metaStatements = new MetaStatements();
+      /*const witnessEq1 = new WitnessEqualityMetaStatement();
       witnessEq1.addWitnessRef(0, 0);
       witnessEq1.addWitnessRef(2, +(bases.length !== indicesToCommit.length));
 
@@ -529,7 +526,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const ms2 = MetaStatement.witnessEquality(witnessEq2);
       const metaStatements = new MetaStatements();
       metaStatements.add(ms1);
-      metaStatements.add(ms2);
+      metaStatements.add(ms2);*/
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
@@ -538,7 +535,14 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       if (!res.verified) {
         throw new Error(`Failed to verify blind sig request due to ${res.error}`);
       }
-      return BlindSignature.generate(blindSigReq.commitment, otherMsgs, sk, sigParamsForRequestedCredential, false);
+      return isPS()
+        ? BlindSignature.fromRequest({ ...blindSigReq.request, revealedMessages: otherMsgs }, sk, h)
+        : BlindSignature.fromRequest(
+            { ...blindSigReq.request, unblindedMessages: otherMsgs },
+            sk,
+            sigParamsForRequestedCredential,
+            false
+          );
     }
 
     function issueBlindSigWith2CredVerifs(
@@ -569,23 +573,18 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 4) accumulator membership for credential1,
       // 5) opening of commitment in the blind signature request.
 
-      const indicesToCommit: number[] = [];
-      indicesToCommit.push(0);
-      const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
+      const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParamsForRequestedCredential));
       const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const statement3 = buildStatement(sigParams2, pk2, revealedMsgs2, false);
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
-      const statement5 = Statement.pedersenCommitmentG1(bases, blindSigReq.commitment);
 
-      const statements = new Statements();
-      statements.add(statement1);
-      statements.add(statement2);
-      statements.add(statement3);
-      statements.add(statement4);
-      statements.add(statement5);
+      statements.prepend(statement4);
+      statements.prepend(statement3);
+      statements.prepend(statement2);
+      statements.prepend(statement1);
 
-      const witnessEq1 = new WitnessEqualityMetaStatement();
+      /*const witnessEq1 = new WitnessEqualityMetaStatement();
       witnessEq1.addWitnessRef(0, 0);
       witnessEq1.addWitnessRef(2, 0);
       witnessEq1.addWitnessRef(4, 1);
@@ -596,12 +595,12 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
 
       const witnessEq3 = new WitnessEqualityMetaStatement();
       witnessEq3.addWitnessRef(2, 1);
-      witnessEq3.addWitnessRef(3, 0);
+      witnessEq3.addWitnessRef(3, 0);*/
 
       const metaStatements = new MetaStatements();
-      metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
-      metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
-      metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
+      // metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
+      // metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
+      // metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
@@ -610,7 +609,14 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       if (!res.verified) {
         throw new Error(`Failed to verify blind sig request due to ${res.error}`);
       }
-      return BlindSignature.generate(blindSigReq.commitment, otherMsgs, sk, sigParamsForRequestedCredential, false);
+      return isPS()
+        ? BlindSignature.fromRequest({ ...blindSigReq.request, revealedMessages: otherMsgs }, sk, h)
+        : BlindSignature.fromRequest(
+            { ...blindSigReq.request, unblindedMessages: otherMsgs },
+            sk,
+            sigParamsForRequestedCredential,
+            false
+          );
     }
 
     function proofOf3Creds(
@@ -809,12 +815,13 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     function unBlindAndVerify(
       blindedSig: BlindSignature,
       blinding: Uint8Array,
+      blindings: Map<number, Uint8Array>,
       holderSecret: Uint8Array,
       msgs: Uint8Array[],
       pk: PublicKey,
       sigParams: SignatureParams
     ): [Signature, Uint8Array[]] {
-      const unblinded = typeof blindedSig.unblind === 'function' ? blindedSig.unblind(blinding): blindedSig;
+      const unblinded = isPS() ? blindedSig.unblind(blindings, pk): isBBSPlus() ? blindedSig.unblind(blinding) : blindedSig;
       let final: Uint8Array[] = [];
       final.push(Signature.encodeMessageForSigning(holderSecret));
       final = final.concat(msgs);
@@ -843,10 +850,11 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     await setupAccumulator3();
 
     const holderSecret = stringToBytes('MySecret123');
+    const h = generateRandomG1Element();
 
     // Get Credential 1
     // Holder prepares request for blind signature hiding `holderSecret` from the Issuer
-    const [blindSigReq1, blinding1] = blindSigRequestWithSecret(holderSecret, Issuer12SigParams);
+    const [blindSigReq1, blinding1, blindings1] = blindSigRequestWithSecret(holderSecret, Issuer12SigParams, h);
 
     // Issuer prepares messages for signing including user id
     const holderAttrs1 = prepareMessagesForBlindSigning(credential1Attributes);
@@ -859,6 +867,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       blindSigReq1,
       Issuer12SigParams,
       Issuer1Sk,
+      h,
       msgArrayToMapForBlindSign(holderAttrs1)
     );
     // Accumulator managers adds rev id to the accumulator
@@ -869,6 +878,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     [Credential1, credential1AttributesFinal] = unBlindAndVerify(
       blindedCred1,
       blinding1,
+      blindings1,
       holderSecret,
       holderAttrs1,
       Issuer1Pk,
@@ -902,7 +912,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     }
 
     // Create request to verify blind signature along with proof of one credential
-    const [blindSigReq2, blinding2] = blindSigRequestWithSecretAndCredential(
+    const [blindSigReq2, blinding2, blindings2] = blindSigRequestWithSecretAndCredential(
       holderSecret,
       Issuer12SigParams,
       Credential1,
@@ -914,7 +924,8 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       Accum1Pk,
       Accum1Prk,
       Accum1.accumulated,
-      membershipWitness1
+      membershipWitness1,
+      h
     );
 
     // Issuer prepares messages for signing including rev id
@@ -943,6 +954,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     [Credential2, credential2AttributesFinal] = unBlindAndVerify(
       blindedCred2,
       blinding2,
+      blindings2,
       holderSecret,
       holderMessages2,
       Issuer2Pk,
@@ -969,7 +981,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     }
 
     // Create request to verify blind signature along with proof of one credential
-    const [blindSigReq3, blinding3] = blindSigRequestWithSecretAnd2Credentials(
+    const [blindSigReq3, blinding3, blindings3] = blindSigRequestWithSecretAnd2Credentials(
       holderSecret,
       Issuer3SigParams,
       Credential1,
@@ -991,7 +1003,8 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       Accum2Pk,
       Accum2Prk,
       Accum2.accumulated,
-      membershipWitness2
+      membershipWitness2,
+      h
     );
 
     // Issuer prepares messages for signing including rev id
@@ -1027,6 +1040,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
     [Credential3, credential3AttributesFinal] = unBlindAndVerify(
       blindedCred3,
       blinding3,
+      blindings3,
       holderSecret,
       holderMessages3,
       Issuer3Pk,

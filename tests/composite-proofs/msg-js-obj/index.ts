@@ -1,6 +1,6 @@
-import { BBSPlusSignatureG1, bytearrayToHex, SignedMessages } from '../../../src';
+import { bytearrayToHex, SignedMessages } from '../../../src';
 
-export function signedToHex(signed: SignedMessages<BBSPlusSignatureG1>): object {
+export function signedToHex(signed: SignedMessages<any>): object {
   const sig = signed.signature.hex;
   const enc = {};
   Object.keys(signed.encodedMessages).forEach((k) => {

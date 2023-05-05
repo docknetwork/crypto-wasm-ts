@@ -27,7 +27,7 @@ import { checkResult, stringToBytes } from '../../utils';
 import { InMemoryState } from '../../../src/accumulator/in-memory-persistence';
 import { attributes1, attributes1Struct, attributes2, attributes2Struct, defaultEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { buildStatement, buildWitness, KeyPair, SignatureParams } from '../../scheme';
+import { buildStatement, buildWitness, isPS, KeyPair, SignatureParams } from '../../scheme';
 
 describe('Accumulator', () => {
   beforeAll(async () => {
@@ -64,7 +64,7 @@ describe('Accumulator', () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = SignatureParams.generate(1, label1);
+    let params1 = SignatureParams.generate(100, label1);
     const keypair1 = KeyPair.generate(params1);
     const sk1 = keypair1.secretKey;
     const pk1 = keypair1.publicKey;
@@ -72,7 +72,7 @@ describe('Accumulator', () => {
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = SignatureParams.generate(1, label2);
+    let params2 = SignatureParams.generate(100, label2);
     const keypair2 = KeyPair.generate(params2);
     const sk2 = keypair2.secretKey;
     const pk2 = keypair2.publicKey;
@@ -175,19 +175,22 @@ describe('Accumulator', () => {
     const sigParams1 = getAdaptedSignatureParamsForMessages(params1, attributes1Struct);
     const sigParams2 = getAdaptedSignatureParamsForMessages(params2, attributes2Struct);
 
+    const sigPk1 = isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()): pk1;
+    const sigPk2 = isPS() ? pk2.adaptForLess(sigParams1.supportedMessageCount()): pk2;
+
     const [revealedMsgs1, unrevealedMsgs1, revealedMsgsRaw1] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames1,
       encoder
     );
-    const statement1 = buildStatement(sigParams1, pk1, revealedMsgs1, false);
+    const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
       revealedNames2,
       encoder
     );
-    const statement2 = buildStatement(sigParams2, pk2, revealedMsgs2, false);
+    const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
 
     const statement3 = Statement.accumulatorMembership(
       accumParams1,
@@ -254,8 +257,8 @@ describe('Accumulator', () => {
     const revealedMsgs2FromVerifier = encodeRevealedMsgs(revealedMsgsRaw2, attributes2Struct, encoder);
     checkMapsEqual(revealedMsgs2, revealedMsgs2FromVerifier);
 
-    const statement5 = buildStatement(sigParams1, pk1, revealedMsgs1FromVerifier, false);
-    const statement6 = buildStatement(sigParams2, pk2, revealedMsgs2FromVerifier, false);
+    const statement5 = buildStatement(sigParams1, sigPk1, revealedMsgs1FromVerifier, false);
+    const statement6 = buildStatement(sigParams2, sigPk2, revealedMsgs2FromVerifier, false);
     const statement7 = Statement.accumulatorMembership(
       accumParams1,
       accumKeypair1.publicKey,

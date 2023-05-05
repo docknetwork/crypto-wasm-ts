@@ -42,6 +42,9 @@ import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembe
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { getR1CS, ParsedR1CSFile } from '../r1cs';
 import { BBSPublicKey, BBSSignatureParams } from '../bbs';
+import { generateSetupParamForPSSignatureParameters } from '@docknetwork/crypto-wasm';
+import { PSPublicKey, PSSignatureParams } from 'src/ps';
+import { generateSetupParamForPSPublicKey } from '@docknetwork/crypto-wasm';
 
 /**
  * Represents (public) setup parameters of different protocols. Different setup parameters can be wrapped in this and
@@ -59,6 +62,14 @@ export class SetupParam extends BytearrayWrapper {
 
   static bbsPlusSignaturePublicKeyG2(publicKey: BBSPlusPublicKeyG2): SetupParam {
     return new SetupParam(generateSetupParamForBBSPlusPublicKeyG2(publicKey.value));
+  }
+
+  static psSignatureParams(params: PSSignatureParams): SetupParam {
+    return new SetupParam(generateSetupParamForPSSignatureParameters(params.value));
+  }
+
+  static psSignaturePublicKey(publicKey: PSPublicKey): SetupParam {
+    return new SetupParam(generateSetupParamForPSPublicKey(publicKey.value));
   }
 
   static vbAccumulatorParams(params: AccumulatorParams): SetupParam {

@@ -5,7 +5,8 @@ import {
   psIsSignatureParamsValid,
   psAdaptSignatureParamsForMsgCount,
   PSSigParams,
-  VerifyResult
+  VerifyResult,
+  psMessageCommitment
 } from '@docknetwork/crypto-wasm';
 import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
 import { PSPublicKey, PSSecretKey } from './keys';
@@ -77,6 +78,12 @@ export class PSSignatureParams {
     const msgCount = names.length;
   
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    const supportedMsgCount = secretKey.supportedMessageCount();
+    if (supportedMsgCount < msgCount) {
+      throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`)
+    } else if (supportedMsgCount > msgCount) {
+      secretKey = secretKey.adaptForLess(msgCount)!
+    }
     const signature = PSSignature.generate(encodedValues, secretKey, sigParams);
   
     // Encoded message as an object with key as the flattened name
@@ -111,6 +118,12 @@ export class PSSignatureParams {
     const msgCount = encodedValues.length;
 
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    const supportedMsgCount = publicKey.supportedMessageCount();
+    if (supportedMsgCount < msgCount) {
+      throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`)
+    } else if (supportedMsgCount > msgCount) {
+      publicKey = publicKey.adaptForLess(msgCount)!
+    }
     return signature.verify(encodedValues, publicKey, sigParams);
   }
 
@@ -149,6 +162,10 @@ export class PSSignatureParams {
     return this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
   }
 
+  messageCommitment(message: Uint8Array, blinding: Uint8Array, h: Uint8Array) {
+    return psMessageCommitment(message, blinding, h, this.value.g);
+  }
+
   /**
    * Number of messages that these params support and can be signed. If less or more messages are to be signed, use
    * `adapt`
@@ -171,7 +188,6 @@ export class PSSignatureParams {
    */
   getParamsForIndices(indices: number[]): Uint8Array[] {
     const p: Uint8Array[] = [];
-    p.push(this.value.g_tilde);
     for (const i of indices) {
       if (!this.isValidIndex(i)) {
         throw new Error(`Invalid index ${i} for params with supported message count ${this.supportedMessageCount()}`);

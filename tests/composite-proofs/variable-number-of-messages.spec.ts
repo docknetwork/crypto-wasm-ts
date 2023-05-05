@@ -4,9 +4,7 @@ import {
   CompositeProofG1,
   MetaStatements,
   ProofSpecG1,
-  Statement,
   Statements,
-  Witness,
   Witnesses
 } from '../../src';
 import {
@@ -16,6 +14,7 @@ import {
   buildStatement,
   buildWitness,
 } from '../scheme'
+import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 
 describe('Proving knowledge of 1 BBS+ signature where some of the attributes are null, i.e.not applicable', () => {
   it('works', async () => {
@@ -27,25 +26,25 @@ describe('Proving knowledge of 1 BBS+ signature where some of the attributes are
     const messages: Uint8Array[] = [];
     // Comma separated indices of N/A messages. An efficient way, especially in large number of messages, could be to use a bitvector
     // where an unset bit would indicate N/A
-    messages.push(stringToBytes('5,6,7,9'));
+    messages.push(encodeMessageForSigning(stringToBytes('5,6,7,9')));
     // SSN
-    messages.push(stringToBytes('123-456789-0'));
+    messages.push(encodeMessageForSigning(stringToBytes('123-456789-0')));
     // Name
-    messages.push(stringToBytes('John Smith'));
+    messages.push(encodeMessageForSigning(stringToBytes('John Smith')));
     // High school name
-    messages.push(stringToBytes('Some High School'));
+    messages.push(encodeMessageForSigning(stringToBytes('Some High School')));
     // High school year
-    messages.push(stringToBytes('2010'));
+    messages.push(encodeMessageForSigning(stringToBytes('2010')));
     // College name
-    messages.push(stringToBytes('N/A'));
+    messages.push(encodeMessageForSigning(stringToBytes('N/A')));
     // Major
-    messages.push(stringToBytes('N/A'));
+    messages.push(encodeMessageForSigning(stringToBytes('N/A')));
     // College year
-    messages.push(stringToBytes('N/A'));
+    messages.push(encodeMessageForSigning(stringToBytes('N/A')));
     // City
-    messages.push(stringToBytes('New York'));
+    messages.push(encodeMessageForSigning(stringToBytes('New York')));
     // Last employer
-    messages.push(stringToBytes('N/A'));
+    messages.push(encodeMessageForSigning(stringToBytes('N/A')));
 
     const messageCount = messages.length;
     const label = stringToBytes('My sig params in g1');

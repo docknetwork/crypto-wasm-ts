@@ -1,4 +1,4 @@
-import { generateRandomG1Element, psEncodeMessageForSigning } from '@docknetwork/crypto-wasm';
+import { generateRandomG1Element, encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 import {
   initializeWasm,
   randomFieldElement,
@@ -10,6 +10,7 @@ import {
   PSSecretKey
 } from '../src';
 import { getRevealedUnrevealed, stringToBytes } from './utils';
+import { psMessageCommitment } from '@docknetwork/crypto-wasm';
 
 function getMessages(count: number): Uint8Array[] {
   const messages: Uint8Array[] = [];
@@ -27,7 +28,7 @@ describe('Pointcheval-Sanders signature sunny day scenario', () => {
     const messageCount = 10;
     const messages: Uint8Array[] = [];
     for (let i = 0; i < messageCount; i++) {
-      messages.push(psEncodeMessageForSigning(stringToBytes(`Message-${i + 1}`)));
+      messages.push(encodeMessageForSigning(stringToBytes(`Message-${i + 1}`)));
     }
 
     const label = stringToBytes('My sig params in g1');
@@ -65,7 +66,7 @@ describe('Pointcheval-Sanders signature sunny day scenario', () => {
   });
 });
 
-describe('BBS+ signature', () => {
+describe('PS signature', () => {
   beforeAll(async () => {
     await initializeWasm();
   });
@@ -149,7 +150,7 @@ describe('BBS+ signature', () => {
 
   it('should sign and verify blind signature', () => {
     const messageCount = 10;
-    const messages = getMessages(messageCount).map(psEncodeMessageForSigning);
+    const messages = getMessages(messageCount).map(encodeMessageForSigning);
     const label = stringToBytes('My new sig params');
     const params = PSSignatureParams.generate(messageCount, label);
 
@@ -165,12 +166,12 @@ describe('BBS+ signature', () => {
     // Simulation of signer picking up known messages
     const knownMessages = new Map();
     for (let i = 0; i < messageCount; i++) {
-        if (!messagesToHide.has(i)) {
-          knownMessages.set(i, messages[i]);
-        }
+      if (!messagesToHide.has(i)) {
+        knownMessages.set(i, messages[i]);
+      }
     }
 
-    let req = PSBlindSignature.generateRequest(messagesToHide, blindings, params, h, knownMessages);
+    let [blinding, req] = PSBlindSignature.generateRequest(messagesToHide, blindings, params, h, void 0, knownMessages);
 
     let blindSig = PSBlindSignature.generate(
       messages.map((message, idx) => {
@@ -190,7 +191,7 @@ describe('BBS+ signature', () => {
 
   it('params should be adaptable', () => {
     const ten = 10;
-    const messages10 = getMessages(ten).map(psEncodeMessageForSigning);
+    const messages10 = getMessages(ten).map(encodeMessageForSigning);
     const label = stringToBytes('Some label for params');
     const params10 = PSSignatureParams.generate(ten, label);
 
@@ -201,7 +202,7 @@ describe('BBS+ signature', () => {
     expect(sig.verify(messages10, pk10, params10).verified).toEqual(true);
 
     const twelve = 12;
-    const messages12 = getMessages(twelve).map(psEncodeMessageForSigning);
+    const messages12 = getMessages(twelve).map(encodeMessageForSigning);
 
     expect(() => PSSignature.generate(messages12, sk10, params10)).toThrow();
 
@@ -215,7 +216,7 @@ describe('BBS+ signature', () => {
     expect(sig1.verify(messages12, pk12, params12).verified).toEqual(true);
 
     const five = 5;
-    const messages5 = getMessages(five).map(psEncodeMessageForSigning);
+    const messages5 = getMessages(five).map(encodeMessageForSigning);
 
     expect(() => PSSignature.generate(messages5, sk12, params10)).toThrow();
     expect(() => PSSignature.generate(messages5, sk12, params12)).toThrow();
@@ -286,5 +287,57 @@ describe('BBS+ signature', () => {
 
     check(false);
     check(true);
+  });
+
+  it('should aggregate signatures', () => {
+    const messageCount = 10;
+    const h = generateRandomG1Element();
+
+    const [thresholdSk, sks] = PSSecretKey.dealShamirSS(10, 5, 10);
+    const messages = getMessages(10).map(encodeMessageForSigning);
+    const label = stringToBytes('My sig params in g1');
+    const params = PSSignatureParams.generate(messageCount, label);
+
+    const pSigs = new Map();
+    let idx = 0;
+
+    for (const sk of sks) {
+      expect(params.isValid()).toEqual(true);
+      expect(params.supportedMessageCount()).toEqual(messageCount);
+
+      const pk = sk.generatePublicKey(params);
+
+      expect(pk.isValid()).toEqual(true);
+      const blindings = new Map();
+      const [b, req] = PSBlindSignature.generateRequest(
+        new Map(messages.map((msg, idx) => [idx, msg])) as any,
+        blindings,
+        params,
+        h,
+        void 0
+      );
+
+      const sig = PSBlindSignature.fromRequest(req, sk, h).unblind(blindings, pk);
+
+      pSigs.set(++idx, sig);
+    }
+
+    expect(
+      PSSignature.aggregate(pSigs, h).verify(messages, thresholdSk.generatePublicKey(params), params).verified
+    ).toBe(true);
+    expect(() =>
+      PSSignature.aggregate(new Map([...pSigs.entries()].slice(0, 4)), h).verify(
+        messages,
+        thresholdSk.generatePublicKey(params),
+        params
+      )
+    ).toThrow();
+    expect(
+      PSSignature.aggregate(new Map([...pSigs.entries()].slice(0, 6)), h).verify(
+        messages,
+        thresholdSk.generatePublicKey(params),
+        params
+      ).verified
+    ).toBe(true);
   });
 });
