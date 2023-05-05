@@ -1,18 +1,4 @@
-import {
-  CompositeProofG1,
-  BBSPlusKeypairG2,
-  MetaStatements,
-  ProofSpecG1,
-  BBSPlusSignatureG1,
-  BBSPlusBlindSignatureG1,
-  BBSPlusSignatureParamsG1,
-  Statement,
-  Statements,
-  Witness,
-  Witnesses,
-  BBSPlusPublicKeyG2,
-  BBSPlusSecretKey
-} from '../../src';
+import { CompositeProofG1, MetaStatements, ProofSpecG1, Statement, Statements, Witness, Witnesses } from '../../src';
 
 import {
   generateRandomFieldElement,
@@ -21,7 +7,19 @@ import {
   pedersenCommitmentG1
 } from '@docknetwork/crypto-wasm';
 import { stringToBytes } from '../utils';
-import { Signature } from '../scheme';
+import {
+  Signature,
+  BlindSignature,
+  SignatureParams,
+  KeyPair,
+  PublicKey,
+  SecretKey,
+  isPS,
+  isBBSPlus,
+  getWitnessForBlindSigRequest,
+  getStatementForBlindSigRequest
+} from '../scheme';
+import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 
 describe('Social KYC (Know Your Customer)', () => {
   // A social KYC (Know Your Customer) credential claims that the subject owns certain social media profile like a twitter
@@ -32,11 +30,12 @@ describe('Social KYC (Know Your Customer)', () => {
   // credential will contain the user's secret id which he will hide from the issuer, thus gets a blinded credential.
 
   // Issuer's parameters
-  let sigParams: BBSPlusSignatureParamsG1;
+  let sigParams: SignatureParams;
   // Issuers secret key and public keys
-  let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
+  let sk: SecretKey, pk: PublicKey;
   // Commitment key for commitment posted on social profile.
   let g: Uint8Array;
+  let h: Uint8Array;
 
   // No of attributes in the KYC credential
   const attributeCount = 5;
@@ -45,13 +44,14 @@ describe('Social KYC (Know Your Customer)', () => {
     // Load the WASM module
     await initializeWasm();
 
-    sigParams = BBSPlusSignatureParamsG1.generate(attributeCount);
+    sigParams = SignatureParams.generate(attributeCount);
 
     // Generate keys
-    const sigKeypair = BBSPlusKeypairG2.generate(sigParams);
+    const sigKeypair = KeyPair.generate(sigParams);
     sk = sigKeypair.secretKey;
     pk = sigKeypair.publicKey;
 
+    h = generateRandomG1Element();
     g = generateRandomG1Element();
   });
 
@@ -64,46 +64,58 @@ describe('Social KYC (Know Your Customer)', () => {
     // Prepare messages that will be blinded (hidden) and known to signer
     const blindedAttributes = new Map();
 
-    // User wants to hide his secret id which is the attribute at index 0
-    const blindedIndices: number[] = [0];
-    blindedAttributes.set(0, stringToBytes('my-secret-id'));
+    blindedAttributes.set(0, encodeMessageForSigning(stringToBytes('my-secret-id')));
+
+    // Issuer will know these attributes
+    const knownAttributes = new Map();
+    knownAttributes.set(1, encodeMessageForSigning(stringToBytes('@johnsmith')));
+    knownAttributes.set(2, encodeMessageForSigning(stringToBytes('John Smith')));
+    knownAttributes.set(3, encodeMessageForSigning(stringToBytes('Some guy on twitter')));
+    knownAttributes.set(4, encodeMessageForSigning(stringToBytes('5000')));
 
     // Generate a blind signature request
-    const req = BBSPlusBlindSignatureG1.generateRequest(blindedAttributes, sigParams, true);
-    const [blinding, request] = Array.isArray(req) ? req: [undefined, req];
-
+    let blindings, blinding, request;
+    if (isPS()) {
+      blindings = new Map();
+      [blinding, request] = BlindSignature.generateRequest(
+        blindedAttributes,
+        blindings,
+        sigParams,
+        h,
+        void 0,
+        knownAttributes
+      );
+    } else if (isBBSPlus()) {
+      [blinding, request] = BlindSignature.generateRequest(
+        blindedAttributes,
+        sigParams,
+        false,
+        void 0,
+        knownAttributes
+      );
+    } else {
+      request = BlindSignature.generateRequest(blindedAttributes, sigParams, false, knownAttributes);
+    }
     // The proof is created for 2 statements.
 
     // The 1st statement to prove is knowledge of opening of the commitment in the tweet
     const statement1 = Statement.pedersenCommitmentG1([g], commitmentTweet);
 
-    // Take parts of the sig params corresponding to the blinded attribute
-    const commKey = sigParams.getParamsForIndices(request.blindedIndices);
-    // The 2nd statement is proving knowledge of the blinded attribute, i.e. secret-id in another commitment (not posted in tweet).
-    const statement2 = Statement.pedersenCommitmentG1(commKey, request.commitment);
-
-    const statements = new Statements();
-    statements.add(statement1);
-    statements.add(statement2);
+    const statements = new Statements(getStatementForBlindSigRequest(request, sigParams, h));
+    statements.prepend(statement1);
 
     // Some context to the proof to prevent replayability, for stronger protection this should contain today's date etc as well
     const context = stringToBytes('Verifying twitter profile with issuer 1');
 
-    const proofSpec = new ProofSpecG1(statements, new MetaStatements(), [], context);
+    const meta = new MetaStatements();
+    // TODO: witness equalities
+    const proofSpec = new ProofSpecG1(statements, meta, [], context);
 
     // This is the opening of the commitment posted in tweet
     const witness1 = Witness.pedersenCommitment([randomValueTweet]);
-
     // The witness to the Pedersen commitment contains the blinding at index 0 by convention and then the hidden attributes
-    const committeds = [blinding].filter(Boolean);
-    for (const i of blindedIndices) {
-      // The attributes are encoded before committing
-      committeds.push(BBSPlusSignatureG1.encodeMessageForSigning(blindedAttributes.get(i)));
-    }
-    const witness2 = Witness.pedersenCommitment(committeds as any);
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
-    witnesses.add(witness2);
+    const witnesses = new Witnesses(getWitnessForBlindSigRequest(blindedAttributes, blinding, blindings));
+    witnesses.prepend(witness1);
 
     // User creates this proof and sends to the issuer.
     const proof = CompositeProofG1.generate(proofSpec, witnesses);
@@ -112,18 +124,17 @@ describe('Social KYC (Know Your Customer)', () => {
     // proof to check user's knowledge of its opening.
     expect(proof.verify(proofSpec).verified).toEqual(true);
 
-    // Issuer will know these attributes
-    const knownAttributes = new Map();
-    knownAttributes.set(1, stringToBytes('@johnsmith'));
-    knownAttributes.set(2, stringToBytes('John Smith'));
-    knownAttributes.set(3, stringToBytes('Some guy on twitter'));
-    knownAttributes.set(4, stringToBytes('5000'));
-
     // Issuer is convinced that user knows the opening to the both commitments
-    const blindSig = BBSPlusBlindSignatureG1.generate(request.commitment, knownAttributes, sk, sigParams, true);
+    const blindSig = isPS()
+      ? BlindSignature.fromRequest(request, sk, h)
+      : BlindSignature.fromRequest(request, sk, sigParams, false);
 
     // // User unblinds the signature and now has valid credential
-    const sig: Signature = typeof blindSig.unblind === 'function' ? blindSig.unblind(blinding!): blindSig;
+    const sig: Signature = isBBSPlus()
+      ? blindSig.unblind(blinding!)
+      : isPS()
+      ? blindSig.unblind(blindings!, pk)
+      : blindSig;
 
     // Combine blinded and known attributes in an array
     const attributes = Array(blindedAttributes.size + knownAttributes.size);
@@ -134,7 +145,7 @@ describe('Social KYC (Know Your Customer)', () => {
       attributes[i] = m;
     }
 
-    const result = sig.verify(attributes, pk, sigParams, true);
+    const result = sig.verify(attributes, pk, sigParams, false);
     expect(result.verified).toEqual(true);
   });
 });

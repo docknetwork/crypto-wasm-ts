@@ -2,7 +2,6 @@ import {
   BBSBlindSignature,
   BBSKeypair,
   BBSPlusBlindSignatureG1,
-  BBSPlusKeypair,
   BBSPlusKeypairG2,
   BBSPlusPoKSignatureProtocol,
   BBSPlusPublicKeyG2,
@@ -21,11 +20,15 @@ import {
   PSSecretKey,
   PSSignature,
   PSSignatureParams,
+  SetupParam,
   Statement,
   Witness,
   getBBSPlusStatementForBlindSigRequest,
+  getBBSPlusWitnessForBlindSigRequest,
   getBBSStatementForBlindSigRequest,
-  getPSStatementsForBlindSigRequest
+  getBBSWitnessForBlindSigRequest,
+  getPSStatementsForBlindSigRequest,
+  getPSWitnessesForBlindSigRequest
 } from '../src';
 
 export let PublicKey,
@@ -36,8 +39,15 @@ export let PublicKey,
   SignatureParams,
   PoKSignatureProtocol,
   getStatementForBlindSigRequest,
+  getWitnessForBlindSigRequest,
   buildWitness,
-  buildStatement;
+  buildStatement,
+  buildPublicKeySetupParam,
+  buildSignatureParamsSetupParam,
+  buildStatementFromSetupParamsRef,
+  isBBS = () => false,
+  isBBSPlus = () => false,
+  isPS = () => false;
 
 switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
   case 'BBS':
@@ -50,7 +60,12 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     PoKSignatureProtocol = BBSPoKSignatureProtocol;
     buildWitness = Witness.bbsSignature;
     buildStatement = Statement.bbsSignature;
+    buildPublicKeySetupParam = SetupParam.bbsPlusSignaturePublicKeyG2;
+    buildSignatureParamsSetupParam = SetupParam.bbsSignatureParams;
+    buildStatementFromSetupParamsRef = Statement.bbsSignatureFromSetupParamRefs;
     getStatementForBlindSigRequest = getBBSStatementForBlindSigRequest;
+    getWitnessForBlindSigRequest = getBBSWitnessForBlindSigRequest;
+    isBBS = () => true;
     break;
   case 'BBS+':
     PublicKey = BBSPlusPublicKeyG2;
@@ -62,7 +77,12 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     PoKSignatureProtocol = BBSPlusPoKSignatureProtocol;
     buildWitness = Witness.bbsPlusSignature;
     buildStatement = Statement.bbsPlusSignature;
+    buildPublicKeySetupParam = SetupParam.bbsPlusSignaturePublicKeyG2;
+    buildSignatureParamsSetupParam = SetupParam.bbsPlusSignatureParamsG1;
+    buildStatementFromSetupParamsRef = Statement.bbsPlusSignatureFromSetupParamRefs;
     getStatementForBlindSigRequest = getBBSPlusStatementForBlindSigRequest;
+    getWitnessForBlindSigRequest = getBBSPlusWitnessForBlindSigRequest;
+    isBBSPlus = () => true;
     break;
   case 'PS':
     PublicKey = PSPublicKey;
@@ -74,7 +94,12 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     PoKSignatureProtocol = PSPoKSignatureProtocol;
     buildWitness = Witness.psSignature;
     buildStatement = Statement.psSignature;
+    buildPublicKeySetupParam = SetupParam.psSignaturePublicKey;
+    buildSignatureParamsSetupParam = SetupParam.psSignatureParams;
+    buildStatementFromSetupParamsRef = Statement.psSignatureFromSetupParamRefs;
     getStatementForBlindSigRequest = getPSStatementsForBlindSigRequest;
+    getWitnessForBlindSigRequest = getPSWitnessesForBlindSigRequest;
+    isPS = () => true;
     break;
   default:
     throw new Error('Unknown signature scheme');
@@ -89,4 +114,8 @@ export type SignatureParams = typeof SignatureParams;
 export type PoKSignatureProtocol = typeof PoKSignatureProtocol;
 export type buildWitness = typeof buildWitness;
 export type buildStatement = typeof buildStatement;
+export type buildPublicKeySetupParam = typeof buildPublicKeySetupParam;
+export type buildSignatureParamsSetupParam = typeof buildSignatureParamsSetupParam;
+export type buildStatementFromSetupParamsRef = typeof buildStatementFromSetupParamsRef;
 export type getStatementForBlindSigRequest = typeof getStatementForBlindSigRequest;
+export type getWitnessForBlindSigRequest = typeof getWitnessForBlindSigRequest;

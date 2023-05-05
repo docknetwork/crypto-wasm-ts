@@ -103,51 +103,6 @@ export function encodeRevealedMsgs(
 }
 
 /**
- * Generate a request for getting a blind signature from a signer, i.e. some messages are hidden from signer.
- * Returns the blinding, the request to be sent to the signer and the witness to be used in the proof
- * @param hiddenMsgNames - The names of messages being hidden from signer
- * @param messages - All the message, i.e. known + hidden.
- * @param labelOrParams
- * @param encoder
- * @param blinding - Optional, if not provided, its generated randomly
- 
-export function genBlindSigRequestAndWitness<S, P extends IParams, PB extends ParamsBuilder>(
-  hiddenMsgNames: Set<string>,
-  messages: object,
-  labelOrParams: Uint8Array | P,
-  paramsBuilder: PB,
-  signatureScheme: S,
-  encoder: Encoder,
-  blinding?: Uint8Array
-): [Uint8Array, BBSPlusBlindSignatureRequest, Uint8Array] {
-  const [names, encodedValues] = encoder.encodeMessageObject(messages);
-  const hiddenMsgs = new Map<number, Uint8Array>();
-  let found = 0;
-  hiddenMsgNames.forEach((n) => {
-    const i = names.indexOf(n);
-    if (i !== -1) {
-      hiddenMsgs.set(i, encodedValues[i]);
-      found++;
-    }
-  });
-  if (hiddenMsgNames.size !== found) {
-    throw new Error(
-      `Some of the hidden message names were not found in the given messages object, ${
-        hiddenMsgNames.size - found
-      } missing names`
-    );
-  }
-  const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(names.length, labelOrParams, paramsBuilder);
-  const [blinding_, request] = signatureScheme.generateRequest(hiddenMsgs, sigParams, blinding);
-  const committeds = [blinding_];
-  for (const i of request.blindedIndices) {
-    committeds.push(hiddenMsgs.get(i) as Uint8Array);
-  }
-  const witness = Witness.pedersenCommitment(committeds);
-  return [blinding_, request, witness];
-}*/
-
-/**
  * Check if the given structure is compatible with the given messages object.
  * @param messages
  * @param msgStructure
@@ -219,6 +174,18 @@ export function getBBSStatementForBlindSigRequest(
  * @param request
  * @param sigParams
  */
+export function getBBSWitnessForBlindSigRequest(messages: Map<number, Uint8Array>): Uint8Array {
+  const sortedMessages = [...messages.entries()];
+  sortedMessages.sort(([a], [b]) => a - b);
+
+  return Witness.pedersenCommitment(sortedMessages.map(([_, m]) => m));
+}
+
+/**
+ * Get the statement to be used in composite proof for the blind signature request
+ * @param request
+ * @param sigParams
+ */
 export function getBBSPlusStatementForBlindSigRequest(
   request: BBSPlusBlindSignatureRequest,
   sigParams: BBSPlusSignatureParamsG1
@@ -232,10 +199,56 @@ export function getBBSPlusStatementForBlindSigRequest(
  * @param request
  * @param sigParams
  */
+export function getBBSPlusWitnessForBlindSigRequest(
+  messages: Map<number, Uint8Array>,
+  blinding: Uint8Array
+): Uint8Array {
+  const sortedMessages = [...messages.entries()];
+  sortedMessages.sort(([a], [b]) => a - b);
+
+  return Witness.pedersenCommitment([blinding, ...sortedMessages.map(([_, m]) => m)]);
+}
+
+/**
+ * Get the statement to be used in composite proof for the blind signature request
+ * @param request
+ * @param sigParams
+ */
 export function getPSStatementsForBlindSigRequest(
   request: PSBlindSignatureRequest,
-  sigParams: PSSignatureParams
+  sigParams: PSSignatureParams,
+  h: Uint8Array
 ): Uint8Array[] {
-  const commKey = sigParams.getParamsForIndices([...request.commitments.keys()]);
-  return [] //Statement.pedersenCommitmentG1(commKey, request.commitments);
+  const sortedCommitments = [...request.commitments.entries()];
+  sortedCommitments.sort(([a], [b]) => a - b);
+  const hArr = sigParams.getParamsForIndices(sortedCommitments.map(([key]) => key));
+
+  return [
+    Statement.pedersenCommitmentG1([sigParams.value.g, ...hArr], request.commitment),
+    ...sortedCommitments.map(([_, commitment]) => Statement.pedersenCommitmentG1([sigParams.value.g, h], commitment))
+  ];
+}
+
+/**
+ * Get the statement to be used in composite proof for the blind signature request
+ * @param request
+ * @param sigParams
+ */
+export function getPSWitnessesForBlindSigRequest(
+  messages: Map<number, Uint8Array>,
+  blinding: Uint8Array,
+  blindings: Map<number, Uint8Array>
+): Uint8Array[] {
+  const sortedMessages = [...messages.entries()];
+  sortedMessages.sort(([a], [b]) => a - b);
+
+  return [
+    Witness.pedersenCommitment([blinding, ...sortedMessages.map(([_, msg]) => msg)]),
+    ...[...messages.entries()].map(([idx, msg]) => {
+      const blinding = blindings.get(idx);
+      if (blinding == null) throw new Error(`Missing blinding for ${idx}`);
+
+      return Witness.pedersenCommitment([blinding, msg]);
+    })
+  ];
 }

@@ -142,7 +142,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     wasm = getWasmBytes('greater_than_or_public_64.wasm');
 
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(1, label);
+    let params = SignatureParams.generate(100, label);
     const keypair = KeyPair.generate(params);
     sigSk = keypair.secretKey;
     sigPk = keypair.publicKey;
@@ -164,6 +164,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     revealedNamesV.add('vaccination.name');
 
     const sigParamsV = SignatureParams.getSigParamsForMsgStructure(vaccinationAttributesStruct, label);
+    const pkV = sigPk.adaptForLess(sigParamsV.supportedMessageCount());
     const [revealedMsgsV, unrevealedMsgsV, revealedMsgsRawV] = getRevealedAndUnrevealed(
       vaccinationAttributes,
       revealedNamesV,
@@ -177,6 +178,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     revealedNamesT.add('test.result');
 
     const sigParamsT = SignatureParams.getSigParamsForMsgStructure(diseaseTestAttributesStruct, label);
+    const pkT = sigPk.adaptForLess(sigParamsT.supportedMessageCount());
     const [revealedMsgsT, unrevealedMsgsT, revealedMsgsRawT] = getRevealedAndUnrevealed(
       diseaseTestAttributes,
       revealedNamesT,
@@ -184,8 +186,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     );
     expect(revealedMsgsRawT).toEqual({ fname: 'John', test: { type: 'Antigen', result: 'Negative' } });
 
-    const statement1 = buildStatement(sigParamsV, sigPk, revealedMsgsV, false);
-    const statement2 = buildStatement(sigParamsT, sigPk, revealedMsgsT, false);
+    const statement1 = buildStatement(sigParamsV, pkV, revealedMsgsV, false);
+    const statement2 = buildStatement(sigParamsT, pkT, revealedMsgsT, false);
     const statement3 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -238,8 +240,8 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     const revealedMsgsFromVerifierT = encodeRevealedMsgs(revealedMsgsRawT, diseaseTestAttributesStruct, encoder);
     checkMapsEqual(revealedMsgsT, revealedMsgsFromVerifierT);
 
-    const statement4 = buildStatement(sigParamsV, sigPk, revealedMsgsFromVerifierV, false);
-    const statement5 = buildStatement(sigParamsT, sigPk, revealedMsgsFromVerifierT, false);
+    const statement4 = buildStatement(sigParamsV, pkV, revealedMsgsFromVerifierV, false);
+    const statement5 = buildStatement(sigParamsT, pkT, revealedMsgsFromVerifierT, false);
     const pub = [generateFieldElementFromNumber(checkShouldPass ? 1 : 0), encodedTime30DaysAgo, encodedTime2DaysAgo];
     const statement6 = Statement.r1csCircomVerifier(pub, verifyingKey);
 

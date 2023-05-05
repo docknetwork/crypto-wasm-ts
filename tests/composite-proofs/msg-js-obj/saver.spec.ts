@@ -27,7 +27,7 @@ import {
 } from '../../../src';
 import { attributes1, attributes1Struct, GlobalEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { buildStatement, buildWitness, KeyPair, Signature, SignatureParams } from '../../scheme';
+import { buildStatement, buildWitness, isPS, KeyPair, Signature, SignatureParams } from '../../scheme';
 
 describe('Verifiable encryption using SAVER', () => {
   beforeAll(async () => {
@@ -44,7 +44,7 @@ describe('Verifiable encryption using SAVER', () => {
 
     const label = stringToBytes('Sig params label - this is public');
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(1, label);
+    let params = SignatureParams.generate(100, label);
     const keypair = KeyPair.generate(params);
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
@@ -106,6 +106,7 @@ describe('Verifiable encryption using SAVER', () => {
 
     // Both prover and verifier can independently create this struct
     const sigParams = getAdaptedSignatureParamsForMessages(params, attributes1Struct);
+    const sigPk = isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()): pk;
 
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
@@ -114,7 +115,7 @@ describe('Verifiable encryption using SAVER', () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'John', lname: 'Smith', country: 'USA' });
 
-    const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
+    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, saverProvingKey, chunkBitSize);
     const statement3 = Statement.boundCheckProver(timeMin, timeMax, boundCheckProvingKey);
 
@@ -152,7 +153,7 @@ describe('Verifiable encryption using SAVER', () => {
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributes1Struct, GlobalEncoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement4 = buildStatement(sigParams, pk, revealedMsgsFromVerifier, false);
+    const statement4 = buildStatement(sigParams, sigPk, revealedMsgsFromVerifier, false);
     const statement5 = Statement.saverVerifier(saverEncGens, commGens, saverEk, saverVerifyingKey, chunkBitSize);
     const statement6 = Statement.boundCheckVerifier(timeMin, timeMax, boundCheckVerifyingKey);
 

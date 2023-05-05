@@ -1,7 +1,7 @@
 import { BBSPlusSignatureParamsG1 } from './params';
 import {
   bbsPlusBlindSignG1,
-  bbsPlusEncodeMessageForSigning,
+  encodeMessageForSigning,
   bbsPlusSignG1,
   bbsPlusUnblindSigG1,
   bbsPlusVerifyG1,
@@ -28,7 +28,7 @@ export abstract class BBSPlusSignature extends BytearrayWrapper {
    * @param message
    */
   static encodeMessageForSigning(message: Uint8Array): Uint8Array {
-    return bbsPlusEncodeMessageForSigning(message);
+    return encodeMessageForSigning(message);
   }
 
   /**

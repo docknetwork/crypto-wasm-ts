@@ -1,6 +1,6 @@
 import { BBSSignatureParams } from './params';
 import {
-  bbsEncodeMessageForSigning,
+  encodeMessageForSigning,
   bbsVerify,
   bbsSign,
   generateRandomFieldElement,
@@ -27,7 +27,7 @@ export class BBSSignature extends BytearrayWrapper {
    * @param message
    */
   static encodeMessageForSigning(message: Uint8Array): Uint8Array {
-    return bbsEncodeMessageForSigning(message);
+    return encodeMessageForSigning(message);
   }
 
   /**
@@ -269,6 +269,14 @@ export class BBSBlindSignature extends BytearrayWrapper {
       encodedMessages,
       signature: blindSig
     };
+  }
+
+  static fromRequest(
+    { commitment, unblindedMessages }: BBSBlindSignatureRequest,
+    secretKey: BBSSecretKey,
+    params: BBSSignatureParams
+  ): BBSBlindSignature {
+    return this.generate(commitment, unblindedMessages || new Map(), secretKey, params, false);
   }
 }
 

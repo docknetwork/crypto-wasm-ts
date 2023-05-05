@@ -4,9 +4,7 @@ import {
   CompositeProofG1,
   MetaStatements,
   ProofSpecG1,
-  Statement,
   Statements,
-  Witness,
   Witnesses
 } from '../../src';
 import {
@@ -16,6 +14,7 @@ import {
   buildStatement,
   buildWitness,
 } from '../scheme'
+import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 
 describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
   it('works', async () => {
@@ -25,15 +24,15 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
     // Messages to sign; the messages are attributes of a user like SSN (Social Security Number), name, email, etc
     const messages: Uint8Array[] = [];
     // SSN
-    messages.push(stringToBytes('123-456789-0'));
+    messages.push(encodeMessageForSigning(stringToBytes('123-456789-0')));
     // First name
-    messages.push(stringToBytes('John'));
+    messages.push(encodeMessageForSigning(stringToBytes('John')));
     // Last name
-    messages.push(stringToBytes('Smith'));
+    messages.push(encodeMessageForSigning(stringToBytes('Smith')));
     // Email
-    messages.push(stringToBytes('john.smith@emample.com'));
+    messages.push(encodeMessageForSigning(stringToBytes('john.smith@emample.com')));
     // City
-    messages.push(stringToBytes('New York'));
+    messages.push(encodeMessageForSigning(stringToBytes('New York')));
 
     const messageCount = messages.length;
 
@@ -46,8 +45,8 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
     const pk = keypair.publicKey;
 
     // Signer knows all the messages and signs
-    const sig = Signature.generate(messages, sk, params, true);
-    const result = sig.verify(messages, pk, params, true);
+    const sig = Signature.generate(messages, sk, params, false);
+    const result = sig.verify(messages, pk, params, false);
     expect(result.verified).toEqual(true);
 
     // User reveals 2 messages at index 2 and 4 to verifier, last name and city
@@ -64,7 +63,7 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
       }
     }
 
-    const statement1 = buildStatement(params, pk, revealedMsgs, true);
+    const statement1 = buildStatement(params, pk, revealedMsgs, false);
     const statements = new Statements();
     statements.add(statement1);
 

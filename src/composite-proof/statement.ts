@@ -573,16 +573,23 @@ export class Statements {
   values: Uint8Array[];
 
   constructor(statements: Uint8Array | Uint8Array[] = []) {
-    this.values = statements instanceof Array ? statements: [statements];
+    this.values = Array.isArray(statements) ? statements : [statements];
   }
 
   /**
-   * Add a new statement. Returns the index (id) of the added statement. This index is part of the witness reference.
+   * Add a new statement to the end of the list. Returns the index (id) of the added statement. This index is part of the witness reference.
    * @param statement
    */
   add(statement: Uint8Array): number {
-    this.values.push(statement);
-    return this.values.length - 1;
+    return this.values.push(statement) - 1;
+  }
+
+  /**
+   * Add a new statement to the beginning of the list. Returns the index (id) of the added statement. This index is part of the witness reference.
+   * @param statement
+   */
+  prepend(statement: Uint8Array): number {
+    return this.values.unshift(statement) - 1;
   }
 }
 
