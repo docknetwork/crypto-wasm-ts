@@ -2,11 +2,13 @@ import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   EncodeFunc,
   Encoder,
-  flattenObjectToKeyValuesList,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1
+  flattenObjectToKeyValuesList
 } from '../../../src';
 import { stringToBytes } from '../../utils';
+import {
+  Signature,
+  SignatureParams
+} from '../../scheme'
 
 describe('Utils', () => {
   beforeAll(async () => {
@@ -35,19 +37,19 @@ describe('Utils', () => {
   });
 
   it('Signature params getter', () => {
-    const params1 = BBSPlusSignatureParamsG1.generate(2);
+    const params1 = SignatureParams.generate(2);
 
-    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(1, params1)).toThrow();
-    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(3, params1)).toThrow();
-    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(2, params1)).not.toThrow();
-    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(1, stringToBytes('some label'))).not.toThrow();
-    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(2, stringToBytes('some label'))).not.toThrow();
-    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(3, stringToBytes('some label'))).not.toThrow();
+    expect(() => SignatureParams.getSigParamsOfRequiredSize(1, params1)).toThrow();
+    expect(() => SignatureParams.getSigParamsOfRequiredSize(3, params1)).toThrow();
+    expect(() => SignatureParams.getSigParamsOfRequiredSize(2, params1)).not.toThrow();
+    expect(() => SignatureParams.getSigParamsOfRequiredSize(1, stringToBytes('some label'))).not.toThrow();
+    expect(() => SignatureParams.getSigParamsOfRequiredSize(2, stringToBytes('some label'))).not.toThrow();
+    expect(() => SignatureParams.getSigParamsOfRequiredSize(3, stringToBytes('some label'))).not.toThrow();
 
-    const params2 = BBSPlusSignatureParamsG1.generate(2, stringToBytes('label2'));
-    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(1, params2)).not.toThrow();
-    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(2, params2)).not.toThrow();
-    expect(() => BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(3, params2)).not.toThrow();
+    const params2 = SignatureParams.generate(2, stringToBytes('label2'));
+    expect(() => SignatureParams.getSigParamsOfRequiredSize(1, params2)).not.toThrow();
+    expect(() => SignatureParams.getSigParamsOfRequiredSize(2, params2)).not.toThrow();
+    expect(() => SignatureParams.getSigParamsOfRequiredSize(3, params2)).not.toThrow();
   });
 
   it('encoder works', () => {
@@ -74,7 +76,7 @@ describe('Utils', () => {
 
     const defaultEncoder = (v: unknown) => {
       // @ts-ignore
-      return BBSPlusSignatureG1.encodeMessageForSigning(stringToBytes(v.toString()));
+      return Signature.encodeMessageForSigning(stringToBytes(v.toString()));
     };
     const encoder2 = new Encoder(undefined, defaultEncoder);
     expect(() => encoder2.encodeMessage('bar', 6)).not.toThrow();

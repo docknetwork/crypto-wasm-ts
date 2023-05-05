@@ -31,7 +31,8 @@ import {
   KeyPair,
   PublicKey,
   SecretKey,
-  SignatureParams
+  SignatureParams,
+  isPS
 } from '../../../scheme';
 
 // Test for a scenario where a user wants to prove that he either got the vaccination less than 30 days ago or got
@@ -164,7 +165,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     revealedNamesV.add('vaccination.name');
 
     const sigParamsV = SignatureParams.getSigParamsForMsgStructure(vaccinationAttributesStruct, label);
-    const pkV = sigPk.adaptForLess(sigParamsV.supportedMessageCount());
+    const pkV = isPS() ? sigPk.adaptForLess(sigParamsV.supportedMessageCount()): sigPk;
     const [revealedMsgsV, unrevealedMsgsV, revealedMsgsRawV] = getRevealedAndUnrevealed(
       vaccinationAttributes,
       revealedNamesV,
@@ -178,7 +179,7 @@ describe('Proving that either vaccinated less than 30 days ago OR last checked n
     revealedNamesT.add('test.result');
 
     const sigParamsT = SignatureParams.getSigParamsForMsgStructure(diseaseTestAttributesStruct, label);
-    const pkT = sigPk.adaptForLess(sigParamsT.supportedMessageCount());
+    const pkT = isPS() ? sigPk.adaptForLess(sigParamsT.supportedMessageCount()): sigPk;
     const [revealedMsgsT, unrevealedMsgsT, revealedMsgsRawT] = getRevealedAndUnrevealed(
       diseaseTestAttributes,
       revealedNamesT,
