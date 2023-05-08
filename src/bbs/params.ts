@@ -14,7 +14,7 @@ import { Encoder } from '../encoder';
 import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
 
 /**
- * Signature parameters.
+ * `BBS` signature parameters.
  */
 export class BBSSignatureParams {
   label?: Uint8Array;

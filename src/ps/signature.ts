@@ -20,6 +20,9 @@ import { Encoder } from '../encoder';
 import { psMultiMessageCommitment } from '@docknetwork/crypto-wasm';
 import { psAggregateSignatures } from '@docknetwork/crypto-wasm';
 
+/**
+ *  Modified Pointcheval-Sanders signature used in `Coconut`.
+ */
 export class PSSignature extends BytearrayWrapper {
   // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
   static readonly maxEncodedLength = 32;
@@ -151,13 +154,22 @@ export class PSSignature extends BytearrayWrapper {
     return psVerify(messages, this.value, publicKey.value, params.value);
   }
 
+  /**
+   * Aggregates signatures received from participants.
+   * @param signatures
+   * @param h
+   * @returns
+   */
   static aggregate(signatures: Map<number, PSSignature>, h: Uint8Array): PSSignature {
     const rawSignatures = new Map([...signatures.entries()].map(([participant, sig]) => [participant, sig.value]));
 
-    return new PSSignature(psAggregateSignatures(rawSignatures, h) as any);
+    return new PSSignature(psAggregateSignatures(rawSignatures, h));
   }
 }
 
+/**
+ * Modified Pointcheval-Sanders blind signature used in `Coconut`.
+ */
 export class PSBlindSignature extends BytearrayWrapper {
   /**
    * Generate blinding for creating the commitment used in the request for blind signature
@@ -208,7 +220,7 @@ export class PSBlindSignature extends BytearrayWrapper {
     revealedMessages: Map<number, Uint8Array> = new Map()
   ): [Uint8Array, PSBlindSignatureRequest] {
     const hArr = params.getParamsForIndices([...messagesToBlind.keys()]);
-    const commitment = psMultiMessageCommitment([...messagesToBlind.values()], hArr, params.value.g, blinding);
+    const commitment = params.multiMessageCommitment([...messagesToBlind.values()], hArr, blinding);
     const commitments: Map<number, Uint8Array> = new Map(
       [...messagesToBlind.entries()]
         .map(([idx, message]) => {
@@ -229,36 +241,21 @@ export class PSBlindSignature extends BytearrayWrapper {
     return [blinding, { commitment, commitments, revealedMessages }];
   }
 
+  /**
+   * Generate a blind signature from request
+   * @param request
+   * @param secretKey
+   * @param h
+   * @returns {PSBlindSignature}
+   */
   static fromRequest(
     { commitments, revealedMessages }: PSBlindSignatureRequest,
     secretKey: PSSecretKey,
     h: Uint8Array
   ): PSBlindSignature {
-    const msgIter = {
-      [Symbol.iterator]() {
-        let lastIdx = 0;
+    const msgIter = this.combineRevealedAndBlindedMessage(revealedMessages, commitments);
 
-        return {
-          next() {
-            const idx = lastIdx++;
-
-            const revealedMessage = revealedMessages.get(idx);
-            if (revealedMessage != null) {
-              return { value: { RevealedMessage: revealedMessage }, done: false };
-            }
-
-            const commitment = commitments.get(idx);
-            if (commitment != null) {
-              return { value: { BlindedMessage: commitment }, done: false };
-            }
-
-            return { value: undefined as any, done: true };
-          }
-        };
-      }
-    };
-
-    return this.generate(msgIter, secretKey, h);
+    return this.generate([...msgIter], secretKey, h);
   }
 
   /**
@@ -296,12 +293,25 @@ export class PSBlindSignature extends BytearrayWrapper {
         `Message structure incompatible with knownMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${knownMessagesEncoded.size}`
       );
     }
-    if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.revealedMessages.size) {
+    if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.commitments.size) {
       throw new Error(
         `Message structure likely incompatible with knownMessages and blindSigRequest. ${flattenedAllNames.length} != (${knownMessagesEncoded.size} + ${blindSigRequest.commitments.size})`
       );
     }
-    const msgIter = {
+    const msgIter = this.combineRevealedAndBlindedMessage(knownMessagesEncoded, blindSigRequest.commitments);
+    const signature = this.generate([...msgIter], secretKey, h);
+
+    return {
+      encodedMessages,
+      signature
+    };
+  }
+
+  private static combineRevealedAndBlindedMessage(
+    revealedMessages: Map<number, Uint8Array>,
+    blindedMessages: Map<number, Uint8Array>
+  ): Iterable<PSCommitmentOrMessage> {
+    return {
       [Symbol.iterator]() {
         let lastIdx = 0;
 
@@ -309,14 +319,24 @@ export class PSBlindSignature extends BytearrayWrapper {
           next() {
             const idx = lastIdx++;
 
-            const revealedMessage = blindSigRequest.revealedMessages.get(idx);
-            if (revealedMessage != null) {
-              return { value: { RevealedMessage: revealedMessage }, done: false };
-            }
+            const revealedMessage = revealedMessages.get(idx);
+            const commitment = blindedMessages.get(idx);
 
-            const commitment = blindSigRequest.commitments.get(idx);
-            if (commitment != null) {
+            if (revealedMessage != null && commitment != null) {
+              throw new Error(`Found both revealed message and commitment for ${idx}`);
+            } else if (revealedMessage != null) {
+              return { value: { RevealedMessage: revealedMessage }, done: false };
+            } else if (commitment != null) {
               return { value: { BlindedMessage: commitment }, done: false };
+            } else if (revealedMessages.size + blindedMessages.size !== idx) {
+              const missedCommitments = [...blindedMessages.entries()].filter(([key]) => key > idx);
+              const missedRevealed = [...revealedMessages.entries()].filter(([key]) => key > idx);
+
+              throw new Error(
+                `Some revealed messages or/and commitments were not included because of invalid indices: not included commitments = ${JSON.stringify(
+                  missedCommitments
+                )}, not included revealed = ${JSON.stringify(missedRevealed)}`
+              );
             }
 
             return { value: undefined as any, done: true };
@@ -324,18 +344,11 @@ export class PSBlindSignature extends BytearrayWrapper {
         };
       }
     };
-
-    const signature = this.generate(msgIter, secretKey, h);
-
-    return {
-      encodedMessages,
-      signature
-    };
   }
 }
 
 /**
- * Structure to send to the signer to request a blind signature
+ * Structure to send to the signer to request a blind signature for `Pointcheval-Sanders` scheme.
  */
 export interface PSBlindSignatureRequest {
   /**

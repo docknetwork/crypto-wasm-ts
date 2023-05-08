@@ -185,6 +185,13 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
     return new BBSPlusBlindSignatureG1(sig);
   }
 
+  /**
+   * Generate a blind signature from request
+   * @param request
+   * @param secretKey 
+   * @param h 
+   * @returns {BBSPlusBlindSignatureG1}
+   */
   static fromRequest(
     { commitment, unblindedMessages }: BBSPlusBlindSignatureRequest,
     secretKey: BBSPlusSecretKey,
@@ -287,7 +294,7 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
 }
 
 /**
- * Structure to send to the signer to request a blind signature
+ * Structure to send to the signer to request a blind signature for `BBS+` scheme.
  */
 export interface BBSPlusBlindSignatureRequest {
   /**

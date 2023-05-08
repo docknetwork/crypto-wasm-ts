@@ -15,6 +15,9 @@ import { bbsBlindSign } from '@docknetwork/crypto-wasm';
 import { Encoder } from '../bbs-plus';
 import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
 
+/**
+ * `BBS` signature.
+ */
 export class BBSSignature extends BytearrayWrapper {
   // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
   static readonly maxEncodedLength = 32;
@@ -271,6 +274,13 @@ export class BBSBlindSignature extends BytearrayWrapper {
     };
   }
 
+  /**
+   * Generate a blind signature from request
+   * @param request
+   * @param secretKey 
+   * @param h 
+   * @returns {BBSBlindSignature}
+   */  
   static fromRequest(
     { commitment, unblindedMessages }: BBSBlindSignatureRequest,
     secretKey: BBSSecretKey,
@@ -281,7 +291,7 @@ export class BBSBlindSignature extends BytearrayWrapper {
 }
 
 /**
- * Structure to send to the signer to request a blind signature
+ * Structure to send to the signer to request a blind signature for `BBS` scheme.
  */
 export interface BBSBlindSignatureRequest {
   /**

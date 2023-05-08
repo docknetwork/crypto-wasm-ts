@@ -50,8 +50,8 @@ export class BBSPlusPoKSignatureProtocol {
     return new BBSPlusPoKSignatureProtocol(protocol);
   }
 
-  generateProof(challenge: Uint8Array): PoKSigProof {
-    return new PoKSigProof(bbsPlusGenProofOfKnowledgeOfSignature(this.value, challenge));
+  generateProof(challenge: Uint8Array): BBSPlusPoKSigProof {
+    return new BBSPlusPoKSigProof(bbsPlusGenProofOfKnowledgeOfSignature(this.value, challenge));
   }
 
   challengeContribution(
@@ -64,7 +64,7 @@ export class BBSPlusPoKSignatureProtocol {
   }
 }
 
-export class PoKSigProof extends BytearrayWrapper {
+export class BBSPlusPoKSigProof extends BytearrayWrapper {
   verify(
     challenge: Uint8Array,
     publicKey: BBSPlusPublicKeyG2,
