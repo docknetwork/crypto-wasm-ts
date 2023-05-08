@@ -1,4 +1,3 @@
-import { BBSPlusSecretKey, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
@@ -15,9 +14,12 @@ import {
   SUBJECT_STR,
   TYPE_STR
 } from './types-and-consts';
-import { Credential } from './credential';
+import { BBSCredential, BBSPlusCredential, Credential, PSCredential } from './credential';
 import { flatten } from 'flat';
 import { areArraysEqual } from '../util';
+import { BBSPublicKey, BBSSecretKey, BBSSignature, BBSSignatureParams } from '../bbs';
+import { BBSPlusPublicKeyG2, BBSPlusSecretKey, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
+import { PSPublicKey, PSSecretKey, PSSignature, PSSignatureParams } from '../ps';
 
 export interface ISigningOpts {
   // Whether the credential should contain exactly the same fields (object keys, array items, literals) as the
@@ -33,7 +35,7 @@ export const DefaultSigningOpts: ISigningOpts = {
 /**
  * Create a credential
  */
-export class CredentialBuilder extends Versioned {
+export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, SignatureParams> extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
   static VERSION = '0.1.0';
@@ -44,7 +46,7 @@ export class CredentialBuilder extends Versioned {
   _credStatus?: object;
   _encodedAttributes?: { [key: string]: Uint8Array };
   _topLevelFields: Map<string, unknown>;
-  _sig?: BBSPlusSignatureG1;
+  _sig?: Signature;
 
   constructor() {
     super(CredentialBuilder.VERSION);
@@ -93,7 +95,7 @@ export class CredentialBuilder extends Versioned {
     };
   }
 
-  get signature(): BBSPlusSignatureG1 | undefined {
+  get signature(): Signature | undefined {
     return this._sig;
   }
 
@@ -121,38 +123,11 @@ export class CredentialBuilder extends Versioned {
    * signature params don't have to be generated.
    * @param signingOpts
    */
-  sign(
-    secretKey: BBSPlusSecretKey,
-    signatureParams?: BBSPlusSignatureParamsG1,
+  abstract sign(
+    secretKey: SecretKey,
+    signatureParams?: SignatureParams,
     signingOpts?: Partial<ISigningOpts>
-  ): Credential {
-    if (signingOpts === undefined) {
-      signingOpts = DefaultSigningOpts;
-    }
-
-    const cred = this.updateSchemaIfNeeded(signingOpts);
-    const schema = this.schema as CredentialSchema;
-
-    const signed = BBSPlusSignatureParamsG1.signMessageObject(
-      cred,
-      secretKey,
-      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
-      schema.encoder
-    );
-
-    this._encodedAttributes = signed.encodedMessages;
-    this._sig = signed.signature;
-
-    return new Credential(
-      this._version,
-      schema,
-      // @ts-ignore
-      this._subject,
-      this._topLevelFields,
-      this._sig,
-      this._credStatus
-    );
-  }
+  ): Credential<PublicKey, Signature, SignatureParams>;
 
   serializeForSigning(): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
@@ -194,5 +169,118 @@ export class CredentialBuilder extends Versioned {
 
   static hasSameFieldsAsSchema(cred: object, schema: CredentialSchema): boolean {
     return areArraysEqual(schema.flatten()[0], Object.keys(flatten(cred) as object).sort());
+  }
+}
+
+/**
+ * Create a `BBS` credential
+ */
+export class BBSCredentialBuilder extends CredentialBuilder<
+  BBSSecretKey,
+  BBSPublicKey,
+  BBSSignature,
+  BBSSignatureParams
+> {
+  sign(secretKey: BBSSecretKey, signatureParams?: BBSSignatureParams, signingOpts?: Partial<ISigningOpts>) {
+    if (signingOpts === undefined) {
+      signingOpts = DefaultSigningOpts;
+    }
+
+    const cred = this.updateSchemaIfNeeded(signingOpts);
+    const schema = this.schema as CredentialSchema;
+
+    const signed = BBSSignatureParams.signMessageObject(
+      cred,
+      secretKey,
+      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      schema.encoder
+    );
+
+    this._encodedAttributes = signed.encodedMessages;
+    this._sig = signed.signature;
+
+    return new BBSCredential(
+      this._version,
+      schema,
+      // @ts-ignore
+      this._subject,
+      this._topLevelFields,
+      this._sig,
+      this._credStatus
+    );
+  }
+}
+
+/**
+ * Create a `BBS+` credential
+ */
+export class BBSPlusCredentialBuilder extends CredentialBuilder<
+  BBSPlusSecretKey,
+  BBSPlusPublicKeyG2,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1
+> {
+  sign(secretKey: BBSPlusSecretKey, signatureParams?: BBSPlusSignatureParamsG1, signingOpts?: Partial<ISigningOpts>) {
+    if (signingOpts === undefined) {
+      signingOpts = DefaultSigningOpts;
+    }
+
+    const cred = this.updateSchemaIfNeeded(signingOpts);
+    const schema = this.schema as CredentialSchema;
+
+    const signed = BBSPlusSignatureParamsG1.signMessageObject(
+      cred,
+      secretKey,
+      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      schema.encoder
+    );
+
+    this._encodedAttributes = signed.encodedMessages;
+    this._sig = signed.signature;
+
+    return new BBSPlusCredential(
+      this._version,
+      schema,
+      // @ts-ignore
+      this._subject,
+      this._topLevelFields,
+      this._sig,
+      this._credStatus
+    );
+  }
+}
+
+/**
+ * Create a `Pointcheval-Sanders` credential
+ */
+
+export class PSCredentialBuilder extends CredentialBuilder<PSSecretKey, PSPublicKey, PSSignature, PSSignatureParams> {
+  sign(secretKey: PSSecretKey, signatureParams?: PSSignatureParams, signingOpts?: Partial<ISigningOpts>) {
+    if (signingOpts === undefined) {
+      signingOpts = DefaultSigningOpts;
+    }
+
+    const cred = this.updateSchemaIfNeeded(signingOpts);
+    const schema = this.schema as CredentialSchema;
+
+    const signed = PSSignatureParams.signMessageObject(
+      cred,
+      secretKey,
+      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      schema.encoder
+    );
+
+    this._encodedAttributes = signed.encodedMessages;
+    this._sig = signed.signature;
+
+    return new PSCredential(
+      this._version,
+      schema,
+      // @ts-ignore
+      this._subject,
+      this._topLevelFields,
+      this._sig,
+      this._credStatus
+    );
   }
 }

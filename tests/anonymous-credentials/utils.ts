@@ -1,4 +1,5 @@
-import { STATUS_STR, SUBJECT_STR, CredentialSchema, IJsonSchema, SCHEMA_TYPE_STR, CredentialBuilder } from '../../src';
+import { STATUS_STR, SUBJECT_STR, CredentialSchema, IJsonSchema, SCHEMA_TYPE_STR } from '../../src';
+import { CredentialBuilder } from '../scheme'
 
 export function getExampleSchema(num): IJsonSchema {
   const schema = CredentialSchema.essential();

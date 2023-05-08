@@ -8,25 +8,27 @@ import {
   STATUS_STR,
   SUBJECT_STR
 } from './types-and-consts';
-import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { isEmptyObject } from '../util';
 import b58 from 'bs58';
+import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
+import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 
-export class Credential extends Versioned {
+export abstract class Credential<PublicKey, Signature, SignatureParams> extends Versioned {
   // Each credential references the schema which is included as an attribute
   readonly schema: CredentialSchema;
   readonly subject: object | object[];
   readonly credentialStatus?: object;
   readonly topLevelFields: Map<string, unknown>;
-  readonly signature: BBSPlusSignatureG1;
+  readonly signature: Signature;
 
   constructor(
     version: string,
     schema: CredentialSchema,
     subject: object,
     topLevelFields: Map<string, unknown>,
-    sig: BBSPlusSignatureG1,
+    sig: Signature,
     credStatus?: object
   ) {
     super(version);
@@ -37,16 +39,7 @@ export class Credential extends Versioned {
     this.credentialStatus = credStatus;
   }
 
-  verify(publicKey: BBSPlusPublicKeyG2, signatureParams?: BBSPlusSignatureParamsG1): VerifyResult {
-    const cred = this.serializeForSigning();
-    return BBSPlusSignatureParamsG1.verifyMessageObject(
-      cred,
-      this.signature,
-      publicKey,
-      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
-      this.schema.encoder
-    );
-  }
+  abstract verify(publicKey: PublicKey, signatureParams: SignatureParams): VerifyResult;
 
   getTopLevelField(name: string): unknown {
     const v = this.topLevelFields.get(name);
@@ -104,7 +97,7 @@ export class Credential extends Versioned {
     }
 
     Credential.applyDefaultProofMetadataIfNeeded(j);
-    j['proof']['proofValue'] = b58.encode(this.signature.bytes);
+    j['proof']['proofValue'] = b58.encode((this.signature as any).bytes);
     return j;
   }
 
@@ -123,7 +116,10 @@ export class Credential extends Versioned {
     return j;
   }
 
-  static fromJSON(j: object, proofValue?: string): Credential {
+  protected static parseJSON(
+    j: object,
+    proofValue?: string
+  ): [string, CredentialSchema, object, Map<string, unknown>, Uint8Array, object] {
     // @ts-ignore
     const { cryptoVersion, credentialSchema, credentialSubject, credentialStatus, proof, ...custom } = j;
 
@@ -148,7 +144,7 @@ export class Credential extends Versioned {
       }
     }
 
-    const sig = new BBSPlusSignatureG1(b58.decode(proofValue as string));
+    const sig = b58.decode(proofValue as string);
     const topLevelFields = new Map<string, unknown>();
     Object.keys(custom).forEach((k) => {
       topLevelFields.set(k, custom[k]);
@@ -161,12 +157,116 @@ export class Credential extends Versioned {
       topLevelFields.set('proof', trimmedProof);
     }
 
-    return new Credential(
+    return [
       cryptoVersion,
       CredentialSchema.fromJSON(typeof credentialSchema === 'string' ? JSON.parse(credentialSchema) : credentialSchema),
       credentialSubject,
       topLevelFields,
       sig,
+      credentialStatus
+    ];
+  }
+}
+
+export class BBSCredential extends Credential<BBSPublicKey, BBSSignature, BBSSignatureParams> {
+  verify(publicKey: BBSPublicKey, signatureParams?: BBSSignatureParams): VerifyResult {
+    const cred = this.serializeForSigning();
+    return BBSSignatureParams.verifyMessageObject(
+      cred,
+      this.signature,
+      publicKey,
+      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      this.schema.encoder
+    );
+  }
+
+  toJSON(): object {
+    const j = {};
+    j['cryptoVersion'] = this._version;
+    j['credentialSchema'] = JSON.stringify(this.schema.toJSON());
+    j['credentialSubject'] = this.subject;
+    if (this.credentialStatus !== undefined) {
+      j['credentialStatus'] = this.credentialStatus;
+    }
+    for (const [k, v] of this.topLevelFields.entries()) {
+      j[k] = v;
+    }
+
+    Credential.applyDefaultProofMetadataIfNeeded(j);
+    j['proof']['proofValue'] = b58.encode(this.signature.bytes);
+    return j;
+  }
+
+  static fromJSON(j: object, proofValue?: string): BBSCredential {
+    const [cryptoVersion, credentialSchema, credentialSubject, topLevelFields, sig, credentialStatus] = this.parseJSON(
+      j,
+      proofValue
+    );
+
+    return new this(
+      cryptoVersion,
+      credentialSchema,
+      credentialSubject,
+      topLevelFields,
+      new BBSSignature(sig),
+      credentialStatus
+    );
+  }
+}
+
+export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1> {
+  verify(publicKey: BBSPlusPublicKeyG2, signatureParams?: BBSPlusSignatureParamsG1): VerifyResult {
+    const cred = this.serializeForSigning();
+    return BBSPlusSignatureParamsG1.verifyMessageObject(
+      cred,
+      this.signature,
+      publicKey,
+      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      this.schema.encoder
+    );
+  }
+
+  static fromJSON(j: object, proofValue?: string): BBSPlusCredential {
+    const [cryptoVersion, credentialSchema, credentialSubject, topLevelFields, sig, credentialStatus] = this.parseJSON(
+      j,
+      proofValue
+    );
+
+    return new this(
+      cryptoVersion,
+      credentialSchema,
+      credentialSubject,
+      topLevelFields,
+      new BBSPlusSignatureG1(sig),
+      credentialStatus
+    );
+  }
+}
+
+export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatureParams> {
+  verify(publicKey: PSPublicKey, signatureParams: PSSignatureParams): VerifyResult {
+    const cred = this.serializeForSigning();
+    return PSSignatureParams.verifyMessageObject(
+      cred,
+      this.signature,
+      publicKey,
+      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      this.schema.encoder
+    );
+  }
+
+  static fromJSON(j: object, proofValue?: string): PSCredential {
+    const [cryptoVersion, credentialSchema, credentialSubject, topLevelFields, sig, credentialStatus] = this.parseJSON(
+      j,
+      proofValue
+    );
+
+    return new this(
+      cryptoVersion,
+      credentialSchema,
+      credentialSubject,
+      topLevelFields,
+      new PSSignature(sig),
       credentialStatus
     );
   }

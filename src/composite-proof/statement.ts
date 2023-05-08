@@ -119,6 +119,11 @@ export class Statement {
     publicKey: PSPublicKey,
     revealedMessages: Map<number, Uint8Array>
   ): Uint8Array {
+    if (sigParams.supportedMessageCount() !== publicKey.supportedMessageCount()) {
+      throw new Error(
+        `Public key is incompatible with signature params: public key supports ${publicKey.supportedMessageCount()} messages while signature params support ${sigParams.supportedMessageCount()}`
+      );
+    }
     return generatePoKPSSignatureStatement(sigParams.value, publicKey.value, revealedMessages);
   }
 

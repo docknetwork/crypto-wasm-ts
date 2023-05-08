@@ -1,24 +1,26 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
-  CredentialBuilder,
-  Credential,
   CredentialSchema,
-  PresentationBuilder,
   SIGNATURE_PARAMS_LABEL_BYTES,
-  BBSPlusSignatureParamsG1,
-  BBSPlusKeypairG2,
-  BBSPlusSecretKey,
-  BBSPlusPublicKeyG2,
   ParsedR1CSFile,
   R1CSSnarkSetup,
   getR1CS
 } from '../../src';
+import {
+  SignatureParams,
+  KeyPair,
+  SecretKey,
+  PublicKey,
+  CredentialBuilder,
+  Credential,
+  PresentationBuilder,
+} from '../scheme'
 
 import { getExampleSchema } from './utils';
 import { checkResult, getWasmBytes, parseR1CSFile } from '../utils';
 
 describe('Presentation creation and verification with Circom predicates', () => {
-  let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
+  let sk: SecretKey, pk: PublicKey;
 
   let credential1: Credential;
   let credential2: Credential;
@@ -39,8 +41,8 @@ describe('Presentation creation and verification with Circom predicates', () => 
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = BBSPlusSignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
-    const keypair = BBSPlusKeypairG2.generate(params);
+    const params = SignatureParams.generate(100, SIGNATURE_PARAMS_LABEL_BYTES);
+    const keypair = KeyPair.generate(params);
     sk = keypair.sk;
     pk = keypair.pk;
 

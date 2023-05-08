@@ -1,7 +1,6 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
-  BBSPlusPublicKeyG2,
   CircomInputs,
   CompositeProofG1,
   EncodeFunc,
@@ -9,27 +8,22 @@ import {
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-
-  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
   ProofSpecG1,
   R1CSSnarkSetup,
-  BBSPlusSignatureParamsG1,
   SignedMessages,
-
   Statement,
   Statements,
-
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses,
-  BBSPlusSignatureG1
+  Witnesses
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
+import { PublicKey, KeyPair, SignatureParams, Signature, buildStatement, buildWitness, isPS } from '../../../scheme';
 
 // Test for a scenario where user wants to prove that certain attribute of his credential is the preimage of a public MiMC hash.
 describe('Proving that certain attribute of a credential is the preimage of a public MiMC hash', () => {
@@ -39,10 +33,10 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
   const pubKeyHash = '30898ada1347d8fc53ffe37656edd4f8c42d4b791730ce05a1f41b72bc30f039'; // This is a big-endian hex string
 
   const label = stringToBytes('Sig params label');
-  let sigPk: BBSPlusPublicKeyG2;
+  let pk: PublicKey;
 
-  let signed1: SignedMessages<BBSPlusSignatureG1>;
-  let signed2: SignedMessages<BBSPlusSignatureG1>;
+  let signed1: SignedMessages<Signature>;
+  let signed2: SignedMessages<Signature>;
 
   let r1cs: ParsedR1CSFile;
   let wasm: Uint8Array;
@@ -122,16 +116,16 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
 
   it('signers signs attributes', () => {
     // Message count shouldn't matter as `label` is known
-    let params = BBSPlusSignatureParamsG1.generate(1, label);
-    const keypair = BBSPlusKeypairG2.generate(params);
+    let params = SignatureParams.generate(100, label);
+    const keypair = KeyPair.generate(params);
     const sk = keypair.secretKey;
-    sigPk = keypair.publicKey;
+    pk = keypair.publicKey;
 
-    signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk, label, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder));
+    signed1 = SignatureParams.signMessageObject(attributes1, sk, label, encoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk, label, encoder));
 
-    signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk, label, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder));
+    signed2 = SignatureParams.signMessageObject(attributes2, sk, label, encoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk, label, encoder));
   });
 
   it('proof verifies when public key hash matches the expected hash', () => {
@@ -142,11 +136,12 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
     check(signed2, false);
   });
 
-  function check(signed: SignedMessages<BBSPlusSignatureG1>, doesCheckPass) {
+  function check(signed: SignedMessages<Signature>, doesCheckPass) {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(attributesStruct, label);
+    const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
+    const sigPk = isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk;
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames,
@@ -155,33 +150,35 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
     expect(revealedMsgsRaw).toEqual({ fname: 'John' });
 
     console.time('Proof generate');
-    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
-    const statementsProver = new Statements();
-    const sIdx1 = statementsProver.add(statement1);
+    const statementsProver = new Statements(isPS() ? statement1 : []);
+    let sIdx1;
+    if (!isPS()) sIdx1 = statementsProver.add(statement1);
     const sIdx2 = statementsProver.add(statement2);
 
-    const witnessEq1 = new WitnessEqualityMetaStatement();
-    witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['verySensitive.publicKey'], attributesStruct)[0]);
-    witnessEq1.addWitnessRef(sIdx2, 0);
-
     const metaStmtsProver = new MetaStatements();
-    metaStmtsProver.addWitnessEquality(witnessEq1);
+    if (!isPS()) {
+      const witnessEq1 = new WitnessEqualityMetaStatement();
+      witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['verySensitive.publicKey'], attributesStruct)[0]);
+      witnessEq1.addWitnessRef(sIdx2, 0);
+
+      metaStmtsProver.addWitnessEquality(witnessEq1);
+    }
 
     // The prover should independently construct this `ProofSpec`
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsPlusSignature(signed.signature, unrevealedMsgs, false);
+    const witness1 = buildWitness(signed.signature, unrevealedMsgs, false);
 
     const inputs = new CircomInputs();
     inputs.setPrivateInput('in', signed.encodedMessages['verySensitive.publicKey']);
     inputs.setPublicInput('k', generateFieldElementFromNumber(0));
     const witness2 = Witness.r1csCircomWitness(inputs);
 
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
+    const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
     const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
@@ -192,20 +189,28 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement3 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgsFromVerifier, false);
+    const statement3 = buildStatement(
+      sigParams,
+      isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()): pk,
+      revealedMsgsFromVerifier,
+      false
+    );
     const pub = [encodedPubKeyHash];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
 
-    const statementsVerifier = new Statements();
-    const sIdx3 = statementsVerifier.add(statement3);
+    const statementsVerifier = new Statements(isPS() ? statement3: []);
+    let sIdx3;
+    if (!isPS()) sIdx3 = statementsVerifier.add(statement3);
     const sIdx4 = statementsVerifier.add(statement4);
 
-    const witnessEq2 = new WitnessEqualityMetaStatement();
-    witnessEq2.addWitnessRef(sIdx3, getIndicesForMsgNames(['verySensitive.publicKey'], attributesStruct)[0]);
-    witnessEq2.addWitnessRef(sIdx4, 0);
-
     const metaStmtsVerifier = new MetaStatements();
-    metaStmtsVerifier.addWitnessEquality(witnessEq2);
+    if (!isPS()) {
+      const witnessEq2 = new WitnessEqualityMetaStatement();
+      witnessEq2.addWitnessRef(sIdx3, getIndicesForMsgNames(['verySensitive.publicKey'], attributesStruct)[0]);
+      witnessEq2.addWitnessRef(sIdx4, 0);
+
+      metaStmtsVerifier.addWitnessEquality(witnessEq2);
+    }
 
     const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);

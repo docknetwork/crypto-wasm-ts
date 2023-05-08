@@ -19,7 +19,7 @@ function getMessages(count: number): Uint8Array[] {
   return messages;
 }
 
-describe('BBS+ signature sunny day scenario', () => {
+describe('signature sunny day scenario', () => {
   it('runs', async () => {
     // Load the WASM module
     await initializeWasm();

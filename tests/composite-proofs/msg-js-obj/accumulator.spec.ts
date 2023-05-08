@@ -243,9 +243,7 @@ describe('Accumulator', () => {
     const witness3 = Witness.accumulatorMembership(signed1.encodedMessages['user-id'], accumWitness1);
     const witness4 = Witness.accumulatorMembership(signed2.encodedMessages['sensitive.user-id'], accumWitness2);
 
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
-    witnesses.add(witness2);
+    const witnesses = new Witnesses([].concat(witness1, witness2));
     witnesses.add(witness3);
     witnesses.add(witness4);
 

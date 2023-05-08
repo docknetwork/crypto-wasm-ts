@@ -180,8 +180,8 @@ describe('Verifiable encryption of signed messages', () => {
     const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, snarkProvingKey, chunkBitSize);
 
-    const proverStatements = new Statements();
-    proverStatements.add(statement1);
+    const proverStatements = new Statements(statement1);
+    //proverStatements.add(statement1);
     proverStatements.add(statement2);
 
     const witnessEq = new WitnessEqualityMetaStatement();
@@ -192,16 +192,15 @@ describe('Verifiable encryption of signed messages', () => {
 
     const witness1 = buildWitness(sig, unrevealedMsgs, false);
     const witness2 = Witness.saver(messages[encMsgIdx]);
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
+    const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
     const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 
     const statement3 = Statement.saverVerifier(saverEncGens, commGens, saverEk, snarkVerifyingKey, chunkBitSize);
-    const verifierStatements = new Statements();
-    verifierStatements.add(statement1);
+    const verifierStatements = new Statements(statement1);
+    // verifierStatements.add(statement1);
     verifierStatements.add(statement3);
 
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
@@ -239,9 +238,7 @@ describe('Verifiable encryption of signed messages', () => {
     const statement3 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
     const statement4 = Statement.saverProverFromSetupParamRefs(0, 1, 2, 3, chunkBitSize);
 
-    const proverStatements = new Statements();
-    proverStatements.add(statement1);
-    proverStatements.add(statement2);
+    const proverStatements = new Statements([].concat(statement1, statement2));
     proverStatements.add(statement3);
     proverStatements.add(statement4);
 

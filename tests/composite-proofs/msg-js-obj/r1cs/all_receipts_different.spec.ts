@@ -155,7 +155,7 @@ describe('Proving the possession of 10 unique receipts, with each recent enough 
     }
 
     const proverSetupParams: SetupParam[] = [];
-    // Setup params for the BBS+ signaure
+    // Setup params for the signature
     proverSetupParams.push(buildSignatureParamsSetupParam(sigParams));
     proverSetupParams.push(buildPublicKeySetupParam(sigPk));
     // Setup params for the uniqueness check SNARK

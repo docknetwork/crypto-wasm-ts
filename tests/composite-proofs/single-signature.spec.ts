@@ -16,7 +16,7 @@ import {
 } from '../scheme'
 import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 
-describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
+describe('Proving knowledge of 1 signature over the attributes', () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();
@@ -64,8 +64,7 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
     }
 
     const statement1 = buildStatement(params, pk, revealedMsgs, false);
-    const statements = new Statements();
-    statements.add(statement1);
+    const statements = new Statements(statement1);
 
     // Optional context of the proof
     const context = stringToBytes('some context');
@@ -75,8 +74,7 @@ describe('Proving knowledge of 1 BBS+ signature over the attributes', () => {
     expect(proofSpec.isValid()).toEqual(true);
 
     const witness1 = buildWitness(sig, unrevealedMsgs, false);
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
+    const witnesses = new Witnesses(witness1);
 
     const nonce = stringToBytes('some unique nonce');
 
