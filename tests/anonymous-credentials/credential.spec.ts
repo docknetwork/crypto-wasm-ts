@@ -1,7 +1,5 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
-  Credential,
-  CredentialBuilder,
   CredentialSchema,
   MEM_CHECK_STR,
   ID_STR,
@@ -13,24 +11,24 @@ import {
   SUBJECT_STR,
   TYPE_STR
 } from '../../src';
-import { BBSPlusPublicKeyG2, BBSPlusSecretKey, BBSPlusKeypairG2, BBSPlusSignatureParamsG1 } from '../../src';
 import { checkResult } from '../utils';
 import { checkSchemaFromJson, getExampleBuilder, getExampleSchema } from './utils';
 import * as jsonld from 'jsonld';
 import { validate } from 'jsonschema';
+import { SecretKey, KeyPair, PublicKey, SignatureParams, Credential, CredentialBuilder } from '../scheme';
 
 describe('Credential signing and verification', () => {
-  let sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2;
+  let sk: SecretKey, pk: PublicKey;
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = BBSPlusSignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
-    const keypair = BBSPlusKeypairG2.generate(params);
+    const params = SignatureParams.generate(100, SIGNATURE_PARAMS_LABEL_BYTES);
+    const keypair = KeyPair.generate(params);
     sk = keypair.sk;
     pk = keypair.pk;
   });
 
-  function checkJsonConvForCred(cred: Credential, pk: BBSPlusPublicKeyG2): Credential {
+  function checkJsonConvForCred(cred: Credential, pk: PublicKey): Credential {
     const credJson = cred.toJSON();
     // Check that the credential JSON contains the schema in JSON-schema format
     checkSchemaFromJson(credJson[SCHEMA_STR], cred.schema);
@@ -894,7 +892,7 @@ describe('Credential signing and verification', () => {
       }
     });
 
-    function check(builder: CredentialBuilder, sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2) {
+    function check(builder: CredentialBuilder, sk: SecretKey, pk: PublicKey) {
       expect(() => builder.sign(sk)).toThrow();
       expect(() => builder.sign(sk, undefined, { requireSameFieldsAsSchema: true })).toThrow();
 

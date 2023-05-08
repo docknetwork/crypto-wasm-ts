@@ -30,7 +30,7 @@ import {
 } from './data-and-encoder';
 import { checkMapsEqual, signedToHex } from './index';
 
-describe('Signing and proof of knowledge of BBS+ signature', () => {
+describe('Signing and proof of knowledge of signature', () => {
   // NOTE: The following tests contain a lot of duplicated code but that is intentional as this code is for illustration purpose.
 
   beforeAll(async () => {

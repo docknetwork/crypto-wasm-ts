@@ -163,8 +163,7 @@ describe('Register using pseudonym not bound to any attributes', () => {
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.pseudonym(secretKey);
-      const witnesses = new Witnesses();
-      witnesses.add(witness1);
+      const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);
@@ -176,16 +175,14 @@ describe('Register using pseudonym not bound to any attributes', () => {
     {
       const statement1 = buildStatement(sigParams, sigPk, new Map(), false);
       const statement2 = Statement.pseudonym(pseudonym2, base2);
-      const statements = new Statements();
-      statements.add(statement1);
+      const statements = new Statements(statement1);
       statements.add(statement2);
 
       const proofSpec = new ProofSpecG1(statements, new MetaStatements());
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.pseudonym(secretKey);
-      const witnesses = new Witnesses();
-      witnesses.add(witness1);
+      const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);
@@ -327,8 +324,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.attributeBoundPseudonym(attributesPseudonym1, secretKey);
-      const witnesses = new Witnesses();
-      witnesses.add(witness1);
+      const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);
@@ -366,8 +362,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.attributeBoundPseudonym(attributesPseudonym2, secretKey);
-      const witnesses = new Witnesses();
-      witnesses.add(witness1);
+      const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);
@@ -405,8 +400,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.attributeBoundPseudonym(attributesPseudonym3);
-      const witnesses = new Witnesses();
-      witnesses.add(witness1);
+      const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);

@@ -125,8 +125,7 @@ describe('Bound check of signed messages', () => {
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
     const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.boundCheckProver(min1, max1, snarkProvingKey);
-    const proverStatements = new Statements();
-    proverStatements.add(statement1);
+    const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
 
     const witnessEq = new WitnessEqualityMetaStatement();
@@ -137,8 +136,7 @@ describe('Bound check of signed messages', () => {
 
     const witness1 = buildWitness(sig, unrevealedMsgs, false);
     const witness2 = Witness.boundCheckLegoGroth16(messages[msgIdx]);
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
+    const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
     const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
@@ -148,8 +146,7 @@ describe('Bound check of signed messages', () => {
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
     const statement3 = Statement.boundCheckVerifier(min1, max1, snarkVerifyingKey);
-    const verifierStatements = new Statements();
-    verifierStatements.add(statement1);
+    const verifierStatements = new Statements(statement1);
     verifierStatements.add(statement3);
 
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
@@ -230,9 +227,7 @@ describe('Bound check of signed messages', () => {
     const statement9 = Statement.boundCheckVerifierFromSetupParamRefs(min3, max3, 0);
     const statement10 = Statement.boundCheckVerifierFromSetupParamRefs(min4, max4, 0);
 
-    const verifierStatements = new Statements();
-    verifierStatements.add(statement1);
-    verifierStatements.add(statement2);
+    const verifierStatements = new Statements([].concat(statement1, statement2));
     verifierStatements.add(statement7);
     verifierStatements.add(statement8);
     verifierStatements.add(statement9);
@@ -277,8 +272,7 @@ describe('Bound check of signed messages', () => {
     // For proving expiration date was between `now` and `someDistantFuture`, i.e. its not expired as of now.
     const statement4 = Statement.boundCheckProverFromSetupParamRefs(now, someDistantFuture, 0);
 
-    const proverStatements = new Statements();
-    proverStatements.add(statement1);
+    const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
     proverStatements.add(statement3);
     proverStatements.add(statement4);
@@ -451,8 +445,7 @@ describe('Bound check of signed messages', () => {
     const statement5 = Statement.boundCheckProverFromSetupParamRefs(transMin3, transMax3, 0);
     const statement6 = Statement.boundCheckProverFromSetupParamRefs(transMin4, transMax4, 0);
 
-    const proverStatements = new Statements();
-    proverStatements.add(statement1);
+    const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
     proverStatements.add(statement3);
     proverStatements.add(statement4);
@@ -488,8 +481,7 @@ describe('Bound check of signed messages', () => {
     const statement10 = Statement.boundCheckVerifierFromSetupParamRefs(transMin3, transMax3, 0);
     const statement11 = Statement.boundCheckVerifierFromSetupParamRefs(transMin4, transMax4, 0);
 
-    const verifierStatements = new Statements();
-    verifierStatements.add(statement1);
+    const verifierStatements = new Statements(statement1);
     verifierStatements.add(statement7);
     verifierStatements.add(statement8);
     verifierStatements.add(statement9);

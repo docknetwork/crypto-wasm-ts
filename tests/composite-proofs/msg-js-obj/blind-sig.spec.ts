@@ -7,8 +7,6 @@ import {
   ProofSpecG1,
   Statements,
   Witnesses,
-  Witness,
-  getBBSPlusStatementForBlindSigRequest
 } from '../../../src';
 import {
   attributes1,

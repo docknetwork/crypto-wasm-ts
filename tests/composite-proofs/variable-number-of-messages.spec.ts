@@ -16,7 +16,7 @@ import {
 } from '../scheme'
 import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 
-describe('Proving knowledge of 1 BBS+ signature where some of the attributes are null, i.e.not applicable', () => {
+describe('Proving knowledge of 1 signature where some of the attributes are null, i.e.not applicable', () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();
@@ -78,16 +78,14 @@ describe('Proving knowledge of 1 BBS+ signature where some of the attributes are
     }
 
     const statement1 = buildStatement(params, pk, revealedMsgs, true);
-    const statements = new Statements();
-    statements.add(statement1);
+    const statements = new Statements(statement1);
 
     // Both the prover (user) and verifier should independently construct this `ProofSpec` but only for testing, i am reusing it.
     const proofSpec = new ProofSpecG1(statements, new MetaStatements());
     expect(proofSpec.isValid()).toEqual(true);
 
     const witness1 = buildWitness(sig, unrevealedMsgs, true);
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
+    const witnesses = new Witnesses(witness1);
 
     const proof = CompositeProofG1.generate(proofSpec, witnesses);
 

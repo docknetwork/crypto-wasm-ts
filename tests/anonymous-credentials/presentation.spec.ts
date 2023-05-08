@@ -2,10 +2,7 @@ import {
   Accumulator,
   AccumulatorPublicKey,
   AccumulatorSecretKey,
-  BBSPlusPublicKeyG2,
-  BBSPlusSecretKey,
   IAccumulatorState,
-  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MembershipWitness,
@@ -18,17 +15,13 @@ import {
   SaverProvingKeyUncompressed,
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
-  BBSPlusSignatureParamsG1
 } from '../../src';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
-  CredentialBuilder,
-  Credential,
   CredentialSchema,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
   MEM_CHECK_STR,
-  PresentationBuilder,
   REV_ID_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
@@ -46,7 +39,16 @@ import {
 } from '../utils';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 import { checkSchemaFromJson, getExampleBuilder, getExampleSchema } from './utils';
-import { Presentation } from '../../src/anonymous-credentials/presentation';
+import {
+  PublicKey,
+  SecretKey,
+  KeyPair,
+  SignatureParams,
+  CredentialBuilder,
+  Presentation,
+  PresentationBuilder,
+  Credential,
+} from '../scheme'
 
 // Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
 async function prefillAccumulator(
@@ -74,10 +76,10 @@ async function prefillAccumulator(
 const loadSnarkSetupFromFiles = true;
 
 describe('Presentation creation and verification', () => {
-  let sk1: BBSPlusSecretKey, pk1: BBSPlusPublicKeyG2;
-  let sk2: BBSPlusSecretKey, pk2: BBSPlusPublicKeyG2;
-  let sk3: BBSPlusSecretKey, pk3: BBSPlusPublicKeyG2;
-  let sk4: BBSPlusSecretKey, pk4: BBSPlusPublicKeyG2;
+  let sk1: SecretKey, pk1: PublicKey;
+  let sk2: SecretKey, pk2: PublicKey;
+  let sk3: SecretKey, pk3: PublicKey;
+  let sk4: SecretKey, pk4: PublicKey;
 
   let credential1: Credential;
   let credential2: Credential;
@@ -140,11 +142,11 @@ describe('Presentation creation and verification', () => {
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = BBSPlusSignatureParamsG1.generate(1, SIGNATURE_PARAMS_LABEL_BYTES);
-    const keypair1 = BBSPlusKeypairG2.generate(params);
-    const keypair2 = BBSPlusKeypairG2.generate(params);
-    const keypair3 = BBSPlusKeypairG2.generate(params);
-    const keypair4 = BBSPlusKeypairG2.generate(params);
+    const params = SignatureParams.generate(100, SIGNATURE_PARAMS_LABEL_BYTES);
+    const keypair1 = KeyPair.generate(params);
+    const keypair2 = KeyPair.generate(params);
+    const keypair3 = KeyPair.generate(params);
+    const keypair4 = KeyPair.generate(params);
     sk1 = keypair1.sk;
     pk1 = keypair1.pk;
     sk2 = keypair2.sk;
@@ -509,7 +511,7 @@ describe('Presentation creation and verification', () => {
       check(builder, sk1, pk1);
     }
 
-    function check(credBuilder: CredentialBuilder, sk: BBSPlusSecretKey, pk: BBSPlusPublicKeyG2) {
+    function check(credBuilder: CredentialBuilder, sk: SecretKey, pk: PublicKey) {
       const credential = credBuilder.sign(sk, undefined, { requireSameFieldsAsSchema: false });
       checkResult(credential.verify(pk1));
       const builder7 = new PresentationBuilder();

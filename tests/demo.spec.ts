@@ -117,7 +117,7 @@ function log(msg: any) {
   }
 }
 
-describe('A demo showing combined use of BBS+ signatures and accumulators using the composite proof system', () => {
+describe('A demo showing combined use of signatures and accumulators using the composite proof system', () => {
   it('runs', async () => {
     function setupAttributes() {
       // 2 of the messages are reserved for a secret (eg. link secret known only to holder) and a user-id that is added to accumulator.
@@ -530,21 +530,21 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       statements.prepend(statement2);
       statements.prepend(statement1);
 
-      const metaStatements = new MetaStatements();
-      // TODO!
-      /*const witnessEq1 = new WitnessEqualityMetaStatement();
-      witnessEq1.addWitnessRef(0, 0);
-      witnessEq1.addWitnessRef(2, +(bases.length !== indicesToCommit.length));
+      let metaStatements = new MetaStatements();
+      if (!isPS()) {
+        const witnessEq1 = new WitnessEqualityMetaStatement();
+        witnessEq1.addWitnessRef(3, 0);
+        witnessEq1.addWitnessRef(0, +(bases.length !== indicesToCommit.length));
 
-      const witnessEq2 = new WitnessEqualityMetaStatement();
-      witnessEq2.addWitnessRef(0, 1);
-      witnessEq2.addWitnessRef(1, 0);
+        const witnessEq2 = new WitnessEqualityMetaStatement();
+        witnessEq2.addWitnessRef(3, 1);
+        witnessEq2.addWitnessRef(1, 0);
 
-      const ms1 = MetaStatement.witnessEquality(witnessEq1);
-      const ms2 = MetaStatement.witnessEquality(witnessEq2);
-      const metaStatements = new MetaStatements();
-      metaStatements.add(ms1);
-      metaStatements.add(ms2);*/
+        const ms1 = MetaStatement.witnessEquality(witnessEq1);
+        const ms2 = MetaStatement.witnessEquality(witnessEq2);
+        metaStatements.add(ms1);
+        metaStatements.add(ms2);
+      }
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
@@ -615,24 +615,26 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       statements.prepend(statement2);
       statements.prepend(statement1);
 
-      // TODO!
-      /*const witnessEq1 = new WitnessEqualityMetaStatement();
-      witnessEq1.addWitnessRef(0, 0);
-      witnessEq1.addWitnessRef(2, 0);
-      witnessEq1.addWitnessRef(4, 1);
+      let metaStatements = new MetaStatements();
+      /*if (!isPS()) {
+        const witnessEq1 = new WitnessEqualityMetaStatement();
+        witnessEq1.addWitnessRef(4, 0);
+        witnessEq1.addWitnessRef(2, 0);
+        witnessEq1.addWitnessRef(0, 1);
 
-      const witnessEq2 = new WitnessEqualityMetaStatement();
-      witnessEq2.addWitnessRef(0, 1);
-      witnessEq2.addWitnessRef(1, 0);
+        const witnessEq2 = new WitnessEqualityMetaStatement();
+        witnessEq2.addWitnessRef(4, +(blinding1 != null));
+        witnessEq2.addWitnessRef(3, 0);
 
-      const witnessEq3 = new WitnessEqualityMetaStatement();
-      witnessEq3.addWitnessRef(2, 1);
-      witnessEq3.addWitnessRef(3, 0);*/
+        const witnessEq3 = new WitnessEqualityMetaStatement();
+        witnessEq3.addWitnessRef(2, 1);
+        witnessEq3.addWitnessRef(1, 0);
 
-      const metaStatements = new MetaStatements();
-      // metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
-      // metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
-      // metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
+        metaStatements = new MetaStatements();
+        metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
+        metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
+        metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
+      }*/
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);

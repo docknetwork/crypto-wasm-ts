@@ -1,7 +1,6 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import {
-  BBSPlusPublicKeyG2,
   CircomInputs,
   CompositeProofG1,
   createWitnessEqualityMetaStatement,
@@ -11,8 +10,6 @@ import {
   flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-
-  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
@@ -20,19 +17,26 @@ import {
   QuasiProofSpecG1,
   R1CSSnarkSetup,
   SetupParam,
-  BBSPlusSignatureParamsG1,
   SignedMessages,
-
   Statement,
   Statements,
-
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses,
-  BBSPlusSignatureG1
+  Witnesses
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
+import {
+  SignatureParams,
+  KeyPair,
+  Signature,
+  PublicKey,
+  buildSignatureParamsSetupParam,
+  buildPublicKeySetupParam,
+  buildStatementFromSetupParamsRef,
+  buildWitness,
+  isPS
+} from '../../../scheme';
 
 // Test for a scenario where a user have 20 assets and liabilities, in different credentials (signed documents). The user
 // proves that the sum of his assets is greater than sum of liabilities by 10000 without revealing actual values of either.
@@ -40,7 +44,7 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');
-  let sigPk: BBSPlusPublicKeyG2;
+  let sigPk: PublicKey;
 
   let r1cs: ParsedR1CSFile;
   let wasm: Uint8Array;
@@ -91,9 +95,9 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
   const liabilityAttributes: object[] = [];
 
   // Array of assets credentials (encoded and signed)
-  const signedAssets: SignedMessages<BBSPlusSignatureG1>[] = [];
+  const signedAssets: SignedMessages<Signature>[] = [];
   // Array of liabilities credentials (encoded and signed)
-  const signedLiabilities: SignedMessages<BBSPlusSignatureG1>[] = [];
+  const signedLiabilities: SignedMessages<Signature>[] = [];
 
   // Minimum expected different between assets and liabilities
   const minDiff = 10000;
@@ -131,12 +135,12 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
   });
 
   it('signers signs attributes', () => {
-    const numAssetAttrs = Object.keys(flattenObjectToKeyValuesList(assetAttributesStruct)[0]).length;
-    const numLiablAttrs = Object.keys(flattenObjectToKeyValuesList(liabilitiesAttributesStruct)[0]).length;
+    const numAssetAttrs = flattenObjectToKeyValuesList(assetAttributesStruct)[0].length;
+    const numLiablAttrs = flattenObjectToKeyValuesList(liabilitiesAttributesStruct)[0].length;
     // Issuing multiple credentials with the same number of attributes so create sig. params only once for faster execution
-    let assetSigParams = BBSPlusSignatureParamsG1.generate(numAssetAttrs, label);
-    let liablSigParams = BBSPlusSignatureParamsG1.generate(numLiablAttrs, label);
-    const keypair = BBSPlusKeypairG2.generate(assetSigParams);
+    let assetSigParams = SignatureParams.generate(numAssetAttrs, label);
+    let liablSigParams = SignatureParams.generate(numLiablAttrs, label);
+    const keypair = KeyPair.generate(assetSigParams);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
 
@@ -157,8 +161,16 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
           id5: (i + 5) * 10000
         }
       });
-      signedAssets.push(BBSPlusSignatureParamsG1.signMessageObject(assetAttributes[i], sk, assetSigParams, encoder));
-      checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(assetAttributes[i], signedAssets[i].signature, sigPk, assetSigParams, encoder));
+      signedAssets.push(SignatureParams.signMessageObject(assetAttributes[i], sk, assetSigParams, encoder));
+      checkResult(
+        SignatureParams.verifyMessageObject(
+          assetAttributes[i],
+          signedAssets[i].signature,
+          sigPk,
+          assetSigParams,
+          encoder
+        )
+      );
     }
 
     for (let i = 0; i < numLiabilityCredentials; i++) {
@@ -176,9 +188,15 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
           id4: (i + 4) * 100
         }
       });
-      signedLiabilities.push(BBSPlusSignatureParamsG1.signMessageObject(liabilityAttributes[i], sk, liablSigParams, encoder));
+      signedLiabilities.push(SignatureParams.signMessageObject(liabilityAttributes[i], sk, liablSigParams, encoder));
       checkResult(
-        BBSPlusSignatureParamsG1.verifyMessageObject(liabilityAttributes[i], signedLiabilities[i].signature, sigPk, liablSigParams, encoder)
+        SignatureParams.verifyMessageObject(
+          liabilityAttributes[i],
+          signedLiabilities[i].signature,
+          sigPk,
+          liablSigParams,
+          encoder
+        )
       );
     }
   });
@@ -209,8 +227,8 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParamsAssets = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(assetAttributesStruct, label);
-    const sigParamsLiabilities = BBSPlusSignatureParamsG1.getSigParamsForMsgStructure(liabilitiesAttributesStruct, label);
+    const sigParamsAssets = SignatureParams.getSigParamsForMsgStructure(assetAttributesStruct, label);
+    const sigParamsLiabilities = SignatureParams.getSigParamsForMsgStructure(liabilitiesAttributesStruct, label);
 
     console.time('Proof generate');
     // Prepare revealed and unrevealed attributes
@@ -236,22 +254,27 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
     // Better to create setup params array once as knowledge of a lot of signatures will be proved
     const proverSetupParams: SetupParam[] = [];
-    proverSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParamsAssets));
-    proverSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParamsLiabilities));
-    proverSetupParams.push(SetupParam.bbsPlusSignaturePublicKeyG2(sigPk));
+    proverSetupParams.push(buildSignatureParamsSetupParam(sigParamsAssets));
+    proverSetupParams.push(buildSignatureParamsSetupParam(sigParamsLiabilities));
+    proverSetupParams.push(
+      buildPublicKeySetupParam(isPS() ? sigPk.adaptForLess(sigParamsAssets.supportedMessageCount()) : sigPk)
+    );
     proverSetupParams.push(SetupParam.r1cs(r1cs));
     proverSetupParams.push(SetupParam.bytes(wasm));
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(provingKey));
+    proverSetupParams.push(
+      buildPublicKeySetupParam(isPS() ? sigPk.adaptForLess(sigParamsLiabilities.supportedMessageCount()) : sigPk)
+    );
 
     const statementsProver = new Statements();
 
     // Statements to prove possesion of credentials
     const sIdxs: number[] = [];
     for (let i = 0; i < numAssetCredentials; i++) {
-      sIdxs.push(statementsProver.add(Statement.bbsPlusSignatureFromSetupParamRefs(0, 2, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(buildStatementFromSetupParamsRef(0, 2, revealedMsgs[i], false)));
     }
     for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-      sIdxs.push(statementsProver.add(Statement.bbsPlusSignatureFromSetupParamRefs(1, 2, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(buildStatementFromSetupParamsRef(1, 6, revealedMsgs[i], false)));
     }
 
     // For proving the relation between assets and liabilities.
@@ -259,57 +282,59 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
     const metaStmtsProver = new MetaStatements();
 
-    // Next 2 are for enforcing equality of last name and SSN in all credentials
-    const witnessEq1 = createWitnessEqualityMetaStatement(
-      (() => {
-        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-        for (let i = 0; i < numAssetCredentials; i++) {
-          m.set(sIdxs[i], [['lname'], assetAttributesStruct]);
-        }
-        for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-          m.set(sIdxs[i], [['lname'], liabilitiesAttributesStruct]);
-        }
-        return m;
-      })()
-    );
-    metaStmtsProver.addWitnessEquality(witnessEq1);
-
-    const witnessEq2 = createWitnessEqualityMetaStatement(
-      (() => {
-        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-        for (let i = 0; i < numAssetCredentials; i++) {
-          m.set(sIdxs[i], [['sensitive.SSN'], assetAttributesStruct]);
-        }
-        for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-          m.set(sIdxs[i], [['sensitive.SSN'], liabilitiesAttributesStruct]);
-        }
-        return m;
-      })()
-    );
-    metaStmtsProver.addWitnessEquality(witnessEq2);
-
-    // Enforce equality of credential attributes (asset/liability amounts) with values in the Circom program
     let counter = 0;
-    for (let i = 0; i < numAssetCredentials; i++) {
-      for (let j = 1; j <= 5; j++) {
-        const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(sIdxs[i], getIndicesForMsgNames(['assets.id' + j], assetAttributesStruct)[0]);
-        witnessEq.addWitnessRef(sIdxs[numAssetCredentials + numLiabilityCredentials], counter);
-        counter++;
-        metaStmtsProver.addWitnessEquality(witnessEq);
-      }
-    }
+    if (!isPS()) {
+      // Next 2 are for enforcing equality of last name and SSN in all credentials
+      const witnessEq1 = createWitnessEqualityMetaStatement(
+        (() => {
+          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+          for (let i = 0; i < numAssetCredentials; i++) {
+            m.set(sIdxs[i], [['lname'], assetAttributesStruct]);
+          }
+          for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
+            m.set(sIdxs[i], [['lname'], liabilitiesAttributesStruct]);
+          }
+          return m;
+        })()
+      );
+      metaStmtsProver.addWitnessEquality(witnessEq1);
 
-    for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-      for (let j = 1; j <= 4; j++) {
-        const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(
-          sIdxs[i],
-          getIndicesForMsgNames(['liabilities.id' + j], liabilitiesAttributesStruct)[0]
-        );
-        witnessEq.addWitnessRef(sIdxs[numAssetCredentials + numLiabilityCredentials], counter);
-        counter++;
-        metaStmtsProver.addWitnessEquality(witnessEq);
+      const witnessEq2 = createWitnessEqualityMetaStatement(
+        (() => {
+          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+          for (let i = 0; i < numAssetCredentials; i++) {
+            m.set(sIdxs[i], [['sensitive.SSN'], assetAttributesStruct]);
+          }
+          for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
+            m.set(sIdxs[i], [['sensitive.SSN'], liabilitiesAttributesStruct]);
+          }
+          return m;
+        })()
+      );
+      metaStmtsProver.addWitnessEquality(witnessEq2);
+
+      // Enforce equality of credential attributes (asset/liability amounts) with values in the Circom program
+      for (let i = 0; i < numAssetCredentials; i++) {
+        for (let j = 1; j <= 5; j++) {
+          const witnessEq = new WitnessEqualityMetaStatement();
+          witnessEq.addWitnessRef(sIdxs[i], getIndicesForMsgNames(['assets.id' + j], assetAttributesStruct)[0]);
+          witnessEq.addWitnessRef(sIdxs[numAssetCredentials + numLiabilityCredentials], counter);
+          counter++;
+          metaStmtsProver.addWitnessEquality(witnessEq);
+        }
+      }
+
+      for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
+        for (let j = 1; j <= 4; j++) {
+          const witnessEq = new WitnessEqualityMetaStatement();
+          witnessEq.addWitnessRef(
+            sIdxs[i],
+            getIndicesForMsgNames(['liabilities.id' + j], liabilitiesAttributesStruct)[0]
+          );
+          witnessEq.addWitnessRef(sIdxs[numAssetCredentials + numLiabilityCredentials], counter);
+          counter++;
+          metaStmtsProver.addWitnessEquality(witnessEq);
+        }
       }
     }
 
@@ -317,12 +342,14 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
     const witnesses = new Witnesses();
     for (let i = 0; i < numAssetCredentials; i++) {
-      witnesses.add(Witness.bbsPlusSignature(signedAssets[i].signature, unrevealedMsgs[i], false));
+      for (const witness of [].concat(buildWitness(signedAssets[i].signature, unrevealedMsgs[i], false)))
+        witnesses.add(witness);
     }
     for (let i = 0; i < numLiabilityCredentials; i++) {
-      witnesses.add(
-        Witness.bbsPlusSignature(signedLiabilities[i].signature, unrevealedMsgs[numAssetCredentials + i], false)
-      );
+      for (const witness of [].concat(
+        buildWitness(signedLiabilities[i].signature, unrevealedMsgs[numAssetCredentials + i], false)
+      ))
+        witnesses.add(witness);
     }
 
     const inputs = new CircomInputs();
@@ -367,82 +394,89 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
     }
 
     const verifierSetupParams: SetupParam[] = [];
-    verifierSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParamsAssets));
-    verifierSetupParams.push(SetupParam.bbsPlusSignatureParamsG1(sigParamsLiabilities));
-    verifierSetupParams.push(SetupParam.bbsPlusSignaturePublicKeyG2(sigPk));
+    verifierSetupParams.push(buildSignatureParamsSetupParam(sigParamsAssets));
+    verifierSetupParams.push(buildSignatureParamsSetupParam(sigParamsLiabilities));
+    verifierSetupParams.push(
+      buildPublicKeySetupParam(isPS() ? sigPk.adaptForLess(sigParamsAssets.supportedMessageCount()) : sigPk)
+    );
 
     // generateFieldElementFromNumber(1) as the condition "sum of assets - sum of liabilities > minDiff" should be true,
     // if "sum of assets - sum of liabilities <= minDiff" was being checked, then use generateFieldElementFromNumber(0)
     verifierSetupParams.push(SetupParam.fieldElementVec([generateFieldElementFromNumber(1), minDiffEncoded]));
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(verifyingKey));
+    verifierSetupParams.push(
+      buildPublicKeySetupParam(isPS() ? sigPk.adaptForLess(sigParamsLiabilities.supportedMessageCount()) : sigPk)
+    );
 
     const statementsVerifier = new Statements();
 
     const sIdxVs: number[] = [];
     for (let i = 0; i < numAssetCredentials; i++) {
-      sIdxVs.push(
-        statementsVerifier.add(Statement.bbsPlusSignatureFromSetupParamRefs(0, 2, revealedMsgsFromVerifier[i], false))
-      );
+      for (const stmt of [].concat(buildStatementFromSetupParamsRef(0, 2, revealedMsgsFromVerifier[i], false)))
+        sIdxVs.push(statementsVerifier.add(stmt));
     }
     for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-      sIdxVs.push(
-        statementsVerifier.add(Statement.bbsPlusSignatureFromSetupParamRefs(1, 2, revealedMsgsFromVerifier[i], false))
-      );
+      for (const stmt of [].concat(buildStatementFromSetupParamsRef(1, 5, revealedMsgsFromVerifier[i], false)))
+        sIdxVs.push(statementsVerifier.add(stmt));
     }
 
     sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(3, 4)));
 
     const metaStmtsVerifier = new MetaStatements();
+    if (!isPS()) {
+      const witnessEq3 = createWitnessEqualityMetaStatement(
+        (() => {
+          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+          for (let i = 0; i < numAssetCredentials; i++) {
+            m.set(sIdxVs[i], [['lname'], assetAttributesStruct]);
+          }
+          for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
+            m.set(sIdxVs[i], [['lname'], liabilitiesAttributesStruct]);
+          }
+          return m;
+        })()
+      );
+      metaStmtsVerifier.addWitnessEquality(witnessEq3);
 
-    const witnessEq3 = createWitnessEqualityMetaStatement(
-      (() => {
-        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-        for (let i = 0; i < numAssetCredentials; i++) {
-          m.set(sIdxVs[i], [['lname'], assetAttributesStruct]);
-        }
-        for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-          m.set(sIdxVs[i], [['lname'], liabilitiesAttributesStruct]);
-        }
-        return m;
-      })()
-    );
-    metaStmtsVerifier.addWitnessEquality(witnessEq3);
-
-    const witnessEq4 = createWitnessEqualityMetaStatement(
-      (() => {
-        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-        for (let i = 0; i < numAssetCredentials; i++) {
-          m.set(sIdxVs[i], [['sensitive.SSN'], assetAttributesStruct]);
-        }
-        for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-          m.set(sIdxVs[i], [['sensitive.SSN'], liabilitiesAttributesStruct]);
-        }
-        return m;
-      })()
-    );
-    metaStmtsVerifier.addWitnessEquality(witnessEq4);
-
-    counter = 0;
-    for (let i = 0; i < numAssetCredentials; i++) {
-      for (let j = 1; j <= 5; j++) {
-        const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(sIdxVs[i], getIndicesForMsgNames(['assets.id' + j], assetAttributesStruct)[0]);
-        witnessEq.addWitnessRef(sIdxVs[numAssetCredentials + numLiabilityCredentials], counter);
-        counter++;
-        metaStmtsVerifier.addWitnessEquality(witnessEq);
-      }
+      const witnessEq4 = createWitnessEqualityMetaStatement(
+        (() => {
+          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+          for (let i = 0; i < numAssetCredentials; i++) {
+            m.set(sIdxVs[i], [['sensitive.SSN'], assetAttributesStruct]);
+          }
+          for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
+            m.set(sIdxVs[i], [['sensitive.SSN'], liabilitiesAttributesStruct]);
+          }
+          return m;
+        })()
+      );
+      metaStmtsVerifier.addWitnessEquality(witnessEq4);
     }
 
-    for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-      for (let j = 1; j <= 4; j++) {
-        const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(
-          sIdxVs[i],
-          getIndicesForMsgNames(['liabilities.id' + j], liabilitiesAttributesStruct)[0]
-        );
-        witnessEq.addWitnessRef(sIdxVs[numAssetCredentials + numLiabilityCredentials], counter);
-        counter++;
-        metaStmtsVerifier.addWitnessEquality(witnessEq);
+    if (!isPS()) {
+      counter = 0;
+      for (let i = 0; i < numAssetCredentials; i++) {
+        for (let j = 1; j <= 5; j++) {
+          const witnessEq = new WitnessEqualityMetaStatement();
+          witnessEq.addWitnessRef(sIdxVs[i], getIndicesForMsgNames(['assets.id' + j], assetAttributesStruct)[0]);
+          witnessEq.addWitnessRef(sIdxVs[numAssetCredentials + numLiabilityCredentials], counter);
+          counter++;
+          metaStmtsVerifier.addWitnessEquality(witnessEq);
+        }
+      }
+
+      for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
+        for (let j = 1; j <= 4; j++) {
+          const witnessEq = new WitnessEqualityMetaStatement();
+
+          witnessEq.addWitnessRef(
+            sIdxVs[i],
+            getIndicesForMsgNames(['liabilities.id' + j], liabilitiesAttributesStruct)[0]
+          );
+          witnessEq.addWitnessRef(sIdxVs[numAssetCredentials + numLiabilityCredentials], counter);
+          counter++;
+          metaStmtsVerifier.addWitnessEquality(witnessEq);
+        }
       }
     }
 

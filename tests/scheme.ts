@@ -1,21 +1,30 @@
 import {
   BBSBlindSignature,
+  BBSCredential,
+  BBSCredentialBuilder,
   BBSKeypair,
   BBSPlusBlindSignatureG1,
+  BBSPlusCredential,
+  BBSPlusCredentialBuilder,
   BBSPlusKeypairG2,
   BBSPlusPoKSignatureProtocol,
+  BBSPlusPresentationBuilder,
   BBSPlusPublicKeyG2,
   BBSPlusSecretKey,
   BBSPlusSignatureG1,
   BBSPlusSignatureParamsG1,
   BBSPoKSignatureProtocol,
+  BBSPresentationBuilder,
   BBSPublicKey,
   BBSSecretKey,
   BBSSignature,
   BBSSignatureParams,
   PSBlindSignature,
+  PSCredential,
+  PSCredentialBuilder,
   PSKeypair,
   PSPoKSignatureProtocol,
+  PSPresentationBuilder,
   PSPublicKey,
   PSSecretKey,
   PSSignature,
@@ -30,6 +39,7 @@ import {
   getPSStatementsForBlindSigRequest,
   getPSWitnessesForBlindSigRequest
 } from '../src';
+import { BBSPlusPresentation, BBSPresentation, PSPresentation } from '../src/anonymous-credentials/presentation';
 
 export let PublicKey,
   SecretKey,
@@ -45,6 +55,10 @@ export let PublicKey,
   buildPublicKeySetupParam,
   buildSignatureParamsSetupParam,
   buildStatementFromSetupParamsRef,
+  CredentialBuilder,
+  Credential,
+  PresentationBuilder,
+  Presentation,
   isBBS = () => false,
   isBBSPlus = () => false,
   isPS = () => false;
@@ -65,6 +79,10 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     buildStatementFromSetupParamsRef = Statement.bbsSignatureFromSetupParamRefs;
     getStatementForBlindSigRequest = getBBSStatementForBlindSigRequest;
     getWitnessForBlindSigRequest = getBBSWitnessForBlindSigRequest;
+    CredentialBuilder = BBSCredentialBuilder;
+    Credential = BBSCredential;
+    PresentationBuilder = BBSPresentationBuilder;
+    Presentation = BBSPresentation;
     isBBS = () => true;
     break;
   case 'BBS+':
@@ -82,6 +100,10 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     buildStatementFromSetupParamsRef = Statement.bbsPlusSignatureFromSetupParamRefs;
     getStatementForBlindSigRequest = getBBSPlusStatementForBlindSigRequest;
     getWitnessForBlindSigRequest = getBBSPlusWitnessForBlindSigRequest;
+    CredentialBuilder = BBSPlusCredentialBuilder;
+    Credential = BBSPlusCredential;
+    PresentationBuilder = BBSPlusPresentationBuilder;
+    Presentation = BBSPlusPresentation
     isBBSPlus = () => true;
     break;
   case 'PS':
@@ -99,6 +121,10 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     buildStatementFromSetupParamsRef = Statement.psSignatureFromSetupParamRefs;
     getStatementForBlindSigRequest = getPSStatementsForBlindSigRequest;
     getWitnessForBlindSigRequest = getPSWitnessesForBlindSigRequest;
+    CredentialBuilder = PSCredentialBuilder;
+    Credential = PSCredential;
+    PresentationBuilder = PSPresentationBuilder;
+    Presentation = PSPresentation
     isPS = () => true;
     break;
   default:
@@ -119,3 +145,7 @@ export type buildSignatureParamsSetupParam = typeof buildSignatureParamsSetupPar
 export type buildStatementFromSetupParamsRef = typeof buildStatementFromSetupParamsRef;
 export type getStatementForBlindSigRequest = typeof getStatementForBlindSigRequest;
 export type getWitnessForBlindSigRequest = typeof getWitnessForBlindSigRequest;
+export type CredentialBuilder = typeof CredentialBuilder;
+export type Credential = typeof Credential;
+export type PresentationBuilder = typeof PresentationBuilder;
+export type Presentation = typeof Presentation;

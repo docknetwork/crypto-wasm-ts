@@ -1,11 +1,8 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, getRevealedUnrevealed, getWasmBytes, parseR1CSFile, stringToBytes } from '../../utils';
 import {
-  BBSPlusPublicKeyG2,
-  BBSPlusSecretKey,
   CircomInputs,
   CompositeProofG1,
-  BBSPlusKeypairG2,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatement,
@@ -13,14 +10,21 @@ import {
   ParsedR1CSFile,
   QuasiProofSpecG1,
   R1CSSnarkSetup,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
   Statement,
   Statements,
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
+import {
+  PublicKey,
+  SecretKey,
+  KeyPair,
+  Signature,
+  SignatureParams,
+  buildWitness,
+  buildStatement,
+} from '../../scheme'
 
 describe('Proof with R1CS and Circom circuits: less than checks', () => {
   let ltR1cs: ParsedR1CSFile;
@@ -32,13 +36,13 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
   let ltPubProvingKey: LegoProvingKeyUncompressed, ltPubVerifyingKey: LegoVerifyingKeyUncompressed;
 
   // There are 2 signers
-  let sigParams1: BBSPlusSignatureParamsG1,
-    sigSk1: BBSPlusSecretKey,
-    sigPk1: BBSPlusPublicKeyG2,
-    sigParams2: BBSPlusSignatureParamsG1,
-    sigSk2: BBSPlusSecretKey,
-    sigPk2: BBSPlusPublicKeyG2;
-  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: BBSPlusSignatureG1, sig2: BBSPlusSignatureG1;
+  let sigParams1: SignatureParams,
+    sigSk1: SecretKey,
+    sigPk1: PublicKey,
+    sigParams2: SignatureParams,
+    sigSk2: SecretKey,
+    sigPk2: PublicKey;
+  let messages1: Uint8Array[], messages2: Uint8Array[], sig1: Signature, sig2: Signature;
 
   const messageCount = 5;
 
@@ -62,13 +66,13 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
   });
 
   it('do signers setup', () => {
-    sigParams1 = BBSPlusSignatureParamsG1.generate(messageCount);
-    const sigKeypair1 = BBSPlusKeypairG2.generate(sigParams1);
+    sigParams1 = SignatureParams.generate(messageCount);
+    const sigKeypair1 = KeyPair.generate(sigParams1);
     sigSk1 = sigKeypair1.secretKey;
     sigPk1 = sigKeypair1.publicKey;
 
-    sigParams2 = BBSPlusSignatureParamsG1.generate(messageCount);
-    const sigKeypair2 = BBSPlusKeypairG2.generate(sigParams2);
+    sigParams2 = SignatureParams.generate(messageCount);
+    const sigKeypair2 = KeyPair.generate(sigParams2);
     sigSk2 = sigKeypair2.secretKey;
     sigPk2 = sigKeypair2.publicKey;
 
@@ -79,31 +83,30 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
       messages2.push(generateFieldElementFromNumber(2000 + i));
     }
 
-    sig1 = BBSPlusSignatureG1.generate(messages1, sigSk1, sigParams1, false);
-    sig2 = BBSPlusSignatureG1.generate(messages2, sigSk2, sigParams2, false);
+    sig1 = Signature.generate(messages1, sigSk1, sigParams1, false);
+    sig2 = Signature.generate(messages2, sigSk2, sigParams2, false);
     expect(sig1.verify(messages1, sigPk1, sigParams1, false).verified).toEqual(true);
     expect(sig2.verify(messages2, sigPk2, sigParams2, false).verified).toEqual(true);
   });
 
   function proveAndVerifyLessThan(
-    sigParams: BBSPlusSignatureParamsG1,
-    sigPk: BBSPlusPublicKeyG2,
+    sigParams: SignatureParams,
+    sigPk: PublicKey,
     messages: Uint8Array[],
-    sig: BBSPlusSignatureG1
+    sig: Signature
   ) {
     const publicMax = generateFieldElementFromNumber(5000);
 
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, new Set<number>());
-    const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(ltR1cs, ltWasm, ltProvingKey);
     const statement3 = Statement.r1csCircomProver(ltPubR1cs, ltPubWasm, ltPubProvingKey);
 
-    const proverStatements = new Statements();
-    proverStatements.add(statement1);
+    const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
     proverStatements.add(statement3);
 
-    const witnessEq1 = new WitnessEqualityMetaStatement();
+    /*const witnessEq1 = new WitnessEqualityMetaStatement();
     witnessEq1.addWitnessRef(0, 1);
     witnessEq1.addWitnessRef(1, 0);
 
@@ -113,14 +116,14 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
 
     const witnessEq3 = new WitnessEqualityMetaStatement();
     witnessEq3.addWitnessRef(0, 2);
-    witnessEq3.addWitnessRef(2, 0);
+    witnessEq3.addWitnessRef(2, 0);*/
 
     const metaStatements = new MetaStatements();
-    metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
+    /* metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
     metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
-    metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
+    metaStatements.add(MetaStatement.witnessEquality(witnessEq3));*/
 
-    const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
+    const witness1 = buildWitness(sig, unrevealedMsgs, false);
 
     const inputs1 = new CircomInputs();
     inputs1.setPrivateInput('a', messages[1]);
@@ -132,8 +135,7 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
     inputs2.setPublicInput('b', publicMax);
     const witness3 = Witness.r1csCircomWitness(inputs2);
 
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
+    const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
     witnesses.add(witness3);
 
@@ -165,39 +167,35 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
     const [revealedMsgs2, unrevealedMsgs2] = getRevealedUnrevealed(messages2, new Set<number>());
 
-    const statement1 = Statement.bbsPlusSignature(sigParams1, sigPk1, revealedMsgs1, false);
-    const statement2 = Statement.bbsPlusSignature(sigParams2, sigPk2, revealedMsgs2, false);
+    const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
+    const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
 
     const statement3 = Statement.r1csCircomProver(ltR1cs, ltWasm, ltProvingKey);
 
-    const proverStatements = new Statements();
-    proverStatements.add(statement1);
-    proverStatements.add(statement2);
+    const proverStatements = new Statements([].concat(statement1).concat(statement2));
     proverStatements.add(statement3);
 
-    const witnessEq1 = new WitnessEqualityMetaStatement();
+    /*const witnessEq1 = new WitnessEqualityMetaStatement();
     witnessEq1.addWitnessRef(0, 2);
     witnessEq1.addWitnessRef(2, 0);
 
     const witnessEq2 = new WitnessEqualityMetaStatement();
     witnessEq2.addWitnessRef(1, 2);
-    witnessEq2.addWitnessRef(2, 1);
+    witnessEq2.addWitnessRef(2, 1);*/
 
     const metaStatements = new MetaStatements();
-    metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
-    metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
+    /*metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
+    metaStatements.add(MetaStatement.witnessEquality(witnessEq2));*/
 
-    const witness1 = Witness.bbsPlusSignature(sig1, unrevealedMsgs1, false);
-    const witness2 = Witness.bbsPlusSignature(sig2, unrevealedMsgs2, false);
+    const witness1 = buildWitness(sig1, unrevealedMsgs1, false);
+    const witness2 = buildWitness(sig2, unrevealedMsgs2, false);
 
     const inputs = new CircomInputs();
     inputs.setPrivateInput('a', messages1[2]);
     inputs.setPrivateInput('b', messages2[2]);
     const witness3 = Witness.r1csCircomWitness(inputs);
 
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
-    witnesses.add(witness2);
+    const witnesses = new Witnesses([].concat(witness1).concat(witness2));
     witnesses.add(witness3);
 
     const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);

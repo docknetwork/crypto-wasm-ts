@@ -22,7 +22,7 @@ import {
 } from '../scheme'
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 
-describe('Proving knowledge of 1 BBS+ signature and a certain message in the accumulator', () => {
+describe('Proving knowledge of 1 signature and a certain message in the accumulator', () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();
@@ -96,8 +96,7 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
       provingKey,
       accumulator.accumulated
     );
-    const statements = new Statements();
-    statements.add(statement1);
+    const statements = new Statements(statement1);
     statements.add(statement2);
 
     // The last message in the signature is same as the accumulator member
@@ -118,8 +117,8 @@ describe('Proving knowledge of 1 BBS+ signature and a certain message in the acc
 
     const witness1 = buildWitness(sig, unrevealedMsgs, false);
     const witness2 = Witness.accumulatorMembership(encodedMessages[userIdIdx], accumWitness);
-    const witnesses = new Witnesses();
-    witnesses.add(witness1);
+    const witnesses = new Witnesses(witness1);
+    // witnesses.add(witness1);
     witnesses.add(witness2);
 
     const nonce = stringToBytes('some unique nonce');
