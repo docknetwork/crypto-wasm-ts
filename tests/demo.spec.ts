@@ -34,7 +34,8 @@ import {
   isPS,
   getStatementForBlindSigRequest,
   isBBSPlus,
-  getWitnessForBlindSigRequest
+  getWitnessForBlindSigRequest,
+  isBBS
 } from './scheme';
 import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
 
@@ -135,8 +136,8 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       if (!pk.isValid()) {
         throw new Error('Public key is invalid');
       }
-      let gpk = isPS() ? sk.generatePublicKey(params): sk.generatePublicKeyG2(params);
-      
+      let gpk = isPS() || isBBS() ? sk.generatePublicKey(params) : sk.generatePublicKeyG2(params);
+
       if (!areUint8ArraysEqual(gpk.value, pk.value)) {
         throw new Error(`Generated public key ${gpk.value} different from expected public key ${pk.value}`);
       }
@@ -402,13 +403,23 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 4) accumulator membership for credential1,
       // 5) opening of commitment in the blind signature request.
 
-      const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
+      const statement1 = buildStatement(
+        sigParams,
+        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        revealedMsgs,
+        false
+      );
       const witness1 = buildWitness(credential, unrevealedMsgs, false);
 
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
-      const statement3 = buildStatement(sigParams2, pk2, revealedMsgs2, false);
+      const statement3 = buildStatement(
+        sigParams2,
+        !isPS() ? pk2 : pk2.adaptForLess(sigParams2.supportedMessageCount()),
+        revealedMsgs2,
+        false
+      );
       const witness3 = buildWitness(credential2, unrevealedMsgs2, false);
 
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
@@ -469,7 +480,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const indicesToCommit = new Set<number>();
       indicesToCommit.add(0);
       // Verify knowledge of opening of commitment and issue blind signature with that commitment
-      const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParams));
+      const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParams, h));
 
       const proofSpec = new ProofSpecG1(statements, new MetaStatements());
       expect(proofSpec.isValid()).toEqual(true);
@@ -496,6 +507,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       accumPk: AccumulatorPublicKey,
       prk: MembershipProvingKey,
       accumulated: Uint8Array,
+      h: Uint8Array,
       nonce?: Uint8Array
     ) {
       // Verify composite proof of 3 statements,
@@ -506,14 +518,20 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       const indicesToCommit: number[] = [];
       indicesToCommit.push(0);
       const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
-      const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
+      const statement1 = buildStatement(
+        sigParams,
+        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        revealedMsgs,
+        false
+      );
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
 
-      const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParams));
+      const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParams, h));
       statements.prepend(statement2);
       statements.prepend(statement1);
 
       const metaStatements = new MetaStatements();
+      // TODO!
       /*const witnessEq1 = new WitnessEqualityMetaStatement();
       witnessEq1.addWitnessRef(0, 0);
       witnessEq1.addWitnessRef(2, +(bases.length !== indicesToCommit.length));
@@ -564,6 +582,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       accumPk2: AccumulatorPublicKey,
       prk2: MembershipProvingKey,
       accumulated2: Uint8Array,
+      h: Uint8Array,
       nonce?: Uint8Array
     ) {
       // Verify composite proof of 5 statements,
@@ -573,10 +592,22 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 4) accumulator membership for credential1,
       // 5) opening of commitment in the blind signature request.
 
-      const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParamsForRequestedCredential));
-      const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
+      const statements = new Statements(
+        getStatementForBlindSigRequest(blindSigReq.request, sigParamsForRequestedCredential, h)
+      );
+      const statement1 = buildStatement(
+        sigParams,
+        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        revealedMsgs,
+        false
+      );
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const statement3 = buildStatement(sigParams2, pk2, revealedMsgs2, false);
+      const statement3 = buildStatement(
+        sigParams2,
+        !isPS() ? pk2 : pk2.adaptForLess(sigParams2.supportedMessageCount()),
+        revealedMsgs2,
+        false
+      );
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
 
       statements.prepend(statement4);
@@ -584,6 +615,7 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       statements.prepend(statement2);
       statements.prepend(statement1);
 
+      // TODO!
       /*const witnessEq1 = new WitnessEqualityMetaStatement();
       witnessEq1.addWitnessRef(0, 0);
       witnessEq1.addWitnessRef(2, 0);
@@ -660,19 +692,34 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 5) knowledge of a signature in credential2,
       // 6) accumulator membership for credential2,
 
-      const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
+      const statement1 = buildStatement(
+        sigParams,
+        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        revealedMsgs,
+        false
+      );
       const witness1 = buildWitness(credential, unrevealedMsgs, false);
 
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
-      const statement3 = buildStatement(sigParams2, pk2, revealedMsgs2, false);
+      const statement3 = buildStatement(
+        sigParams2,
+        !isPS() ? pk2 : pk2.adaptForLess(sigParams2.supportedMessageCount()),
+        revealedMsgs2,
+        false
+      );
       const witness3 = buildWitness(credential2, unrevealedMsgs2, false);
 
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
       const witness4 = Witness.accumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
 
-      const statement5 = buildStatement(sigParams3, pk3, revealedMsgs3, false);
+      const statement5 = buildStatement(
+        sigParams3,
+        !isPS() ? pk3 : pk3.adaptForLess(sigParams3.supportedMessageCount()),
+        revealedMsgs3,
+        false
+      );
       const witness5 = buildWitness(credential3, unrevealedMsgs3, false);
 
       const statement6 = Statement.accumulatorMembership(accumParams3, accumPk3, prk3, accumulated3);
@@ -756,11 +803,26 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       // 5) knowledge of a signature in credential2,
       // 6) accumulator membership for credential2,
 
-      const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
+      const statement1 = buildStatement(
+        sigParams,
+        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        revealedMsgs,
+        false
+      );
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const statement3 = buildStatement(sigParams2, pk2, revealedMsgs2, false);
+      const statement3 = buildStatement(
+        sigParams2,
+        !isPS() ? pk2 : pk2.adaptForLess(sigParams2.supportedMessageCount()),
+        revealedMsgs2,
+        false
+      );
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
-      const statement5 = buildStatement(sigParams3, pk3, revealedMsgs3, false);
+      const statement5 = buildStatement(
+        sigParams3,
+        !isPS() ? pk3 : pk3.adaptForLess(sigParams3.supportedMessageCount()),
+        revealedMsgs3,
+        false
+      );
       const statement6 = Statement.accumulatorMembership(accumParams3, accumPk3, prk3, accumulated3);
 
       const statements = new Statements();
@@ -821,7 +883,11 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       pk: PublicKey,
       sigParams: SignatureParams
     ): [Signature, Uint8Array[]] {
-      const unblinded = isPS() ? blindedSig.unblind(blindings, pk): isBBSPlus() ? blindedSig.unblind(blinding) : blindedSig;
+      const unblinded = isPS()
+        ? blindedSig.unblind(blindings, pk)
+        : isBBSPlus()
+        ? blindedSig.unblind(blinding)
+        : blindedSig;
       let final: Uint8Array[] = [];
       final.push(Signature.encodeMessageForSigning(holderSecret));
       final = final.concat(msgs);
@@ -945,7 +1011,8 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       Accum1Params,
       Accum1Pk,
       Accum1Prk,
-      Accum1.accumulated
+      Accum1.accumulated,
+      h
     );
 
     await Accum2.add(revocationId2, Accum2Sk);
@@ -1031,7 +1098,8 @@ describe('A demo showing combined use of BBS+ signatures and accumulators using 
       Accum2Params,
       Accum2Pk,
       Accum2Prk,
-      Accum2.accumulated
+      Accum2.accumulated,
+      h
     );
 
     await Accum3.add(revocationId3, Accum3Sk);

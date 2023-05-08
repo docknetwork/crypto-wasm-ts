@@ -12,6 +12,9 @@ import {
 } from '@docknetwork/crypto-wasm';
 import { psShamirDeal } from '@docknetwork/crypto-wasm';
 
+/**
+ * Public key for modified Pointcheval-Sanders signature scheme used in `Coconut`.
+ */
 export class PSPublicKey extends BytearrayWrapper {
   supportedMessageCount(): number {
     return psPublicKeyMaxSupportedMsgs(this.value);
@@ -28,6 +31,9 @@ export class PSPublicKey extends BytearrayWrapper {
   }
 }
 
+/**
+ * Secret key for modified Pointcheval-Sanders signature scheme used in `Coconut`.
+ */
 export class PSSecretKey extends BytearrayWrapper {
   supportedMessageCount(): number {
     return psSigningKeyMaxSupportedMsgs(this.value);
@@ -36,12 +42,12 @@ export class PSSecretKey extends BytearrayWrapper {
   adaptForLess(messageCount: number) {
     const adapted = psAdaptSecretKeyForLessMessages(this.value, messageCount);
 
-    return adapted != null ? new (this.constructor as typeof PSSecretKey)(adapted): null;
+    return adapted != null ? new PSSecretKey(adapted): null;
   }
 
   adaptForMore(seed: Uint8Array, messageCount: number) {
     const adapted = psAdaptSecretKeyForMoreMessages(this.value, seed, messageCount);
-    return adapted != null ? new (this.constructor as typeof PSSecretKey)(adapted): null;
+    return adapted != null ? new PSSecretKey(adapted): null;
   }
 
   static generate(messageCount: number, seed?: Uint8Array) {
@@ -59,6 +65,9 @@ export class PSSecretKey extends BytearrayWrapper {
   }
 }
 
+/**
+ * Keypair (secret and public keys) for modified Pointcheval-Sanders signature scheme used in `Coconut`.
+ */
 export class PSKeypair {
   sk: PSSecretKey;
   pk: PSPublicKey;
@@ -80,11 +89,11 @@ export class PSKeypair {
     return Math.min(this.sk.supportedMessageCount(), this.pk.supportedMessageCount());
   }
 
-  adaptForLess(messageCount: number) {
+  adaptForLess(messageCount: number): PSKeypair | null {
     const sk = this.sk.adaptForLess(messageCount);
     const pk = this.pk.adaptForLess(messageCount);
 
-    return sk != null && pk != null ? new (this.constructor as typeof PSKeypair)(sk, pk): null;
+    return sk != null && pk != null ? new PSKeypair(sk, pk): null;
   }
 
   static generate(params: PSSignatureParams, seed?: Uint8Array): PSKeypair {

@@ -12,9 +12,10 @@ import { MessageStructure, SignedMessages, flattenMessageStructure } from '../si
 import { PSPublicKey, PSSecretKey } from './keys';
 import { PSSignature } from './signature';
 import { Encoder } from '../encoder';
+import { psMultiMessageCommitment } from '@docknetwork/crypto-wasm';
 
 /**
- * Signature parameters.
+ * Modified Pointcheval-Sanders signature parameters used in `Coconut`.
  */
 export class PSSignatureParams {
   label?: Uint8Array;
@@ -76,22 +77,22 @@ export class PSSignatureParams {
   ): SignedMessages<PSSignature> {
     const [names, encodedValues] = encoder.encodeMessageObject(messages);
     const msgCount = names.length;
-  
+
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
     const supportedMsgCount = secretKey.supportedMessageCount();
     if (supportedMsgCount < msgCount) {
-      throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`)
+      throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`);
     } else if (supportedMsgCount > msgCount) {
-      secretKey = secretKey.adaptForLess(msgCount)!
+      secretKey = secretKey.adaptForLess(msgCount)!;
     }
     const signature = PSSignature.generate(encodedValues, secretKey, sigParams);
-  
+
     // Encoded message as an object with key as the flattened name
     const encodedMessages: { [key: string]: Uint8Array } = {};
     for (let i = 0; i < msgCount; i++) {
       encodedMessages[names[i]] = encodedValues[i];
     }
-  
+
     return {
       encodedMessages,
       signature
@@ -120,18 +121,18 @@ export class PSSignatureParams {
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
     const supportedMsgCount = publicKey.supportedMessageCount();
     if (supportedMsgCount < msgCount) {
-      throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`)
+      throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`);
     } else if (supportedMsgCount > msgCount) {
-      publicKey = publicKey.adaptForLess(msgCount)!
+      publicKey = publicKey.adaptForLess(msgCount)!;
     }
     return signature.verify(encodedValues, publicKey, sigParams);
   }
 
   /**
-  * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
-  * @param msgCount
-  * @param labelOrParams
-  */
+   * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
+   * @param msgCount
+   * @param labelOrParams
+   */
   static getSigParamsOfRequiredSize(
     msgCount: number,
     labelOrParams: Uint8Array | PSSignatureParams
@@ -141,7 +142,9 @@ export class PSSignatureParams {
       labelOrParams = labelOrParams as PSSignatureParams;
       if (labelOrParams.supportedMessageCount() !== msgCount) {
         if (labelOrParams.label === undefined) {
-          throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
+          throw new Error(
+            `Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`
+          );
         } else {
           sigParams = labelOrParams.adapt(msgCount);
         }
@@ -156,14 +159,33 @@ export class PSSignatureParams {
 
   static getSigParamsForMsgStructure(
     msgStructure: MessageStructure,
-    labelOrParams: Uint8Array | PSSignatureParams,
+    labelOrParams: Uint8Array | PSSignatureParams
   ): PSSignatureParams {
     const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
     return this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
   }
 
-  messageCommitment(message: Uint8Array, blinding: Uint8Array, h: Uint8Array) {
+  /**
+   * Produces a commitment for the given message using supplied blinding.
+   * @param message
+   * @param blinding
+   * @param h
+   * @returns
+   */
+  messageCommitment(message: Uint8Array, blinding: Uint8Array, h: Uint8Array): Uint8Array {
     return psMessageCommitment(message, blinding, h, this.value.g);
+  }
+
+  /**
+   * Produces a multi message commitment for the given message using supplied blinding.
+   * @param messages
+   * @param h (from params)
+   * @param g
+   * @param blinding
+   * @returns
+   */
+  multiMessageCommitment(messages: Uint8Array[], h: Uint8Array[], blinding: Uint8Array): Uint8Array {
+    return psMultiMessageCommitment(messages, h, this.value.g, blinding);
   }
 
   /**

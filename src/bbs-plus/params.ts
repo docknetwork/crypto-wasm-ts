@@ -20,7 +20,7 @@ import { Encoder } from '../encoder';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 
 /**
- * Signature parameters.
+ * `BBS+` Signature parameters.
  */
 export abstract class BBSPlusSignatureParams implements IParams {
   label?: Uint8Array;
@@ -83,6 +83,9 @@ export abstract class BBSPlusSignatureParams implements IParams {
   }
 }
 
+/**
+ * `BBS+` Signature parameters in `G1`.
+ */
 export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
   static generate(numMessages: number, label?: Uint8Array): BBSPlusSignatureParamsG1 {
     const params = bbsPlusGenerateSignatureParamsG1(numMessages, label);
@@ -227,6 +230,9 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
   }
 }
 
+/**
+ * `BBS+` Signature parameters in `G2`.
+ */
 export class BBSPlusSignatureParamsG2 extends BBSPlusSignatureParams {
   static generate(numMessages: number, label?: Uint8Array) {
     const params = bbsPlusGenerateSignatureParamsG2(numMessages, label);

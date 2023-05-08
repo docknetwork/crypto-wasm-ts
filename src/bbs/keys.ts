@@ -2,6 +2,9 @@ import { bbsGenerateKeyPair, bbsGeneratePublicKey } from '@docknetwork/crypto-wa
 import { BBSPlusPublicKeyG1, BBSPlusPublicKeyG2, BBSPlusSecretKey } from '../bbs-plus';
 import { BBSSignatureParams } from './params';
 
+/**
+ * `BBS` secret key.
+ */
 export class BBSSecretKey extends BBSPlusSecretKey {
   generatePublicKeyG1(_): BBSPlusPublicKeyG1 {
     throw new Error('Not supported')
@@ -12,9 +15,18 @@ export class BBSSecretKey extends BBSPlusSecretKey {
   }
 }
 
+/**
+ * `BBS` public key.
+ */
 export const BBSPublicKey = BBSPlusPublicKeyG2;
+/**
+ * `BBS` public key.
+ */
 export type BBSPublicKey = BBSPlusPublicKeyG2;
 
+/**
+ * `BBS` keypair.
+ */
 export class BBSKeypair {
   sk: BBSSecretKey;
   pk: BBSPublicKey;
