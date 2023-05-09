@@ -592,9 +592,6 @@ describe('A demo showing combined use of signatures and accumulators using the c
       // 4) accumulator membership for credential1,
       // 5) opening of commitment in the blind signature request.
 
-      const statements = new Statements(
-        getStatementForBlindSigRequest(blindSigReq.request, sigParamsForRequestedCredential, h)
-      );
       const statement1 = buildStatement(
         sigParams,
         !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
@@ -609,32 +606,31 @@ describe('A demo showing combined use of signatures and accumulators using the c
         false
       );
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
+      const statement5 = getStatementForBlindSigRequest(blindSigReq.request, sigParamsForRequestedCredential, h);
 
-      statements.prepend(statement4);
-      statements.prepend(statement3);
-      statements.prepend(statement2);
-      statements.prepend(statement1);
+      const statements = new Statements(
+        [].concat(statement1, statement2 as any, statement3, statement4 as any, statement5)
+      );
 
       let metaStatements = new MetaStatements();
-      /*if (!isPS()) {
+      if (!isPS()) {
         const witnessEq1 = new WitnessEqualityMetaStatement();
-        witnessEq1.addWitnessRef(4, 0);
+        witnessEq1.addWitnessRef(0, 0);
         witnessEq1.addWitnessRef(2, 0);
-        witnessEq1.addWitnessRef(0, 1);
+        witnessEq1.addWitnessRef(4, 1);
 
         const witnessEq2 = new WitnessEqualityMetaStatement();
-        witnessEq2.addWitnessRef(4, +(blinding1 != null));
-        witnessEq2.addWitnessRef(3, 0);
+        witnessEq2.addWitnessRef(0, 1);
+        witnessEq2.addWitnessRef(1, 0);
 
         const witnessEq3 = new WitnessEqualityMetaStatement();
         witnessEq3.addWitnessRef(2, 1);
-        witnessEq3.addWitnessRef(1, 0);
+        witnessEq3.addWitnessRef(3, 0);
 
-        metaStatements = new MetaStatements();
         metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
         metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
         metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
-      }*/
+      }
 
       const proofSpec = new ProofSpecG1(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
