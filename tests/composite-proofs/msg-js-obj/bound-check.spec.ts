@@ -183,13 +183,10 @@ describe('Range proof using LegoGroth16', () => {
     const statement9 = Statement.boundCheckProverFromSetupParamRefs(latMin, latMax, 0);
     const statement10 = Statement.boundCheckProverFromSetupParamRefs(longMin, longMax, 0);
 
-    const statementsProver = new Statements(isPS() ? [].concat(statement1, statement2, statement3) : []);
-    let sIdx1, sIdx2, sIdx3;
-    if (!isPS()) {
-      sIdx1 = statementsProver.add(statement1);
-      sIdx2 = statementsProver.add(statement2);
-      sIdx3 = statementsProver.add(statement3);
-    }
+    const statementsProver = new Statements();
+    const sIdx1 = statementsProver.add(statement1);
+    const sIdx2 = statementsProver.add(statement2);
+    const sIdx3 = statementsProver.add(statement3);
     const sIdx4 = statementsProver.add(statement4);
     const sIdx5 = statementsProver.add(statement5);
     const sIdx6 = statementsProver.add(statement6);
@@ -200,92 +197,90 @@ describe('Range proof using LegoGroth16', () => {
 
     // Construct new `MetaStatement`s to enforce attribute equality
     const metaStmtsProver = new MetaStatements();
-    if (!isPS()) {
-      const witnessEq1 = createWitnessEqualityMetaStatement(
-        (() => {
-          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-          m.set(sIdx1, [['lname'], attributes1Struct]);
-          m.set(sIdx2, [['lname'], attributes2Struct]);
-          m.set(sIdx3, [['lname'], attributes3Struct]);
-          return m;
-        })()
-      );
+    const witnessEq1 = createWitnessEqualityMetaStatement(
+      (() => {
+        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+        m.set(sIdx1, [['lname'], attributes1Struct]);
+        m.set(sIdx2, [['lname'], attributes2Struct]);
+        m.set(sIdx3, [['lname'], attributes3Struct]);
+        return m;
+      })()
+    );
 
-      const witnessEq2 = createWitnessEqualityMetaStatement(
-        (() => {
-          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-          m.set(sIdx1, [['city'], attributes1Struct]);
-          m.set(sIdx2, [['location.city'], attributes2Struct]);
-          m.set(sIdx3, [['lessSensitive.location.city'], attributes3Struct]);
-          return m;
-        })()
-      );
+    const witnessEq2 = createWitnessEqualityMetaStatement(
+      (() => {
+        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+        m.set(sIdx1, [['city'], attributes1Struct]);
+        m.set(sIdx2, [['location.city'], attributes2Struct]);
+        m.set(sIdx3, [['lessSensitive.location.city'], attributes3Struct]);
+        return m;
+      })()
+    );
 
-      const witnessEq3 = createWitnessEqualityMetaStatement(
-        (() => {
-          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-          m.set(sIdx1, [['SSN'], attributes1Struct]);
-          m.set(sIdx2, [['sensitive.SSN'], attributes2Struct]);
-          m.set(sIdx3, [['sensitive.SSN'], attributes3Struct]);
-          return m;
-        })()
-      );
+    const witnessEq3 = createWitnessEqualityMetaStatement(
+      (() => {
+        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+        m.set(sIdx1, [['SSN'], attributes1Struct]);
+        m.set(sIdx2, [['sensitive.SSN'], attributes2Struct]);
+        m.set(sIdx3, [['sensitive.SSN'], attributes3Struct]);
+        return m;
+      })()
+    );
 
-      const witnessEq4 = createWitnessEqualityMetaStatement(
-        (() => {
-          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-          m.set(sIdx1, [['timeOfBirth'], attributes1Struct]);
-          m.set(sIdx2, [['timeOfBirth'], attributes2Struct]);
-          return m;
-        })()
-      );
+    const witnessEq4 = createWitnessEqualityMetaStatement(
+      (() => {
+        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+        m.set(sIdx1, [['timeOfBirth'], attributes1Struct]);
+        m.set(sIdx2, [['timeOfBirth'], attributes2Struct]);
+        return m;
+      })()
+    );
 
-      const witnessEq5 = new WitnessEqualityMetaStatement();
-      witnessEq5.addWitnessRef(sIdx1, getIndicesForMsgNames(['timeOfBirth'], attributes1Struct)[0]);
-      witnessEq5.addWitnessRef(sIdx4, 0);
+    const witnessEq5 = new WitnessEqualityMetaStatement();
+    witnessEq5.addWitnessRef(sIdx1, getIndicesForMsgNames(['timeOfBirth'], attributes1Struct)[0]);
+    witnessEq5.addWitnessRef(sIdx4, 0);
 
-      const witnessEq6 = new WitnessEqualityMetaStatement();
-      witnessEq6.addWitnessRef(sIdx1, getIndicesForMsgNames(['weight'], attributes1Struct)[0]);
-      witnessEq6.addWitnessRef(sIdx5, 0);
+    const witnessEq6 = new WitnessEqualityMetaStatement();
+    witnessEq6.addWitnessRef(sIdx1, getIndicesForMsgNames(['weight'], attributes1Struct)[0]);
+    witnessEq6.addWitnessRef(sIdx5, 0);
 
-      const witnessEq7 = new WitnessEqualityMetaStatement();
-      witnessEq7.addWitnessRef(sIdx1, getIndicesForMsgNames(['height'], attributes1Struct)[0]);
-      witnessEq7.addWitnessRef(sIdx6, 0);
+    const witnessEq7 = new WitnessEqualityMetaStatement();
+    witnessEq7.addWitnessRef(sIdx1, getIndicesForMsgNames(['height'], attributes1Struct)[0]);
+    witnessEq7.addWitnessRef(sIdx6, 0);
 
-      const witnessEq8 = new WitnessEqualityMetaStatement();
-      witnessEq8.addWitnessRef(sIdx1, getIndicesForMsgNames(['BMI'], attributes1Struct)[0]);
-      witnessEq8.addWitnessRef(sIdx7, 0);
+    const witnessEq8 = new WitnessEqualityMetaStatement();
+    witnessEq8.addWitnessRef(sIdx1, getIndicesForMsgNames(['BMI'], attributes1Struct)[0]);
+    witnessEq8.addWitnessRef(sIdx7, 0);
 
-      const witnessEq9 = new WitnessEqualityMetaStatement();
-      witnessEq9.addWitnessRef(sIdx1, getIndicesForMsgNames(['score'], attributes1Struct)[0]);
-      witnessEq9.addWitnessRef(sIdx8, 0);
+    const witnessEq9 = new WitnessEqualityMetaStatement();
+    witnessEq9.addWitnessRef(sIdx1, getIndicesForMsgNames(['score'], attributes1Struct)[0]);
+    witnessEq9.addWitnessRef(sIdx8, 0);
 
-      const witnessEq10 = new WitnessEqualityMetaStatement();
-      witnessEq10.addWitnessRef(
-        sIdx3,
-        getIndicesForMsgNames(['lessSensitive.department.location.geo.lat'], attributes3Struct)[0]
-      );
-      witnessEq10.addWitnessRef(sIdx9, 0);
+    const witnessEq10 = new WitnessEqualityMetaStatement();
+    witnessEq10.addWitnessRef(
+      sIdx3,
+      getIndicesForMsgNames(['lessSensitive.department.location.geo.lat'], attributes3Struct)[0]
+    );
+    witnessEq10.addWitnessRef(sIdx9, 0);
 
-      const witnessEq11 = new WitnessEqualityMetaStatement();
-      witnessEq11.addWitnessRef(
-        sIdx3,
-        getIndicesForMsgNames(['lessSensitive.department.location.geo.long'], attributes3Struct)[0]
-      );
-      witnessEq11.addWitnessRef(sIdx10, 0);
+    const witnessEq11 = new WitnessEqualityMetaStatement();
+    witnessEq11.addWitnessRef(
+      sIdx3,
+      getIndicesForMsgNames(['lessSensitive.department.location.geo.long'], attributes3Struct)[0]
+    );
+    witnessEq11.addWitnessRef(sIdx10, 0);
 
-      metaStmtsProver.addWitnessEquality(witnessEq1);
-      metaStmtsProver.addWitnessEquality(witnessEq2);
-      metaStmtsProver.addWitnessEquality(witnessEq3);
-      metaStmtsProver.addWitnessEquality(witnessEq4);
-      metaStmtsProver.addWitnessEquality(witnessEq5);
-      metaStmtsProver.addWitnessEquality(witnessEq6);
-      metaStmtsProver.addWitnessEquality(witnessEq7);
-      metaStmtsProver.addWitnessEquality(witnessEq8);
-      metaStmtsProver.addWitnessEquality(witnessEq9);
-      metaStmtsProver.addWitnessEquality(witnessEq10);
-      metaStmtsProver.addWitnessEquality(witnessEq11);
-    }
+    metaStmtsProver.addWitnessEquality(witnessEq1);
+    metaStmtsProver.addWitnessEquality(witnessEq2);
+    metaStmtsProver.addWitnessEquality(witnessEq3);
+    metaStmtsProver.addWitnessEquality(witnessEq4);
+    metaStmtsProver.addWitnessEquality(witnessEq5);
+    metaStmtsProver.addWitnessEquality(witnessEq6);
+    metaStmtsProver.addWitnessEquality(witnessEq7);
+    metaStmtsProver.addWitnessEquality(witnessEq8);
+    metaStmtsProver.addWitnessEquality(witnessEq9);
+    metaStmtsProver.addWitnessEquality(witnessEq10);
+    metaStmtsProver.addWitnessEquality(witnessEq11);
 
     // The prover should independently construct this `ProofSpec`
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver, proverSetupParams);
@@ -331,14 +326,10 @@ describe('Range proof using LegoGroth16', () => {
     const statement19 = Statement.boundCheckVerifierFromSetupParamRefs(latMin, latMax, 0);
     const statement20 = Statement.boundCheckVerifierFromSetupParamRefs(longMin, longMax, 0);
 
-    const statementsVerifier = new Statements(isPS() ? [].concat(statement11, statement12, statement13) : []);
-    let sIdx11, sIdx12, sIdx13;
-    if (!isPS()) {
-      sIdx11 = statementsVerifier.add(statement11);
-      sIdx12 = statementsVerifier.add(statement12);
-      sIdx13 = statementsVerifier.add(statement13);
-    }
-
+    const statementsVerifier = new Statements();
+    const sIdx11 = statementsVerifier.add(statement11);
+    const sIdx12 = statementsVerifier.add(statement12);
+    const sIdx13 = statementsVerifier.add(statement13);
     const sIdx14 = statementsVerifier.add(statement14);
     const sIdx15 = statementsVerifier.add(statement15);
     const sIdx16 = statementsVerifier.add(statement16);
@@ -348,92 +339,90 @@ describe('Range proof using LegoGroth16', () => {
     const sIdx20 = statementsVerifier.add(statement20);
 
     const metaStmtsVerifier = new MetaStatements();
-    if (!isPS()) {
-      const witnessEq12 = createWitnessEqualityMetaStatement(
-        (() => {
-          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-          m.set(sIdx11, [['lname'], attributes1Struct]);
-          m.set(sIdx12, [['lname'], attributes2Struct]);
-          m.set(sIdx13, [['lname'], attributes3Struct]);
-          return m;
-        })()
-      );
+    const witnessEq12 = createWitnessEqualityMetaStatement(
+      (() => {
+        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+        m.set(sIdx11, [['lname'], attributes1Struct]);
+        m.set(sIdx12, [['lname'], attributes2Struct]);
+        m.set(sIdx13, [['lname'], attributes3Struct]);
+        return m;
+      })()
+    );
 
-      const witnessEq13 = createWitnessEqualityMetaStatement(
-        (() => {
-          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-          m.set(sIdx11, [['city'], attributes1Struct]);
-          m.set(sIdx12, [['location.city'], attributes2Struct]);
-          m.set(sIdx13, [['lessSensitive.location.city'], attributes3Struct]);
-          return m;
-        })()
-      );
+    const witnessEq13 = createWitnessEqualityMetaStatement(
+      (() => {
+        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+        m.set(sIdx11, [['city'], attributes1Struct]);
+        m.set(sIdx12, [['location.city'], attributes2Struct]);
+        m.set(sIdx13, [['lessSensitive.location.city'], attributes3Struct]);
+        return m;
+      })()
+    );
 
-      const witnessEq14 = createWitnessEqualityMetaStatement(
-        (() => {
-          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-          m.set(sIdx11, [['SSN'], attributes1Struct]);
-          m.set(sIdx12, [['sensitive.SSN'], attributes2Struct]);
-          m.set(sIdx13, [['sensitive.SSN'], attributes3Struct]);
-          return m;
-        })()
-      );
+    const witnessEq14 = createWitnessEqualityMetaStatement(
+      (() => {
+        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+        m.set(sIdx11, [['SSN'], attributes1Struct]);
+        m.set(sIdx12, [['sensitive.SSN'], attributes2Struct]);
+        m.set(sIdx13, [['sensitive.SSN'], attributes3Struct]);
+        return m;
+      })()
+    );
 
-      const witnessEq15 = createWitnessEqualityMetaStatement(
-        (() => {
-          const m = new Map<number, [msgNames: string[], msgStructure: object]>();
-          m.set(sIdx11, [['timeOfBirth'], attributes1Struct]);
-          m.set(sIdx12, [['timeOfBirth'], attributes2Struct]);
-          return m;
-        })()
-      );
+    const witnessEq15 = createWitnessEqualityMetaStatement(
+      (() => {
+        const m = new Map<number, [msgNames: string[], msgStructure: object]>();
+        m.set(sIdx11, [['timeOfBirth'], attributes1Struct]);
+        m.set(sIdx12, [['timeOfBirth'], attributes2Struct]);
+        return m;
+      })()
+    );
 
-      const witnessEq16 = new WitnessEqualityMetaStatement();
-      witnessEq16.addWitnessRef(sIdx11, getIndicesForMsgNames(['timeOfBirth'], attributes1Struct)[0]);
-      witnessEq16.addWitnessRef(sIdx14, 0);
+    const witnessEq16 = new WitnessEqualityMetaStatement();
+    witnessEq16.addWitnessRef(sIdx11, getIndicesForMsgNames(['timeOfBirth'], attributes1Struct)[0]);
+    witnessEq16.addWitnessRef(sIdx14, 0);
 
-      const witnessEq17 = new WitnessEqualityMetaStatement();
-      witnessEq17.addWitnessRef(sIdx11, getIndicesForMsgNames(['weight'], attributes1Struct)[0]);
-      witnessEq17.addWitnessRef(sIdx15, 0);
+    const witnessEq17 = new WitnessEqualityMetaStatement();
+    witnessEq17.addWitnessRef(sIdx11, getIndicesForMsgNames(['weight'], attributes1Struct)[0]);
+    witnessEq17.addWitnessRef(sIdx15, 0);
 
-      const witnessEq18 = new WitnessEqualityMetaStatement();
-      witnessEq18.addWitnessRef(sIdx11, getIndicesForMsgNames(['height'], attributes1Struct)[0]);
-      witnessEq18.addWitnessRef(sIdx16, 0);
+    const witnessEq18 = new WitnessEqualityMetaStatement();
+    witnessEq18.addWitnessRef(sIdx11, getIndicesForMsgNames(['height'], attributes1Struct)[0]);
+    witnessEq18.addWitnessRef(sIdx16, 0);
 
-      const witnessEq19 = new WitnessEqualityMetaStatement();
-      witnessEq19.addWitnessRef(sIdx11, getIndicesForMsgNames(['BMI'], attributes1Struct)[0]);
-      witnessEq19.addWitnessRef(sIdx17, 0);
+    const witnessEq19 = new WitnessEqualityMetaStatement();
+    witnessEq19.addWitnessRef(sIdx11, getIndicesForMsgNames(['BMI'], attributes1Struct)[0]);
+    witnessEq19.addWitnessRef(sIdx17, 0);
 
-      const witnessEq20 = new WitnessEqualityMetaStatement();
-      witnessEq20.addWitnessRef(sIdx11, getIndicesForMsgNames(['score'], attributes1Struct)[0]);
-      witnessEq20.addWitnessRef(sIdx18, 0);
+    const witnessEq20 = new WitnessEqualityMetaStatement();
+    witnessEq20.addWitnessRef(sIdx11, getIndicesForMsgNames(['score'], attributes1Struct)[0]);
+    witnessEq20.addWitnessRef(sIdx18, 0);
 
-      const witnessEq21 = new WitnessEqualityMetaStatement();
-      witnessEq21.addWitnessRef(
-        sIdx13,
-        getIndicesForMsgNames(['lessSensitive.department.location.geo.lat'], attributes3Struct)[0]
-      );
-      witnessEq21.addWitnessRef(sIdx19, 0);
+    const witnessEq21 = new WitnessEqualityMetaStatement();
+    witnessEq21.addWitnessRef(
+      sIdx13,
+      getIndicesForMsgNames(['lessSensitive.department.location.geo.lat'], attributes3Struct)[0]
+    );
+    witnessEq21.addWitnessRef(sIdx19, 0);
 
-      const witnessEq22 = new WitnessEqualityMetaStatement();
-      witnessEq22.addWitnessRef(
-        sIdx13,
-        getIndicesForMsgNames(['lessSensitive.department.location.geo.long'], attributes3Struct)[0]
-      );
-      witnessEq22.addWitnessRef(sIdx20, 0);
+    const witnessEq22 = new WitnessEqualityMetaStatement();
+    witnessEq22.addWitnessRef(
+      sIdx13,
+      getIndicesForMsgNames(['lessSensitive.department.location.geo.long'], attributes3Struct)[0]
+    );
+    witnessEq22.addWitnessRef(sIdx20, 0);
 
-      metaStmtsVerifier.addWitnessEquality(witnessEq12);
-      metaStmtsVerifier.addWitnessEquality(witnessEq13);
-      metaStmtsVerifier.addWitnessEquality(witnessEq14);
-      metaStmtsVerifier.addWitnessEquality(witnessEq15);
-      metaStmtsVerifier.addWitnessEquality(witnessEq16);
-      metaStmtsVerifier.addWitnessEquality(witnessEq17);
-      metaStmtsVerifier.addWitnessEquality(witnessEq18);
-      metaStmtsVerifier.addWitnessEquality(witnessEq19);
-      metaStmtsVerifier.addWitnessEquality(witnessEq20);
-      metaStmtsVerifier.addWitnessEquality(witnessEq21);
-      metaStmtsVerifier.addWitnessEquality(witnessEq22);
-    }
+    metaStmtsVerifier.addWitnessEquality(witnessEq12);
+    metaStmtsVerifier.addWitnessEquality(witnessEq13);
+    metaStmtsVerifier.addWitnessEquality(witnessEq14);
+    metaStmtsVerifier.addWitnessEquality(witnessEq15);
+    metaStmtsVerifier.addWitnessEquality(witnessEq16);
+    metaStmtsVerifier.addWitnessEquality(witnessEq17);
+    metaStmtsVerifier.addWitnessEquality(witnessEq18);
+    metaStmtsVerifier.addWitnessEquality(witnessEq19);
+    metaStmtsVerifier.addWitnessEquality(witnessEq20);
+    metaStmtsVerifier.addWitnessEquality(witnessEq21);
+    metaStmtsVerifier.addWitnessEquality(witnessEq22);
 
     // The verifier should independently construct this `ProofSpec`
     const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier, verifierSetupParams);

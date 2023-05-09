@@ -214,7 +214,7 @@ export class BBSBlindSignature extends BytearrayWrapper {
       blindedIndices.push(k);
     }
 
-    blindedIndices.sort();
+    blindedIndices.sort((a, b) => a - b);
     return { commitment, blindedIndices, unblindedMessages };
   }
   

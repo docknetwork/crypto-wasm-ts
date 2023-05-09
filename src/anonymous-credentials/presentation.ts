@@ -552,7 +552,7 @@ export class PSPresentation extends Presentation<PSPublicKey, PSSignature, PSSig
     } else {
       throw new Error(`Unsupported message count: supported = ${supported}, received = ${messageCount}`);
     }
-    
+
     return SetupParam.psSignaturePublicKey(key);
   }
 

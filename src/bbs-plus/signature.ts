@@ -232,7 +232,7 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
       blindedIndices.push(k);
     }
 
-    blindedIndices.sort();
+    blindedIndices.sort((a, b) => a - b);
     return [b, { commitment, blindedIndices, unblindedMessages }];
   }
 

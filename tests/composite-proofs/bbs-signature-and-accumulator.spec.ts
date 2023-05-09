@@ -118,7 +118,6 @@ describe('Proving knowledge of 1 signature and a certain message in the accumula
     const witness1 = buildWitness(sig, unrevealedMsgs, false);
     const witness2 = Witness.accumulatorMembership(encodedMessages[userIdIdx], accumWitness);
     const witnesses = new Witnesses(witness1);
-    // witnesses.add(witness1);
     witnesses.add(witness2);
 
     const nonce = stringToBytes('some unique nonce');
