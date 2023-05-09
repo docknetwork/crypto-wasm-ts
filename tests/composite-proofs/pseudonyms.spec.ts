@@ -13,7 +13,7 @@ import {
   Witnesses
 } from '../../src';
 import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
-import { getRevealedUnrevealed, stringToBytes } from '../utils';
+import { checkResult, getRevealedUnrevealed, stringToBytes } from '../utils';
 import {
   KeyPair,
   Signature,
@@ -58,7 +58,7 @@ function registerUsingPseudonym(pseudonym: Pseudonym, base: Uint8Array, secretKe
 
   const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-  expect(proof.verify(proofSpec).verified).toEqual(true);
+  checkResult(proof.verify(proofSpec));
 }
 
 // User creates a proof that it knows the secret key and attributes used in the pseudonym and verifier verifies the proof
@@ -81,7 +81,7 @@ function registerUsingAttributeBoundPseudonym(
 
   const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-  expect(proof.verify(proofSpec).verified).toEqual(true);
+  checkResult(proof.verify(proofSpec));
 }
 
 describe('Register using pseudonym not bound to any attributes', () => {
@@ -168,7 +168,7 @@ describe('Register using pseudonym not bound to any attributes', () => {
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-      expect(proof.verify(proofSpec).verified).toEqual(true);
+      checkResult(proof.verify(proofSpec));
     }
 
     // User using its pseudonym at service provider 2
@@ -187,7 +187,7 @@ describe('Register using pseudonym not bound to any attributes', () => {
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-      expect(proof.verify(proofSpec).verified).toEqual(true);
+      checkResult(proof.verify(proofSpec));
     }
   });
 });
@@ -329,7 +329,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-      expect(proof.verify(proofSpec).verified).toEqual(true);
+      checkResult(proof.verify(proofSpec));
     }
 
     // User using its pseudonym at service provider 2
@@ -367,7 +367,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-      expect(proof.verify(proofSpec).verified).toEqual(true);
+      checkResult(proof.verify(proofSpec));
     }
 
     // User using its pseudonym at service provider 3
@@ -405,7 +405,7 @@ describe('Using pseudonym bound to some attributes', () => {
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-      expect(proof.verify(proofSpec).verified).toEqual(true);
+      checkResult(proof.verify(proofSpec));
     }
   });
 });

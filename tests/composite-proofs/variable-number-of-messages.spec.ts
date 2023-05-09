@@ -1,5 +1,5 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { stringToBytes } from '../utils';
+import { checkResult, stringToBytes } from '../utils';
 import {
   CompositeProofG1,
   MetaStatements,
@@ -89,6 +89,6 @@ describe('Proving knowledge of 1 signature where some of the attributes are null
 
     const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-    expect(proof.verify(proofSpec).verified).toEqual(true);
+    checkResult(proof.verify(proofSpec));
   });
 });

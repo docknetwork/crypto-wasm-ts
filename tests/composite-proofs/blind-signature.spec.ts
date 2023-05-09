@@ -1,5 +1,5 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { stringToBytes } from '../utils';
+import { checkResult, stringToBytes } from '../utils';
 import { CompositeProofG1, MetaStatements, ProofSpecG1, Statements, Witness, Witnesses } from '../../src';
 import {
   BlindSignature,
@@ -78,7 +78,7 @@ describe('Getting a blind signature, i.e. signature where signer is not aware of
 
     const proof = CompositeProofG1.generate(proofSpec, witnesses);
 
-    expect(proof.verify(proofSpec).verified).toEqual(true);
+    checkResult(proof.verify(proofSpec));
 
     // Signer is convinced that user knows the opening to the commitment
     const blindSig = isPS()
