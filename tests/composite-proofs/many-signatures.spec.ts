@@ -110,29 +110,26 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
     }
     const statement2 = buildStatement(params2, pk2, revealedMsgs, false);
 
-    const statements = new Statements(isPS() ? statement1: []);
-    let sId1;
-    if (!isPS()) sId1 = statements.add(statement1);
+    const statements = new Statements();
+    const sId1 = statements.add(statement1);
     const sId2 = statements.add(statement2);
 
     const metaStatements = new MetaStatements();
-    if (!isPS()) {
-      // For proving equality of SSN, messages1[0] == messages2[5], specify using MetaStatement
-      const witnessEq = new WitnessEqualityMetaStatement();
-      witnessEq.addWitnessRef(sId1, 0);
-      witnessEq.addWitnessRef(sId2, 5);
-      const ms = MetaStatement.witnessEquality(witnessEq);
+    // For proving equality of SSN, messages1[0] == messages2[5], specify using MetaStatement
+    const witnessEq = new WitnessEqualityMetaStatement();
+    witnessEq.addWitnessRef(sId1, 0);
+    witnessEq.addWitnessRef(sId2, 5);
+    const ms = MetaStatement.witnessEquality(witnessEq);
 
-      // For proving equality of email, messages1[3] == messages2[1], specify using MetaStatement
-      const witnessEq2 = new WitnessEqualityMetaStatement();
-      witnessEq2.addWitnessRef(sId1, 3);
-      witnessEq2.addWitnessRef(sId2, 1);
-      const ms2 = MetaStatement.witnessEquality(witnessEq2);
+    // For proving equality of email, messages1[3] == messages2[1], specify using MetaStatement
+    const witnessEq2 = new WitnessEqualityMetaStatement();
+    witnessEq2.addWitnessRef(sId1, 3);
+    witnessEq2.addWitnessRef(sId2, 1);
+    const ms2 = MetaStatement.witnessEquality(witnessEq2);
 
-      metaStatements;
-      metaStatements.add(ms);
-      metaStatements.add(ms2);
-    }
+    metaStatements;
+    metaStatements.add(ms);
+    metaStatements.add(ms2);
 
     const context = stringToBytes('test-context');
 

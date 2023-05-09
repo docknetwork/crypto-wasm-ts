@@ -153,19 +153,16 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
     const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
-    const statementsProver = new Statements(isPS() ? statement1 : []);
-    let sIdx1;
-    if (!isPS()) sIdx1 = statementsProver.add(statement1);
+    const statementsProver = new Statements();
+    const sIdx1 = statementsProver.add(statement1);
     const sIdx2 = statementsProver.add(statement2);
 
     const metaStmtsProver = new MetaStatements();
-    if (!isPS()) {
-      const witnessEq1 = new WitnessEqualityMetaStatement();
-      witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['verySensitive.publicKey'], attributesStruct)[0]);
-      witnessEq1.addWitnessRef(sIdx2, 0);
+    const witnessEq1 = new WitnessEqualityMetaStatement();
+    witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['verySensitive.publicKey'], attributesStruct)[0]);
+    witnessEq1.addWitnessRef(sIdx2, 0);
 
-      metaStmtsProver.addWitnessEquality(witnessEq1);
-    }
+    metaStmtsProver.addWitnessEquality(witnessEq1);
 
     // The prover should independently construct this `ProofSpec`
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
@@ -198,19 +195,16 @@ describe('Proving that certain attribute of a credential is the preimage of a pu
     const pub = [encodedPubKeyHash];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
 
-    const statementsVerifier = new Statements(isPS() ? statement3: []);
-    let sIdx3;
-    if (!isPS()) sIdx3 = statementsVerifier.add(statement3);
+    const statementsVerifier = new Statements();
+    const sIdx3 = statementsVerifier.add(statement3);
     const sIdx4 = statementsVerifier.add(statement4);
 
     const metaStmtsVerifier = new MetaStatements();
-    if (!isPS()) {
-      const witnessEq2 = new WitnessEqualityMetaStatement();
-      witnessEq2.addWitnessRef(sIdx3, getIndicesForMsgNames(['verySensitive.publicKey'], attributesStruct)[0]);
-      witnessEq2.addWitnessRef(sIdx4, 0);
+    const witnessEq2 = new WitnessEqualityMetaStatement();
+    witnessEq2.addWitnessRef(sIdx3, getIndicesForMsgNames(['verySensitive.publicKey'], attributesStruct)[0]);
+    witnessEq2.addWitnessRef(sIdx4, 0);
 
-      metaStmtsVerifier.addWitnessEquality(witnessEq2);
-    }
+    metaStmtsVerifier.addWitnessEquality(witnessEq2);
 
     const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);

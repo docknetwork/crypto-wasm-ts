@@ -143,7 +143,6 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const witness2 = Witness.r1csCircomWitness(inputs);
 
     const witnesses = new Witnesses(witness1);
-    // witnesses.add(witness1);
     witnesses.add(witness2);
 
     const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
@@ -195,23 +194,16 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
-    const statementsProver = new Statements(isPS() ? statement1 : []);
-    let sIdx1;
-    if (!isPS()) {
-      sIdx1 = statementsProver.add(statement1);
-    }
-
+    const statementsProver = new Statements();
+    const sIdx1 = statementsProver.add(statement1);
     const sIdx2 = statementsProver.add(statement2);
 
-    let metaStmtsProver;
-    if (!isPS()) {
-      const witnessEq1 = new WitnessEqualityMetaStatement();
-      witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
-      witnessEq1.addWitnessRef(sIdx2, 0);
+    const metaStmtsProver = new MetaStatements();
+    const witnessEq1 = new WitnessEqualityMetaStatement();
+    witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
+    witnessEq1.addWitnessRef(sIdx2, 0);
 
-      metaStmtsProver = new MetaStatements();
-      metaStmtsProver.addWitnessEquality(witnessEq1);
-    }
+    metaStmtsProver.addWitnessEquality(witnessEq1);
 
     // The prover should independently construct this `ProofSpec`
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
@@ -240,20 +232,16 @@ describe('Proving that grade is either A+, A, B+, B or C', () => {
     const verifierStatements = new Statements(statement3);
     verifierStatements.add(statement4);
 
-    const statementsVerifier = new Statements(isPS() ? statement3 : []);
-    let sIdx3;
-    if (!isPS()) statementsVerifier.add(statement3);
+    const statementsVerifier = new Statements();
+    const sIdx3 = statementsVerifier.add(statement3);
     const sIdx4 = statementsVerifier.add(statement4);
 
-    let metaStmtsVerifier;
-    if (!isPS()) {
-      const witnessEq2 = new WitnessEqualityMetaStatement();
-      witnessEq2.addWitnessRef(sIdx3, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
-      witnessEq2.addWitnessRef(sIdx4, 0);
+    const metaStmtsVerifier = new MetaStatements();
+    const witnessEq2 = new WitnessEqualityMetaStatement();
+    witnessEq2.addWitnessRef(sIdx3, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
+    witnessEq2.addWitnessRef(sIdx4, 0);
 
-      const metaStmtsVerifier = new MetaStatements();
-      metaStmtsVerifier.addWitnessEquality(witnessEq2);
-    }
+    metaStmtsVerifier.addWitnessEquality(witnessEq2);
 
     const proofSpecVerifier = new ProofSpecG1(verifierStatements, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);

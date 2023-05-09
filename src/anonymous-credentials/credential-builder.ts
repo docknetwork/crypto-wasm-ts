@@ -18,8 +18,15 @@ import { BBSCredential, BBSPlusCredential, Credential, PSCredential } from './cr
 import { flatten } from 'flat';
 import { areArraysEqual } from '../util';
 import { BBSPublicKey, BBSSecretKey, BBSSignature, BBSSignatureParams } from '../bbs';
-import { BBSPlusPublicKeyG2, BBSPlusSecretKey, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
+import {
+  BBSPlusPublicKeyG2,
+  BBSPlusSecretKey,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
+  Encoder
+} from '../bbs-plus';
 import { PSPublicKey, PSSecretKey, PSSignature, PSSignatureParams } from '../ps';
+import { SignedMessages } from 'src/sign-verify-js-objs';
 
 export interface ISigningOpts {
   // Whether the credential should contain exactly the same fields (object keys, array items, literals) as the
@@ -123,11 +130,38 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
    * signature params don't have to be generated.
    * @param signingOpts
    */
-  abstract sign(
+  sign(
     secretKey: SecretKey,
     signatureParams?: SignatureParams,
     signingOpts?: Partial<ISigningOpts>
-  ): Credential<PublicKey, Signature, SignatureParams>;
+  ): Credential<PublicKey, Signature, SignatureParams> {
+    if (signingOpts === undefined) {
+      signingOpts = DefaultSigningOpts;
+    }
+
+    const cred = this.updateSchemaIfNeeded(signingOpts);
+    const schema = this.schema as CredentialSchema;
+
+    const signed = this.signMessageObject(
+      cred,
+      secretKey,
+      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      schema.encoder
+    );
+
+    this._encodedAttributes = signed.encodedMessages;
+    this._sig = signed.signature;
+
+    return this.newCredential(
+      this._version,
+      schema,
+      // @ts-ignore
+      this._subject,
+      this._topLevelFields,
+      this._sig,
+      this._credStatus
+    );
+  }
 
   serializeForSigning(): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
@@ -170,6 +204,22 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
   static hasSameFieldsAsSchema(cred: object, schema: CredentialSchema): boolean {
     return areArraysEqual(schema.flatten()[0], Object.keys(flatten(cred) as object).sort());
   }
+
+  protected abstract signMessageObject(
+    messages: Object,
+    secretKey: SecretKey,
+    labelOrParams: Uint8Array | SignatureParams,
+    encoder: Encoder
+  ): SignedMessages<Signature>;
+
+  protected abstract newCredential(
+    version: string,
+    schema: CredentialSchema,
+    subject: object,
+    topLevelFields: Map<string, unknown>,
+    sig: Signature,
+    credStatus?: object
+  ): Credential<PublicKey, Signature, SignatureParams>;
 }
 
 /**
@@ -181,33 +231,24 @@ export class BBSCredentialBuilder extends CredentialBuilder<
   BBSSignature,
   BBSSignatureParams
 > {
-  sign(secretKey: BBSSecretKey, signatureParams?: BBSSignatureParams, signingOpts?: Partial<ISigningOpts>) {
-    if (signingOpts === undefined) {
-      signingOpts = DefaultSigningOpts;
-    }
+  protected signMessageObject(
+    messages: Object,
+    secretKey: BBSSecretKey,
+    labelOrParams: Uint8Array | BBSSignatureParams,
+    encoder: Encoder
+  ): SignedMessages<BBSSignature> {
+    return BBSSignatureParams.signMessageObject(messages, secretKey, labelOrParams, encoder);
+  }
 
-    const cred = this.updateSchemaIfNeeded(signingOpts);
-    const schema = this.schema as CredentialSchema;
-
-    const signed = BBSSignatureParams.signMessageObject(
-      cred,
-      secretKey,
-      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
-      schema.encoder
-    );
-
-    this._encodedAttributes = signed.encodedMessages;
-    this._sig = signed.signature;
-
-    return new BBSCredential(
-      this._version,
-      schema,
-      // @ts-ignore
-      this._subject,
-      this._topLevelFields,
-      this._sig,
-      this._credStatus
-    );
+  protected newCredential(
+    version: string,
+    schema: CredentialSchema,
+    subject: object,
+    topLevelFields: Map<string, unknown>,
+    sig: BBSSignature,
+    credStatus?: object
+  ): BBSCredential {
+    return new BBSCredential(version, schema, subject, topLevelFields, sig, credStatus);
   }
 }
 
@@ -220,33 +261,24 @@ export class BBSPlusCredentialBuilder extends CredentialBuilder<
   BBSPlusSignatureG1,
   BBSPlusSignatureParamsG1
 > {
-  sign(secretKey: BBSPlusSecretKey, signatureParams?: BBSPlusSignatureParamsG1, signingOpts?: Partial<ISigningOpts>) {
-    if (signingOpts === undefined) {
-      signingOpts = DefaultSigningOpts;
-    }
+  protected signMessageObject(
+    messages: Object,
+    secretKey: BBSPlusSecretKey,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+    encoder: Encoder
+  ): SignedMessages<BBSPlusSignatureG1> {
+    return BBSPlusSignatureParamsG1.signMessageObject(messages, secretKey, labelOrParams, encoder);
+  }
 
-    const cred = this.updateSchemaIfNeeded(signingOpts);
-    const schema = this.schema as CredentialSchema;
-
-    const signed = BBSPlusSignatureParamsG1.signMessageObject(
-      cred,
-      secretKey,
-      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
-      schema.encoder
-    );
-
-    this._encodedAttributes = signed.encodedMessages;
-    this._sig = signed.signature;
-
-    return new BBSPlusCredential(
-      this._version,
-      schema,
-      // @ts-ignore
-      this._subject,
-      this._topLevelFields,
-      this._sig,
-      this._credStatus
-    );
+  protected newCredential(
+    version: string,
+    schema: CredentialSchema,
+    subject: object,
+    topLevelFields: Map<string, unknown>,
+    sig: BBSPlusSignatureG1,
+    credStatus?: object
+  ): BBSPlusCredential {
+    return new BBSPlusCredential(version, schema, subject, topLevelFields, sig, credStatus);
   }
 }
 
@@ -255,32 +287,23 @@ export class BBSPlusCredentialBuilder extends CredentialBuilder<
  */
 
 export class PSCredentialBuilder extends CredentialBuilder<PSSecretKey, PSPublicKey, PSSignature, PSSignatureParams> {
-  sign(secretKey: PSSecretKey, signatureParams?: PSSignatureParams, signingOpts?: Partial<ISigningOpts>) {
-    if (signingOpts === undefined) {
-      signingOpts = DefaultSigningOpts;
-    }
+  protected signMessageObject(
+    messages: Object,
+    secretKey: PSSecretKey,
+    labelOrParams: Uint8Array | PSSignatureParams,
+    encoder: Encoder
+  ): SignedMessages<PSSignature> {
+    return PSSignatureParams.signMessageObject(messages, secretKey, labelOrParams, encoder);
+  }
 
-    const cred = this.updateSchemaIfNeeded(signingOpts);
-    const schema = this.schema as CredentialSchema;
-
-    const signed = PSSignatureParams.signMessageObject(
-      cred,
-      secretKey,
-      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
-      schema.encoder
-    );
-
-    this._encodedAttributes = signed.encodedMessages;
-    this._sig = signed.signature;
-
-    return new PSCredential(
-      this._version,
-      schema,
-      // @ts-ignore
-      this._subject,
-      this._topLevelFields,
-      this._sig,
-      this._credStatus
-    );
+  protected newCredential(
+    version: string,
+    schema: CredentialSchema,
+    subject: object,
+    topLevelFields: Map<string, unknown>,
+    sig: PSSignature,
+    credStatus?: object
+  ): PSCredential {
+    return new PSCredential(version, schema, subject, topLevelFields, sig, credStatus);
   }
 }

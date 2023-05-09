@@ -106,7 +106,7 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
     proverStatements.add(statement2);
     proverStatements.add(statement3);
 
-    /*const witnessEq1 = new WitnessEqualityMetaStatement();
+    const witnessEq1 = new WitnessEqualityMetaStatement();
     witnessEq1.addWitnessRef(0, 1);
     witnessEq1.addWitnessRef(1, 0);
 
@@ -116,12 +116,12 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
 
     const witnessEq3 = new WitnessEqualityMetaStatement();
     witnessEq3.addWitnessRef(0, 2);
-    witnessEq3.addWitnessRef(2, 0);*/
+    witnessEq3.addWitnessRef(2, 0);
 
     const metaStatements = new MetaStatements();
-    /* metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
+    metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
     metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
-    metaStatements.add(MetaStatement.witnessEquality(witnessEq3));*/
+    metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
     const witness1 = buildWitness(sig, unrevealedMsgs, false);
 
@@ -172,20 +172,20 @@ describe('Proof with R1CS and Circom circuits: less than checks', () => {
 
     const statement3 = Statement.r1csCircomProver(ltR1cs, ltWasm, ltProvingKey);
 
-    const proverStatements = new Statements([].concat(statement1).concat(statement2));
+    const proverStatements = new Statements([].concat(statement1, statement2));
     proverStatements.add(statement3);
 
-    /*const witnessEq1 = new WitnessEqualityMetaStatement();
+    const witnessEq1 = new WitnessEqualityMetaStatement();
     witnessEq1.addWitnessRef(0, 2);
     witnessEq1.addWitnessRef(2, 0);
 
     const witnessEq2 = new WitnessEqualityMetaStatement();
     witnessEq2.addWitnessRef(1, 2);
-    witnessEq2.addWitnessRef(2, 1);*/
+    witnessEq2.addWitnessRef(2, 1);
 
     const metaStatements = new MetaStatements();
-    /*metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
-    metaStatements.add(MetaStatement.witnessEquality(witnessEq2));*/
+    metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
+    metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
 
     const witness1 = buildWitness(sig1, unrevealedMsgs1, false);
     const witness2 = buildWitness(sig2, unrevealedMsgs2, false);

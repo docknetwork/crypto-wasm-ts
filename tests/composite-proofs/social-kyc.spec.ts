@@ -108,7 +108,6 @@ describe('Social KYC (Know Your Customer)', () => {
     const context = stringToBytes('Verifying twitter profile with issuer 1');
 
     const meta = new MetaStatements();
-    // TODO: witness equalities
     const proofSpec = new ProofSpecG1(statements, meta, [], context);
 
     // This is the opening of the commitment posted in tweet

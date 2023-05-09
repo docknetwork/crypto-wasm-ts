@@ -182,8 +182,7 @@ describe('Requesting blind signatures', () => {
       expect(proofSpecVerifier.isValid()).toEqual(true);
 
       // Signer/verifier verifies the proof
-      // TODO
-      // expect(proof.verify(proofSpecVerifier).verified).toEqual(true);
+      expect(proof.verify(proofSpecVerifier).verified).toEqual(true);
 
       // Signer generates the blind signature using the signature request and attributes known to him. It sends the blind
       // signature to the user

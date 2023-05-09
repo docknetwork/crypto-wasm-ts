@@ -117,25 +117,22 @@ describe('Verifiable encryption using SAVER', () => {
     const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, saverProvingKey, chunkBitSize);
     const statement3 = Statement.boundCheckProver(timeMin, timeMax, boundCheckProvingKey);
 
-    const statementsProver = new Statements(isPS() ? statement1 : []);
-    let sIdx1;
-    if (!isPS()) sIdx1 = statementsProver.add(statement1);
+    const statementsProver = new Statements();
+    const sIdx1 = statementsProver.add(statement1);
     const sIdx2 = statementsProver.add(statement2);
     const sIdx3 = statementsProver.add(statement3);
 
     const metaStmtsProver = new MetaStatements();
-    if (!isPS()) {
-      const witnessEq1 = new WitnessEqualityMetaStatement();
-      witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['SSN'], attributes1Struct)[0]);
-      witnessEq1.addWitnessRef(sIdx2, 0);
+    const witnessEq1 = new WitnessEqualityMetaStatement();
+    witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['SSN'], attributes1Struct)[0]);
+    witnessEq1.addWitnessRef(sIdx2, 0);
 
-      const witnessEq2 = new WitnessEqualityMetaStatement();
-      witnessEq2.addWitnessRef(sIdx1, getIndicesForMsgNames(['timeOfBirth'], attributes1Struct)[0]);
-      witnessEq2.addWitnessRef(sIdx3, 0);
+    const witnessEq2 = new WitnessEqualityMetaStatement();
+    witnessEq2.addWitnessRef(sIdx1, getIndicesForMsgNames(['timeOfBirth'], attributes1Struct)[0]);
+    witnessEq2.addWitnessRef(sIdx3, 0);
 
-      metaStmtsProver.addWitnessEquality(witnessEq1);
-      metaStmtsProver.addWitnessEquality(witnessEq2);
-    }
+    metaStmtsProver.addWitnessEquality(witnessEq1);
+    metaStmtsProver.addWitnessEquality(witnessEq2);
 
     // The prover should independently construct this `ProofSpec`
     const proofSpecProver = new QuasiProofSpecG1(statementsProver, metaStmtsProver);
@@ -157,25 +154,22 @@ describe('Verifiable encryption using SAVER', () => {
     const statement5 = Statement.saverVerifier(saverEncGens, commGens, saverEk, saverVerifyingKey, chunkBitSize);
     const statement6 = Statement.boundCheckVerifier(timeMin, timeMax, boundCheckVerifyingKey);
 
-    const verifierStatements = new Statements(isPS() ? statement4: []);
-    let sIdx4;
-    if (!isPS()) sIdx4 = verifierStatements.add(statement4);
+    const verifierStatements = new Statements();
+    const sIdx4 = verifierStatements.add(statement4);
     const sIdx5 = verifierStatements.add(statement5);
     const sIdx6 = verifierStatements.add(statement6);
 
     const metaStmtsVerifier = new MetaStatements();
-    if (!isPS()) {
-      const witnessEq3 = new WitnessEqualityMetaStatement();
-      witnessEq3.addWitnessRef(sIdx4, getIndicesForMsgNames(['SSN'], attributes1Struct)[0]);
-      witnessEq3.addWitnessRef(sIdx5, 0);
+    const witnessEq3 = new WitnessEqualityMetaStatement();
+    witnessEq3.addWitnessRef(sIdx4, getIndicesForMsgNames(['SSN'], attributes1Struct)[0]);
+    witnessEq3.addWitnessRef(sIdx5, 0);
 
-      const witnessEq4 = new WitnessEqualityMetaStatement();
-      witnessEq4.addWitnessRef(sIdx4, getIndicesForMsgNames(['timeOfBirth'], attributes1Struct)[0]);
-      witnessEq4.addWitnessRef(sIdx6, 0);
+    const witnessEq4 = new WitnessEqualityMetaStatement();
+    witnessEq4.addWitnessRef(sIdx4, getIndicesForMsgNames(['timeOfBirth'], attributes1Struct)[0]);
+    witnessEq4.addWitnessRef(sIdx6, 0);
 
-      metaStmtsVerifier.addWitnessEquality(witnessEq3);
-      metaStmtsVerifier.addWitnessEquality(witnessEq4);
-    }
+    metaStmtsVerifier.addWitnessEquality(witnessEq3);
+    metaStmtsVerifier.addWitnessEquality(witnessEq4);
 
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStmtsVerifier);
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec));

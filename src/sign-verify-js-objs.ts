@@ -219,8 +219,7 @@ export function getPSStatementsForBlindSigRequest(
   sigParams: PSSignatureParams,
   h: Uint8Array
 ): Uint8Array[] {
-  const sortedCommitments = [...request.commitments.entries()];
-  sortedCommitments.sort(([a], [b]) => a - b);
+  const sortedCommitments = [...request.commitments.entries()].sort(([a], [b]) => a - b);
   const hArr = sigParams.getParamsForIndices(sortedCommitments.map(([key]) => key));
 
   return [
@@ -239,12 +238,11 @@ export function getPSWitnessesForBlindSigRequest(
   blinding: Uint8Array,
   blindings: Map<number, Uint8Array>
 ): Uint8Array[] {
-  const sortedMessages = [...messages.entries()];
-  sortedMessages.sort(([a], [b]) => a - b);
+  const sortedMessages = [...messages.entries()].sort(([a], [b]) => a - b);
 
   return [
     Witness.pedersenCommitment([blinding, ...sortedMessages.map(([_, msg]) => msg)]),
-    ...[...messages.entries()].map(([idx, msg]) => {
+    ...sortedMessages.map(([idx, msg]) => {
       const blinding = blindings.get(idx);
       if (blinding == null) throw new Error(`Missing blinding for ${idx}`);
 
