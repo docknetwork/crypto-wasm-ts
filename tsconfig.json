@@ -11,6 +11,7 @@
         "downlevelIteration": true,
         "baseUrl": ".",
         "esModuleInterop": true,
+        "skipLibCheck": true,
         "resolveJsonModule": true,
         "outDir": "./lib",
         "noImplicitAny": false,
