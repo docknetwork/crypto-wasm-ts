@@ -6,7 +6,7 @@ import {
   initializeWasm,
   pedersenCommitmentG1
 } from '@docknetwork/crypto-wasm';
-import { stringToBytes } from '../utils';
+import { checkResult, stringToBytes } from '../utils';
 import {
   Signature,
   BlindSignature,
@@ -121,7 +121,7 @@ describe('Social KYC (Know Your Customer)', () => {
 
     // Issuer checks that the commitment `commitmentTweet` is present in the tweet and then verifies the following
     // proof to check user's knowledge of its opening.
-    expect(proof.verify(proofSpec).verified).toEqual(true);
+    checkResult(proof.verify(proofSpec));
 
     // Issuer is convinced that user knows the opening to the both commitments
     const blindSig = isPS()

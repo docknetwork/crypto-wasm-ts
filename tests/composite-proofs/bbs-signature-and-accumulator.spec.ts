@@ -1,5 +1,5 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { stringToBytes } from '../utils';
+import { checkResult, stringToBytes } from '../utils';
 import {
   Accumulator,
   CompositeProofG1,
@@ -123,6 +123,6 @@ describe('Proving knowledge of 1 signature and a certain message in the accumula
     const nonce = stringToBytes('some unique nonce');
 
     const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
-    expect(proof.verify(proofSpec, nonce).verified).toEqual(true);
+    checkResult(proof.verify(proofSpec, nonce));
   });
 });

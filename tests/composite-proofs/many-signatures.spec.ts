@@ -1,5 +1,5 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { stringToBytes } from '../utils';
+import { checkResult, stringToBytes } from '../utils';
 import {
   CompositeProofG1,
   MetaStatement,
@@ -149,6 +149,6 @@ describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of
 
     const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
 
-    expect(proof.verify(proofSpec, nonce).verified).toEqual(true);
+    checkResult(proof.verify(proofSpec, nonce));
   });
 });

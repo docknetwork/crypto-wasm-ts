@@ -1,5 +1,5 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { stringToBytes } from '../utils';
+import { checkResult, stringToBytes } from '../utils';
 import {
   CompositeProofG1,
   MetaStatements,
@@ -80,6 +80,6 @@ describe('Proving knowledge of 1 signature over the attributes', () => {
 
     const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
 
-    expect(proof.verify(proofSpec, nonce).verified).toEqual(true);
+    checkResult(proof.verify(proofSpec, nonce));
   });
 });
