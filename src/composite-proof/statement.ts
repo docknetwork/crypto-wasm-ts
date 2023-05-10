@@ -464,7 +464,11 @@ export class Statement {
    * @param base
    */
   static pseudonym(pseudonym: Pseudonym, base: Uint8Array): Uint8Array {
-    return Statement.pedersenCommitmentG1([base], pseudonym.value);
+    return this.pseudonymVerifier(pseudonym.value, base);
+  }
+
+  static pseudonymVerifier(pseudonym: Uint8Array, base: Uint8Array): Uint8Array {
+    return Statement.pedersenCommitmentG1([base], pseudonym);
   }
 
   /**
@@ -478,11 +482,19 @@ export class Statement {
     basesForAttributes: Uint8Array[],
     baseForSecretKey?: Uint8Array
   ): Uint8Array {
+    return this.attributeBoundPseudonymVerifier(pseudonym.value, basesForAttributes, baseForSecretKey);
+  }
+
+  static attributeBoundPseudonymVerifier(
+    pseudonym: Uint8Array,
+    basesForAttributes: Uint8Array[],
+    baseForSecretKey?: Uint8Array
+  ): Uint8Array {
     const b = [...basesForAttributes];
     if (baseForSecretKey !== undefined) {
       b.push(baseForSecretKey);
     }
-    return Statement.pedersenCommitmentG1(b, pseudonym.value);
+    return Statement.pedersenCommitmentG1(b, pseudonym);
   }
 
   static r1csCircomProver(

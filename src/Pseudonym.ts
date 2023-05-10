@@ -1,5 +1,6 @@
 import { pedersenCommitmentG1, generateRandomG1Element } from '@docknetwork/crypto-wasm';
 import { BytearrayWrapper } from './bytearray-wrapper';
+import { base64ToBytearray, bytearrayToBase64 } from './util';
 
 /**
  * A pseudonym is meant to be used as a unique identifier. It can be considered as a public key where the creator of the
@@ -23,6 +24,14 @@ export class Pseudonym extends BytearrayWrapper {
    */
   static new(base: Uint8Array, secretKey: Uint8Array): Pseudonym {
     return new Pseudonym(pedersenCommitmentG1([base], [secretKey]));
+  }
+
+  static decode(value: Uint8Array): string {
+    return bytearrayToBase64(value);
+  }
+
+  static encode(value: string): Uint8Array {
+    return base64ToBytearray(value);
   }
 }
 
@@ -64,6 +73,14 @@ export class AttributeBoundPseudonym extends BytearrayWrapper {
  * Used to create commitment key for pseudonyms
  */
 export class PseudonymBases {
+  static decode(base: Uint8Array): string {
+    return bytearrayToBase64(base);
+  }
+
+  static encode(base: string): Uint8Array {
+    return base64ToBytearray(base);
+  }
+
   /**
    * Public parameter created by the verifier
    * @param scope - A seed which is hashed to create the base. Each verifier should have a unique scope
@@ -93,5 +110,21 @@ export class PseudonymBases {
       b.push(generateRandomG1Element(new Uint8Array(s)));
     }
     return b;
+  }
+
+  static encodeBasesForAttributes(basesForAttributes: string[]): Uint8Array[] {
+    return basesForAttributes.map((base) => PseudonymBases.encode(base));
+  }
+
+  static encodeBaseForSecretKey(baseForSecretKey: string): Uint8Array {
+    return PseudonymBases.encode(baseForSecretKey);
+  }
+
+  static decodeBasesForAttributes(encodedBasesForAttributes: Uint8Array[]): string[] {
+    return encodedBasesForAttributes.map((base) => PseudonymBases.decode(base));
+  }
+
+  static decodeBaseForSecretKey(encodedBaseForSecretKey: Uint8Array): string {
+    return PseudonymBases.decode(encodedBaseForSecretKey);
   }
 }

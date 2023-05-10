@@ -197,7 +197,7 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
     msgCount: number,
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1
   ): BBSPlusSignatureParamsG1 {
-    return getSigParamsOfRequiredSize(BBSPlusSignatureParamsG1, msgCount, labelOrParams)
+    return getSigParamsOfRequiredSize(BBSPlusSignatureParamsG1, msgCount, labelOrParams);
   }
 
   static getSigParamsForMsgStructure(

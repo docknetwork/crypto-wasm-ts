@@ -64,6 +64,25 @@ export interface IPresentedCredential {
   circomPredicates?: ICircomPredicate[];
 }
 
+export interface IBoundedPseudonymCommitKey {
+  basesForAttributes: string[];
+  baseForSecretKey?: string;
+}
+
+export interface IPresentedBoundedPseudonym {
+  commitKey: IBoundedPseudonymCommitKey;
+  // key is credIdx, values are attribute names in the credential corresponding to the credIdx
+  attributes: Map<number, Set<string>>;
+}
+
+export interface IUnboundedPseudonymCommitKey {
+  baseForSecretKey: string;
+}
+
+export interface IPresentedUnboundedPseudonym {
+  commitKey: IUnboundedPseudonymCommitKey;
+}
+
 /**
  * Specifies what the presentation is proving like what credentials, what's being revealed, which attributes are being proven
  * equal, bounds being enforced, etc
@@ -71,15 +90,23 @@ export interface IPresentedCredential {
 export class PresentationSpecification {
   credentials: IPresentedCredential[];
   attributeEqualities: AttributeEquality[];
+  // key == pseudonym
+  boundedPseudonyms: Map<string, IPresentedBoundedPseudonym>;
+  // key == pseudonym
+  unboundedPseudonyms: Map<string, IPresentedUnboundedPseudonym>;
 
   constructor() {
     this.credentials = [];
     this.attributeEqualities = [];
+    this.boundedPseudonyms = new Map();
+    this.unboundedPseudonyms = new Map();
   }
 
   reset() {
     this.credentials = [];
     this.attributeEqualities = [];
+    this.boundedPseudonyms = new Map();
+    this.unboundedPseudonyms = new Map();
   }
 
   addPresentedCredential(
@@ -121,7 +148,9 @@ export class PresentationSpecification {
   toJSON(): string {
     const j = {
       credentials: [],
-      attributeEqualities: this.attributeEqualities
+      attributeEqualities: this.attributeEqualities,
+      boundedPseudonyms: this.boundedPseudonyms,
+      unboundedPseudonyms: this.unboundedPseudonyms
     };
 
     for (const pc of this.credentials) {
