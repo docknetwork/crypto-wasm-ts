@@ -133,7 +133,7 @@ export class PSSignatureParams implements ISignatureParams {
     msgCount: number,
     labelOrParams: Uint8Array | PSSignatureParams
   ): PSSignatureParams {
-    return getSigParamsOfRequiredSize(PSSignatureParams, msgCount, labelOrParams)
+    return getSigParamsOfRequiredSize(PSSignatureParams, msgCount, labelOrParams);
   }
 
   static getSigParamsForMsgStructure(

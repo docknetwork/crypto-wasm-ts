@@ -186,10 +186,12 @@ export class PSBlindSignature extends BytearrayWrapper {
     h: Uint8Array,
     encoder: Encoder
   ): SignedMessages<PSBlindSignature> {
-    const {
-      encodedByName: encodedMessages,
-      encodedByIndex: revealedMessagesEncoded
-    } = encodeRevealedMessageObject(revealedMessages, blindSigRequest.commitments.size, msgStructure, encoder);
+    const { encodedByName: encodedMessages, encodedByIndex: revealedMessagesEncoded } = encodeRevealedMessageObject(
+      revealedMessages,
+      blindSigRequest.commitments.size,
+      msgStructure,
+      encoder
+    );
     const msgIter = this.combineRevealedAndBlindedMessages(revealedMessagesEncoded, blindSigRequest.commitments);
     const signature = this.generate([...msgIter], secretKey, h);
 

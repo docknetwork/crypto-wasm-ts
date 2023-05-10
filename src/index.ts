@@ -12,5 +12,5 @@ export * from './ICompressed';
 export * from './Pseudonym';
 export * from './sign-verify-js-objs';
 export * from './anonymous-credentials';
-export * from './ps'
-export * from './types'
+export * from './ps';
+export * from './types';

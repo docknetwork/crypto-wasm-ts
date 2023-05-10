@@ -90,6 +90,15 @@ export function bytearrayToHex(b: Uint8Array): string {
   return hex;
 }
 
+export function bytearrayToBase64(b: Uint8Array): string {
+  return Buffer.from(b).toString('base64');
+}
+
+export function base64ToBytearray(base64Str: string): Uint8Array {
+  const buffer = Buffer.from(base64Str, 'base64');
+  return Uint8Array.from(buffer);
+}
+
 export function areArraysEqual(arr1: string[] | number[] | boolean[], arr2: string[] | number[] | boolean[]): boolean {
   if (arr1.length !== arr2.length) {
     return false;

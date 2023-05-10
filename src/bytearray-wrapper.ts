@@ -12,7 +12,7 @@ export class BytearrayWrapper {
   }
 
   static fromBytes(bytes: Uint8Array) {
-    return new this(bytes)
+    return new this(bytes);
   }
 
   /**

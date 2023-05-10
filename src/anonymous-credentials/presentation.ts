@@ -44,6 +44,7 @@ import { SaverCiphertext } from '../saver';
 import b58 from 'bs58';
 import { SetupParamsTracker } from './setup-params-tracker';
 import { flattenObjectToKeyValuesList } from '../util';
+import { Pseudonym, PseudonymBases } from '../Pseudonym';
 
 export class Presentation extends Versioned {
   readonly spec: PresentationSpecification;
@@ -283,6 +284,40 @@ export class Presentation extends Versioned {
       });
     });
 
+    // verify boundedPseudonyms
+    for (const [pseudonym, boundedPseudonym] of this.spec.boundedPseudonyms.entries()) {
+      const basesForAttributes = PseudonymBases.encodeBasesForAttributes(boundedPseudonym.commitKey.basesForAttributes);
+      const decodedBaseForSecretKey = boundedPseudonym.commitKey.baseForSecretKey;
+      const baseForSecretKey =
+        decodedBaseForSecretKey !== undefined
+          ? PseudonymBases.encodeBaseForSecretKey(decodedBaseForSecretKey)
+          : undefined;
+
+      const statement = Statement.attributeBoundPseudonymVerifier(
+        Pseudonym.encode(pseudonym),
+        basesForAttributes,
+        baseForSecretKey
+      );
+      const sIdx = statements.add(statement);
+
+      let attrIdx = 0; // mirroring how it is constructed on the prover side
+      for (const [credIdx, attributeNames] of boundedPseudonym.attributes.entries()) {
+        for (const attributeName of attributeNames) {
+          const witnessEq = new WitnessEqualityMetaStatement();
+          witnessEq.addWitnessRef(credIdx, flattenedSchemas[credIdx][0].indexOf(attributeName));
+          witnessEq.addWitnessRef(sIdx, attrIdx++);
+          metaStatements.addWitnessEquality(witnessEq);
+        }
+      }
+    }
+
+    // verify unboundedPseudonyms
+    for (const [pseudonym, unboundedPseudonym] of this.spec.unboundedPseudonyms.entries()) {
+      const baseForSecretKey = PseudonymBases.encodeBaseForSecretKey(unboundedPseudonym.commitKey.baseForSecretKey);
+      const statement = Statement.pseudonymVerifier(Pseudonym.encode(pseudonym), baseForSecretKey);
+      statements.add(statement);
+    }
+
     const ctx = buildContextForProof(this.version, this.spec, this.context);
     const proofSpec = new QuasiProofSpecG1(statements, metaStatements, setupParamsTrk.setupParams, ctx);
     return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce);
@@ -358,7 +393,8 @@ export class Presentation extends Versioned {
       nonce: this.nonce ? b58.encode(this.nonce) : null,
       spec: {
         credentials: creds,
-        attributeEqualities: this.spec.attributeEqualities
+        attributeEqualities: this.spec.attributeEqualities,
+        boundedPseudonyms: this.spec.boundedPseudonyms
       },
       attributeCiphertexts,
       proof: b58.encode(this.proof.bytes)
@@ -430,6 +466,7 @@ export class Presentation extends Versioned {
       );
     }
     presSpec.attributeEqualities = spec['attributeEqualities'];
+    presSpec.boundedPseudonyms = spec['boundedPseudonyms'];
 
     const atc = new Map<number, AttributeCiphertexts>();
     if (attributeCiphertexts !== undefined) {

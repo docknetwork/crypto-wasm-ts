@@ -144,12 +144,7 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
     const cred = this.updateSchemaIfNeeded(signingOpts);
     const schema = this.schema as CredentialSchema;
 
-    const signed = this.signMessageObject(
-      cred,
-      secretKey,
-      signatureParams,
-      schema.encoder
-    );
+    const signed = this.signMessageObject(cred, secretKey, signatureParams, schema.encoder);
 
     this._encodedAttributes = signed.encodedMessages;
     this._sig = signed.signature;

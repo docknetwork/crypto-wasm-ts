@@ -8,11 +8,7 @@ import {
   SaverProvingKeyUncompressed
 } from '../saver';
 import { R1CS } from '@docknetwork/crypto-wasm';
-import {
-  BBSPlusPublicKeyG2,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
-} from '../bbs-plus';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 
 export type StringOrObject = string | object;
@@ -82,4 +78,3 @@ export const ACCUMULATOR_PROVING_KEY_LABEL_BYTES = te.encode(ACCUMULATOR_PROVING
 // Label used for generating SAVER encryption generators
 export const SAVER_ENCRYPTION_GENS_LABEL = 'DockSAVEREncryptionGens2022';
 export const SAVER_ENCRYPTION_GENS_BYTES = te.encode(SAVER_ENCRYPTION_GENS_LABEL);
-
