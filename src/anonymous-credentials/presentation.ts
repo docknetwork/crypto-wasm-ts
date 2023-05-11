@@ -48,10 +48,9 @@ import { SaverCiphertext } from '../saver';
 import b58 from 'bs58';
 import { SetupParamsTracker } from './setup-params-tracker';
 import { flattenObjectToKeyValuesList } from '../util';
-import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
-import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
+import { PSPublicKey, PSSignatureParams } from '../ps';
+import { BBSPublicKey, BBSSignatureParams } from '../bbs';
 
-type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature;
 type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG2 | PSSignatureParams;
 type PublicKey = BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
 

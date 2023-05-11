@@ -18,11 +18,7 @@ export class BBSSecretKey extends BBSPlusSecretKey {
 /**
  * `BBS` public key.
  */
-export const BBSPublicKey = BBSPlusPublicKeyG2;
-/**
- * `BBS` public key.
- */
-export type BBSPublicKey = BBSPlusPublicKeyG2;
+export class BBSPublicKey extends BBSPlusPublicKeyG2 {}
 
 /**
  * `BBS` keypair.
