@@ -65,6 +65,9 @@ import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 type PublicKey =  BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
+type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature;
+type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG2 | PSSignatureParams;
+
 
 export abstract class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
@@ -298,7 +301,6 @@ export abstract class PresentationBuilder extends Versioned {
     const numCreds = this.credentials.length;
     // Tracking maximum attributes across all credentials so that new values for signatures
     // params are only created when the need be. Check definition of `adapt` for more details.
-    let maxAttribs = 2; // version and schema
 
     const statements = new Statements();
     const metaStatements = new MetaStatements();
@@ -318,7 +320,7 @@ export abstract class PresentationBuilder extends Versioned {
     // Reset spec state (incase this method is called more than once)
     this.spec.reset();
 
-    // Create statements and witnesses for proving possession of each credential, i.e. proof of knowledge of BBS+ sigs.
+    // Create statements and witnesses for proving possession of each credential, i.e. proof of knowledge of the sigs.
     // Also collect encoded attributes used in any predicate
     for (let i = 0; i < numCreds; i++) {
       const cred = this.credentials[i][0];
@@ -330,7 +332,7 @@ export abstract class PresentationBuilder extends Versioned {
       if (revealedNames === undefined) {
         revealedNames = new Set();
       }
-      const sigParams = this.buildSignatureParams(this.credentials[i][1], numAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
+      const sigParams = this.buildSignatureParams(cred.signature, numAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
 
       // CredentialBuilder version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
       // type, i.e. "membership" or "non-membership" are always revealed.
@@ -354,7 +356,7 @@ export abstract class PresentationBuilder extends Versioned {
         schema.encoder
       );
       const statement = this.buildSignatureStatementFromParamsRef(
-        this.credentials[i][1],
+        cred.signature,
         setupParamsTrk.add(this.buildSignatureSetupParam(sigParams, numAttribs)),
         setupParamsTrk.add(this.buildPublicKeySetupParam(this.credentials[i][1], numAttribs)),
         revealedAttrsEncoded
@@ -781,23 +783,23 @@ export abstract class PresentationBuilder extends Versioned {
   }
 
   private buildSignatureParams(
-    pk: BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey,
+    signature: Signature,
     messageCount: number,
     label: Uint8Array
-  ): BBSSignatureParams | BBSPlusSignatureParamsG1 | PSSignatureParams {
-    if (pk instanceof BBSPublicKey) {
+  ): SignatureParams {
+    if (signature instanceof BBSSignature) {
       return BBSSignatureParams.generate(messageCount, label);
-    } else if (pk instanceof BBSPlusPublicKeyG2) {
+    } else if (signature instanceof BBSPlusSignatureG1) {
       return BBSPlusSignatureParamsG1.generate(messageCount, label);
-    } else if (pk instanceof PSPublicKey) {
+    } else if (signature instanceof PSSignature) {
       return PSSignatureParams.generate(messageCount, label);
     } else {
-      throw new Error(`Public key is invalid ${pk}`);
+      throw new Error(`Signature is invalid ${signature}`);
     }
   }
 
   private buildSignatureSetupParam(
-    params: BBSSignatureParams | BBSPlusSignatureParamsG1 | PSSignatureParams,
+    params: SignatureParams,
     messageCount: number
   ): SetupParam {
     if (params instanceof BBSSignatureParams) {
@@ -834,24 +836,24 @@ export abstract class PresentationBuilder extends Versioned {
   }
 
   private buildSignatureStatementFromParamsRef(
-    pk: BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey,
+    signature: Signature,
     sigParamsRef: number,
     publicKeyRef: number,
     revealedMessages: Map<number, Uint8Array>
   ): Uint8Array {
-    if (pk instanceof BBSPublicKey) {
+    if (signature instanceof BBSSignature) {
       return Statement.bbsSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages, false);
-    } else if (pk instanceof BBSPlusPublicKeyG2) {
+    } else if (signature instanceof BBSPlusSignatureG1) {
       return Statement.bbsPlusSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages, false);
-    } else if (pk instanceof PSPublicKey) {
+    } else if (signature instanceof PSSignature) {
       return Statement.psSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages);
     } else {
-      throw new Error(`Public key is invalid ${pk}`);
+      throw new Error(`Signature is invalid ${signature}`);
     }
   }
 
   private buildWitness(
-    signature: BBSSignature | BBSPlusSignatureG1 | PSSignature,
+    signature: Signature,
     unrevealedMessages: Map<number, Uint8Array>
   ): Uint8Array {
     if (signature instanceof BBSSignature) {
@@ -861,7 +863,7 @@ export abstract class PresentationBuilder extends Versioned {
     } else if (signature instanceof PSSignature) {
       return Witness.psSignature(signature, unrevealedMessages);
     } else {
-      throw new Error(`Signature params are invalid ${signature}`);
+      throw new Error(`Signature is invalid ${signature}`);
     }
   }
 }
