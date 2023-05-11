@@ -177,7 +177,7 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
       s[STATUS_STR] = this._credStatus;
     }
 
-    Credential.applyDefaultProofMetadataIfNeeded(s);
+    this.applyDefaultProofMetadataIfNeeded(s);
     return s;
   }
 
@@ -220,6 +220,8 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
     sig: Signature,
     credStatus?: object
   ): Credential<PublicKey, Signature, SignatureParams>;
+
+  protected abstract applyDefaultProofMetadataIfNeeded(s: object);
 }
 
 /**
@@ -249,6 +251,10 @@ export class BBSCredentialBuilder extends CredentialBuilder<
     credStatus?: object
   ): BBSCredential {
     return new BBSCredential(version, schema, subject, topLevelFields, sig, credStatus);
+  }
+
+  protected applyDefaultProofMetadataIfNeeded(s: object) {
+    BBSCredential.applyDefaultProofMetadataIfNeeded(s);
   }
 }
 
@@ -280,6 +286,10 @@ export class BBSPlusCredentialBuilder extends CredentialBuilder<
   ): BBSPlusCredential {
     return new BBSPlusCredential(version, schema, subject, topLevelFields, sig, credStatus);
   }
+
+  protected applyDefaultProofMetadataIfNeeded(s: object) {
+    BBSPlusCredential.applyDefaultProofMetadataIfNeeded(s);
+  }
 }
 
 /**
@@ -305,5 +315,9 @@ export class PSCredentialBuilder extends CredentialBuilder<PSSecretKey, PSPublic
     credStatus?: object
   ): PSCredential {
     return new PSCredential(version, schema, subject, topLevelFields, sig, credStatus);
+  }
+
+  protected applyDefaultProofMetadataIfNeeded(s: object) {
+    PSCredential.applyDefaultProofMetadataIfNeeded(s);
   }
 }
