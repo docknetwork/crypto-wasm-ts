@@ -8,13 +8,11 @@ import {
   BBSPlusCredentialBuilder,
   BBSPlusKeypairG2,
   BBSPlusPoKSignatureProtocol,
-  BBSPlusPresentationBuilder,
   BBSPlusPublicKeyG2,
   BBSPlusSecretKey,
   BBSPlusSignatureG1,
   BBSPlusSignatureParamsG1,
   BBSPoKSignatureProtocol,
-  BBSPresentationBuilder,
   BBSPublicKey,
   BBSSecretKey,
   BBSSignature,
@@ -24,9 +22,9 @@ import {
   PSCredentialBuilder,
   PSKeypair,
   PSPoKSignatureProtocol,
-  PSPresentationBuilder,
   PSPublicKey,
   PSSecretKey,
+  PresentationBuilder as PB,
   PSSignature,
   PSSignatureParams,
   SetupParam,
@@ -39,7 +37,7 @@ import {
   getPSStatementsForBlindSigRequest,
   getPSWitnessesForBlindSigRequest
 } from '../src';
-import { BBSPlusPresentation, BBSPresentation, PSPresentation } from '../src/anonymous-credentials/presentation';
+import { Presentation as P } from '../src/anonymous-credentials/presentation';
 
 export let PublicKey,
   SecretKey,
@@ -81,8 +79,8 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     getWitnessForBlindSigRequest = getBBSWitnessForBlindSigRequest;
     CredentialBuilder = BBSCredentialBuilder;
     Credential = BBSCredential;
-    PresentationBuilder = BBSPresentationBuilder;
-    Presentation = BBSPresentation;
+    PresentationBuilder = PB;
+    Presentation = P;
     isBBS = () => true;
     break;
   case 'BBS+':
@@ -102,8 +100,8 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     getWitnessForBlindSigRequest = getBBSPlusWitnessForBlindSigRequest;
     CredentialBuilder = BBSPlusCredentialBuilder;
     Credential = BBSPlusCredential;
-    PresentationBuilder = BBSPlusPresentationBuilder;
-    Presentation = BBSPlusPresentation
+    PresentationBuilder = PB;
+    Presentation = P
     isBBSPlus = () => true;
     break;
   case 'PS':
@@ -123,8 +121,8 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     getWitnessForBlindSigRequest = getPSWitnessesForBlindSigRequest;
     CredentialBuilder = PSCredentialBuilder;
     Credential = PSCredential;
-    PresentationBuilder = PSPresentationBuilder;
-    Presentation = PSPresentation
+    PresentationBuilder = PB;
+    Presentation = P
     isPS = () => true;
     break;
   default:
