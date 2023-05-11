@@ -39,7 +39,10 @@ export const REV_CHECK_STR = 'revocationCheck';
 export const REV_ID_STR = 'revocationId';
 export const MEM_CHECK_STR = 'membership';
 export const NON_MEM_CHECK_STR = 'non-membership';
-export const CRED_PROOF_TYPE = 'Bls12381BBS+SignatureDock2022';
+export const BBS_CRED_PROOF_TYPE = 'Bls12381BBSSignatureDock2023';
+export const BBS_PLUS_CRED_PROOF_TYPE = 'Bls12381BBS+SignatureDock2022';
+export const PS_CRED_PROOF_TYPE = 'Bls12381PSSignatureDock2023';
+
 
 const te = new TextEncoder();
 // Label used for generating signature parameters

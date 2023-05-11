@@ -1,8 +1,10 @@
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
-  CRED_PROOF_TYPE,
+  BBS_CRED_PROOF_TYPE,
+  BBS_PLUS_CRED_PROOF_TYPE,
   CRYPTO_VERSION_STR,
+  PS_CRED_PROOF_TYPE,
   SCHEMA_STR,
   SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
@@ -54,13 +56,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
    * given object.
    * @param s
    */
-  static applyDefaultProofMetadataIfNeeded(s: object) {
-    if (!s['proof']) {
-      s['proof'] = {
-        type: CRED_PROOF_TYPE
-      };
-    }
-  }
+  static applyDefaultProofMetadataIfNeeded(_s: object) {}
 
   serializeForSigning(): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
@@ -78,7 +74,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
       s[STATUS_STR] = this.credentialStatus;
     }
 
-    Credential.applyDefaultProofMetadataIfNeeded(s);
+    (this.constructor as typeof Credential).applyDefaultProofMetadataIfNeeded(s);
     delete s['proof']['proofValue'];
 
     return s;
@@ -96,7 +92,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
       j[k] = v;
     }
 
-    Credential.applyDefaultProofMetadataIfNeeded(j);
+    (this.constructor as typeof Credential).applyDefaultProofMetadataIfNeeded(j);
     j['proof']['proofValue'] = b58.encode((this.signature as any).bytes);
     return j;
   }
@@ -129,7 +125,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
     }
 
     // Ensure proof type is correct
-    if (proof['type'] !== CRED_PROOF_TYPE) {
+    if (![BBS_CRED_PROOF_TYPE, BBS_PLUS_CRED_PROOF_TYPE, PS_CRED_PROOF_TYPE].includes(proof['type'])) {
       throw new Error(`Invalid proof type ${proof['type']}`);
     }
 
@@ -180,21 +176,17 @@ export class BBSCredential extends Credential<BBSPublicKey, BBSSignature, BBSSig
     );
   }
 
-  toJSON(): object {
-    const j = {};
-    j['cryptoVersion'] = this._version;
-    j['credentialSchema'] = JSON.stringify(this.schema.toJSON());
-    j['credentialSubject'] = this.subject;
-    if (this.credentialStatus !== undefined) {
-      j['credentialStatus'] = this.credentialStatus;
+  /**
+   * A credential will have at least some proof metadata like the type or purpose. This adds those defaults to the
+   * given object.
+   * @param s
+   */
+  static applyDefaultProofMetadataIfNeeded(s: object) {
+    if (!s['proof']) {
+      s['proof'] = {
+        type: BBS_CRED_PROOF_TYPE
+      };
     }
-    for (const [k, v] of this.topLevelFields.entries()) {
-      j[k] = v;
-    }
-
-    Credential.applyDefaultProofMetadataIfNeeded(j);
-    j['proof']['proofValue'] = b58.encode(this.signature.bytes);
-    return j;
   }
 
   static fromJSON(j: object, proofValue?: string): BBSCredential {
@@ -226,6 +218,19 @@ export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSig
     );
   }
 
+  /**
+   * A credential will have at least some proof metadata like the type or purpose. This adds those defaults to the
+   * given object.
+   * @param s
+   */
+  static applyDefaultProofMetadataIfNeeded(s: object) {
+    if (!s['proof']) {
+      s['proof'] = {
+        type: PS_CRED_PROOF_TYPE
+      };
+    }
+  }
+
   static fromJSON(j: object, proofValue?: string): BBSPlusCredential {
     const [cryptoVersion, credentialSchema, credentialSubject, topLevelFields, sig, credentialStatus] = this.parseJSON(
       j,
@@ -253,6 +258,19 @@ export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatu
       signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
+  }
+
+  /**
+   * A credential will have at least some proof metadata like the type or purpose. This adds those defaults to the
+   * given object.
+   * @param s
+   */
+  static applyDefaultProofMetadataIfNeeded(s: object) {
+    if (!s['proof']) {
+      s['proof'] = {
+        type: BBS_PLUS_CRED_PROOF_TYPE
+      };
+    }
   }
 
   static fromJSON(j: object, proofValue?: string): PSCredential {
