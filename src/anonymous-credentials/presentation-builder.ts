@@ -1,5 +1,5 @@
 import { Versioned } from './versioned';
-import { Credential } from './credential';
+import { BBSCredential, BBSPlusCredential, PSCredential } from './credential';
 import {
   CompositeProofG1,
   MetaStatements,
@@ -41,7 +41,7 @@ import {
   IPresentedStatus,
   PresentationSpecification
 } from './presentation-specification';
-import { BBSPlusPresentation, BBSPresentation, PSPresentation, Presentation } from './presentation';
+import { Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
 import { accumulatorStatement, buildContextForProof, createWitEq, getTransformedMinMax, saverStatement } from './util';
 import {
@@ -63,7 +63,10 @@ import {
 } from '../bbs-plus';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 
-export abstract class PresentationBuilder<PublicKey, Signature, SignatureParams> extends Versioned {
+type Credential = BBSCredential | BBSPlusCredential | PSCredential;
+type PublicKey =  BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
+
+export abstract class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
   static VERSION = '0.0.1';
@@ -76,7 +79,7 @@ export abstract class PresentationBuilder<PublicKey, Signature, SignatureParams>
   spec: PresentationSpecification;
 
   // Each credential is referenced by its index in this array
-  credentials: [Credential<PublicKey, Signature, SignatureParams>, PublicKey][];
+  credentials: [Credential, PublicKey][];
 
   // Attributes revealed from each credential, key of the map is the credential index
   revealedAttributes: Map<number, Set<string>>;
@@ -116,7 +119,7 @@ export abstract class PresentationBuilder<PublicKey, Signature, SignatureParams>
     this.spec = new PresentationSpecification();
   }
 
-  addCredential(credential: Credential<PublicKey, Signature, SignatureParams>, pk: PublicKey): number {
+  addCredential(credential: Credential, pk: PublicKey): number {
     this.credentials.push([credential, pk]);
     return this.credentials.length - 1;
   }
@@ -291,12 +294,11 @@ export abstract class PresentationBuilder<PublicKey, Signature, SignatureParams>
   /**
    * Create a presentation
    */
-  finalize(): Presentation<PublicKey, Signature, SignatureParams> {
+  finalize(): Presentation {
     const numCreds = this.credentials.length;
     // Tracking maximum attributes across all credentials so that new values for signatures
     // params are only created when the need be. Check definition of `adapt` for more details.
     let maxAttribs = 2; // version and schema
-    let sigParams = this.buildSignatureParams(maxAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
 
     const statements = new Statements();
     const metaStatements = new MetaStatements();
@@ -324,14 +326,11 @@ export abstract class PresentationBuilder<PublicKey, Signature, SignatureParams>
       const flattenedSchema = schema.flatten();
 
       const numAttribs = flattenedSchema[0].length;
-      if (maxAttribs < numAttribs) {
-        sigParams = (sigParams as any).adapt(numAttribs);
-        maxAttribs = numAttribs;
-      }
       let revealedNames = this.revealedAttributes.get(i);
       if (revealedNames === undefined) {
         revealedNames = new Set();
       }
+      const sigParams = this.buildSignatureParams(this.credentials[i][1], numAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
 
       // CredentialBuilder version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
       // type, i.e. "membership" or "non-membership" are always revealed.
@@ -355,6 +354,7 @@ export abstract class PresentationBuilder<PublicKey, Signature, SignatureParams>
         schema.encoder
       );
       const statement = this.buildSignatureStatementFromParamsRef(
+        this.credentials[i][1],
         setupParamsTrk.add(this.buildSignatureSetupParam(sigParams, numAttribs)),
         setupParamsTrk.add(this.buildPublicKeySetupParam(this.credentials[i][1], numAttribs)),
         revealedAttrsEncoded
@@ -710,7 +710,7 @@ export abstract class PresentationBuilder<PublicKey, Signature, SignatureParams>
       }
     }
 
-    return this.buildPresentation(
+    return new Presentation(
       this.version,
       this.spec,
       this.proof,
@@ -780,148 +780,88 @@ export abstract class PresentationBuilder<PublicKey, Signature, SignatureParams>
     }
   }
 
-  protected abstract buildSignatureParams(messageCount: number, label: Uint8Array): SignatureParams;
-
-  protected abstract buildSignatureSetupParam(params: SignatureParams, messageCount: number): SetupParam;
-
-  protected abstract buildPublicKeySetupParam(key: PublicKey, messageCount: number): SetupParam;
-
-  protected abstract buildSignatureStatementFromParamsRef(
-    sigParamsRef: number,
-    publicKeyRef: number,
-    revealedMessages: Map<number, Uint8Array>
-  ): Uint8Array;
-
-  protected abstract buildWitness(signature: Signature, unrevealedMessages: Map<number, Uint8Array>): Uint8Array;
-
-  protected abstract buildPresentation(
-    version: string,
-    spec: PresentationSpecification,
-    proof: CompositeProofG1,
-    attributeCiphertexts?: Map<number, AttributeCiphertexts>,
-    context?: string,
-    nonce?: Uint8Array
-  ): Presentation<PublicKey, Signature, SignatureParams>;
-}
-
-export class BBSPresentationBuilder extends PresentationBuilder<BBSPublicKey, BBSSignature, BBSSignatureParams> {
-  protected buildSignatureParams(messageCount: number, label: Uint8Array): BBSSignatureParams {
-    return BBSSignatureParams.generate(messageCount, label);
-  }
-
-  protected buildSignatureSetupParam(params: BBSSignatureParams, messageCount: number): SetupParam {
-    return SetupParam.bbsSignatureParams(params.adapt(messageCount));
-  }
-
-  protected buildPublicKeySetupParam(key: BBSPublicKey, _messageCount: number): SetupParam {
-    return SetupParam.bbsPlusSignaturePublicKeyG2(key);
-  }
-
-  protected buildSignatureStatementFromParamsRef(
-    sigParamsRef: number,
-    publicKeyRef: number,
-    revealedMessages: Map<number, Uint8Array>
-  ): Uint8Array {
-    return Statement.bbsSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages, false);
-  }
-
-  protected buildWitness(signature: BBSSignature, unrevealedMessages: Map<number, Uint8Array>): Uint8Array {
-    return Witness.bbsSignature(signature, unrevealedMessages, false);
-  }
-
-  protected buildPresentation(
-    version: string,
-    spec: PresentationSpecification,
-    proof: CompositeProofG1,
-    attributeCiphertexts?: Map<number, AttributeCiphertexts>,
-    context?: string,
-    nonce?: Uint8Array
-  ): BBSPresentation {
-    return new BBSPresentation(version, spec, proof, attributeCiphertexts, context, nonce)
-  }
-}
-
-export class BBSPlusPresentationBuilder extends PresentationBuilder<
-  BBSPlusPublicKeyG2,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG2
-> {
-  protected buildSignatureParams(messageCount: number, label: Uint8Array): BBSPlusSignatureParamsG1 {
-    return BBSPlusSignatureParamsG1.generate(messageCount, label);
-  }
-
-  protected buildSignatureSetupParam(params: BBSPlusSignatureParamsG1, messageCount: number): SetupParam {
-    return SetupParam.bbsPlusSignatureParamsG1(params.adapt(messageCount));
-  }
-
-  protected buildPublicKeySetupParam(key: BBSPlusPublicKeyG2, _messageCount: number): SetupParam {
-    return SetupParam.bbsPlusSignaturePublicKeyG2(key);
-  }
-
-  protected buildSignatureStatementFromParamsRef(
-    sigParamsRef: number,
-    publicKeyRef: number,
-    revealedMessages: Map<number, Uint8Array>
-  ): Uint8Array {
-    return Statement.bbsPlusSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages, false);
-  }
-
-  protected buildWitness(signature: BBSPlusSignatureG1, unrevealedMessages: Map<number, Uint8Array>): Uint8Array {
-    return Witness.bbsPlusSignature(signature, unrevealedMessages, false);
-  }
-
-  protected buildPresentation(
-    version: string,
-    spec: PresentationSpecification,
-    proof: CompositeProofG1,
-    attributeCiphertexts?: Map<number, AttributeCiphertexts>,
-    context?: string,
-    nonce?: Uint8Array
-  ): BBSPlusPresentation {
-    return new BBSPlusPresentation(version, spec, proof, attributeCiphertexts, context, nonce)
-  }
-}
-
-export class PSPresentationBuilder extends PresentationBuilder<PSPublicKey, PSSignature, PSSignatureParams> {
-  protected buildSignatureParams(messageCount: number, label: Uint8Array): PSSignatureParams {
-    return PSSignatureParams.generate(messageCount, label);
-  }
-
-  protected buildSignatureSetupParam(params: PSSignatureParams, messageCount: number): SetupParam {
-    return SetupParam.psSignatureParams(params.adapt(messageCount));
-  }
-
-  protected buildPublicKeySetupParam(key: PSPublicKey, messageCount: number): SetupParam {
-    const supported = key.supportedMessageCount();
-    if (messageCount < key.supportedMessageCount()) {
-      key = key.adaptForLess(messageCount)!;
+  private buildSignatureParams(
+    pk: BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey,
+    messageCount: number,
+    label: Uint8Array
+  ): BBSSignatureParams | BBSPlusSignatureParamsG1 | PSSignatureParams {
+    if (pk instanceof BBSPublicKey) {
+      return BBSSignatureParams.generate(messageCount, label);
+    } else if (pk instanceof BBSPlusPublicKeyG2) {
+      return BBSPlusSignatureParamsG1.generate(messageCount, label);
+    } else if (pk instanceof PSPublicKey) {
+      return PSSignatureParams.generate(messageCount, label);
     } else {
-      throw new Error(`Unsupported message count: supported = ${supported}, received = ${messageCount}`);
+      throw new Error(`Public key is invalid ${pk}`);
     }
-
-    return SetupParam.psSignaturePublicKey(key);
   }
 
-  protected buildSignatureStatementFromParamsRef(
+  private buildSignatureSetupParam(
+    params: BBSSignatureParams | BBSPlusSignatureParamsG1 | PSSignatureParams,
+    messageCount: number
+  ): SetupParam {
+    if (params instanceof BBSSignatureParams) {
+      return SetupParam.bbsSignatureParams(params.adapt(messageCount));
+    } else if (params instanceof BBSPlusSignatureParamsG1) {
+      return SetupParam.bbsPlusSignatureParamsG1(params.adapt(messageCount));
+    } else if (params instanceof PSSignatureParams) {
+      return SetupParam.psSignatureParams(params.adapt(messageCount));
+    } else {
+      throw new Error(`Signature params are invalid ${params}`);
+    }
+  }
+
+  private buildPublicKeySetupParam(
+    pk: BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey,
+    messageCount: number
+  ): SetupParam {
+    if (pk instanceof BBSPublicKey) {
+      return SetupParam.bbsPlusSignaturePublicKeyG2(pk);
+    } else if (pk instanceof BBSPlusPublicKeyG2) {
+      return SetupParam.bbsPlusSignaturePublicKeyG2(pk);
+    } else if (pk instanceof PSPublicKey) {
+      const supported = pk.supportedMessageCount();
+      if (messageCount < pk.supportedMessageCount()) {
+        pk = pk.adaptForLess(messageCount)!;
+      } else {
+        throw new Error(`Unsupported message count: supported = ${supported}, received = ${messageCount}`);
+      }
+
+      return SetupParam.psSignaturePublicKey(pk as PSPublicKey);
+    } else {
+      throw new Error(`Public key is invalid ${pk}`);
+    }
+  }
+
+  private buildSignatureStatementFromParamsRef(
+    pk: BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey,
     sigParamsRef: number,
     publicKeyRef: number,
     revealedMessages: Map<number, Uint8Array>
   ): Uint8Array {
-    return Statement.psSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages);
+    if (pk instanceof BBSPublicKey) {
+      return Statement.bbsSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages, false);
+    } else if (pk instanceof BBSPlusPublicKeyG2) {
+      return Statement.bbsPlusSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages, false);
+    } else if (pk instanceof PSPublicKey) {
+      return Statement.psSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages);
+    } else {
+      throw new Error(`Public key is invalid ${pk}`);
+    }
   }
 
-  protected buildWitness(signature: PSSignature, unrevealedMessages: Map<number, Uint8Array>): Uint8Array {
-    return Witness.psSignature(signature, unrevealedMessages);
-  }
-
-  protected buildPresentation(
-    version: string,
-    spec: PresentationSpecification,
-    proof: CompositeProofG1,
-    attributeCiphertexts?: Map<number, AttributeCiphertexts>,
-    context?: string,
-    nonce?: Uint8Array
-  ): PSPresentation {
-    return new PSPresentation(version, spec, proof, attributeCiphertexts, context, nonce)
+  private buildWitness(
+    signature: BBSSignature | BBSPlusSignatureG1 | PSSignature,
+    unrevealedMessages: Map<number, Uint8Array>
+  ): Uint8Array {
+    if (signature instanceof BBSSignature) {
+      return Witness.bbsSignature(signature, unrevealedMessages, false);
+    } else if (signature instanceof BBSPlusSignatureG1) {
+      return Witness.bbsPlusSignature(signature, unrevealedMessages, false);
+    } else if (signature instanceof PSSignature) {
+      return Witness.psSignature(signature, unrevealedMessages);
+    } else {
+      throw new Error(`Signature params are invalid ${signature}`);
+    }
   }
 }
