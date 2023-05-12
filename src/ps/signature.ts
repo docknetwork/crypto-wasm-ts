@@ -134,7 +134,6 @@ export class PSSignature extends BytearrayWrapper {
    * @param messages - Ordered list of messages. Order and contents should be kept same for both signer and verifier
    * @param publicKey
    * @param params
-   * @param encodeMessages - If true, the messages are encoded as field elements otherwise they are assumed to be already encoded.
    */
   verify(messages: Uint8Array[], publicKey: PSPublicKey, params: PSSignatureParams): VerifyResult {
     if (messages.length !== params.supportedMessageCount()) {
@@ -186,7 +185,6 @@ export class PSBlindSignature extends BytearrayWrapper {
    * @param knownMessages
    * @param secretKey
    * @param params
-   * @param encodeMessages
    */
   static generate(messages: Iterable<PSCommitmentOrMessage>, secretKey: PSSecretKey, h: Uint8Array): PSBlindSignature {
     return new PSBlindSignature(psBlindSign(messages, secretKey.value, h));
