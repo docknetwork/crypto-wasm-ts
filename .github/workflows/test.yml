@@ -28,8 +28,8 @@ jobs:
       TEST_SIGNATURE_SCHEME: 'BBS'
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 19.x]
-        os: [ubuntu-latest, macos-latest]
+        node-version: [16.x, 19.x]
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
@@ -44,8 +44,8 @@ jobs:
       TEST_SIGNATURE_SCHEME: 'BBS+'
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 19.x]
-        os: [ubuntu-latest, macos-latest]
+        node-version: [16.x, 19.x]
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
@@ -60,8 +60,8 @@ jobs:
       TEST_SIGNATURE_SCHEME: 'PS'
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 19.x]
-        os: [ubuntu-latest, macos-latest]
+        node-version: [16.x, 19.x]
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1

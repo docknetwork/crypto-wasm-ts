@@ -68,7 +68,6 @@ type PublicKey =  BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
 type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature;
 type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG2 | PSSignatureParams;
 
-
 export abstract class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
