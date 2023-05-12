@@ -148,7 +148,7 @@ export class PSSignature extends BytearrayWrapper {
       throw new Error(
         `Number of messages ${
           messages.length
-        } is different from ${params.supportedMessageCount()} supported by the public key`
+        } is different from ${publicKey.supportedMessageCount()} supported by the public key`
       );
     }
     return psVerify(messages, this.value, publicKey.value, params.value);
