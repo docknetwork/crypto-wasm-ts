@@ -48,6 +48,7 @@ import {
   PresentationBuilder,
   Credential,
   SignatureLabelBytes,
+  Scheme,
 } from '../scheme'
 
 // Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
@@ -75,7 +76,7 @@ async function prefillAccumulator(
 // Setting it to false will make the test run the SNARK setups making tests quite slow
 const loadSnarkSetupFromFiles = true;
 
-describe('Presentation creation and verification', () => {
+describe(`${Scheme} Presentation creation and verification`, () => {
   let sk1: SecretKey, pk1: PublicKey;
   let sk2: SecretKey, pk2: PublicKey;
   let sk3: SecretKey, pk3: PublicKey;
