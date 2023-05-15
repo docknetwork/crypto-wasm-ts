@@ -14,9 +14,18 @@ import { checkResult } from '../utils';
 import { checkSchemaFromJson, getExampleBuilder, getExampleSchema } from './utils';
 import * as jsonld from 'jsonld';
 import { validate } from 'jsonschema';
-import { SecretKey, KeyPair, PublicKey, SignatureParams, Credential, CredentialBuilder, SignatureLabelBytes } from '../scheme';
+import {
+  SecretKey,
+  KeyPair,
+  PublicKey,
+  SignatureParams,
+  Credential,
+  CredentialBuilder,
+  SignatureLabelBytes,
+  Scheme
+} from '../scheme';
 
-describe('Credential signing and verification', () => {
+describe(`${Scheme} Credential signing and verification`, () => {
   let sk: SecretKey, pk: PublicKey;
 
   beforeAll(async () => {
