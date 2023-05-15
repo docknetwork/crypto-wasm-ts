@@ -67,7 +67,8 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
       request = BlindSignature.generateRequest(blindedMessages, params, true, revealedMessages);
     }
 
-    if (request.blindedIndices) expect(request.blindedIndices).toEqual(blindedIndices);
+    if (isPS()) expect([...request.commitments.keys()].sort((a, b) => a - b)).toEqual(blindedIndices);
+    else expect(request.blindedIndices).toEqual(blindedIndices);
 
     const statements = new Statements(getStatementForBlindSigRequest(request, params, h));
 
