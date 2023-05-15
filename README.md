@@ -805,7 +805,7 @@ expect(proof.verify(proofSpec).verified).toEqual(true);
 
 // Signer is convinced that user knows the opening to the commitment
 
-// Signer creates a blind signature with these known messages and the commitment.
+// Signer creates a blind signature with these revealed messages and the commitment.
 revealedMessages.set(1, stringToBytes('John Smith'));
 revealedMessages.set(3, stringToBytes('john.smith@emample.com'));
 revealedMessages.set(4, stringToBytes('New York'));
@@ -819,7 +819,7 @@ which he can use in proof as shown in examples above
 // Unbling the signature from the randomness of the commitment.
 const sig = blindSig.unblind(blinding);
 
-// Combine blinded and known messages in an array
+// Combine blinded and revealed messages in an array
 const messages = Array(blindedMessages.size + revealedMessages.size);
 for (const [i, m] of blindedMessages.entries()) {
   messages[i] = m;

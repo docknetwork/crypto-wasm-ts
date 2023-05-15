@@ -96,7 +96,7 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
     // User unblind the signature
     const sig = isPS() ? blindSig.unblind(blindings, pk) : isBBSPlus() ? blindSig.unblind(blinding) : blindSig;
 
-    // Combine blinded and known messages in an array
+    // Combine blinded and revealed messages in an array
     const messages = Array(blindedMessages.size + revealedMessages.size);
     for (const [i, m] of blindedMessages.entries()) {
       messages[i] = m;

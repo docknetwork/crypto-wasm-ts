@@ -95,7 +95,7 @@ export class PSBlindSignature extends BytearrayWrapper {
   }
 
   /**
-   * Generates a blind signature over the commitment of unknown messages and known messages
+   * Generates a blind signature over the commitment of unrevealed messages and revealed messages
    * @param messages - Iterator producing blinded messages (commitments) or revealed messages
    * @param secretKey
    * @param h
