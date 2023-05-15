@@ -1,12 +1,6 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, stringToBytes } from '../utils';
-import {
-  CompositeProofG1,
-  MetaStatements,
-  ProofSpecG1,
-  Statements,
-  Witnesses
-} from '../../src';
+import { CompositeProofG1, MetaStatements, ProofSpecG1, Statements, Witnesses } from '../../src';
 import {
   Signature,
   KeyPair,
@@ -14,8 +8,8 @@ import {
   buildStatement,
   buildWitness,
   encodeMessageForSigningIfPS,
-  Scheme,
-} from '../scheme'
+  Scheme
+} from '../scheme';
 
 describe(`${Scheme} Proving knowledge of 1 signature where some of the attributes are null, i.e.not applicable`, () => {
   it('works', async () => {

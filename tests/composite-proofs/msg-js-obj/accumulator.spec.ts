@@ -14,10 +14,8 @@ import {
   MetaStatements,
   PositiveAccumulator,
   ProofSpecG1,
-
   Statement,
   Statements,
-
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses,
@@ -175,8 +173,8 @@ describe(`${Scheme} Accumulator`, () => {
     const sigParams1 = getAdaptedSignatureParamsForMessages(params1, attributes1Struct);
     const sigParams2 = getAdaptedSignatureParamsForMessages(params2, attributes2Struct);
 
-    const sigPk1 = isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()): pk1;
-    const sigPk2 = isPS() ? pk2.adaptForLess(sigParams1.supportedMessageCount()): pk2;
+    const sigPk1 = isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()) : pk1;
+    const sigPk2 = isPS() ? pk2.adaptForLess(sigParams1.supportedMessageCount()) : pk2;
 
     const [revealedMsgs1, unrevealedMsgs1, revealedMsgsRaw1] = getRevealedAndUnrevealed(
       attributes1,

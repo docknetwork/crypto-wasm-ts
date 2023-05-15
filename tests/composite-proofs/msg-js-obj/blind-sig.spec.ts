@@ -6,7 +6,7 @@ import {
   MetaStatements,
   ProofSpecG1,
   Statements,
-  Witnesses,
+  Witnesses
 } from '../../../src';
 import {
   attributes1,
@@ -134,8 +134,8 @@ describe(`${Scheme} Requesting blind signatures`, () => {
     ]) {
       hiddenAttrNames = hiddenAttrNames as Set<any>;
       const sigParams = getAdaptedSignatureParamsForMessages(params, attributesStruct);
-      const sigPk = isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()): pk;
-      const sigSk = isPS() ? sk.adaptForLess(sigParams.supportedMessageCount()): sk;
+      const sigPk = isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk;
+      const sigSk = isPS() ? sk.adaptForLess(sigParams.supportedMessageCount()) : sk;
 
       const [names, encodedValues] = GlobalEncoder.encodeMessageObject(attributes);
       const hiddenMsgs = new Map<number, Uint8Array>();
@@ -158,7 +158,7 @@ describe(`${Scheme} Requesting blind signatures`, () => {
       const blindings = new Map();
       let blinding, request;
       if (isPS()) {
-        [blinding, request] = BlindSignature.generateRequest(hiddenMsgs,sigParams, h, blindings);
+        [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, sigParams, h, blindings);
       } else if (isBBSPlus()) {
         [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, sigParams, false);
       } else {

@@ -1,7 +1,8 @@
 import { bytearrayToHex } from '../../../src';
 import { SignedMessages } from '../../../src/types'
+import { Signature } from '../../scheme';
 
-export function signedToHex(signed: SignedMessages<any>): object {
+export function signedToHex(signed: SignedMessages<Signature>): object {
   const sig = signed.signature.hex;
   const enc = {};
   Object.keys(signed.encodedMessages).forEach((k) => {

@@ -335,11 +335,8 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
-      const [blindStatements, blindWitnesses, request, blinding, blindings] = blindSigRequestWithSecretStatementAndWitness(
-        secret,
-        sigParamsForRequestedCredential,
-        h
-      );
+      const [blindStatements, blindWitnesses, request, blinding, blindings] =
+        blindSigRequestWithSecretStatementAndWitness(secret, sigParamsForRequestedCredential, h);
 
       statements.add(statement1);
       statements.add(statement2);
@@ -430,11 +427,8 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
       const witness4 = Witness.accumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
 
-      const [blindStatemenents, blindWitnesses, request, blinding, blindings] = blindSigRequestWithSecretStatementAndWitness(
-        secret,
-        sigParamsForRequestedCredential,
-        h
-      );
+      const [blindStatemenents, blindWitnesses, request, blinding, blindings] =
+        blindSigRequestWithSecretStatementAndWitness(secret, sigParamsForRequestedCredential, h);
       const statements = new Statements();
 
       statements.add(statement1);

@@ -8,7 +8,6 @@ import {
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
@@ -17,18 +16,25 @@ import {
   R1CSSnarkSetup,
   SetupParam,
   SignedMessages,
-
   Statement,
   Statements,
-
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses,
-
+  Witnesses
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
-import { PublicKey, Signature, KeyPair, SignatureParams, buildSignatureParamsSetupParam, buildPublicKeySetupParam, buildStatementFromSetupParamsRef, buildWitness, Scheme } from '../../../scheme'
+import {
+  PublicKey,
+  Signature,
+  KeyPair,
+  SignatureParams,
+  buildSignatureParamsSetupParam,
+  buildPublicKeySetupParam,
+  buildStatementFromSetupParamsRef,
+  buildWitness,
+  Scheme
+} from '../../../scheme';
 
 // Test for a scenario where a user wants to prove that he has 10 receipts where:
 // 1. all are unique because they have different ids
@@ -118,7 +124,9 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
         otherDetails: Math.random().toString(36).slice(2, 20) // https://stackoverflow.com/a/38622545
       });
       signed.push(SignatureParams.signMessageObject(receiptsAttributes[i], sk, params, encoder));
-      checkResult(SignatureParams.verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, params, encoder));
+      checkResult(
+        SignatureParams.verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, params, encoder)
+      );
     }
   });
 
@@ -265,9 +273,7 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
 
     const sIdxVs: number[] = [];
     for (let i = 0; i < numReceipts; i++) {
-      sIdxVs.push(
-        statementsVerifier.add(buildStatementFromSetupParamsRef(0, 1, revealedMsgsFromVerifier[i], false))
-      );
+      sIdxVs.push(statementsVerifier.add(buildStatementFromSetupParamsRef(0, 1, revealedMsgsFromVerifier[i], false)));
     }
 
     sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(2, 3)));

@@ -166,7 +166,7 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     revealedNamesV.add('vaccination.name');
 
     const sigParamsV = SignatureParams.getSigParamsForMsgStructure(vaccinationAttributesStruct, label);
-    const pkV = isPS() ? sigPk.adaptForLess(sigParamsV.supportedMessageCount()): sigPk;
+    const pkV = isPS() ? sigPk.adaptForLess(sigParamsV.supportedMessageCount()) : sigPk;
     const [revealedMsgsV, unrevealedMsgsV, revealedMsgsRawV] = getRevealedAndUnrevealed(
       vaccinationAttributes,
       revealedNamesV,
@@ -180,7 +180,7 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     revealedNamesT.add('test.result');
 
     const sigParamsT = SignatureParams.getSigParamsForMsgStructure(diseaseTestAttributesStruct, label);
-    const pkT = isPS() ? sigPk.adaptForLess(sigParamsT.supportedMessageCount()): sigPk;
+    const pkT = isPS() ? sigPk.adaptForLess(sigParamsT.supportedMessageCount()) : sigPk;
     const [revealedMsgsT, unrevealedMsgsT, revealedMsgsRawT] = getRevealedAndUnrevealed(
       diseaseTestAttributes,
       revealedNamesT,

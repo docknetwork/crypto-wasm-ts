@@ -24,8 +24,8 @@ import {
   SignatureParams,
   buildWitness,
   buildStatement,
-  Scheme,
-} from '../../scheme'
+  Scheme
+} from '../../scheme';
 
 describe(`${Scheme} Proof with R1CS and Circom circuits: set membership check`, () => {
   let r1cs: ParsedR1CSFile;

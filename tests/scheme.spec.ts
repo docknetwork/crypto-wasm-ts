@@ -244,7 +244,7 @@ describe(`${Scheme} signature`, () => {
 
     const params12 = params10.adapt(twelve);
     const sk12 = SecretKey.generate(isPS() ? twelve : void 0);
-    const pk12 = isBBSPlus() ? sk12.generatePublicKeyG2(params12): sk12.generatePublicKey(params12);
+    const pk12 = isBBSPlus() ? sk12.generatePublicKeyG2(params12) : sk12.generatePublicKey(params12);
     expect(params12.isValid()).toEqual(true);
     expect(params12.supportedMessageCount()).toEqual(twelve);
 
@@ -259,7 +259,7 @@ describe(`${Scheme} signature`, () => {
 
     const params5 = params12.adapt(five);
     const sk5 = SecretKey.generate(isPS() ? five : void 0);
-    const pk5 = isBBSPlus() ? sk5.generatePublicKeyG2(params5): sk5.generatePublicKey(params5);
+    const pk5 = isBBSPlus() ? sk5.generatePublicKeyG2(params5) : sk5.generatePublicKey(params5);
     expect(params5.isValid()).toEqual(true);
     expect(params5.supportedMessageCount()).toEqual(five);
 

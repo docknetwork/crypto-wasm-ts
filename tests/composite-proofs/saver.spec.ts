@@ -1,6 +1,7 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
-  CompositeProofG1, dockSaverEncryptionGensUncompressed,
+  CompositeProofG1,
+  dockSaverEncryptionGensUncompressed,
   MetaStatement,
   MetaStatements,
   QuasiProofSpecG1,
@@ -29,8 +30,8 @@ import {
   SignatureParams,
   buildStatement,
   buildWitness,
-  Scheme,
-} from '../scheme'
+  Scheme
+} from '../scheme';
 
 describe(`${Scheme} Verifiable encryption of signed messages`, () => {
   const chunkBitSize = 16;

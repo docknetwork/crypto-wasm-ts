@@ -1,16 +1,9 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
-import {
-  EncodeFunc,
-  Encoder,
-  flattenObjectToKeyValuesList
-} from '../../../src';
+import { EncodeFunc, Encoder, flattenObjectToKeyValuesList } from '../../../src';
 import { stringToBytes } from '../../utils';
-import {
-  Signature,
-  SignatureParams
-} from '../../scheme'
+import { Signature, SignatureParams, Scheme } from '../../scheme';
 
-describe('Utils', () => {
+describe(`${Scheme} Utils`, () => {
   beforeAll(async () => {
     // Load the WASM module
     await initializeWasm();
