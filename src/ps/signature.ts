@@ -117,9 +117,9 @@ export class PSBlindSignature extends BytearrayWrapper {
    * Generate a request for a blind signature
    * @param messagesToBlind - messages the requester wants to hide from the signer. The key of the map is the index of the
    * message as per the params.
-   * @param blindings - If not provided, a random blindings will be generated for each message
    * @param params
    * @param h
+   * @param blindings - If no blinding is provided for a message, a random blinding will be generated for each message and written to this map
    * @param blinding
    * @param revealedMessages - Any messages that the requester wishes to inform the signer about. This is for informational
    * purpose only and has no cryptographic use.
