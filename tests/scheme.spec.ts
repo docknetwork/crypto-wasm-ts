@@ -118,7 +118,7 @@ describe(`${Scheme} signature`, () => {
 
     expect(challengeProver).toEqual(challengeVerifier);
 
-    expect(proof.verify(challengeVerifier, pk, params, false).verified).toEqual(true);
+    expect(proof.verify(challengeVerifier, pk, params).verified).toEqual(true);
 
     // 2 revealed messages but no user supplied blindings
     let revealed: Set<number> = new Set();
