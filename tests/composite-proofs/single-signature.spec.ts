@@ -9,6 +9,7 @@ import {
 } from '../../src';
 import {
   KeyPair,
+  Scheme,
   Signature,
   SignatureParams,
   buildStatement,
@@ -16,7 +17,7 @@ import {
   encodeMessageForSigningIfPS
 } from '../scheme'
 
-describe('Proving knowledge of 1 signature over the attributes', () => {
+describe(`${Scheme} Proving knowledge of 1 signature over the attributes`, () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();

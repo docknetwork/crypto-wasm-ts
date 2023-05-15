@@ -38,12 +38,13 @@ import {
   buildPublicKeySetupParam,
   buildStatementFromSetupParamsRef,
   buildSignatureParamsSetupParam,
-  buildWitness
+  buildWitness,
+  Scheme
 } from '../../../scheme'
 
 // Test for a scenario where a user wants to prove that his yearly income is less than 25000 where his income comprises
 // of 12 payslip credentials, 1 for each month's.
-describe('Proving that yearly income calculated from monthly payslips is less than 25000', () => {
+describe(`${Scheme} Proving that yearly income calculated from monthly payslips is less than 25000`, () => {
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');

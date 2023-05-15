@@ -13,7 +13,7 @@ import {
   generateRandomFieldElement,
   BbsPlusSigParams
 } from '@docknetwork/crypto-wasm';
-import { flattenMessageStructure } from '../sign-verify-js-objs';
+import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
 import { ISignatureParams, MessageStructure, SignedMessages } from '../types';
 import { BBSPlusPublicKeyG1, BBSPlusSecretKey } from './keys';
 import { BBSPlusSignatureG1 } from './signature';
@@ -141,11 +141,10 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
   commitToMessages(
     messageToCommit: Map<number, Uint8Array>,
     encodeMessages: boolean,
-    blinding?: Uint8Array
+    blinding: Uint8Array = generateRandomFieldElement()
   ): [Uint8Array, Uint8Array] {
-    const b = blinding === undefined ? generateRandomFieldElement() : blinding;
-    const commitment = bbsPlusCommitMsgsInG1(messageToCommit, b, this.value, encodeMessages);
-    return [commitment, b];
+    const commitment = bbsPlusCommitMsgsInG1(messageToCommit, blinding, this.value, encodeMessages);
+    return [commitment, blinding];
   }
 
   static signMessageObject(
@@ -154,17 +153,12 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
     encoder: Encoder
   ): SignedMessages<BBSPlusSignatureG1> {
-    const [names, encodedValues] = encoder.encodeMessageObject(messages);
-    const msgCount = names.length;
+    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
+    const encodedMessageValues = Object.values(encodedMessages);
+    const msgCount = encodedMessageValues.length;
 
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
-    const signature = BBSPlusSignatureG1.generate(encodedValues, secretKey, sigParams, false);
-
-    // Encoded message as an object with key as the flattened name
-    const encodedMessages: { [key: string]: Uint8Array } = {};
-    for (let i = 0; i < msgCount; i++) {
-      encodedMessages[names[i]] = encodedValues[i];
-    }
+    const signature = BBSPlusSignatureG1.generate(encodedMessageValues, secretKey, sigParams, false);
 
     return {
       encodedMessages,
@@ -204,24 +198,7 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
     msgCount: number,
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1
   ): BBSPlusSignatureParamsG1 {
-    let sigParams;
-    if (labelOrParams instanceof this) {
-      labelOrParams = labelOrParams as BBSPlusSignatureParamsG1;
-      if (labelOrParams.supportedMessageCount() !== msgCount) {
-        if (labelOrParams.label === undefined) {
-          throw new Error(
-            `Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`
-          );
-        } else {
-          sigParams = labelOrParams.adapt(msgCount);
-        }
-      } else {
-        sigParams = labelOrParams;
-      }
-    } else {
-      sigParams = this.generate(msgCount, labelOrParams as Uint8Array);
-    }
-    return sigParams;
+    return getSigParamsOfRequiredSize(BBSPlusSignatureParamsG1, msgCount, labelOrParams)
   }
 
   static getSigParamsForMsgStructure(

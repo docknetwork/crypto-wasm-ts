@@ -27,8 +27,8 @@ export class BBSPlusPoKSignatureProtocol {
     signature: BBSPlusSignatureG1,
     params: BBSPlusSignatureParamsG1,
     encodeMessages: boolean,
-    blindings?: Map<number, Uint8Array>,
-    revealed?: Set<number>
+    blindings: Map<number, Uint8Array> = new Map(),
+    revealed: Set<number> = new Set()
   ): BBSPlusPoKSignatureProtocol {
     if (messages.length !== params.supportedMessageCount()) {
       throw new Error(
@@ -37,14 +37,12 @@ export class BBSPlusPoKSignatureProtocol {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const b = blindings === undefined ? new Map<number, Uint8Array>() : blindings;
-    const r = revealed === undefined ? new Set<number>() : revealed;
     const protocol = bbsPlusInitializeProofOfKnowledgeOfSignature(
       signature.value,
       params.value,
       messages,
-      b,
-      r,
+      blindings,
+      revealed,
       encodeMessages
     );
     return new BBSPlusPoKSignatureProtocol(protocol);
@@ -57,10 +55,9 @@ export class BBSPlusPoKSignatureProtocol {
   challengeContribution(
     params: BBSPlusSignatureParamsG1,
     encodeMessages: boolean,
-    revealedMsgs?: Map<number, Uint8Array>
+    revealedMsgs: Map<number, Uint8Array> = new Map()
   ): Uint8Array {
-    const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsPlusChallengeContributionFromProtocol(this.value, r, params.value, encodeMessages);
+    return bbsPlusChallengeContributionFromProtocol(this.value, revealedMsgs, params.value, encodeMessages);
   }
 }
 
@@ -70,12 +67,11 @@ export class BBSPlusPoKSigProof extends BytearrayWrapper {
     publicKey: BBSPlusPublicKeyG2,
     params: BBSPlusSignatureParamsG1,
     encodeMessages: boolean,
-    revealedMsgs?: Map<number, Uint8Array>
+    revealedMsgs: Map<number, Uint8Array> = new Map()
   ): VerifyResult {
-    const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
     return bbsPlusVerifyProofOfKnowledgeOfSignature(
       this.value,
-      r,
+      revealedMsgs,
       challenge,
       publicKey.value,
       params.value,
@@ -86,9 +82,8 @@ export class BBSPlusPoKSigProof extends BytearrayWrapper {
   challengeContribution(
     params: BBSPlusSignatureParamsG1,
     encodeMessages: boolean,
-    revealedMsgs?: Map<number, Uint8Array>
+    revealedMsgs: Map<number, Uint8Array> = new Map()
   ): Uint8Array {
-    const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsPlusChallengeContributionFromProof(this.value, r, params.value, encodeMessages);
+    return bbsPlusChallengeContributionFromProof(this.value, revealedMsgs, params.value, encodeMessages);
   }
 }

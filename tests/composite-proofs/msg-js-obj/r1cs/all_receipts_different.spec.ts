@@ -28,14 +28,14 @@ import {
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
-import { PublicKey, Signature, KeyPair, SignatureParams, buildSignatureParamsSetupParam, buildPublicKeySetupParam, buildStatementFromSetupParamsRef, buildWitness } from '../../../scheme'
+import { PublicKey, Signature, KeyPair, SignatureParams, buildSignatureParamsSetupParam, buildPublicKeySetupParam, buildStatementFromSetupParamsRef, buildWitness, Scheme } from '../../../scheme'
 
 // Test for a scenario where a user wants to prove that he has 10 receipts where:
 // 1. all are unique because they have different ids
 // 2. all were issued after a certain date
 // 3. all have amounts greater than 1000
 // This test shows using multiple instances of different circuits
-describe('Proving the possession of 10 unique receipts, with each recent enough and over a 1000', () => {
+describe(`${Scheme} Proving the possession of 10 unique receipts, with each recent enough and over a 1000`, () => {
   let encoder: Encoder;
 
   // Amount on each receipt should be greater than this

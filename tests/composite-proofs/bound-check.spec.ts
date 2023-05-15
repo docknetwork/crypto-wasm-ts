@@ -27,9 +27,10 @@ import {
   SignatureParams,
   buildWitness,
   buildStatement,
+  Scheme,
 } from '../scheme';
 
-describe('Bound check of signed messages', () => {
+describe(`Bound check of ${Scheme} signed messages`, () => {
   const messageCount = 5;
   const msgIdx = 1;
   // All messages will be between 100 and 150

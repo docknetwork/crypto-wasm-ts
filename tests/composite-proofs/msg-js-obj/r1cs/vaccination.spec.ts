@@ -32,12 +32,13 @@ import {
   PublicKey,
   SecretKey,
   SignatureParams,
-  isPS
+  isPS,
+  Scheme
 } from '../../../scheme';
 
 // Test for a scenario where a user wants to prove that he either got the vaccination less than 30 days ago or got
 // tested negative less than 2 days ago but does not reveal when these events happened or which of these conditions is true.
-describe('Proving that either vaccinated less than 30 days ago OR last checked negative less than 2 days ago', () => {
+describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last checked negative less than 2 days ago`, () => {
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');

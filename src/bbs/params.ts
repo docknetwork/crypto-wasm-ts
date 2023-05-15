@@ -11,7 +11,7 @@ import {
 import { BBSSignature } from './signature';
 import { BBSPublicKey, BBSSecretKey } from './keys';
 import { Encoder } from '../encoder';
-import { flattenMessageStructure } from '../sign-verify-js-objs';
+import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
 import { ISignatureParams, MessageStructure, SignedMessages } from '../types';
 
 /**
@@ -87,17 +87,12 @@ export class BBSSignatureParams implements ISignatureParams {
     labelOrParams: Uint8Array | BBSSignatureParams,
     encoder: Encoder
   ): SignedMessages<BBSSignature> {
-    const [names, encodedValues] = encoder.encodeMessageObject(messages);
-    const msgCount = names.length;
+    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
+    const encodedMessageValues = Object.values(encodedMessages);
+    const msgCount = encodedMessageValues.length;
   
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
-    const signature = BBSSignature.generate(encodedValues, secretKey, sigParams, false);
-  
-    // Encoded message as an object with key as the flattened name
-    const encodedMessages: { [key: string]: Uint8Array } = {};
-    for (let i = 0; i < msgCount; i++) {
-      encodedMessages[names[i]] = encodedValues[i];
-    }
+    const signature = BBSSignature.generate(encodedMessageValues, secretKey, sigParams, false);
   
     return {
       encodedMessages,
@@ -137,22 +132,7 @@ export class BBSSignatureParams implements ISignatureParams {
     msgCount: number,
     labelOrParams: Uint8Array | BBSSignatureParams
   ): BBSSignatureParams {
-    let sigParams;
-    if (labelOrParams instanceof this) {
-      labelOrParams = labelOrParams as BBSSignatureParams;
-      if (labelOrParams.supportedMessageCount() !== msgCount) {
-        if (labelOrParams.label === undefined) {
-          throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
-        } else {
-          sigParams = labelOrParams.adapt(msgCount);
-        }
-      } else {
-        sigParams = labelOrParams;
-      }
-    } else {
-      sigParams = this.generate(msgCount, labelOrParams as Uint8Array);
-    }
-    return sigParams;
+    return getSigParamsOfRequiredSize(BBSSignatureParams, msgCount, labelOrParams)
   }
 
   /**

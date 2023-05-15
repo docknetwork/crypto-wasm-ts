@@ -24,10 +24,10 @@ import {
   attributes3Struct,
   defaultEncoder
 } from './data-and-encoder';
-import { SignatureParams, KeyPair, isPS, buildStatement, buildWitness } from '../../scheme';
+import { SignatureParams, KeyPair, isPS, buildStatement, buildWitness, Scheme } from '../../scheme';
 import { checkMapsEqual, signedToHex } from './index';
 
-describe('Signing and proof of knowledge of PS signature', () => {
+describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
   // NOTE: The following tests contain a lot of duplicated code but that is intentional as this code is for illustration purpose.
 
   beforeAll(async () => {

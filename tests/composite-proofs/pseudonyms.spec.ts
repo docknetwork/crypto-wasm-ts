@@ -16,6 +16,7 @@ import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-
 import { checkResult, getRevealedUnrevealed, stringToBytes } from '../utils';
 import {
   KeyPair,
+  Scheme,
   Signature,
   SignatureParams,
   buildStatement,
@@ -84,7 +85,7 @@ function registerUsingAttributeBoundPseudonym(
   checkResult(proof.verify(proofSpec));
 }
 
-describe('Register using pseudonym not bound to any attributes', () => {
+describe(`${Scheme} Register using pseudonym not bound to any attributes`, () => {
   // User creates a secret key and creates 2 pseudonyms from it, one for each service provider.
   let secretKey: Uint8Array;
 

@@ -27,9 +27,9 @@ import { checkResult, stringToBytes } from '../../utils';
 import { InMemoryState } from '../../../src/accumulator/in-memory-persistence';
 import { attributes1, attributes1Struct, attributes2, attributes2Struct, defaultEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { buildStatement, buildWitness, isPS, KeyPair, SignatureParams } from '../../scheme';
+import { buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams } from '../../scheme';
 
-describe('Accumulator', () => {
+describe(`${Scheme} Accumulator`, () => {
   beforeAll(async () => {
     // Load the WASM module
     await initializeWasm();

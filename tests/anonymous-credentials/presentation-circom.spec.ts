@@ -14,12 +14,13 @@ import {
   Credential,
   PresentationBuilder,
   SignatureLabelBytes,
+  Scheme
 } from '../scheme'
 
 import { getExampleSchema } from './utils';
 import { checkResult, getWasmBytes, parseR1CSFile } from '../utils';
 
-describe('Presentation creation and verification with Circom predicates', () => {
+describe(`${Scheme} Presentation creation and verification with Circom predicates`, () => {
   let sk: SecretKey, pk: PublicKey;
 
   let credential1: Credential;

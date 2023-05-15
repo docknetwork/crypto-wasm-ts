@@ -35,12 +35,13 @@ import {
   buildPublicKeySetupParam,
   buildStatementFromSetupParamsRef,
   buildWitness,
-  isPS
+  isPS,
+  Scheme
 } from '../../../scheme';
 
 // Test for a scenario where a user have 20 assets and liabilities, in different credentials (signed documents). The user
 // proves that the sum of his assets is greater than sum of liabilities by 10000 without revealing actual values of either.
-describe('Proving that sum of assets is greater than sum of liabilities by 10000', () => {
+describe(`${Scheme} Proving that sum of assets is greater than sum of liabilities by 10000`, () => {
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');

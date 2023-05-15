@@ -27,8 +27,8 @@ export class BBSPoKSignatureProtocol {
     signature: BBSSignature,
     params: BBSSignatureParams,
     encodeMessages: boolean,
-    blindings?: Map<number, Uint8Array>,
-    revealed?: Set<number>
+    blindings: Map<number, Uint8Array> = new Map(),
+    revealed: Set<number> = new Set()
   ): BBSPoKSignatureProtocol {
     if (messages.length !== params.supportedMessageCount()) {
       throw new Error(
@@ -37,14 +37,12 @@ export class BBSPoKSignatureProtocol {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const b = blindings === undefined ? new Map<number, Uint8Array>() : blindings;
-    const r = revealed === undefined ? new Set<number>() : revealed;
     const protocol = bbsInitializeProofOfKnowledgeOfSignature(
       signature.value,
       params.value,
       messages,
-      b,
-      r,
+      blindings,
+      revealed,
       encodeMessages
     );
     return new BBSPoKSignatureProtocol(protocol);
@@ -57,10 +55,9 @@ export class BBSPoKSignatureProtocol {
   challengeContribution(
     params: BBSSignatureParams,
     encodeMessages: boolean,
-    revealedMsgs?: Map<number, Uint8Array>
+    revealedMsgs: Map<number, Uint8Array> = new Map()
   ): Uint8Array {
-    const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsChallengeContributionFromProtocol(this.value, r, params.value, encodeMessages);
+    return bbsChallengeContributionFromProtocol(this.value, revealedMsgs, params.value, encodeMessages);
   }
 }
 
@@ -70,12 +67,11 @@ export class BBSPoKSigProof extends BytearrayWrapper {
     publicKey: BBSPublicKey,
     params: BBSSignatureParams,
     encodeMessages: boolean,
-    revealedMsgs?: Map<number, Uint8Array>
+    revealedMsgs: Map<number, Uint8Array> = new Map()
   ): VerifyResult {
-    const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
     return bbsVerifyProofOfKnowledgeOfSignature(
       this.value,
-      r,
+      revealedMsgs,
       challenge,
       publicKey.value,
       params.value,
@@ -86,9 +82,8 @@ export class BBSPoKSigProof extends BytearrayWrapper {
   challengeContribution(
     params: BBSSignatureParams,
     encodeMessages: boolean,
-    revealedMsgs?: Map<number, Uint8Array>
+    revealedMsgs: Map<number, Uint8Array> = new Map()
   ): Uint8Array {
-    const r = revealedMsgs === undefined ? new Map<number, Uint8Array>() : revealedMsgs;
-    return bbsChallengeContributionFromProof(this.value, r, params.value, encodeMessages);
+    return bbsChallengeContributionFromProof(this.value, revealedMsgs, params.value, encodeMessages);
   }
 }

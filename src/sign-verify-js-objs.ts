@@ -21,6 +21,29 @@ export function getAdaptedSignatureParamsForMessages<Params extends ISignaturePa
   return params.adapt(Object.keys(flattened).length);
 }
 
+export function getSigParamsOfRequiredSize<S extends ISignatureParams>(
+  SignatureParamsClass: { new (...args): S; generate(msgCount: number, labelOrParams?: Uint8Array): S },
+  msgCount: number,
+  labelOrParams: Uint8Array | S
+): S {
+  let sigParams;
+  if (labelOrParams instanceof SignatureParamsClass) {
+    labelOrParams = labelOrParams as S;
+    if (labelOrParams.supportedMessageCount() !== msgCount) {
+      if (labelOrParams.label === undefined) {
+        throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
+      } else {
+        sigParams = labelOrParams.adapt(msgCount);
+      }
+    } else {
+      sigParams = labelOrParams;
+    }
+  } else {
+    sigParams = SignatureParamsClass.generate(msgCount, labelOrParams as Uint8Array);
+  }
+  return sigParams;
+}
+
 /**
  * Given the messages as a JS object and the names (use "." for nested property names) of the messages to reveal, returns
  * the encoded messages to reveal and hide as separate maps with the key being the index of the message when the object is

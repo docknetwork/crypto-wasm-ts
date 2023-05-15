@@ -29,9 +29,10 @@ import {
   SignatureParams,
   buildStatement,
   buildWitness,
+  Scheme,
 } from '../scheme'
 
-describe('Verifiable encryption of signed messages', () => {
+describe(`${Scheme} Verifiable encryption of signed messages`, () => {
   const chunkBitSize = 16;
   const encMsgIdx = 4;
   let messageCount;

@@ -27,11 +27,11 @@ import {
   GlobalEncoder
 } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { buildStatement, buildWitness, isPS, KeyPair, SignatureParams } from '../../scheme';
+import { buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams } from '../../scheme';
 
 const loadSnarkSetupFromFiles = true;
 
-describe('Range proof using LegoGroth16', () => {
+describe(`${Scheme} Range proof using LegoGroth16`, () => {
   beforeAll(async () => {
     // Load the WASM module
     await initializeWasm();

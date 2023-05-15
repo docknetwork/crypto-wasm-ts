@@ -25,9 +25,9 @@ import {
 } from '../../../src';
 import { attributes1, attributes1Struct, GlobalEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { buildStatement, buildWitness, isPS, KeyPair, Signature, SignatureParams } from '../../scheme';
+import { buildStatement, buildWitness, isPS, KeyPair, Scheme, Signature, SignatureParams } from '../../scheme';
 
-describe('Verifiable encryption using SAVER', () => {
+describe(`${Scheme} Verifiable encryption using SAVER`, () => {
   beforeAll(async () => {
     // Load the WASM module
     await initializeWasm();

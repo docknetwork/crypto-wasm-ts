@@ -71,7 +71,7 @@ describe(`${Scheme} signature sunny day scenario`, () => {
   });
 });
 
-describe('PS signature', () => {
+describe(`${Scheme} signature`, () => {
   beforeAll(async () => {
     await initializeWasm();
   });

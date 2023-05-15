@@ -83,6 +83,9 @@ export class PSKeypair {
   pk: PSPublicKey;
 
   constructor(sk: PSSecretKey, pk: PSPublicKey) {
+    if (sk.supportedMessageCount() !== pk.supportedMessageCount()) {
+      throw new Error(`Incompatible public/secret keys: public key supports ${pk.supportedMessageCount()} messages while ${sk.supportedMessageCount()}`)
+    }
     this.sk = sk;
     this.pk = pk;
   }
@@ -96,7 +99,7 @@ export class PSKeypair {
   }
 
   supportedMessageCount(): number {
-    return Math.min(this.sk.supportedMessageCount(), this.pk.supportedMessageCount());
+    return this.sk.supportedMessageCount();
   }
 
   adaptForLess(messageCount: number): PSKeypair {
