@@ -1,4 +1,4 @@
-import { bbsGenerateKeyPair, bbsGeneratePublicKey } from '@docknetwork/crypto-wasm';
+import { bbsGenerateKeyPair, bbsGeneratePublicKey, bbsGenerateSigningKey } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG1, BBSPlusPublicKeyG2, BBSPlusSecretKey } from '../bbs-plus';
 import { BBSSignatureParams } from './params';
 
@@ -12,6 +12,10 @@ export class BBSSecretKey extends BBSPlusSecretKey {
 
   generatePublicKey(params: BBSSignatureParams): BBSPublicKey {
     return new BBSPlusPublicKeyG2(bbsGeneratePublicKey(this.value, params.value));
+  }
+
+  static generate(seed?: Uint8Array) {
+    return new this(bbsGenerateSigningKey(seed));
   }
 }
 

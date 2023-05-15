@@ -327,20 +327,22 @@ describe('A demo showing combined use of signatures and accumulators using the c
       // 2) accumulator membership and
       // 3) opening of commitment in the blind signature request.
 
+      const statements = new Statements();
       const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
       const witness1 = buildWitness(credential, unrevealedMsgs, false);
 
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
-      const [statements, witnesses, request, blinding, blindings] = blindSigRequestWithSecretStatementAndWitness(
+      const [blindStatements, blindWitnesses, request, blinding, blindings] = blindSigRequestWithSecretStatementAndWitness(
         secret,
         sigParamsForRequestedCredential,
         h
       );
 
-      statements.prepend(statement2);
-      statements.prepend(statement1);
+      statements.add(statement1);
+      statements.add(statement2);
+      statements.append(blindStatements);
 
       // Prove equality of holder's secret in `credential` and blind signature request.
       const witnessEq1 = new WitnessEqualityMetaStatement();
@@ -363,9 +365,11 @@ describe('A demo showing combined use of signatures and accumulators using the c
       // Create proof spec with statements and meta statements
       const proofSpec = new ProofSpecG1(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
+      const witnesses = new Witnesses();
 
-      witnesses.prepend(witness2);
-      witnesses.prepend(witness1);
+      witnesses.add(witness1);
+      witnesses.add(witness2);
+      witnesses.append(blindWitnesses);
       const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
       return [{ proof, request }, blinding, blindings];
     }
@@ -425,16 +429,18 @@ describe('A demo showing combined use of signatures and accumulators using the c
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
       const witness4 = Witness.accumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
 
-      const [statements, witnesses, request, blinding, blindings] = blindSigRequestWithSecretStatementAndWitness(
+      const [blindStatemenents, blindWitnesses, request, blinding, blindings] = blindSigRequestWithSecretStatementAndWitness(
         secret,
         sigParamsForRequestedCredential,
         h
       );
+      const statements = new Statements();
 
-      statements.prepend(statement4);
-      statements.prepend(statement3);
-      statements.prepend(statement2);
-      statements.prepend(statement1);
+      statements.add(statement1);
+      statements.add(statement2);
+      statements.add(statement3);
+      statements.add(statement4);
+      statements.append(blindStatemenents);
 
       // Prove equality of holder's secret in `credential`, `credential1` and blind signature request.
       const witnessEq1 = new WitnessEqualityMetaStatement();
@@ -460,10 +466,13 @@ describe('A demo showing combined use of signatures and accumulators using the c
       const proofSpec = new ProofSpecG1(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
 
-      witnesses.prepend(witness4);
-      witnesses.prepend(witness3);
-      witnesses.prepend(witness2);
-      witnesses.prepend(witness1);
+      const witnesses = new Witnesses();
+
+      witnesses.add(witness1);
+      witnesses.add(witness2);
+      witnesses.add(witness3);
+      witnesses.add(witness4);
+      witnesses.append(blindWitnesses);
 
       const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
       return [{ proof, request }, blinding, blindings];
@@ -525,10 +534,12 @@ describe('A demo showing combined use of signatures and accumulators using the c
         false
       );
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
+      const restStatements = getStatementForBlindSigRequest(blindSigReq.request, sigParams, h);
 
-      const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParams, h));
-      statements.prepend(statement2);
-      statements.prepend(statement1);
+      const statements = new Statements();
+      statements.add(statement1);
+      statements.add(statement2);
+      statements.append(restStatements);
 
       let metaStatements = new MetaStatements();
       if (!isPS()) {
@@ -644,8 +655,7 @@ describe('A demo showing combined use of signatures and accumulators using the c
         : BlindSignature.fromRequest(
             { ...blindSigReq.request, unblindedMessages: otherMsgs },
             sk,
-            sigParamsForRequestedCredential,
-            false
+            sigParamsForRequestedCredential
           );
     }
 

@@ -8,16 +8,17 @@ import {
   VerifyResult,
   psMessageCommitment
 } from '@docknetwork/crypto-wasm';
-import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { flattenMessageStructure } from '../sign-verify-js-objs';
 import { PSPublicKey, PSSecretKey } from './keys';
 import { PSSignature } from './signature';
 import { Encoder } from '../encoder';
 import { psMultiMessageCommitment } from '@docknetwork/crypto-wasm';
+import { ISignatureParams, MessageStructure, SignedMessages } from '../types';
 
 /**
  * Modified Pointcheval-Sanders signature parameters used in `Coconut`.
  */
-export class PSSignatureParams {
+export class PSSignatureParams implements ISignatureParams {
   label?: Uint8Array;
   value: PSSigParams;
 
@@ -51,7 +52,7 @@ export class PSSignatureParams {
    * Transform current signature params to sign a different number of messages. Needs the `label` field to be present
    * @param newMsgCount
    */
-  adapt(newMsgCount: number): PSSignatureParams {
+  adapt(newMsgCount: number): this {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
@@ -66,7 +67,7 @@ export class PSSignatureParams {
     } else {
       newParams = psAdaptSignatureParamsForMsgCount(this.value, this.label, newMsgCount);
     }
-    return new PSSignatureParams(newParams, this.label);
+    return new (this.constructor as typeof PSSignatureParams)(newParams, this.label) as this;
   }
 
   static signMessageObject(
@@ -83,7 +84,7 @@ export class PSSignatureParams {
     if (supportedMsgCount < msgCount) {
       throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`);
     } else if (supportedMsgCount > msgCount) {
-      secretKey = secretKey.adaptForLess(msgCount)!;
+      secretKey = secretKey.adaptForLess(msgCount);
     }
     const signature = PSSignature.generate(encodedValues, secretKey, sigParams);
 
@@ -123,7 +124,7 @@ export class PSSignatureParams {
     if (supportedMsgCount < msgCount) {
       throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`);
     } else if (supportedMsgCount > msgCount) {
-      publicKey = publicKey.adaptForLess(msgCount)!;
+      publicKey = publicKey.adaptForLess(msgCount);
     }
     return signature.verify(encodedValues, publicKey, sigParams);
   }
@@ -170,7 +171,6 @@ export class PSSignatureParams {
    * @param message
    * @param blinding
    * @param h
-   * @returns
    */
   messageCommitment(message: Uint8Array, blinding: Uint8Array, h: Uint8Array): Uint8Array {
     return psMessageCommitment(message, blinding, h, this.value.g);
@@ -182,7 +182,6 @@ export class PSSignatureParams {
    * @param h (from params)
    * @param g
    * @param blinding
-   * @returns
    */
   multiMessageCommitment(messages: Uint8Array[], h: Uint8Array[], blinding: Uint8Array): Uint8Array {
     return psMultiMessageCommitment(messages, h, this.value.g, blinding);

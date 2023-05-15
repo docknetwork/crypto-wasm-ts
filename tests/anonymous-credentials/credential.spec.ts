@@ -6,7 +6,6 @@ import {
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
-  SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_TYPE_STR,
   SUBJECT_STR,
   TYPE_STR
@@ -15,14 +14,14 @@ import { checkResult } from '../utils';
 import { checkSchemaFromJson, getExampleBuilder, getExampleSchema } from './utils';
 import * as jsonld from 'jsonld';
 import { validate } from 'jsonschema';
-import { SecretKey, KeyPair, PublicKey, SignatureParams, Credential, CredentialBuilder } from '../scheme';
+import { SecretKey, KeyPair, PublicKey, SignatureParams, Credential, CredentialBuilder, SignatureLabelBytes } from '../scheme';
 
 describe('Credential signing and verification', () => {
   let sk: SecretKey, pk: PublicKey;
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParams.generate(100, SIGNATURE_PARAMS_LABEL_BYTES);
+    const params = SignatureParams.generate(100, SignatureLabelBytes);
     const keypair = KeyPair.generate(params);
     sk = keypair.sk;
     pk = keypair.pk;

@@ -33,10 +33,7 @@ export class Witness {
    * @param unrevealedMessages
    * @param encodeMessages
    */
-  static psSignature(
-    signature: PSSignature,
-    unrevealedMessages: Map<number, Uint8Array>
-  ): Uint8Array {
+  static psSignature(signature: PSSignature, unrevealedMessages: Map<number, Uint8Array>): Uint8Array {
     return generatePoKPSSignatureWitness(signature.value, unrevealedMessages);
   }
 
@@ -126,7 +123,7 @@ export class Witnesses {
   values: Uint8Array[];
 
   constructor(values: Uint8Array | Uint8Array[] = []) {
-    this.values = Array.isArray(values) ? values: [values];
+    this.values = Array.isArray(values) ? values : [values];
   }
 
   /**
@@ -139,11 +136,14 @@ export class Witnesses {
   }
 
   /**
-   * Add a new witness to the beginning of the list. Returns the index (id) of the added witness. This index is part of the witness reference.
-   * @param witness
+   * Add new witnesses to the end of the list. Returns the indices (ids) of the added witnesses. These indices are part of the witness reference.
+   * @param statement
    */
-  prepend(witness: Uint8Array): number {
-    this.values.unshift(witness);
-    return this.values.length - 1;
+  append(witnesses: Witnesses | Uint8Array[]): number[] {
+    const rawWitnesses = witnesses instanceof Witnesses ? witnesses.values : witnesses;
+    const indices = Array.from({ length: rawWitnesses.length }, (_, i) => this.values.length + i);
+    this.values = this.values.concat(rawWitnesses);
+
+    return indices;
   }
 }

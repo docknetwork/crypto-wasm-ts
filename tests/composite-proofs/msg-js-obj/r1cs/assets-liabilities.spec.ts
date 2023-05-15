@@ -341,14 +341,10 @@ describe('Proving that sum of assets is greater than sum of liabilities by 10000
 
     const witnesses = new Witnesses();
     for (let i = 0; i < numAssetCredentials; i++) {
-      for (const witness of [].concat(buildWitness(signedAssets[i].signature, unrevealedMsgs[i], false)))
-        witnesses.add(witness);
+      witnesses.add(buildWitness(signedAssets[i].signature, unrevealedMsgs[i], false));
     }
     for (let i = 0; i < numLiabilityCredentials; i++) {
-      for (const witness of [].concat(
-        buildWitness(signedLiabilities[i].signature, unrevealedMsgs[numAssetCredentials + i], false)
-      ))
-        witnesses.add(witness);
+      witnesses.add(buildWitness(signedLiabilities[i].signature, unrevealedMsgs[numAssetCredentials + i], false));
     }
 
     const inputs = new CircomInputs();

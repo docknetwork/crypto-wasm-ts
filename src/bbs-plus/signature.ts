@@ -13,8 +13,9 @@ import {
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import LZUTF8 from 'lzutf8';
-import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { flattenMessageStructure } from '../sign-verify-js-objs';
 import { Encoder } from '../encoder';
+import { MessageStructure, SignedMessages } from '../types';
 
 export abstract class BBSPlusSignature extends BytearrayWrapper {
   // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
@@ -162,7 +163,7 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
    * Generates a blind signature over the commitment of unknown messages and known messages
    * @param commitment - Commitment over unknown messages sent by the requester of the blind signature. Its assumed that
    * the signers has verified the knowledge of committed messages
-   * @param knownMessages
+   * @param revealedMessages
    * @param secretKey
    * @param params
    * @param encodeMessages
@@ -188,8 +189,8 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
   /**
    * Generate a blind signature from request
    * @param request
-   * @param secretKey 
-   * @param h 
+   * @param secretKey
+   * @param h
    * @returns {BBSPlusBlindSignatureG1}
    */
   static fromRequest(
@@ -231,66 +232,67 @@ export class BBSPlusBlindSignatureG1 extends BBSPlusBlindSignature {
     for (const k of messagesToBlind.keys()) {
       blindedIndices.push(k);
     }
+    let encodedUnblindedMessages: Map<number, Uint8Array> | undefined;
+    if (unblindedMessages) {
+      encodedUnblindedMessages = new Map();
+      for (const [idx, msg] of unblindedMessages) {
+        encodedUnblindedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
+      }
+    }
 
     blindedIndices.sort((a, b) => a - b);
-    return [b, { commitment, blindedIndices, unblindedMessages }];
+    return [b, { commitment, blindedIndices, unblindedMessages: encodedUnblindedMessages }];
   }
 
-/**
- * Used by the signer to create a blind signature
- * @param blindSigRequest - The blind sig request sent by user.
- * @param knownMessages - The messages known to the signer
- * @param secretKey
- * @param msgStructure
- * @param labelOrParams
- * @param encoder
- */
- static blindSignMessageObject(
-  blindSigRequest: BBSPlusBlindSignatureRequest,
-  knownMessages: object,
-  secretKey: BBSPlusSecretKey,
-  msgStructure: MessageStructure,
-  labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
-  encoder: Encoder
-): SignedMessages<BBSPlusBlindSignatureG1> {
-  const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
-  const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
+  /**
+   * Used by the signer to create a blind signature
+   * @param blindSigRequest - The blind sig request sent by user.
+   * @param revealedMessages - The messages known to the signer
+   * @param secretKey
+   * @param msgStructure
+   * @param labelOrParams
+   * @param encoder
+   */
+  static blindSignMessageObject(
+    blindSigRequest: BBSPlusBlindSignatureRequest,
+    revealedMessages: object,
+    secretKey: BBSPlusSecretKey,
+    msgStructure: MessageStructure,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+    encoder: Encoder
+  ): SignedMessages<BBSPlusBlindSignatureG1> {
+    const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
+    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(revealedMessages);
 
-  const knownMessagesEncoded = new Map<number, Uint8Array>();
-  const encodedMessages: { [key: string]: Uint8Array } = {};
-  flattenedAllNames.forEach((n, i) => {
-    const j = flattenedUnblindedNames.indexOf(n);
-    if (j > -1) {
-      knownMessagesEncoded.set(i, encodedValues[j]);
-      encodedMessages[n] = encodedValues[j];
+    const revealedMessagesEncoded = new Map<number, Uint8Array>();
+    const encodedMessages: { [key: string]: Uint8Array } = {};
+    flattenedAllNames.forEach((n, i) => {
+      const j = flattenedUnblindedNames.indexOf(n);
+      if (j > -1) {
+        revealedMessagesEncoded.set(i, encodedValues[j]);
+        encodedMessages[n] = encodedValues[j];
+      }
+    });
+
+    if (flattenedUnblindedNames.length !== revealedMessagesEncoded.size) {
+      throw new Error(
+        `Message structure incompatible with revealedMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${revealedMessagesEncoded.size}`
+      );
     }
-  });
+    if (flattenedAllNames.length !== revealedMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
+      throw new Error(
+        `Message structure likely incompatible with revealedMessages and blindSigRequest. ${flattenedAllNames.length} != (${revealedMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
+      );
+    }
 
-  if (flattenedUnblindedNames.length !== knownMessagesEncoded.size) {
-    throw new Error(
-      `Message structure incompatible with knownMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${knownMessagesEncoded.size}`
-    );
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
+    const signature = this.generate(blindSigRequest.commitment, revealedMessagesEncoded, secretKey, sigParams, false);
+
+    return {
+      encodedMessages,
+      signature
+    };
   }
-  if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
-    throw new Error(
-      `Message structure likely incompatible with knownMessages and blindSigRequest. ${flattenedAllNames.length} != (${knownMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
-    );
-  }
-
-  const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
-  const signature = this.generate(
-    blindSigRequest.commitment,
-    knownMessagesEncoded,
-    secretKey,
-    sigParams,
-    false
-  );
-
-  return {
-    encodedMessages,
-    signature
-  };
-}
 }
 
 /**

@@ -1,4 +1,5 @@
-import { bytearrayToHex, SignedMessages } from '../../../src';
+import { bytearrayToHex } from '../../../src';
+import { SignedMessages } from '../../../src/types'
 
 export function signedToHex(signed: SignedMessages<any>): object {
   const sig = signed.signature.hex;

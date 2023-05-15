@@ -13,6 +13,7 @@ import {
   SignatureParams,
   buildStatement,
   buildWitness,
+  encodeMessageForSigningIfPS,
 } from '../scheme'
 import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 
@@ -26,25 +27,25 @@ describe('Proving knowledge of 1 signature where some of the attributes are null
     const messages: Uint8Array[] = [];
     // Comma separated indices of N/A messages. An efficient way, especially in large number of messages, could be to use a bitvector
     // where an unset bit would indicate N/A
-    messages.push(encodeMessageForSigning(stringToBytes('5,6,7,9')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('5,6,7,9')));
     // SSN
-    messages.push(encodeMessageForSigning(stringToBytes('123-456789-0')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('123-456789-0')));
     // Name
-    messages.push(encodeMessageForSigning(stringToBytes('John Smith')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('John Smith')));
     // High school name
-    messages.push(encodeMessageForSigning(stringToBytes('Some High School')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('Some High School')));
     // High school year
-    messages.push(encodeMessageForSigning(stringToBytes('2010')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('2010')));
     // College name
-    messages.push(encodeMessageForSigning(stringToBytes('N/A')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('N/A')));
     // Major
-    messages.push(encodeMessageForSigning(stringToBytes('N/A')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('N/A')));
     // College year
-    messages.push(encodeMessageForSigning(stringToBytes('N/A')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('N/A')));
     // City
-    messages.push(encodeMessageForSigning(stringToBytes('New York')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('New York')));
     // Last employer
-    messages.push(encodeMessageForSigning(stringToBytes('N/A')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('N/A')));
 
     const messageCount = messages.length;
     const label = stringToBytes('My sig params in g1');

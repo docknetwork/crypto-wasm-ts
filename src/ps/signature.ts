@@ -15,10 +15,10 @@ import {
 import { PSPublicKey, PSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import LZUTF8 from 'lzutf8';
-import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { flattenMessageStructure } from '../sign-verify-js-objs';
 import { Encoder } from '../encoder';
-import { psMultiMessageCommitment } from '@docknetwork/crypto-wasm';
 import { psAggregateSignatures } from '@docknetwork/crypto-wasm';
+import { MessageStructure, SignedMessages } from '../types';
 
 /**
  *  Modified Pointcheval-Sanders signature used in `Coconut`.
@@ -180,11 +180,9 @@ export class PSBlindSignature extends BytearrayWrapper {
 
   /**
    * Generates a blind signature over the commitment of unknown messages and known messages
-   * @param commitment - Commitment over unknown messages sent by the requester of the blind signature. Its assumed that
-   * the signers has verified the knowledge of committed messages
-   * @param knownMessages
+   * @param messages - Iterator producing blinded messages (commitments) or revealed messages
    * @param secretKey
-   * @param params
+   * @param h
    */
   static generate(messages: Iterable<PSCommitmentOrMessage>, secretKey: PSSecretKey, h: Uint8Array): PSBlindSignature {
     return new PSBlindSignature(psBlindSign(messages, secretKey.value, h));
@@ -192,7 +190,8 @@ export class PSBlindSignature extends BytearrayWrapper {
 
   /**
    * Unblind the blind signature to get a regular signature that can be verified
-   * @param blinding
+   * @param indexedBlindings
+   * @param pk
    */
   unblind(indexedBlindings: Map<number, Uint8Array>, pk: PSPublicKey): PSSignature {
     return new PSSignature(psUnblindSignature(this.value, indexedBlindings, pk.value));
@@ -211,9 +210,9 @@ export class PSBlindSignature extends BytearrayWrapper {
    */
   static generateRequest(
     messagesToBlind: Map<number, Uint8Array>,
-    blindings: Map<number, Uint8Array>,
     params: PSSignatureParams,
     h: Uint8Array,
+    blindings: Map<number, Uint8Array>,
     blinding: Uint8Array = generateRandomFieldElement(),
     revealedMessages: Map<number, Uint8Array> = new Map()
   ): [Uint8Array, PSBlindSignatureRequest] {
@@ -251,7 +250,7 @@ export class PSBlindSignature extends BytearrayWrapper {
     secretKey: PSSecretKey,
     h: Uint8Array
   ): PSBlindSignature {
-    const msgIter = this.combineRevealedAndBlindedMessage(revealedMessages, commitments);
+    const msgIter = this.combineRevealedAndBlindedMessages(revealedMessages, commitments);
 
     return this.generate([...msgIter], secretKey, h);
   }
@@ -259,7 +258,7 @@ export class PSBlindSignature extends BytearrayWrapper {
   /**
    * Used by the signer to create a blind signature
    * @param blindSigRequest - The blind sig request sent by user.
-   * @param knownMessages - The messages known to the signer
+   * @param revealedMessages - The messages known to the signer
    * @param secretKey
    * @param msgStructure
    * @param h
@@ -267,36 +266,36 @@ export class PSBlindSignature extends BytearrayWrapper {
    */
   static blindSignMessageObject(
     blindSigRequest: PSBlindSignatureRequest,
-    knownMessages: object,
+    revealedMessages: object,
     secretKey: PSSecretKey,
     msgStructure: MessageStructure,
     h: Uint8Array,
     encoder: Encoder
   ): SignedMessages<PSBlindSignature> {
     const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
-    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
+    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(revealedMessages);
 
-    const knownMessagesEncoded = new Map<number, Uint8Array>();
+    const revealedMessagesEncoded = new Map<number, Uint8Array>();
     const encodedMessages: { [key: string]: Uint8Array } = {};
     flattenedAllNames.forEach((n, i) => {
       const j = flattenedUnblindedNames.indexOf(n);
       if (j > -1) {
-        knownMessagesEncoded.set(i, encodedValues[j]);
+        revealedMessagesEncoded.set(i, encodedValues[j]);
         encodedMessages[n] = encodedValues[j];
       }
     });
 
-    if (flattenedUnblindedNames.length !== knownMessagesEncoded.size) {
+    if (flattenedUnblindedNames.length !== revealedMessagesEncoded.size) {
       throw new Error(
-        `Message structure incompatible with knownMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${knownMessagesEncoded.size}`
+        `Message structure incompatible with revealedMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${revealedMessagesEncoded.size}`
       );
     }
-    if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.commitments.size) {
+    if (flattenedAllNames.length !== revealedMessagesEncoded.size + blindSigRequest.commitments.size) {
       throw new Error(
-        `Message structure likely incompatible with knownMessages and blindSigRequest. ${flattenedAllNames.length} != (${knownMessagesEncoded.size} + ${blindSigRequest.commitments.size})`
+        `Message structure likely incompatible with revealedMessages and blindSigRequest. ${flattenedAllNames.length} != (${revealedMessagesEncoded.size} + ${blindSigRequest.commitments.size})`
       );
     }
-    const msgIter = this.combineRevealedAndBlindedMessage(knownMessagesEncoded, blindSigRequest.commitments);
+    const msgIter = this.combineRevealedAndBlindedMessages(revealedMessagesEncoded, blindSigRequest.commitments);
     const signature = this.generate([...msgIter], secretKey, h);
 
     return {
@@ -305,7 +304,7 @@ export class PSBlindSignature extends BytearrayWrapper {
     };
   }
 
-  private static combineRevealedAndBlindedMessage(
+  private static combineRevealedAndBlindedMessages(
     revealedMessages: Map<number, Uint8Array>,
     blindedMessages: Map<number, Uint8Array>
   ): Iterable<PSCommitmentOrMessage> {

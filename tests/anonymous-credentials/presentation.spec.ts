@@ -23,7 +23,6 @@ import {
   dockSaverEncryptionGens,
   MEM_CHECK_STR,
   REV_ID_STR,
-  SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
   SUBJECT_STR,
   dockSaverEncryptionGensUncompressed,
@@ -48,6 +47,7 @@ import {
   Presentation,
   PresentationBuilder,
   Credential,
+  SignatureLabelBytes,
 } from '../scheme'
 
 // Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
@@ -142,7 +142,7 @@ describe('Presentation creation and verification', () => {
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParams.generate(100, SIGNATURE_PARAMS_LABEL_BYTES);
+    const params = SignatureParams.generate(100, SignatureLabelBytes);
     const keypair1 = KeyPair.generate(params);
     const keypair2 = KeyPair.generate(params);
     const keypair3 = KeyPair.generate(params);

@@ -8,11 +8,13 @@ import {
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
-  SIGNATURE_PARAMS_LABEL_BYTES,
+  BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
   STATUS_TYPE_STR,
   SUBJECT_STR,
-  TYPE_STR
+  TYPE_STR,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  PS_SIGNATURE_PARAMS_LABEL_BYTES
 } from './types-and-consts';
 import { BBSCredential, BBSPlusCredential, Credential, PSCredential } from './credential';
 import { flatten } from 'flat';
@@ -26,7 +28,7 @@ import {
   Encoder
 } from '../bbs-plus';
 import { PSPublicKey, PSSecretKey, PSSignature, PSSignatureParams } from '../ps';
-import { SignedMessages } from 'src/sign-verify-js-objs';
+import { SignedMessages } from '../types';
 
 export interface ISigningOpts {
   // Whether the credential should contain exactly the same fields (object keys, array items, literals) as the
@@ -145,7 +147,7 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
     const signed = this.signMessageObject(
       cred,
       secretKey,
-      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      signatureParams,
       schema.encoder
     );
 
@@ -208,7 +210,7 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
   protected abstract signMessageObject(
     messages: Object,
     secretKey: SecretKey,
-    labelOrParams: Uint8Array | SignatureParams,
+    labelOrParams: Uint8Array | SignatureParams | undefined,
     encoder: Encoder
   ): SignedMessages<Signature>;
 
@@ -236,7 +238,7 @@ export class BBSCredentialBuilder extends CredentialBuilder<
   protected signMessageObject(
     messages: Object,
     secretKey: BBSSecretKey,
-    labelOrParams: Uint8Array | BBSSignatureParams,
+    labelOrParams: Uint8Array | BBSSignatureParams = BBS_SIGNATURE_PARAMS_LABEL_BYTES,
     encoder: Encoder
   ): SignedMessages<BBSSignature> {
     return BBSSignatureParams.signMessageObject(messages, secretKey, labelOrParams, encoder);
@@ -270,7 +272,7 @@ export class BBSPlusCredentialBuilder extends CredentialBuilder<
   protected signMessageObject(
     messages: Object,
     secretKey: BBSPlusSecretKey,
-    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1 = BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
     encoder: Encoder
   ): SignedMessages<BBSPlusSignatureG1> {
     return BBSPlusSignatureParamsG1.signMessageObject(messages, secretKey, labelOrParams, encoder);
@@ -300,7 +302,7 @@ export class PSCredentialBuilder extends CredentialBuilder<PSSecretKey, PSPublic
   protected signMessageObject(
     messages: Object,
     secretKey: PSSecretKey,
-    labelOrParams: Uint8Array | PSSignatureParams,
+    labelOrParams: Uint8Array | PSSignatureParams = PS_SIGNATURE_PARAMS_LABEL_BYTES,
     encoder: Encoder
   ): SignedMessages<PSSignature> {
     return PSSignatureParams.signMessageObject(messages, secretKey, labelOrParams, encoder);

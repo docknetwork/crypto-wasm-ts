@@ -13,7 +13,8 @@ import { BytearrayWrapper } from '../bytearray-wrapper';
 import LZUTF8 from 'lzutf8';
 import { bbsBlindSign } from '@docknetwork/crypto-wasm';
 import { Encoder } from '../bbs-plus';
-import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { flattenMessageStructure } from '../sign-verify-js-objs';
+import { MessageStructure, SignedMessages } from '../types'
 
 /**
  * `BBS` signature.
@@ -147,26 +148,26 @@ export class BBSBlindSignature extends BytearrayWrapper {
    * Generates a blind signature over the commitment of unknown messages and known messages
    * @param commitment - Commitment over unknown messages sent by the requester of the blind signature. Its assumed that
    * the signers has verified the knowledge of committed messages
-   * @param knownMessages
+   * @param revealedMessages
    * @param secretKey
    * @param params
    * @param encodeMessages
    */
   static generate(
     commitment: Uint8Array,
-    knownMessages: Map<number, Uint8Array>,
+    revealedMessages: Map<number, Uint8Array>,
     secretKey: BBSSecretKey,
     params: BBSSignatureParams,
     encodeMessages: boolean
   ): BBSBlindSignature {
-    if (knownMessages.size >= params.supportedMessageCount()) {
+    if (revealedMessages.size >= params.supportedMessageCount()) {
       throw new Error(
         `Number of messages ${
-          knownMessages.size
+          revealedMessages.size
         } must be less than ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsBlindSign(commitment, knownMessages, secretKey.value, params.value, encodeMessages);
+    const sig = bbsBlindSign(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
     return new BBSBlindSignature(sig);
   }
 
@@ -213,15 +214,22 @@ export class BBSBlindSignature extends BytearrayWrapper {
     for (const k of messagesToBlind.keys()) {
       blindedIndices.push(k);
     }
+    let encodedUnblindedMessages: Map<number, Uint8Array> | undefined;
+    if (unblindedMessages) {
+      encodedUnblindedMessages = new Map();
+      for (const [idx, msg] of unblindedMessages) {
+        encodedUnblindedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
+      }
+    }
 
     blindedIndices.sort((a, b) => a - b);
-    return { commitment, blindedIndices, unblindedMessages };
+    return { commitment, blindedIndices, unblindedMessages: encodedUnblindedMessages };
   }
   
   /**
    * Used by the signer to create a blind signature
    * @param blindSigRequest - The blind sig request sent by user.
-   * @param knownMessages - The messages known to the signer
+   * @param revealedMessages - The messages known to the signer
    * @param secretKey
    * @param msgStructure
    * @param labelOrParams
@@ -229,40 +237,40 @@ export class BBSBlindSignature extends BytearrayWrapper {
    */
    static blindSignMessageObject(
     blindSigRequest: BBSBlindSignatureRequest,
-    knownMessages: object,
+    revealedMessages: object,
     secretKey: BBSSecretKey,
     msgStructure: MessageStructure,
     labelOrParams: Uint8Array | BBSSignatureParams,
     encoder: Encoder
   ): SignedMessages<BBSBlindSignature> {
     const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
-    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(knownMessages);
+    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(revealedMessages);
   
-    const knownMessagesEncoded = new Map<number, Uint8Array>();
+    const revealedMessagesEncoded = new Map<number, Uint8Array>();
     const encodedMessages: { [key: string]: Uint8Array } = {};
     flattenedAllNames.forEach((n, i) => {
       const j = flattenedUnblindedNames.indexOf(n);
       if (j > -1) {
-        knownMessagesEncoded.set(i, encodedValues[j]);
+        revealedMessagesEncoded.set(i, encodedValues[j]);
         encodedMessages[n] = encodedValues[j];
       }
     });
   
-    if (flattenedUnblindedNames.length !== knownMessagesEncoded.size) {
+    if (flattenedUnblindedNames.length !== revealedMessagesEncoded.size) {
       throw new Error(
-        `Message structure incompatible with knownMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${knownMessagesEncoded.size}`
+        `Message structure incompatible with revealedMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${revealedMessagesEncoded.size}`
       );
     }
-    if (flattenedAllNames.length !== knownMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
+    if (flattenedAllNames.length !== revealedMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
       throw new Error(
-        `Message structure likely incompatible with knownMessages and blindSigRequest. ${flattenedAllNames.length} != (${knownMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
+        `Message structure likely incompatible with revealedMessages and blindSigRequest. ${flattenedAllNames.length} != (${revealedMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
       );
     }
   
     const sigParams = BBSSignatureParams.getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
     const blindSig = this.generate(
       blindSigRequest.commitment,
-      knownMessagesEncoded,
+      revealedMessagesEncoded,
       secretKey,
       sigParams,
       false

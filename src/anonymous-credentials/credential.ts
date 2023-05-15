@@ -6,7 +6,9 @@ import {
   CRYPTO_VERSION_STR,
   PS_CRED_PROOF_TYPE,
   SCHEMA_STR,
-  SIGNATURE_PARAMS_LABEL_BYTES,
+  BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  PS_SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
   SUBJECT_STR
 } from './types-and-consts';
@@ -54,7 +56,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
   /**
    * A credential will have at least some proof metadata like the type or purpose. This adds those defaults to the
    * given object.
-   * @param s
+   * @param _s
    */
   static applyDefaultProofMetadataIfNeeded(_s: object) {}
 
@@ -171,7 +173,7 @@ export class BBSCredential extends Credential<BBSPublicKey, BBSSignature, BBSSig
       cred,
       this.signature,
       publicKey,
-      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      signatureParams !== undefined ? signatureParams : BBS_SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
   }
@@ -213,7 +215,7 @@ export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSig
       cred,
       this.signature,
       publicKey,
-      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      signatureParams !== undefined ? signatureParams : BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
   }
@@ -226,7 +228,7 @@ export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSig
   static applyDefaultProofMetadataIfNeeded(s: object) {
     if (!s['proof']) {
       s['proof'] = {
-        type: PS_CRED_PROOF_TYPE
+        type: BBS_PLUS_CRED_PROOF_TYPE
       };
     }
   }
@@ -255,7 +257,7 @@ export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatu
       cred,
       this.signature,
       publicKey,
-      signatureParams !== undefined ? signatureParams : SIGNATURE_PARAMS_LABEL_BYTES,
+      signatureParams !== undefined ? signatureParams : PS_SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
   }
@@ -268,7 +270,7 @@ export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatu
   static applyDefaultProofMetadataIfNeeded(s: object) {
     if (!s['proof']) {
       s['proof'] = {
-        type: BBS_PLUS_CRED_PROOF_TYPE
+        type: PS_CRED_PROOF_TYPE
       };
     }
   }
