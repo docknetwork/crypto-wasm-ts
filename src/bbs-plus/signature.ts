@@ -75,8 +75,8 @@ export abstract class BBSPlusBlindSignature extends BytearrayWrapper {
 
 export class BBSPlusBlindSignatureG1 extends WithFieldEncoder {
   /**
-   * Generates a blind signature over the commitment of unknown messages and known messages
-   * @param commitment - Commitment over unknown messages sent by the requester of the blind signature. Its assumed that
+   * Generates a blind signature over the commitment of unrevealed messages and revealed messages
+   * @param commitment - Commitment over unrevealed messages sent by the requester of the blind signature. Its assumed that
    * the signers has verified the knowledge of committed messages
    * @param revealedMessages
    * @param secretKey

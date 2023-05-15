@@ -183,7 +183,7 @@ describe(`${Scheme} signature`, () => {
     const blindings = new Map();
     const h = generateRandomG1Element();
 
-    // Simulation of signer picking up known messages
+    // Simulation of signer picking up revealed messages
     const revealedMessages = new Map();
     for (let i = 0; i < messageCount; i++) {
       if (!messagesToHide.has(i)) {
