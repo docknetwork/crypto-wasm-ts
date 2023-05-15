@@ -274,7 +274,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       const blindings = new Map();
       let blinding, request;
       if (isPS()) {
-        [blinding, request] = BlindSignature.generateRequest(msgsToCommit, blindings, sigParams, h);
+        [blinding, request] = BlindSignature.generateRequest(msgsToCommit, sigParams, h, blindings);
       } else if (isBBSPlus()) {
         [blinding, request] = BlindSignature.generateRequest(msgsToCommit, sigParams, false, void 0);
       } else {
