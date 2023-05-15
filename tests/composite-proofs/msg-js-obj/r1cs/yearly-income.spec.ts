@@ -10,7 +10,6 @@ import {
   flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
-
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
@@ -19,14 +18,11 @@ import {
   R1CSSnarkSetup,
   SetupParam,
   SignedMessages,
-
   Statement,
   Statements,
-
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses,
-
+  Witnesses
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
@@ -40,7 +36,7 @@ import {
   buildSignatureParamsSetupParam,
   buildWitness,
   Scheme
-} from '../../../scheme'
+} from '../../../scheme';
 
 // Test for a scenario where a user wants to prove that his yearly income is less than 25000 where his income comprises
 // of 12 payslip credentials, 1 for each month's.
@@ -134,7 +130,9 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
         }
       });
       signed.push(SignatureParams.signMessageObject(payslipAttributes[i], sk, params, encoder));
-      checkResult(SignatureParams.verifyMessageObject(payslipAttributes[i], signed[i].signature, sigPk, params, encoder));
+      checkResult(
+        SignatureParams.verifyMessageObject(payslipAttributes[i], signed[i].signature, sigPk, params, encoder)
+      );
     }
   });
 
@@ -224,8 +222,7 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
 
     const witnesses = new Witnesses();
     for (let i = 0; i < numPayslips; i++) {
-      for (const wit of [].concat(buildWitness(signed[i].signature, unrevealedMsgs[i], false)))
-        witnesses.add(wit);
+      for (const wit of [].concat(buildWitness(signed[i].signature, unrevealedMsgs[i], false))) witnesses.add(wit);
     }
 
     const inputs = new CircomInputs();
@@ -262,9 +259,7 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
 
     const sIdxVs: number[] = [];
     for (let i = 0; i < numPayslips; i++) {
-      sIdxVs.push(
-        statementsVerifier.add(buildStatementFromSetupParamsRef(0, 1, revealedMsgsFromVerifier[i], false))
-      );
+      sIdxVs.push(statementsVerifier.add(buildStatementFromSetupParamsRef(0, 1, revealedMsgsFromVerifier[i], false)));
     }
 
     sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(2, 3)));

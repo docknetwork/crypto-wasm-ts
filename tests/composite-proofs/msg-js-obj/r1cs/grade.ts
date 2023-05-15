@@ -22,7 +22,7 @@ import {
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
-import { SignatureParams, KeyPair, PublicKey, Signature, buildStatement, buildWitness, isPS } from '../../../scheme';
+import { SignatureParams, KeyPair, PublicKey, Signature, buildStatement, buildWitness, Scheme } from '../../../scheme';
 
 // Test for scenario where the user wants to prove that his grade belongs/does not belong to the given set.
 // Similar test can be written for other "set-membership" relations like user is not resident of certain cities

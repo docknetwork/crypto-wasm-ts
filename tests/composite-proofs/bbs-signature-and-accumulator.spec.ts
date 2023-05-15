@@ -13,14 +13,7 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
-import {
-  KeyPair,
-  Scheme,
-  Signature,
-  SignatureParams,
-  buildStatement,
-  buildWitness,
-} from '../scheme'
+import { KeyPair, Scheme, Signature, SignatureParams, buildStatement, buildWitness } from '../scheme';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 
 describe(`Proving knowledge of 1 ${Scheme} signature and a certain message in the accumulator`, () => {

@@ -22,7 +22,16 @@ import {
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
-import { PublicKey, KeyPair, SignatureParams, Signature, buildStatement, buildWitness, isPS, Scheme } from '../../../scheme';
+import {
+  PublicKey,
+  KeyPair,
+  SignatureParams,
+  Signature,
+  buildStatement,
+  buildWitness,
+  isPS,
+  Scheme
+} from '../../../scheme';
 
 // Test for a scenario where a user wants to prove that his blood group is AB- without revealing the blood group.
 // Similar test can be written for other "not-equals" relations like user is not resident of certain city

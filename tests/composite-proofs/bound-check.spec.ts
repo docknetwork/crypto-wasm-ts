@@ -13,12 +13,7 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
-import {
-  checkResult,
-  getRevealedUnrevealed,
-  stringToBytes,
-  getBoundCheckSnarkKeys
-} from '../utils';
+import { checkResult, getRevealedUnrevealed, stringToBytes, getBoundCheckSnarkKeys } from '../utils';
 import {
   KeyPair,
   SecretKey,
@@ -27,7 +22,7 @@ import {
   SignatureParams,
   buildWitness,
   buildStatement,
-  Scheme,
+  Scheme
 } from '../scheme';
 
 describe(`Bound check of ${Scheme} signed messages`, () => {
@@ -115,12 +110,7 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     expect(() => Statement.boundCheckVerifierFromSetupParamRefs(10, -90, 0)).toThrow();
   });
 
-  function proveAndVerifySingle(
-    sigParams: SignatureParams,
-    sigPk: PublicKey,
-    messages: Uint8Array[],
-    sig: Signature
-  ) {
+  function proveAndVerifySingle(sigParams: SignatureParams, sigPk: PublicKey, messages: Uint8Array[], sig: Signature) {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);

@@ -18,7 +18,6 @@ import {
   buildWitness,
   encodeMessageForSigningIfPS,
 } from '../scheme'
-import {  } from '@docknetwork/crypto-wasm';
 
 describe(`${Scheme} Proving knowledge of 2 BBS+ signatures over attributes and equality of a specific attribute`, () => {
   it('works', async () => {

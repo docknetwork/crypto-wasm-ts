@@ -23,7 +23,16 @@ import {
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
-import { PublicKey, KeyPair, SignatureParams, Signature, buildStatement, buildWitness, isPS, Scheme } from '../../../scheme';
+import {
+  PublicKey,
+  KeyPair,
+  SignatureParams,
+  Signature,
+  buildStatement,
+  buildWitness,
+  isPS,
+  Scheme
+} from '../../../scheme';
 
 // Test for a scenario where user wants to prove that certain attribute of his credential is the preimage of a public MiMC hash.
 describe(`${Scheme} Proving that certain attribute of a credential is the preimage of a public MiMC hash`, () => {
@@ -188,7 +197,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
 
     const statement3 = buildStatement(
       sigParams,
-      isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()): pk,
+      isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk,
       revealedMsgsFromVerifier,
       false
     );

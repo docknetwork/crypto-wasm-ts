@@ -14,14 +14,7 @@ import {
 } from '../../src';
 import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, getRevealedUnrevealed, stringToBytes } from '../utils';
-import {
-  KeyPair,
-  Scheme,
-  Signature,
-  SignatureParams,
-  buildStatement,
-  buildWitness,
-} from '../scheme'
+import { KeyPair, Scheme, Signature, SignatureParams, buildStatement, buildWitness } from '../scheme';
 
 // Get some attributes for testing
 function getAttributes(): Uint8Array[] {
@@ -193,7 +186,7 @@ describe(`${Scheme} Register using pseudonym not bound to any attributes`, () =>
   });
 });
 
-describe('Using pseudonym bound to some attributes', () => {
+describe(`${Scheme} Using pseudonym bound to some attributes`, () => {
   // User creates a secret key and chooses certain attributes from a credential and creates 3 pseudonyms from those, one for each service provider.
   let secretKey: Uint8Array;
 
