@@ -31,7 +31,6 @@ export class Witness {
    * Signature and messages of PS signature
    * @param signature
    * @param unrevealedMessages
-   * @param encodeMessages
    */
   static psSignature(signature: PSSignature, unrevealedMessages: Map<number, Uint8Array>): Uint8Array {
     return generatePoKPSSignatureWitness(signature.value, unrevealedMessages);
