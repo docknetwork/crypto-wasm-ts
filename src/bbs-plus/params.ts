@@ -13,7 +13,8 @@ import {
   generateRandomFieldElement,
   BbsPlusSigParams
 } from '@docknetwork/crypto-wasm';
-import { IParams, MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { flattenMessageStructure } from '../sign-verify-js-objs';
+import { ISignatureParams, MessageStructure, SignedMessages } from '../types';
 import { BBSPlusPublicKeyG1, BBSPlusSecretKey } from './keys';
 import { BBSPlusSignatureG1 } from './signature';
 import { Encoder } from '../encoder';
@@ -22,7 +23,7 @@ import { VerifyResult } from '@docknetwork/crypto-wasm';
 /**
  * `BBS+` Signature parameters.
  */
-export abstract class BBSPlusSignatureParams implements IParams {
+export abstract class BBSPlusSignatureParams implements ISignatureParams {
   label?: Uint8Array;
   value: BbsPlusSigParams;
 
@@ -117,7 +118,7 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
       throw new Error(`Label should be present`);
     }
     let newParams;
-  
+
     if (newMsgCount <= this.supportedMessageCount()) {
       newParams = {
         g1: this.value.g1,
@@ -128,7 +129,7 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
     } else {
       newParams = bbsPlusAdaptSigParamsG1ForMsgCount(this.value, this.label, newMsgCount);
     }
-    return new (this.constructor as any)(newParams, this.label);
+    return new (this.constructor as typeof BBSPlusSignatureParamsG1)(newParams, this.label) as this;
   }
 
   /**
@@ -155,16 +156,16 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
   ): SignedMessages<BBSPlusSignatureG1> {
     const [names, encodedValues] = encoder.encodeMessageObject(messages);
     const msgCount = names.length;
-  
+
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
     const signature = BBSPlusSignatureG1.generate(encodedValues, secretKey, sigParams, false);
-  
+
     // Encoded message as an object with key as the flattened name
     const encodedMessages: { [key: string]: Uint8Array } = {};
     for (let i = 0; i < msgCount; i++) {
       encodedMessages[names[i]] = encodedValues[i];
     }
-  
+
     return {
       encodedMessages,
       signature
@@ -195,10 +196,10 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
   }
 
   /**
-  * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
-  * @param msgCount
-  * @param labelOrParams
-  */
+   * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
+   * @param msgCount
+   * @param labelOrParams
+   */
   static getSigParamsOfRequiredSize(
     msgCount: number,
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1
@@ -208,7 +209,9 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
       labelOrParams = labelOrParams as BBSPlusSignatureParamsG1;
       if (labelOrParams.supportedMessageCount() !== msgCount) {
         if (labelOrParams.label === undefined) {
-          throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
+          throw new Error(
+            `Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`
+          );
         } else {
           sigParams = labelOrParams.adapt(msgCount);
         }
@@ -223,7 +226,7 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
 
   static getSigParamsForMsgStructure(
     msgStructure: MessageStructure,
-    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1
   ): BBSPlusSignatureParamsG1 {
     const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
     return this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
@@ -264,6 +267,6 @@ export class BBSPlusSignatureParamsG2 extends BBSPlusSignatureParams {
       throw new Error(`Label should be present`);
     }
     const newParams = bbsPlusAdaptSigParamsG2ForMsgCount(this.value, this.label, newMsgCount);
-    return new (this.constructor as any)(newParams, this.label);
+    return new (this.constructor as typeof BBSPlusSignatureParamsG2)(newParams, this.label) as this;
   }
 }

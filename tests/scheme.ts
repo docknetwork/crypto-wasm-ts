@@ -1,3 +1,4 @@
+import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 import {
   BBSBlindSignature,
   BBSCredential,
@@ -24,7 +25,6 @@ import {
   PSPoKSignatureProtocol,
   PSPublicKey,
   PSSecretKey,
-  PresentationBuilder as PB,
   PSSignature,
   PSSignatureParams,
   SetupParam,
@@ -35,11 +35,18 @@ import {
   getBBSStatementForBlindSigRequest,
   getBBSWitnessForBlindSigRequest,
   getPSStatementsForBlindSigRequest,
-  getPSWitnessesForBlindSigRequest
+  getPSWitnessesForBlindSigRequest,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
+  PS_SIGNATURE_PARAMS_LABEL_BYTES
 } from '../src';
-import { Presentation as P } from '../src/anonymous-credentials/presentation';
 
-export let PublicKey,
+export { Presentation } from '../src/anonymous-credentials/presentation';
+export { PresentationBuilder } from '../src/anonymous-credentials/presentation-builder';
+
+export let Scheme: string = process.env.TEST_SIGNATURE_SCHEME || 'BBS',
+  SignatureLabelBytes: Uint8Array,
+  PublicKey,
   SecretKey,
   Signature,
   KeyPair,
@@ -55,13 +62,13 @@ export let PublicKey,
   buildStatementFromSetupParamsRef,
   CredentialBuilder,
   Credential,
-  PresentationBuilder,
-  Presentation,
+  encodeMessageForSigningIfPS: (msg: Uint8Array) => Uint8Array,
+  encodeMessageIfNotPS: (msg: Uint8Array) => Uint8Array,
   isBBS = () => false,
   isBBSPlus = () => false,
   isPS = () => false;
 
-switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
+switch (Scheme) {
   case 'BBS':
     PublicKey = BBSPublicKey;
     SecretKey = BBSSecretKey;
@@ -79,8 +86,9 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     getWitnessForBlindSigRequest = getBBSWitnessForBlindSigRequest;
     CredentialBuilder = BBSCredentialBuilder;
     Credential = BBSCredential;
-    PresentationBuilder = PB;
-    Presentation = P;
+    encodeMessageForSigningIfPS = (msg) => msg;
+    encodeMessageIfNotPS = encodeMessageForSigning;
+    SignatureLabelBytes = BBS_SIGNATURE_PARAMS_LABEL_BYTES;
     isBBS = () => true;
     break;
   case 'BBS+':
@@ -100,8 +108,9 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     getWitnessForBlindSigRequest = getBBSPlusWitnessForBlindSigRequest;
     CredentialBuilder = BBSPlusCredentialBuilder;
     Credential = BBSPlusCredential;
-    PresentationBuilder = PB;
-    Presentation = P
+    SignatureLabelBytes = BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES;
+    encodeMessageForSigningIfPS = (msg) => msg;
+    encodeMessageIfNotPS = encodeMessageForSigning;
     isBBSPlus = () => true;
     break;
   case 'PS':
@@ -121,13 +130,16 @@ switch (process.env.TEST_SIGNATURE_SCHEME || 'BBS') {
     getWitnessForBlindSigRequest = getPSWitnessesForBlindSigRequest;
     CredentialBuilder = PSCredentialBuilder;
     Credential = PSCredential;
-    PresentationBuilder = PB;
-    Presentation = P
+    SignatureLabelBytes = PS_SIGNATURE_PARAMS_LABEL_BYTES;
+    encodeMessageForSigningIfPS = encodeMessageForSigning;
+    encodeMessageIfNotPS = (msg) => msg;
     isPS = () => true;
     break;
   default:
     throw new Error('Unknown signature scheme');
 }
+
+console.log(`Running tests for ${Scheme}`);
 
 export type PublicKey = typeof PublicKey;
 export type KeyPair = typeof KeyPair;
@@ -145,5 +157,3 @@ export type getStatementForBlindSigRequest = typeof getStatementForBlindSigReque
 export type getWitnessForBlindSigRequest = typeof getWitnessForBlindSigRequest;
 export type CredentialBuilder = typeof CredentialBuilder;
 export type Credential = typeof Credential;
-export type PresentationBuilder = typeof PresentationBuilder;
-export type Presentation = typeof Presentation;

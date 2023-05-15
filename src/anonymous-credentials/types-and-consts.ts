@@ -1,3 +1,4 @@
+import { BBSPublicKey, BBSSignature, BBSSignatureParams } from 'src/bbs';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
 import {
   SaverChunkedCommitmentGens,
@@ -7,6 +8,8 @@ import {
   SaverProvingKeyUncompressed
 } from '../saver';
 import { R1CS } from '@docknetwork/crypto-wasm';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG2 } from 'src/bbs-plus';
+import { PSPublicKey, PSSignature, PSSignatureParams } from 'src/ps';
 
 export type StringOrObject = string | object;
 // Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation.
@@ -24,7 +27,12 @@ export type PredicateParamType =
   | Uint8Array;
 
 export type FlattenedSchema = [string[], object[]];
-export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext };
+export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext }
+
+export type PublicKey =  BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
+export type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature;
+export type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG2 | PSSignatureParams;
+export type SignatureParamsClass = typeof BBSSignatureParams | typeof BBSPlusSignatureParamsG2 | typeof PSSignatureParams;
 
 export const VERSION_STR = 'version';
 export const CRYPTO_VERSION_STR = 'cryptoVersion';
@@ -45,9 +53,17 @@ export const PS_CRED_PROOF_TYPE = 'Bls12381PSSignatureDock2023';
 
 
 const te = new TextEncoder();
-// Label used for generating signature parameters
-export const SIGNATURE_PARAMS_LABEL = 'DockBBS+Signature2022';
-export const SIGNATURE_PARAMS_LABEL_BYTES = te.encode(SIGNATURE_PARAMS_LABEL);
+// Label used for generating BBS+ signature parameters
+export const BBS_SIGNATURE_PARAMS_LABEL = 'DockBBSSignature2023';
+export const BBS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(BBS_SIGNATURE_PARAMS_LABEL);
+
+// Label used for generating BBS+ signature parameters
+export const BBS_PLUS_SIGNATURE_PARAMS_LABEL = 'DockBBS+Signature2022';
+export const BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(BBS_PLUS_SIGNATURE_PARAMS_LABEL);
+
+// Label used for generating PS signature parameters
+export const PS_SIGNATURE_PARAMS_LABEL = 'DockPSSignature2023';
+export const PS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(PS_SIGNATURE_PARAMS_LABEL);
 
 // Label used for generating accumulator parameters
 export const ACCUMULATOR_PARAMS_LABEL = 'DockVBAccumulator2022';

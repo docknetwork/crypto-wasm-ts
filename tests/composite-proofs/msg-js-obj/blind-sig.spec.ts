@@ -157,7 +157,7 @@ describe('Requesting blind signatures', () => {
       const blindings = new Map();
       let blinding, request;
       if (isPS()) {
-        [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, blindings, sigParams, h);
+        [blinding, request] = BlindSignature.generateRequest(hiddenMsgs,sigParams, h, blindings);
       } else if (isBBSPlus()) {
         [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, sigParams, false);
       } else {

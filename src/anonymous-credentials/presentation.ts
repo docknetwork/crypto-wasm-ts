@@ -7,13 +7,10 @@ import {
   SetupParam,
   Statement,
   Statements,
-  Witness,
   WitnessEqualityMetaStatement
 } from '../composite-proof';
 import {
   BBSPlusPublicKeyG2,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
   BBSPlusSignatureParamsG2
 } from '../bbs-plus';
 import { CredentialSchema, ValueType } from './schema';
@@ -30,13 +27,14 @@ import {
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
-  SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
   accumulatorStatement,
   buildContextForProof,
+  buildSignatureParams,
+  buildSignatureStatementFromParamsRef,
   createWitEq,
   deepClone,
   flattenTill2ndLastKey,
@@ -120,12 +118,13 @@ export class Presentation extends Versioned {
 
       const revealedEncoded = Presentation.encodeRevealed(i, presentedCred, presentedCredSchema, flattenedSchema[0]);
 
-      const sigParams = this.buildSignatureParams(publicKeys[i], numAttribs, SIGNATURE_PARAMS_LABEL_BYTES);
+      const sigParams = buildSignatureParams(publicKeys[i], numAttribs);
 
-      const statement = this.buildSignatureStatementFromParamsRef(
+      const statement = buildSignatureStatementFromParamsRef(
+        setupParamsTrk,
+        sigParams,
         publicKeys[i],
-        setupParamsTrk.add(this.buildSignatureSetupParam(sigParams, numAttribs)),
-        setupParamsTrk.add(this.buildPublicKeySetupParam(publicKeys[i], numAttribs)),
+        numAttribs,
         revealedEncoded
       );
       statements.add(statement);
@@ -410,7 +409,7 @@ export class Presentation extends Versioned {
     }
   }
 
-  protected static fromJSON(j: object): Presentation {
+  static fromJSON(j: object): Presentation {
     // @ts-ignore
     const { version, context, nonce, spec, attributeCiphertexts, proof } = j;
     const nnc = nonce ? b58.decode(nonce) : undefined;
@@ -445,65 +444,5 @@ export class Presentation extends Versioned {
     }
 
     return new Presentation(version, presSpec, new CompositeProofG1(b58.decode(proof)), atc, context, nnc);
-  }
-
-  private buildSignatureParams(pk: PublicKey, messageCount: number, label: Uint8Array): SignatureParams {
-    if (pk instanceof BBSPublicKey) {
-      return BBSSignatureParams.generate(messageCount, label);
-    } else if (pk instanceof BBSPlusPublicKeyG2) {
-      return BBSPlusSignatureParamsG1.generate(messageCount, label);
-    } else if (pk instanceof PSPublicKey) {
-      return PSSignatureParams.generate(messageCount, label);
-    } else {
-      throw new Error(`Public key is invalid ${pk}`);
-    }
-  }
-
-  private buildSignatureSetupParam(params: SignatureParams, messageCount: number): SetupParam {
-    if (params instanceof BBSSignatureParams) {
-      return SetupParam.bbsSignatureParams(params.adapt(messageCount));
-    } else if (params instanceof BBSPlusSignatureParamsG1) {
-      return SetupParam.bbsPlusSignatureParamsG1(params.adapt(messageCount));
-    } else if (params instanceof PSSignatureParams) {
-      return SetupParam.psSignatureParams(params.adapt(messageCount));
-    } else {
-      throw new Error(`Signature params are invalid ${params}`);
-    }
-  }
-
-  private buildPublicKeySetupParam(pk: PublicKey, messageCount: number): SetupParam {
-    if (pk instanceof BBSPublicKey) {
-      return SetupParam.bbsPlusSignaturePublicKeyG2(pk);
-    } else if (pk instanceof BBSPlusPublicKeyG2) {
-      return SetupParam.bbsPlusSignaturePublicKeyG2(pk);
-    } else if (pk instanceof PSPublicKey) {
-      const supported = pk.supportedMessageCount();
-      if (messageCount < pk.supportedMessageCount()) {
-        pk = pk.adaptForLess(messageCount)!;
-      } else {
-        throw new Error(`Unsupported message count: supported = ${supported}, received = ${messageCount}`);
-      }
-
-      return SetupParam.psSignaturePublicKey(pk as PSPublicKey);
-    } else {
-      throw new Error(`Public key is invalid ${pk}`);
-    }
-  }
-
-  private buildSignatureStatementFromParamsRef(
-    pk: PublicKey,
-    sigParamsRef: number,
-    publicKeyRef: number,
-    revealedMessages: Map<number, Uint8Array>
-  ): Uint8Array {
-    if (pk instanceof BBSPublicKey) {
-      return Statement.bbsSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages, false);
-    } else if (pk instanceof BBSPlusPublicKeyG2) {
-      return Statement.bbsPlusSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages, false);
-    } else if (pk instanceof PSPublicKey) {
-      return Statement.psSignatureFromSetupParamRefs(sigParamsRef, publicKeyRef, revealedMessages);
-    } else {
-      throw new Error(`Public key is invalid ${pk}`);
-    }
   }
 }

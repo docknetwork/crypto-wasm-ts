@@ -806,10 +806,10 @@ expect(proof.verify(proofSpec).verified).toEqual(true);
 // Signer is convinced that user knows the opening to the commitment
 
 // Signer creates a blind signature with these known messages and the commitment.
-knownMessages.set(1, stringToBytes('John Smith'));
-knownMessages.set(3, stringToBytes('john.smith@emample.com'));
-knownMessages.set(4, stringToBytes('New York'));
-const blindSig = BlindSignatureG1.generate(request.commitment, knownMessages, sk, params, true);
+revealedMessages.set(1, stringToBytes('John Smith'));
+revealedMessages.set(3, stringToBytes('john.smith@emample.com'));
+revealedMessages.set(4, stringToBytes('New York'));
+const blindSig = BlindSignatureG1.generate(request.commitment, revealedMessages, sk, params, true);
 ```
 
 The prover can now "unblind" the signature meaning he can convert a blind signature into a regular BBS+ signature 
@@ -820,11 +820,11 @@ which he can use in proof as shown in examples above
 const sig = blindSig.unblind(blinding);
 
 // Combine blinded and known messages in an array
-const messages = Array(blindedMessages.size + knownMessages.size);
+const messages = Array(blindedMessages.size + revealedMessages.size);
 for (const [i, m] of blindedMessages.entries()) {
   messages[i] = m;
 }
-for (const [i, m] of knownMessages.entries()) {
+for (const [i, m] of revealedMessages.entries()) {
   messages[i] = m;
 }
 

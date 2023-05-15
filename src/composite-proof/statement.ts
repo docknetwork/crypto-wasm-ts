@@ -112,7 +112,6 @@ export class Statement {
    * @param sigParams
    * @param publicKey
    * @param revealedMessages
-   * @param encodeMessages
    */
   static psSignature(
     sigParams: PSSignatureParams,
@@ -590,11 +589,15 @@ export class Statements {
   }
 
   /**
-   * Add a new statement to the beginning of the list. Returns the index (id) of the added statement. This index is part of the witness reference.
+   * Add new statements to the end of the list. Returns the indices (ids) of the added statements. These indices are part of the witness reference.
    * @param statement
    */
-  prepend(statement: Uint8Array): number {
-    return this.values.unshift(statement) - 1;
+  append(statements: Statements | Uint8Array[]): number[] {
+    const rawStatements = statements instanceof Statements ? statements.values : statements;
+    const indices = Array.from({ length: rawStatements.length }, (_, i) => this.values.length + i);
+    this.values = this.values.concat(rawStatements);
+
+    return indices;
   }
 }
 

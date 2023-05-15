@@ -9,15 +9,9 @@ import {
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   isValidMsgStructure,
-  BBSPlusKeypairG2,
   MetaStatements,
   ProofSpecG1,
-  BBSPlusSignatureParamsG1,
-
-  Statement,
   Statements,
-
-  Witness,
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
@@ -30,9 +24,10 @@ import {
   attributes3Struct,
   defaultEncoder
 } from './data-and-encoder';
+import { SignatureParams, KeyPair, isPS, buildStatement, buildWitness } from '../../scheme';
 import { checkMapsEqual, signedToHex } from './index';
 
-describe('Signing and proof of knowledge of signature', () => {
+describe('Signing and proof of knowledge of PS signature', () => {
   // NOTE: The following tests contain a lot of duplicated code but that is intentional as this code is for illustration purpose.
 
   beforeAll(async () => {
@@ -46,8 +41,8 @@ describe('Signing and proof of knowledge of signature', () => {
 
     const label = stringToBytes('Sig params label - this is public');
     // Message count shouldn't matter as `label` is known
-    let params = BBSPlusSignatureParamsG1.generate(1, label);
-    const keypair = BBSPlusKeypairG2.generate(params);
+    let params = SignatureParams.generate(100, label);
+    const keypair = KeyPair.generate(params);
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 
@@ -66,8 +61,8 @@ describe('Signing and proof of knowledge of signature', () => {
     ]) {
       expect(isValidMsgStructure(attributes, attributesStruct)).toEqual(true);
 
-      const signed = BBSPlusSignatureParamsG1.signMessageObject(attributes, sk, label, encoder);
-      checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes, signed.signature, pk, label, encoder));
+      const signed = SignatureParams.signMessageObject(attributes, sk, label, encoder);
+      checkResult(SignatureParams.verifyMessageObject(attributes, signed.signature, pk, label, encoder));
 
       // For debugging
       console.log(signedToHex(signed));
@@ -121,7 +116,12 @@ describe('Signing and proof of knowledge of signature', () => {
         });
       }
 
-      const statement1 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgs, false);
+      const statement1 = buildStatement(
+        sigParams,
+        isPS() ? pk.adaptForLess(sigParams.supportedMessageCount())!: pk,
+        revealedMsgs,
+        false
+      );
       const statementsProver = new Statements();
       statementsProver.add(statement1);
 
@@ -129,7 +129,7 @@ describe('Signing and proof of knowledge of signature', () => {
       const proofSpecProver = new ProofSpecG1(statementsProver, new MetaStatements());
       expect(proofSpecProver.isValid()).toEqual(true);
 
-      const witness1 = Witness.bbsPlusSignature(signed.signature, unrevealedMsgs, false);
+      const witness1 = buildWitness(signed.signature, unrevealedMsgs, false);
       const witnesses = new Witnesses();
       witnesses.add(witness1);
 
@@ -141,7 +141,12 @@ describe('Signing and proof of knowledge of signature', () => {
       const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
       checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-      const statement2 = Statement.bbsPlusSignature(sigParams, pk, revealedMsgsFromVerifier, false);
+      const statement2 = buildStatement(
+        sigParams,
+        isPS() ? pk.adaptForLess(sigParams.supportedMessageCount())!: pk,
+        revealedMsgsFromVerifier,
+        false
+      );
       const statementsVerifier = new Statements();
       statementsVerifier.add(statement2);
 
@@ -163,27 +168,27 @@ describe('Signing and proof of knowledge of signature', () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = BBSPlusSignatureParamsG1.generate(1, label1);
-    const keypair1 = BBSPlusKeypairG2.generate(params1);
+    let params1 = SignatureParams.generate(100, label1);
+    const keypair1 = KeyPair.generate(params1);
     const sk1 = keypair1.secretKey;
     const pk1 = keypair1.publicKey;
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = BBSPlusSignatureParamsG1.generate(1, label2);
-    const keypair2 = BBSPlusKeypairG2.generate(params2);
+    let params2 = SignatureParams.generate(100, label2);
+    const keypair2 = KeyPair.generate(params2);
     const sk2 = keypair2.secretKey;
     const pk2 = keypair2.publicKey;
 
     const encoder = new Encoder(undefined, defaultEncoder);
 
     // Sign and verify all signatures
-    const signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk1, label1, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
+    const signed1 = SignatureParams.signMessageObject(attributes1, sk1, label1, encoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
 
-    const signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk2, label2, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
+    const signed2 = SignatureParams.signMessageObject(attributes2, sk2, label2, encoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
 
     // Reveal
     // - first name ("fname" attribute) from both sets of signed attributes
@@ -212,7 +217,12 @@ describe('Signing and proof of knowledge of signature', () => {
     );
     expect(revealedMsgsRaw1).toEqual({ fname: 'John', BMI: 23.25, country: 'USA' });
 
-    const statement1 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1, false);
+    const statement1 = buildStatement(
+      sigParams1,
+      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount())!: pk1,
+      revealedMsgs1,
+      false
+    );
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
@@ -230,7 +240,12 @@ describe('Signing and proof of knowledge of signature', () => {
       score: -13.5
     });
 
-    const statement2 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
+    const statement2 = buildStatement(
+      sigParams2,
+      isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount())!: pk2,
+      revealedMsgs2,
+      false
+    );
 
     const statementsProver = new Statements();
     statementsProver.add(statement1);
@@ -240,8 +255,8 @@ describe('Signing and proof of knowledge of signature', () => {
     const proofSpecProver = new ProofSpecG1(statementsProver, new MetaStatements());
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsPlusSignature(signed1.signature, unrevealedMsgs1, false);
-    const witness2 = Witness.bbsPlusSignature(signed2.signature, unrevealedMsgs2, false);
+    const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
+    const witness2 = buildWitness(signed2.signature, unrevealedMsgs2, false);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
     witnesses.add(witness2);
@@ -254,8 +269,18 @@ describe('Signing and proof of knowledge of signature', () => {
     const revealedMsgs2FromVerifier = encodeRevealedMsgs(revealedMsgsRaw2, attributes2Struct, encoder);
     checkMapsEqual(revealedMsgs2, revealedMsgs2FromVerifier);
 
-    const statement3 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
-    const statement4 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
+    const statement3 = buildStatement(
+      sigParams1,
+      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount())!: pk1,
+      revealedMsgs1FromVerifier,
+      false
+    );
+    const statement4 = buildStatement(
+      sigParams2,
+      isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount())!: pk2,
+      revealedMsgs2FromVerifier,
+      false
+    );
     const statementsVerifier = new Statements();
     statementsVerifier.add(statement3);
     statementsVerifier.add(statement4);
@@ -274,38 +299,38 @@ describe('Signing and proof of knowledge of signature', () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = BBSPlusSignatureParamsG1.generate(1, label1);
-    const keypair1 = BBSPlusKeypairG2.generate(params1);
+    let params1 = SignatureParams.generate(100, label1);
+    const keypair1 = KeyPair.generate(params1);
     const sk1 = keypair1.secretKey;
     const pk1 = keypair1.publicKey;
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = BBSPlusSignatureParamsG1.generate(1, label2);
-    const keypair2 = BBSPlusKeypairG2.generate(params2);
+    let params2 = SignatureParams.generate(100, label2);
+    const keypair2 = KeyPair.generate(params2);
     const sk2 = keypair2.secretKey;
     const pk2 = keypair2.publicKey;
 
     // 3rd signer's setup
     const label3 = stringToBytes('Sig params label 3');
     // Message count shouldn't matter as `label3` is known
-    let params3 = BBSPlusSignatureParamsG1.generate(1, label3);
-    const keypair3 = BBSPlusKeypairG2.generate(params3);
+    let params3 = SignatureParams.generate(100, label3);
+    const keypair3 = KeyPair.generate(params3);
     const sk3 = keypair3.secretKey;
     const pk3 = keypair3.publicKey;
 
     const encoder = new Encoder(undefined, defaultEncoder);
 
     // Sign and verify all signatures
-    const signed1 = BBSPlusSignatureParamsG1.signMessageObject(attributes1, sk1, label1, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
+    const signed1 = SignatureParams.signMessageObject(attributes1, sk1, label1, encoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
 
-    const signed2 = BBSPlusSignatureParamsG1.signMessageObject(attributes2, sk2, label2, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
+    const signed2 = SignatureParams.signMessageObject(attributes2, sk2, label2, encoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
 
-    const signed3 = BBSPlusSignatureParamsG1.signMessageObject(attributes3, sk3, label3, encoder);
-    checkResult(BBSPlusSignatureParamsG1.verifyMessageObject(attributes3, signed3.signature, pk3, label3, encoder));
+    const signed3 = SignatureParams.signMessageObject(attributes3, sk3, label3, encoder);
+    checkResult(SignatureParams.verifyMessageObject(attributes3, signed3.signature, pk3, label3, encoder));
 
     // Reveal
     // - first name ("fname" attribute) from all 3 sets of signed attributes
@@ -347,7 +372,12 @@ describe('Signing and proof of knowledge of signature', () => {
     );
     expect(revealedMsgsRaw1).toEqual({ fname: 'John', BMI: 23.25, country: 'USA' });
 
-    const statement1 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1, false);
+    const statement1 = buildStatement(
+      sigParams1,
+      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount())!: pk1,
+      revealedMsgs1,
+      false
+    );
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
@@ -364,7 +394,12 @@ describe('Signing and proof of knowledge of signature', () => {
       }
     });
 
-    const statement2 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2, false);
+    const statement2 = buildStatement(
+      sigParams2,
+      isPS() ? pk2.adaptForLess(sigParams1.supportedMessageCount())!: pk2,
+      revealedMsgs2,
+      false
+    );
 
     const [revealedMsgs3, unrevealedMsgs3, revealedMsgsRaw3] = getRevealedAndUnrevealed(
       attributes3,
@@ -387,7 +422,12 @@ describe('Signing and proof of knowledge of signature', () => {
       rank: 6
     });
 
-    const statement3 = Statement.bbsPlusSignature(sigParams3, pk3, revealedMsgs3, false);
+    const statement3 = buildStatement(
+      sigParams3,
+      isPS() ? pk3.adaptForLess(sigParams3.supportedMessageCount())!: pk3,
+      revealedMsgs3,
+      false
+    );
 
     const statementsProver = new Statements();
     const sIdx1 = statementsProver.add(statement1);
@@ -480,9 +520,9 @@ describe('Signing and proof of knowledge of signature', () => {
     const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const witness1 = Witness.bbsPlusSignature(signed1.signature, unrevealedMsgs1, false);
-    const witness2 = Witness.bbsPlusSignature(signed2.signature, unrevealedMsgs2, false);
-    const witness3 = Witness.bbsPlusSignature(signed3.signature, unrevealedMsgs3, false);
+    const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
+    const witness2 = buildWitness(signed2.signature, unrevealedMsgs2, false);
+    const witness3 = buildWitness(signed3.signature, unrevealedMsgs3, false);
     const witnesses = new Witnesses();
     witnesses.add(witness1);
     witnesses.add(witness2);
@@ -498,9 +538,24 @@ describe('Signing and proof of knowledge of signature', () => {
     const revealedMsgs3FromVerifier = encodeRevealedMsgs(revealedMsgsRaw3, attributes3Struct, encoder);
     checkMapsEqual(revealedMsgs3, revealedMsgs3FromVerifier);
 
-    const statement4 = Statement.bbsPlusSignature(sigParams1, pk1, revealedMsgs1FromVerifier, false);
-    const statement5 = Statement.bbsPlusSignature(sigParams2, pk2, revealedMsgs2FromVerifier, false);
-    const statement6 = Statement.bbsPlusSignature(sigParams3, pk3, revealedMsgs3FromVerifier, false);
+    const statement4 = buildStatement(
+      sigParams1,
+      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount())!: pk1,
+      revealedMsgs1FromVerifier,
+      false
+    );
+    const statement5 = buildStatement(
+      sigParams2,
+      isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount())!: pk2,
+      revealedMsgs2FromVerifier,
+      false
+    );
+    const statement6 = buildStatement(
+      sigParams3,
+      isPS() ? pk3.adaptForLess(sigParams3.supportedMessageCount())!: pk3,
+      revealedMsgs3FromVerifier,
+      false
+    );
     const statementsVerifier = new Statements();
     const sIdx4 = statementsVerifier.add(statement4);
     const sIdx5 = statementsVerifier.add(statement5);

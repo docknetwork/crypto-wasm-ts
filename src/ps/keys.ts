@@ -22,8 +22,11 @@ export class PSPublicKey extends BytearrayWrapper {
 
   adaptForLess(messageCount: number) {
     const adapted = psAdaptPublicKeyForLessMessages(this.value, messageCount);
+    if (adapted == null) {
+      throw new Error(`Failed to adapt secret key ${this} for ${messageCount}`)
+    }
 
-    return adapted != null ? new (this.constructor as typeof PSPublicKey)(adapted): null;
+    return new (this.constructor as typeof PSPublicKey)(adapted);
   }
 
   isValid(): boolean {
@@ -41,13 +44,20 @@ export class PSSecretKey extends BytearrayWrapper {
 
   adaptForLess(messageCount: number) {
     const adapted = psAdaptSecretKeyForLessMessages(this.value, messageCount);
+    if (adapted == null) {
+      throw new Error(`Failed to adapt secret key ${this} for ${messageCount}`)
+    }
 
-    return adapted != null ? new PSSecretKey(adapted): null;
+    return new PSSecretKey(adapted);
   }
 
   adaptForMore(seed: Uint8Array, messageCount: number) {
     const adapted = psAdaptSecretKeyForMoreMessages(this.value, seed, messageCount);
-    return adapted != null ? new PSSecretKey(adapted): null;
+    if (adapted == null) {
+      throw new Error(`Failed to adapt secret key ${this} for ${messageCount}`)
+    }
+
+    return new PSSecretKey(adapted);
   }
 
   static generate(messageCount: number, seed?: Uint8Array) {
@@ -89,11 +99,11 @@ export class PSKeypair {
     return Math.min(this.sk.supportedMessageCount(), this.pk.supportedMessageCount());
   }
 
-  adaptForLess(messageCount: number): PSKeypair | null {
+  adaptForLess(messageCount: number): PSKeypair {
     const sk = this.sk.adaptForLess(messageCount);
     const pk = this.pk.adaptForLess(messageCount);
 
-    return sk != null && pk != null ? new PSKeypair(sk, pk): null;
+    return new PSKeypair(sk, pk);
   }
 
   static generate(params: PSSignatureParams, seed?: Uint8Array): PSKeypair {

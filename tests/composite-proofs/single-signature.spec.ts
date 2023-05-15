@@ -13,8 +13,8 @@ import {
   SignatureParams,
   buildStatement,
   buildWitness,
+  encodeMessageForSigningIfPS
 } from '../scheme'
-import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 
 describe('Proving knowledge of 1 signature over the attributes', () => {
   it('works', async () => {
@@ -24,15 +24,15 @@ describe('Proving knowledge of 1 signature over the attributes', () => {
     // Messages to sign; the messages are attributes of a user like SSN (Social Security Number), name, email, etc
     const messages: Uint8Array[] = [];
     // SSN
-    messages.push(encodeMessageForSigning(stringToBytes('123-456789-0')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('123-456789-0')));
     // First name
-    messages.push(encodeMessageForSigning(stringToBytes('John')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('John')));
     // Last name
-    messages.push(encodeMessageForSigning(stringToBytes('Smith')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('Smith')));
     // Email
-    messages.push(encodeMessageForSigning(stringToBytes('john.smith@emample.com')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('john.smith@emample.com')));
     // City
-    messages.push(encodeMessageForSigning(stringToBytes('New York')));
+    messages.push(encodeMessageForSigningIfPS(stringToBytes('New York')));
 
     const messageCount = messages.length;
 
@@ -45,8 +45,8 @@ describe('Proving knowledge of 1 signature over the attributes', () => {
     const pk = keypair.publicKey;
 
     // Signer knows all the messages and signs
-    const sig = Signature.generate(messages, sk, params, false);
-    const result = sig.verify(messages, pk, params, false);
+    const sig = Signature.generate(messages, sk, params, true);
+    const result = sig.verify(messages, pk, params, true);
     expect(result.verified).toEqual(true);
 
     // User reveals 2 messages at index 2 and 4 to verifier, last name and city
@@ -63,7 +63,7 @@ describe('Proving knowledge of 1 signature over the attributes', () => {
       }
     }
 
-    const statement1 = buildStatement(params, pk, revealedMsgs, false);
+    const statement1 = buildStatement(params, pk, revealedMsgs, true);
     const statements = new Statements(statement1);
 
     // Optional context of the proof
@@ -73,7 +73,7 @@ describe('Proving knowledge of 1 signature over the attributes', () => {
     const proofSpec = new ProofSpecG1(statements, new MetaStatements(), [], context);
     expect(proofSpec.isValid()).toEqual(true);
 
-    const witness1 = buildWitness(sig, unrevealedMsgs, false);
+    const witness1 = buildWitness(sig, unrevealedMsgs, true);
     const witnesses = new Witnesses(witness1);
 
     const nonce = stringToBytes('some unique nonce');

@@ -9,10 +9,17 @@ import {
   ACCUMULATOR_PARAMS_LABEL_BYTES,
   ACCUMULATOR_PROVING_KEY_LABEL_BYTES,
   AttributeEquality,
+  BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   FlattenedSchema,
   MEM_CHECK_STR,
+  PS_SIGNATURE_PARAMS_LABEL_BYTES,
   PredicateParamType,
-  SAVER_ENCRYPTION_GENS_BYTES
+  PublicKey,
+  SAVER_ENCRYPTION_GENS_BYTES,
+  Signature,
+  SignatureParams,
+  SignatureParamsClass
 } from './types-and-consts';
 import {
   SaverChunkedCommitmentGens,
@@ -29,9 +36,11 @@ import {
 import { flatten } from 'flat';
 import { PresentationSpecification } from './presentation-specification';
 import { ValueType, ValueTypes } from './schema';
-import { Encoder } from '../bbs-plus';
-import { SetupParam, Statement, WitnessEqualityMetaStatement } from '../composite-proof';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1, Encoder } from '../bbs-plus';
+import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '../composite-proof';
 import { SetupParamsTracker } from './setup-params-tracker';
+import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
+import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 
 export function dockAccumulatorParams(): AccumulatorParams {
   return Accumulator.generateParams(ACCUMULATOR_PARAMS_LABEL_BYTES);
@@ -137,6 +146,111 @@ export function createWitEq(eql: AttributeEquality, flattenedSchemas: FlattenedS
 
 export function deepClone(obj: unknown): unknown {
   return JSON.parse(JSON.stringify(obj));
+}
+
+export function paramsClassBySignature(signature: Signature): SignatureParamsClass | null {
+  if (signature instanceof BBSSignature) {
+    return BBSSignatureParams;
+  } else if (signature instanceof BBSPlusSignatureG1) {
+    return BBSPlusSignatureParamsG1;
+  } else if (signature instanceof PSSignature) {
+    return PSSignatureParams;
+  } else {
+    return null;
+  }
+}
+
+export function paramsClassByPk(pk: PublicKey): SignatureParamsClass | null {
+  if (pk instanceof BBSPublicKey) {
+    return BBSSignatureParams;
+  } else if (pk instanceof BBSPlusPublicKeyG2) {
+    return BBSPlusSignatureParamsG1;
+  } else if (pk instanceof PSPublicKey) {
+    return PSSignatureParams;
+  } else {
+    return null;
+  }
+}
+
+const SIG_LABELS = {
+  [BBSSignatureParams.name]: BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  [BBSPlusSignatureParamsG1.name]: BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
+  [PSSignatureParams.name]: PS_SIGNATURE_PARAMS_LABEL_BYTES
+};
+
+export function buildSignatureParams(sigOrPk: Signature | PublicKey, messageCount: number): SignatureParams {
+  const paramsClass = paramsClassBySignature(sigOrPk as Signature) || paramsClassByPk(sigOrPk as PublicKey);
+
+  if (paramsClass !== null) {
+    return paramsClass.generate(messageCount, SIG_LABELS[paramsClass.name]);
+  } else {
+    throw new Error(`Invalid type: ${sigOrPk}`);
+  }
+}
+
+export function buildSignatureStatementFromParamsRef(
+  setupParamsTrk: SetupParamsTracker,
+  sigParams: SignatureParams,
+  pk: PublicKey,
+  messageCount: number,
+  revealedMessages: Map<number, Uint8Array>
+): Uint8Array {
+  if (paramsClassByPk(pk) !== sigParams.constructor) {
+    throw new Error(`Public key and params have different schemes: ${pk}, ${sigParams}`);
+  }
+  
+  if (sigParams instanceof BBSSignatureParams) {
+    const setupParams = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount));
+    const setupPk = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
+
+    return Statement.bbsSignatureFromSetupParamRefs(
+      setupParamsTrk.add(setupParams),
+      setupParamsTrk.add(setupPk),
+      revealedMessages,
+      false
+    );
+  } else if (sigParams instanceof BBSPlusSignatureParamsG1) {
+    const setupPk = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
+    const setupParams = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount));
+
+    return Statement.bbsPlusSignatureFromSetupParamRefs(
+      setupParamsTrk.add(setupParams),
+      setupParamsTrk.add(setupPk),
+      revealedMessages,
+      false
+    );
+  } else if (sigParams instanceof PSSignatureParams) {
+    let psPK = pk as PSPublicKey;
+    const supported = psPK.supportedMessageCount();
+    if (messageCount < psPK.supportedMessageCount()) {
+      psPK = psPK.adaptForLess(messageCount)!;
+    } else {
+      throw new Error(`Unsupported message count: supported = ${supported}, received = ${messageCount}`);
+    }
+
+    const setupPk = SetupParam.psSignaturePublicKey(psPK);
+    const setupParams = SetupParam.psSignatureParams(sigParams);
+
+    return Statement.psSignatureFromSetupParamRefs(
+      setupParamsTrk.add(setupParams),
+      setupParamsTrk.add(setupPk),
+      revealedMessages
+    );
+  } else {
+    throw new Error(`Signature params are invalid ${sigParams}`);
+  }
+}
+
+export function buildWitness(signature: Signature, unrevealedMessages: Map<number, Uint8Array>): Uint8Array {
+  if (signature instanceof BBSSignature) {
+    return Witness.bbsSignature(signature, unrevealedMessages, false);
+  } else if (signature instanceof BBSPlusSignatureG1) {
+    return Witness.bbsPlusSignature(signature, unrevealedMessages, false);
+  } else if (signature instanceof PSSignature) {
+    return Witness.psSignature(signature, unrevealedMessages);
+  } else {
+    throw new Error(`Signature is invalid ${signature}`);
+  }
 }
 
 export function accumulatorStatement(

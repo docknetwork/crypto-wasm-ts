@@ -11,12 +11,13 @@ import {
 import { BBSSignature } from './signature';
 import { BBSPublicKey, BBSSecretKey } from './keys';
 import { Encoder } from '../encoder';
-import { MessageStructure, SignedMessages, flattenMessageStructure } from '../sign-verify-js-objs';
+import { flattenMessageStructure } from '../sign-verify-js-objs';
+import { ISignatureParams, MessageStructure, SignedMessages } from '../types';
 
 /**
  * `BBS` signature parameters.
  */
-export class BBSSignatureParams {
+export class BBSSignatureParams implements ISignatureParams {
   label?: Uint8Array;
   value: BbsSigParams;
 
@@ -43,8 +44,7 @@ export class BBSSignatureParams {
     messageToCommit: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    const commitment = bbsCommitMsgs(messageToCommit, this.value, encodeMessages);
-    return commitment;
+    return bbsCommitMsgs(messageToCommit, this.value, encodeMessages);
   }
 
   toBytes(): Uint8Array {
@@ -63,7 +63,7 @@ export class BBSSignatureParams {
    * Transform current signature params to sign a different number of messages. Needs the `label` field to be present
    * @param newMsgCount
    */
-  adapt(newMsgCount: number): BBSSignatureParams {
+  adapt(newMsgCount: number): this {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
@@ -78,7 +78,7 @@ export class BBSSignatureParams {
     } else {
       newParams = bbsAdaptSigParamsForMsgCount(this.value, this.label, newMsgCount);
     }
-    return new BBSSignatureParams(newParams, this.label);
+    return new (this.constructor as typeof BBSSignatureParams)(newParams, this.label) as this;
   }
 
   static signMessageObject(

@@ -1,7 +1,6 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   CredentialSchema,
-  SIGNATURE_PARAMS_LABEL_BYTES,
   ParsedR1CSFile,
   R1CSSnarkSetup,
   getR1CS
@@ -14,6 +13,7 @@ import {
   CredentialBuilder,
   Credential,
   PresentationBuilder,
+  SignatureLabelBytes,
 } from '../scheme'
 
 import { getExampleSchema } from './utils';
@@ -41,7 +41,7 @@ describe('Presentation creation and verification with Circom predicates', () => 
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParams.generate(100, SIGNATURE_PARAMS_LABEL_BYTES);
+    const params = SignatureParams.generate(100, SignatureLabelBytes);
     const keypair = KeyPair.generate(params);
     sk = keypair.sk;
     pk = keypair.pk;

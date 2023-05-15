@@ -4,7 +4,8 @@ import {
   bbsPlusGeneratePublicKeyG2,
   bbsPlusGeneratePublicKeyG1,
   bbsPlusIsPublicKeyG2Valid,
-  bbsPlusIsPublicKeyG1Valid
+  bbsPlusIsPublicKeyG1Valid,
+  bbsPlusGenerateSigningKey
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusSignatureParamsG1, BBSPlusSignatureParamsG2 } from './params';
 import { BytearrayWrapper } from '../bytearray-wrapper';
@@ -44,6 +45,10 @@ export class BBSPlusSecretKey extends BytearrayWrapper {
 
   generatePublicKeyG2(params: BBSPlusSignatureParamsG1): BBSPlusPublicKeyG2 {
     return new BBSPlusPublicKeyG2(bbsPlusGeneratePublicKeyG2(this.value, params.value));
+  }
+
+  static generate(seed?: Uint8Array) {
+    return new this(bbsPlusGenerateSigningKey(seed));
   }
 }
 

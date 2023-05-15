@@ -7,28 +7,13 @@ import { BBSPlusBlindSignatureRequest, BBSPlusSignatureParamsG1 } from './bbs-pl
 import { BBSBlindSignatureRequest, BBSSignatureParams } from './bbs';
 import { PSBlindSignatureRequest, PSSignatureParams } from './ps';
 import { Witness } from './composite-proof/witness';
-
-// The following `ts-ignore` shouldn't be necessary as per https://github.com/microsoft/TypeScript/pull/33050 but it still is (on TS 4.8)
-// @ts-ignore
-export type MessageStructure = Record<string, null | MessageStructure>;
-
-export interface SignedMessages<Signature> {
-  encodedMessages: { [key: string]: Uint8Array };
-  signature: Signature;
-}
+import { ISignatureParams, MessageStructure } from './types';
 
 export function flattenMessageStructure(msgStructure: MessageStructure): object {
   return flatten(msgStructure);
 }
 
-export interface IParams {
-  label?: Uint8Array;
-
-  supportedMessageCount(): number;
-  adapt(messageCount: number): this;
-}
-
-export function getAdaptedSignatureParamsForMessages<Params extends IParams>(
+export function getAdaptedSignatureParamsForMessages<Params extends ISignatureParams>(
   params: Params,
   msgStructure: MessageStructure
 ): Params {
@@ -157,7 +142,7 @@ export function createWitnessEqualityMetaStatement(
 }
 
 /**
- * Get the statement to be used in composite proof for the blind signature request
+ * Get the `BBS` statement to be used in composite proof for the blind signature request
  * @param request
  * @param sigParams
  */
@@ -170,7 +155,7 @@ export function getBBSStatementForBlindSigRequest(
 }
 
 /**
- * Get the statement to be used in composite proof for the blind signature request
+ * Get the `BBS` witness to be used in composite proof for the blind signature request
  * @param request
  * @param sigParams
  */
@@ -182,7 +167,7 @@ export function getBBSWitnessForBlindSigRequest(messages: Map<number, Uint8Array
 }
 
 /**
- * Get the statement to be used in composite proof for the blind signature request
+ * Get the `BBS+` statement to be used in composite proof for the blind signature request
  * @param request
  * @param sigParams
  */
@@ -195,7 +180,7 @@ export function getBBSPlusStatementForBlindSigRequest(
 }
 
 /**
- * Get the statement to be used in composite proof for the blind signature request
+ * Get the `BBS+` witness to be used in composite proof for the blind signature request
  * @param request
  * @param sigParams
  */
@@ -210,9 +195,10 @@ export function getBBSPlusWitnessForBlindSigRequest(
 }
 
 /**
- * Get the statement to be used in composite proof for the blind signature request
+ * Get the `PS` statements to be used in composite proof for the blind signature request
  * @param request
  * @param sigParams
+ * @param h
  */
 export function getPSStatementsForBlindSigRequest(
   request: PSBlindSignatureRequest,
@@ -229,9 +215,10 @@ export function getPSStatementsForBlindSigRequest(
 }
 
 /**
- * Get the statement to be used in composite proof for the blind signature request
- * @param request
- * @param sigParams
+ * Get the `PS witnesses to be used in composite proof for the blind signature request
+ * @param messages
+ * @param blinding
+ * @param blindings
  */
 export function getPSWitnessesForBlindSigRequest(
   messages: Map<number, Uint8Array>,
