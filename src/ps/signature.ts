@@ -1,109 +1,25 @@
 import { PSSignatureParams } from './params';
 import {
   psBlindSign,
-  encodeMessageForSigning,
   psSign,
   psUnblindSignature,
   psVerify,
   generateRandomFieldElement,
-  fieldElementAsBytes,
-  generateFieldElementFromNumber,
   VerifyResult,
   psMessageCommitment,
   PSCommitmentOrMessage
 } from '@docknetwork/crypto-wasm';
 import { PSPublicKey, PSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import LZUTF8 from 'lzutf8';
 import { flattenMessageStructure } from '../sign-verify-js-objs';
-import { Encoder } from '../encoder';
+import { Encoder, WithFieldEncoder } from '../encoder';
 import { psAggregateSignatures } from '@docknetwork/crypto-wasm';
 import { MessageStructure, SignedMessages } from '../types';
 
 /**
  *  Modified Pointcheval-Sanders signature used in `Coconut`.
  */
-export class PSSignature extends BytearrayWrapper {
-  // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
-  static readonly maxEncodedLength = 32;
-  static readonly textEncoder = new TextEncoder();
-  static readonly textDecoder = new TextDecoder();
-
-  /**
-   * This is an irreversible encoding as a hash function is used to convert a message of
-   * arbitrary length to a fixed length encoding.
-   * @param message
-   */
-  static encodeMessageForSigning(message: Uint8Array): Uint8Array {
-    return encodeMessageForSigning(message);
-  }
-
-  /**
-   * Encodes a positive safe integer, i.e. of 53 bits
-   * @param num
-   */
-  static encodePositiveNumberForSigning(num: number): Uint8Array {
-    return generateFieldElementFromNumber(num);
-  }
-
-  /**
-   * Encode the given string to bytes and create a field element by considering the bytes in little-endian format.
-   * Use this way of encoding only if the input string's UTF-8 representation is <= 32 bytes else this will throw an error.
-   * Also adds trailing 0s to the bytes to make the size 32 bytes so use this function carefully. The only place this is
-   * currently useful is verifiable encryption as in some cases the prover might not be willing/available at the time of
-   * decryption and thus the decryptor must be able to decrypt it independently. This is different from selective disclosure
-   * where the verifier can check that the revealed message is same as the encoded one before even verifying the proof.
-   * @param message - utf-8 string of at most 32 bytes
-   * @param compress - whether to compress the text before encoding to bytes. Compression might not always help as things
-   * like public keys, DIDs, UUIDs, etc. are designed to be random and thus won't be compressed
-   */
-  static reversibleEncodeStringForSigning(message: string, compress = false): Uint8Array {
-    const bytes = compress ? LZUTF8.compress(message) : PSSignature.textEncoder.encode(message);
-    if (bytes.length > PSSignature.maxEncodedLength) {
-      throw new Error(`Expects a string with at most ${PSSignature.maxEncodedLength} bytes`);
-    }
-    // Create a little-endian representation
-    const fieldElementBytes = new Uint8Array(PSSignature.maxEncodedLength);
-    fieldElementBytes.set(bytes);
-    fieldElementBytes.set(new Uint8Array(PSSignature.maxEncodedLength - bytes.length), bytes.length);
-    return fieldElementAsBytes(fieldElementBytes, true);
-  }
-
-  /**
-   * Decode the given representation. This should **only** be used when the encoding was done
-   * using `this.reversibleEncodeStringMessageForSigning`. Also, this function trims any characters from the first
-   * occurrence of a null characters (UTF-16 code unit 0) so if the encoded (using `this.reversibleEncodeStringMessageForSigning`)
-   * string also had a null then the decoded string will be different from it.
-   * @param message
-   * @param decompress - whether to decompress the bytes before converting to a string
-   */
-  static reversibleDecodeStringForSigning(message: Uint8Array, decompress = false): string {
-    if (message.length > PSSignature.maxEncodedLength) {
-      throw new Error(`Expects a message with at most ${PSSignature.maxEncodedLength} bytes`);
-    }
-    if (decompress) {
-      const strippedMsg = message.slice(0, message.indexOf(0));
-      const str = LZUTF8.decompress(strippedMsg) as string;
-      if (str.length > PSSignature.maxEncodedLength) {
-        throw new Error(
-          `Expects a message that can be decompressed to at most ${PSSignature.maxEncodedLength} bytes but decompressed size was ${str.length}`
-        );
-      }
-      return str;
-    } else {
-      const decoded = PSSignature.textDecoder.decode(message);
-      const chars: string[] = [];
-      for (let i = 0; i < PSSignature.maxEncodedLength; i++) {
-        // If a null character found then stop looking further
-        if (decoded.charCodeAt(i) == 0) {
-          break;
-        }
-        chars.push(decoded.charAt(i));
-      }
-      return chars.join('');
-    }
-  }
-
+export class PSSignature extends WithFieldEncoder {
   /**
    * Signer creates a new signature
    * @param messages - Ordered list of messages. Order and contents should be kept same for both signer and verifier
@@ -219,20 +135,18 @@ export class PSBlindSignature extends BytearrayWrapper {
     const hArr = params.getParamsForIndices([...messagesToBlind.keys()]);
     const commitment = params.multiMessageCommitment([...messagesToBlind.values()], hArr, blinding);
     const commitments: Map<number, Uint8Array> = new Map(
-      [...messagesToBlind.entries()]
-        .map(([idx, message]) => {
-          if (revealedMessages.has(idx)) {
-            return null as any;
-          }
-          let msgBlinding = blindings.get(idx);
-          if (msgBlinding == null) {
-            msgBlinding = this.generateBlinding();
-            blindings.set(idx, msgBlinding);
-          }
+      [...messagesToBlind.entries()].map(([idx, message]) => {
+        if (revealedMessages.has(idx)) {
+          throw new Error(`Invalid revealed message with index ${idx} - this index is already committed`);
+        }
+        let msgBlinding = blindings.get(idx);
+        if (msgBlinding == null) {
+          msgBlinding = this.generateBlinding();
+          blindings.set(idx, msgBlinding);
+        }
 
-          return [idx, psMessageCommitment(message, msgBlinding, h, params.value.g)];
-        })
-        .filter(Boolean)
+        return [idx, psMessageCommitment(message, msgBlinding, h, params.value.g)];
+      })
     );
 
     return [blinding, { commitment, commitments, revealedMessages }];

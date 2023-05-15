@@ -16,8 +16,9 @@ import {
 } from '../../src';
 import { getExampleSchema } from './utils';
 import * as util from 'util';
+import { Scheme } from '../scheme';
 
-describe('Credential Schema', () => {
+describe(`${Scheme} Credential Schema`, () => {
   beforeAll(async () => {
     await initializeWasm();
   });

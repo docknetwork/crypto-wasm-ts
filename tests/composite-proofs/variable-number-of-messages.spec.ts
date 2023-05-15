@@ -14,10 +14,10 @@ import {
   buildStatement,
   buildWitness,
   encodeMessageForSigningIfPS,
+  Scheme,
 } from '../scheme'
-import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 
-describe('Proving knowledge of 1 signature where some of the attributes are null, i.e.not applicable', () => {
+describe(`${Scheme} Proving knowledge of 1 signature where some of the attributes are null, i.e.not applicable`, () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();

@@ -10,11 +10,12 @@ import {
   isBBSPlus,
   encodeMessageForSigningIfPS,
   isPS,
-  encodeMessageIfNotPS
+  encodeMessageIfNotPS,
+  Scheme
 } from '../scheme';
 import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
 
-describe('Getting a blind signature, i.e. signature where signer is not aware of certain attributes of the user', () => {
+describe(`${Scheme} Getting a blind signature, i.e. signature where signer is not aware of certain attributes of the user`, () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();

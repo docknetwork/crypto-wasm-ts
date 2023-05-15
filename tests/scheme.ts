@@ -136,10 +136,8 @@ switch (Scheme) {
     isPS = () => true;
     break;
   default:
-    throw new Error('Unknown signature scheme');
+    throw new Error(`Unknown signature scheme provided in \`TEST_SIGNATURE_SCHEME\`: ${Scheme}, expected either \`BBS\`, \`BBS+\` or \`PS\``);
 }
-
-console.log(`Running tests for ${Scheme}`);
 
 export type PublicKey = typeof PublicKey;
 export type KeyPair = typeof KeyPair;

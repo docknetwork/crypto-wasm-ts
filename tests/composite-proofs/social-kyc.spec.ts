@@ -19,10 +19,11 @@ import {
   getWitnessForBlindSigRequest,
   getStatementForBlindSigRequest,
   encodeMessageForSigningIfPS,
-  encodeMessageIfNotPS
+  encodeMessageIfNotPS,
+  Scheme
 } from '../scheme';
 
-describe('Social KYC (Know Your Customer)', () => {
+describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
   // A social KYC (Know Your Customer) credential claims that the subject owns certain social media profile like a twitter
   // profile credential claims that a user owns the twitter profile with certain handle. User posts a commitment to some
   // random value on his profile and then requests a credential from the issuer by supplying a proof of knowledge of the

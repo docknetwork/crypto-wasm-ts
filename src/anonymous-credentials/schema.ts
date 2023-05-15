@@ -400,7 +400,7 @@ export type CredVal = string | number | object | CredVal[];
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.0.1';
+  static VERSION = '0.1.0';
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
@@ -594,8 +594,8 @@ export class CredentialSchema extends Versioned {
     }
   }
 
-  typeOfName(name: string, flattenedSchema?: FlattenedSchema): ValueTypes {
-    return CredentialSchema.typeOfName(name, flattenedSchema === undefined ? this.flatten() : flattenedSchema);
+  typeOfName(name: string, flattenedSchema: FlattenedSchema = this.flatten()): ValueTypes {
+    return CredentialSchema.typeOfName(name, flattenedSchema);
   }
 
   static typeOfName(name: string, flattenedSchema: FlattenedSchema): ValueTypes {

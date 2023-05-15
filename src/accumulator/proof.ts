@@ -28,12 +28,11 @@ export class MembershipProofProtocol extends BytearrayWrapper {
     publicKey: AccumulatorPublicKey,
     params: AccumulatorParams,
     provingKey: MembershipProvingKey,
-    blinding?: Uint8Array
+    blinding: Uint8Array = generateRandomFieldElement()
   ): MembershipProofProtocol {
-    const b = blinding === undefined ? generateRandomFieldElement() : blinding;
     const protocol = accumulatorInitializeMembershipProof(
       member,
-      b,
+      blinding,
       witness.value,
       publicKey.value,
       params.value,

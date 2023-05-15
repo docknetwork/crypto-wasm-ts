@@ -26,7 +26,7 @@ import { SignatureParams, KeyPair, PublicKey, Signature, buildStatement, buildWi
 
 // Test for scenario where the user wants to prove that his grade belongs/does not belong to the given set.
 // Similar test can be written for other "set-membership" relations like user is not resident of certain cities
-describe('Proving that grade is either A+, A, B+, B or C', () => {
+describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');

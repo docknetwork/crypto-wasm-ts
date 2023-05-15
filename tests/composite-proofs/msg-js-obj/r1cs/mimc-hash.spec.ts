@@ -23,10 +23,10 @@ import {
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
-import { PublicKey, KeyPair, SignatureParams, Signature, buildStatement, buildWitness, isPS } from '../../../scheme';
+import { PublicKey, KeyPair, SignatureParams, Signature, buildStatement, buildWitness, isPS, Scheme } from '../../../scheme';
 
 // Test for a scenario where user wants to prove that certain attribute of his credential is the preimage of a public MiMC hash.
-describe('Proving that certain attribute of a credential is the preimage of a public MiMC hash', () => {
+describe(`${Scheme} Proving that certain attribute of a credential is the preimage of a public MiMC hash`, () => {
   let encoder: Encoder;
   let encodedPubKeyHash: Uint8Array;
 

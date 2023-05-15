@@ -24,11 +24,12 @@ import {
   isPS,
   isBBSPlus,
   getWitnessForBlindSigRequest,
-  getStatementForBlindSigRequest
+  getStatementForBlindSigRequest,
+  Scheme
 } from '../../scheme';
 import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
 
-describe('Requesting blind signatures', () => {
+describe(`${Scheme} Requesting blind signatures`, () => {
   beforeAll(async () => {
     // Load the WASM module
     await initializeWasm();

@@ -11,6 +11,7 @@ import {
 } from '../../src';
 import {
   KeyPair,
+  Scheme,
   Signature,
   SignatureParams,
   buildStatement,
@@ -19,7 +20,7 @@ import {
 } from '../scheme'
 import {  } from '@docknetwork/crypto-wasm';
 
-describe('Proving knowledge of 2 BBS+ signatures over attributes and equality of a specific attribute', () => {
+describe(`${Scheme} Proving knowledge of 2 BBS+ signatures over attributes and equality of a specific attribute`, () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();
