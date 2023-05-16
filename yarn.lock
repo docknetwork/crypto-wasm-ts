@@ -371,10 +371,10 @@
     ky-universal "^0.10.1"
     undici "^5.2.0"
 
-"@docknetwork/crypto-wasm@^0.17.0":
-  version "0.17.0"
-  resolved "https://registry.yarnpkg.com/@docknetwork/crypto-wasm/-/crypto-wasm-0.17.0.tgz#ac6f7844e8d5e70100b568c5d11c9e92775a819e"
-  integrity sha512-W9WL1bcLFwjNvg7xnZH/nRJY+syZkvwALFro8neoNnXYV57D1DF28qKsEM1Fp3PBUa+swYLjx6X9l8fl2ib0qA==
+"@docknetwork/crypto-wasm@^0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@docknetwork/crypto-wasm/-/crypto-wasm-0.18.0.tgz#f38678812b23a677afe00c57ff20792a256f1799"
+  integrity sha512-dipHJlZcoi60x/cBDfkhGXx5VCtLyHPyzVF/sjLl8PX7pC3TlyRRApW1uh3peRLG/klP34dneG2jC/x6u2iDcw==
 
 "@eslint/eslintrc@^1.3.3":
   version "1.3.3"
