@@ -371,7 +371,7 @@
     ky-universal "^0.10.1"
     undici "^5.2.0"
 
-"@docknetwork/crypto-wasm@0.17.0":
+"@docknetwork/crypto-wasm@^0.17.0":
   version "0.17.0"
   resolved "https://registry.yarnpkg.com/@docknetwork/crypto-wasm/-/crypto-wasm-0.17.0.tgz#ac6f7844e8d5e70100b568c5d11c9e92775a819e"
   integrity sha512-W9WL1bcLFwjNvg7xnZH/nRJY+syZkvwALFro8neoNnXYV57D1DF28qKsEM1Fp3PBUa+swYLjx6X9l8fl2ib0qA==
