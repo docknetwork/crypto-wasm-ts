@@ -9,10 +9,6 @@ import {
   Statements,
   WitnessEqualityMetaStatement
 } from '../composite-proof';
-import {
-  BBSPlusPublicKeyG2,
-  BBSPlusSignatureParamsG2
-} from '../bbs-plus';
 import { CredentialSchema, ValueType } from './schema';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
@@ -27,7 +23,8 @@ import {
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
-  STATUS_STR
+  STATUS_STR,
+  PublicKey
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
@@ -46,11 +43,6 @@ import { SaverCiphertext } from '../saver';
 import b58 from 'bs58';
 import { SetupParamsTracker } from './setup-params-tracker';
 import { flattenObjectToKeyValuesList } from '../util';
-import { PSPublicKey, PSSignatureParams } from '../ps';
-import { BBSPublicKey, BBSSignatureParams } from '../bbs';
-
-type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG2 | PSSignatureParams;
-type PublicKey = BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
 
 export class Presentation extends Versioned {
   readonly spec: PresentationSpecification;
