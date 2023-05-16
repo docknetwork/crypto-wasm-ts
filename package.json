@@ -23,7 +23,7 @@
     "lib": "lib"
   },
   "dependencies": {
-    "@docknetwork/crypto-wasm": "0.17.0",
+    "@docknetwork/crypto-wasm": "^0.17.0",
     "@types/flat": "^5.0.2",
     "bs58": "5.0.0",
     "flat": "^5.0.2",

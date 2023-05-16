@@ -43,7 +43,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
     this.credentialStatus = credStatus;
   }
 
-  abstract verify(publicKey: PublicKey, signatureParams: SignatureParams): VerifyResult;
+  abstract verify(publicKey: PublicKey, signatureParams?: SignatureParams): VerifyResult;
 
   getTopLevelField(name: string): unknown {
     const v = this.topLevelFields.get(name);
@@ -173,7 +173,7 @@ export class BBSCredential extends Credential<BBSPublicKey, BBSSignature, BBSSig
       cred,
       this.signature,
       publicKey,
-      signatureParams !== undefined ? signatureParams : BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+      signatureParams ?? BBS_SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
   }
@@ -215,7 +215,7 @@ export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSig
       cred,
       this.signature,
       publicKey,
-      signatureParams !== undefined ? signatureParams : BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
+      signatureParams ?? BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
   }
@@ -251,13 +251,13 @@ export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSig
 }
 
 export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatureParams> {
-  verify(publicKey: PSPublicKey, signatureParams: PSSignatureParams): VerifyResult {
+  verify(publicKey: PSPublicKey, signatureParams?: PSSignatureParams): VerifyResult {
     const cred = this.serializeForSigning();
     return PSSignatureParams.verifyMessageObject(
       cred,
       this.signature,
       publicKey,
-      signatureParams !== undefined ? signatureParams : PS_SIGNATURE_PARAMS_LABEL_BYTES,
+      signatureParams ?? PS_SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
   }
