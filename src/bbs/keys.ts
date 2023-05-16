@@ -11,7 +11,7 @@ export class BBSSecretKey extends BBSPlusSecretKey {
   }
 
   generatePublicKey(params: BBSSignatureParams): BBSPublicKey {
-    return new BBSPlusPublicKeyG2(bbsGeneratePublicKey(this.value, params.value));
+    return new BBSPublicKey(bbsGeneratePublicKey(this.value, params.value));
   }
 
   static generate(seed?: Uint8Array) {

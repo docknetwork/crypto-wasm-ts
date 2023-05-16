@@ -3,6 +3,7 @@ import {
   generatePedersenCommitmentG1Statement,
   generatePoKBBSPlusSignatureStatement,
   generatePoKBBSSignatureStatement,
+  generatePoKPSSignatureStatement,
   generateAccumulatorNonMembershipStatement,
   generateWitnessEqualityMetaStatement,
   generatePedersenCommitmentG1StatementFromParamRefs,
@@ -51,7 +52,6 @@ import { isPositiveInteger } from '../util';
 import { getR1CS, ParsedR1CSFile } from '../r1cs';
 import { BBSSignatureParams } from '../bbs';
 import { PSPublicKey, PSSignatureParams } from '../ps';
-import { generatePoKPSSignatureStatement } from '@docknetwork/crypto-wasm';
 
 /**
  * Relation which needs to be proven. Contains any public data that needs to be known to both prover and verifier

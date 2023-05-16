@@ -1,5 +1,4 @@
 import { VerifyResult, bbsCommitMsgs } from '@docknetwork/crypto-wasm';
-import { generateRandomFieldElement } from '@docknetwork/crypto-wasm';
 import {
   bbsGenerateSignatureParams,
   bbsSignatureParamsToBytes,
@@ -40,10 +39,7 @@ export class BBSSignatureParams implements ISignatureParams {
    * @param messageToCommit
    * @param encodeMessages
    */
-  commitToMessages(
-    messageToCommit: Map<number, Uint8Array>,
-    encodeMessages: boolean
-  ): Uint8Array {
+  commitToMessages(messageToCommit: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
     return bbsCommitMsgs(messageToCommit, this.value, encodeMessages);
   }
 
@@ -67,7 +63,7 @@ export class BBSSignatureParams implements ISignatureParams {
     if (this.label === undefined) {
       throw new Error(`Label should be present`);
     }
-    let newParams;
+    let newParams: BbsSigParams;
 
     if (newMsgCount <= this.supportedMessageCount()) {
       newParams = {
@@ -88,12 +84,11 @@ export class BBSSignatureParams implements ISignatureParams {
     encoder: Encoder
   ): SignedMessages<BBSSignature> {
     const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
-    const encodedMessageValues = Object.values(encodedMessages);
-    const msgCount = encodedMessageValues.length;
-  
-    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
-    const signature = BBSSignature.generate(encodedMessageValues, secretKey, sigParams, false);
-  
+    const encodedMessageList = Object.values(encodedMessages);
+
+    const sigParams = this.getSigParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
+    const signature = BBSSignature.generate(encodedMessageList, secretKey, sigParams, false);
+
     return {
       encodedMessages,
       signature
@@ -124,15 +119,15 @@ export class BBSSignatureParams implements ISignatureParams {
   }
 
   /**
-  * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
-  * @param msgCount
-  * @param labelOrParams
-  */
+   * Gives `BBSSignatureParams` that can sign `msgCount` number of messages.
+   * @param msgCount
+   * @param labelOrParams
+   */
   static getSigParamsOfRequiredSize(
     msgCount: number,
     labelOrParams: Uint8Array | BBSSignatureParams
   ): BBSSignatureParams {
-    return getSigParamsOfRequiredSize(BBSSignatureParams, msgCount, labelOrParams)
+    return getSigParamsOfRequiredSize(BBSSignatureParams, msgCount, labelOrParams);
   }
 
   /**
@@ -168,7 +163,7 @@ export class BBSSignatureParams implements ISignatureParams {
 
   static getSigParamsForMsgStructure(
     msgStructure: MessageStructure,
-    labelOrParams: Uint8Array | BBSSignatureParams,
+    labelOrParams: Uint8Array | BBSSignatureParams
   ): BBSSignatureParams {
     const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
     return this.getSigParamsOfRequiredSize(msgCount, labelOrParams);

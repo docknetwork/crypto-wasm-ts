@@ -154,11 +154,10 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
     encoder: Encoder
   ): SignedMessages<BBSPlusSignatureG1> {
     const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
-    const encodedMessageValues = Object.values(encodedMessages);
-    const msgCount = encodedMessageValues.length;
+    const encodedMessageList = Object.values(encodedMessages);
 
-    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
-    const signature = BBSPlusSignatureG1.generate(encodedMessageValues, secretKey, sigParams, false);
+    const sigParams = this.getSigParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
+    const signature = BBSPlusSignatureG1.generate(encodedMessageList, secretKey, sigParams, false);
 
     return {
       encodedMessages,
@@ -190,7 +189,7 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
   }
 
   /**
-   * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
+   * Gives `BBSPlusSignatureParamsG1` that can sign `msgCount` number of messages.
    * @param msgCount
    * @param labelOrParams
    */

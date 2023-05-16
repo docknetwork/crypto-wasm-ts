@@ -21,6 +21,55 @@ export function getAdaptedSignatureParamsForMessages<Params extends ISignaturePa
   return params.adapt(Object.keys(flattened).length);
 }
 
+/**
+ * Encodes revealed messages producing an object with names as keys and encoded messages as values and a map with
+ * indices as keys and encoded messages as values.
+ * Also returns the total amount of names produced by flattening a msg structure.
+ * @param revealedMessages - The messages known to the signer
+ * @param blindedMessageCount
+ * @param msgStructure
+ * @param encoder
+ */
+export function encodeRevealedMessageObject(
+  revealedMessages: object,
+  blindedMessageCount: number,
+  msgStructure: MessageStructure,
+  encoder: Encoder
+): { encodedByName: { [key: string]: Uint8Array }; encodedByIndex: Map<number, Uint8Array>; total: number } {
+  const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
+  const encodedByName = encoder.encodeMessageObjectAsObject(revealedMessages);
+
+  const encodedByIndex = new Map<number, Uint8Array>();
+  flattenedAllNames.forEach((n, i) => {
+    const msg = encodedByName[n];
+
+    if (msg != null) {
+      encodedByIndex.set(i, msg);
+    }
+  });
+
+  const encodedMessageCount = encodedByIndex.size;
+  if (encodedMessageCount !== Object.keys(encodedByName).length) {
+    throw new Error(
+      `Message structure incompatible with revealedMessages. Got ${encodedMessageCount} to encode but encoded only ${
+        Object.keys(encodedByName).length
+      }`
+    );
+  }
+  if (flattenedAllNames.length !== encodedMessageCount + blindedMessageCount) {
+    throw new Error(
+      `Message structure likely incompatible with revealedMessages and blindSigRequest. ${flattenedAllNames.length} != (${encodedMessageCount} + ${blindedMessageCount})`
+    );
+  }
+
+  return { encodedByName, encodedByIndex, total: flattenedAllNames.length };
+}
+
+/**
+ * Gives `SignatureParams` that can sign `msgCount` number of messages.
+ * @param msgCount
+ * @param labelOrParams
+ */
 export function getSigParamsOfRequiredSize<S extends ISignatureParams>(
   SignatureParamsClass: { new (...args): S; generate(msgCount: number, labelOrParams?: Uint8Array): S },
   msgCount: number,
