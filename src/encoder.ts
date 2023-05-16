@@ -173,6 +173,19 @@ export class Encoder {
     return Object.fromEntries(names.map((name, idx) => [name, values[idx]]));
   }
 
+  /**
+   * Encode messages given as JS Map. It flattens the object into a sorted list and encodes each value as per the known
+   * encoding functions.
+   * Returns a Map with names as keys and encoded messages as values.
+   * @param messages
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   */
+  encodeMessageObjectAsMap(messages: object, strict = false): Map<string, Uint8Array> {
+    const [names, values] = this.encodeMessageObject(messages, strict);
+
+    return new Map(names.map((name, idx) => [name, values[idx]]));
+  }
+
   encodeDefault(value: unknown, strict = false): Uint8Array {
     if (this.defaultEncoder !== undefined) {
       return this.defaultEncoder(value);

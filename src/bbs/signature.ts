@@ -1,16 +1,11 @@
 import { BBSSignatureParams } from './params';
-import {
-  encodeMessageForSigning,
-  bbsVerify,
-  bbsSign,
-  VerifyResult,
-} from '@docknetwork/crypto-wasm';
+import { encodeMessageForSigning, bbsVerify, bbsSign, VerifyResult } from '@docknetwork/crypto-wasm';
 import { BBSPublicKey, BBSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { bbsBlindSign } from '@docknetwork/crypto-wasm';
 import { Encoder, WithFieldEncoder } from '../encoder';
-import { flattenMessageStructure } from '../sign-verify-js-objs';
-import { MessageStructure, SignedMessages } from '../types'
+import { encodeRevealedMessageObject, flattenMessageStructure } from '../sign-verify-js-objs';
+import { MessageStructure, SignedMessages } from '../types';
 
 /**
  * `BBS` signature.
@@ -23,7 +18,12 @@ export class BBSSignature extends WithFieldEncoder {
    * @param params
    * @param encodeMessages - If true, the messages are encoded as field elements otherwise they are assumed to be already encoded.
    */
-  static generate(messages: Uint8Array[], secretKey: BBSSecretKey, params: BBSSignatureParams, encodeMessages: boolean): BBSSignature {
+  static generate(
+    messages: Uint8Array[],
+    secretKey: BBSSecretKey,
+    params: BBSSignatureParams,
+    encodeMessages: boolean
+  ): BBSSignature {
     if (messages.length !== params.supportedMessageCount()) {
       throw new Error(
         `Number of messages ${
@@ -87,7 +87,7 @@ export class BBSBlindSignature extends BytearrayWrapper {
     return new BBSBlindSignature(sig);
   }
 
-    /**
+  /**
    * Verify the signature
    * @param messages - Ordered list of messages. Order and contents should be kept same for both signer and verifier
    * @param publicKey
@@ -141,7 +141,7 @@ export class BBSBlindSignature extends BytearrayWrapper {
     blindedIndices.sort((a, b) => a - b);
     return { commitment, blindedIndices, unblindedMessages: encodedUnblindedMessages };
   }
-  
+
   /**
    * Used by the signer to create a blind signature
    * @param blindSigRequest - The blind sig request sent by user.
@@ -151,7 +151,7 @@ export class BBSBlindSignature extends BytearrayWrapper {
    * @param labelOrParams
    * @param encoder
    */
-   static blindSignMessageObject(
+  static blindSignMessageObject(
     blindSigRequest: BBSBlindSignatureRequest,
     revealedMessages: object,
     secretKey: BBSSecretKey,
@@ -159,39 +159,15 @@ export class BBSBlindSignature extends BytearrayWrapper {
     labelOrParams: Uint8Array | BBSSignatureParams,
     encoder: Encoder
   ): SignedMessages<BBSBlindSignature> {
-    const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
-    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(revealedMessages);
-  
-    const revealedMessagesEncoded = new Map<number, Uint8Array>();
-    const encodedMessages: { [key: string]: Uint8Array } = {};
-    flattenedAllNames.forEach((n, i) => {
-      const j = flattenedUnblindedNames.indexOf(n);
-      if (j > -1) {
-        revealedMessagesEncoded.set(i, encodedValues[j]);
-        encodedMessages[n] = encodedValues[j];
-      }
-    });
-  
-    if (flattenedUnblindedNames.length !== revealedMessagesEncoded.size) {
-      throw new Error(
-        `Message structure incompatible with revealedMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${revealedMessagesEncoded.size}`
-      );
-    }
-    if (flattenedAllNames.length !== revealedMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
-      throw new Error(
-        `Message structure likely incompatible with revealedMessages and blindSigRequest. ${flattenedAllNames.length} != (${revealedMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
-      );
-    }
-  
-    const sigParams = BBSSignatureParams.getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
-    const blindSig = this.generate(
-      blindSigRequest.commitment,
-      revealedMessagesEncoded,
-      secretKey,
-      sigParams,
-      false
-    );
-  
+    const {
+      encodedByName: encodedMessages,
+      encodedByIndex: revealedMessagesEncoded,
+      total
+    } = encodeRevealedMessageObject(revealedMessages, blindSigRequest.blindedIndices.length, msgStructure, encoder);
+
+    const sigParams = BBSSignatureParams.getSigParamsOfRequiredSize(total, labelOrParams);
+    const blindSig = this.generate(blindSigRequest.commitment, revealedMessagesEncoded, secretKey, sigParams, false);
+
     return {
       encodedMessages,
       signature: blindSig
@@ -201,10 +177,10 @@ export class BBSBlindSignature extends BytearrayWrapper {
   /**
    * Generate a blind signature from request
    * @param request
-   * @param secretKey 
-   * @param h 
+   * @param secretKey
+   * @param h
    * @returns {BBSBlindSignature}
-   */  
+   */
   static fromRequest(
     { commitment, unblindedMessages }: BBSBlindSignatureRequest,
     secretKey: BBSSecretKey,

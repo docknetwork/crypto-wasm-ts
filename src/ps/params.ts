@@ -77,8 +77,8 @@ export class PSSignatureParams implements ISignatureParams {
     encoder: Encoder
   ): SignedMessages<PSSignature> {
     const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
-    const encodedMessageValues = Object.values(encodedMessages);
-    const msgCount = encodedMessageValues.length;
+    const encodedMessageList = Object.values(encodedMessages);
+    const msgCount = encodedMessageList.length;
 
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
     const supportedMsgCount = secretKey.supportedMessageCount();
@@ -87,7 +87,7 @@ export class PSSignatureParams implements ISignatureParams {
     } else if (supportedMsgCount > msgCount) {
       secretKey = secretKey.adaptForLess(msgCount);
     }
-    const signature = PSSignature.generate(encodedMessageValues, secretKey, sigParams);
+    const signature = PSSignature.generate(encodedMessageList, secretKey, sigParams);
 
     return {
       encodedMessages,
@@ -125,7 +125,7 @@ export class PSSignatureParams implements ISignatureParams {
   }
 
   /**
-   * Gives `SignatureParamsG1` that can sign `msgCount` number of messages.
+   * Gives `PSSignatureParams` that can sign `msgCount` number of messages.
    * @param msgCount
    * @param labelOrParams
    */

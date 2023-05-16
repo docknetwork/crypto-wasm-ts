@@ -11,7 +11,7 @@ import {
 } from '@docknetwork/crypto-wasm';
 import { PSPublicKey, PSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import { flattenMessageStructure } from '../sign-verify-js-objs';
+import { encodeRevealedMessageObject } from '../sign-verify-js-objs';
 import { Encoder, WithFieldEncoder } from '../encoder';
 import { psAggregateSignatures } from '@docknetwork/crypto-wasm';
 import { MessageStructure, SignedMessages } from '../types';
@@ -186,29 +186,10 @@ export class PSBlindSignature extends BytearrayWrapper {
     h: Uint8Array,
     encoder: Encoder
   ): SignedMessages<PSBlindSignature> {
-    const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
-    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(revealedMessages);
-
-    const revealedMessagesEncoded = new Map<number, Uint8Array>();
-    const encodedMessages: { [key: string]: Uint8Array } = {};
-    flattenedAllNames.forEach((n, i) => {
-      const j = flattenedUnblindedNames.indexOf(n);
-      if (j > -1) {
-        revealedMessagesEncoded.set(i, encodedValues[j]);
-        encodedMessages[n] = encodedValues[j];
-      }
-    });
-
-    if (flattenedUnblindedNames.length !== revealedMessagesEncoded.size) {
-      throw new Error(
-        `Message structure incompatible with revealedMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${revealedMessagesEncoded.size}`
-      );
-    }
-    if (flattenedAllNames.length !== revealedMessagesEncoded.size + blindSigRequest.commitments.size) {
-      throw new Error(
-        `Message structure likely incompatible with revealedMessages and blindSigRequest. ${flattenedAllNames.length} != (${revealedMessagesEncoded.size} + ${blindSigRequest.commitments.size})`
-      );
-    }
+    const {
+      encodedByName: encodedMessages,
+      encodedByIndex: revealedMessagesEncoded
+    } = encodeRevealedMessageObject(revealedMessages, blindSigRequest.commitments.size, msgStructure, encoder);
     const msgIter = this.combineRevealedAndBlindedMessages(revealedMessagesEncoded, blindSigRequest.commitments);
     const signature = this.generate([...msgIter], secretKey, h);
 

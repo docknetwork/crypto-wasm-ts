@@ -10,7 +10,7 @@ import {
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import { flattenMessageStructure } from '../sign-verify-js-objs';
+import { encodeRevealedMessageObject, flattenMessageStructure } from '../sign-verify-js-objs';
 import { Encoder, WithFieldEncoder } from '../encoder';
 import { MessageStructure, SignedMessages } from '../types';
 
@@ -176,31 +176,13 @@ export class BBSPlusBlindSignatureG1 extends WithFieldEncoder {
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
     encoder: Encoder
   ): SignedMessages<BBSPlusBlindSignatureG1> {
-    const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
-    const [flattenedUnblindedNames, encodedValues] = encoder.encodeMessageObject(revealedMessages);
+    const {
+      encodedByName: encodedMessages,
+      encodedByIndex: revealedMessagesEncoded,
+      total
+    } = encodeRevealedMessageObject(revealedMessages, blindSigRequest.blindedIndices.length, msgStructure, encoder);
 
-    const revealedMessagesEncoded = new Map<number, Uint8Array>();
-    const encodedMessages: { [key: string]: Uint8Array } = {};
-    flattenedAllNames.forEach((n, i) => {
-      const j = flattenedUnblindedNames.indexOf(n);
-      if (j > -1) {
-        revealedMessagesEncoded.set(i, encodedValues[j]);
-        encodedMessages[n] = encodedValues[j];
-      }
-    });
-
-    if (flattenedUnblindedNames.length !== revealedMessagesEncoded.size) {
-      throw new Error(
-        `Message structure incompatible with revealedMessages. Got ${flattenedUnblindedNames.length} to encode but encoded only ${revealedMessagesEncoded.size}`
-      );
-    }
-    if (flattenedAllNames.length !== revealedMessagesEncoded.size + blindSigRequest.blindedIndices.length) {
-      throw new Error(
-        `Message structure likely incompatible with revealedMessages and blindSigRequest. ${flattenedAllNames.length} != (${revealedMessagesEncoded.size} + ${blindSigRequest.blindedIndices.length})`
-      );
-    }
-
-    const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(flattenedAllNames.length, labelOrParams);
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(total, labelOrParams);
     const signature = this.generate(blindSigRequest.commitment, revealedMessagesEncoded, secretKey, sigParams, false);
 
     return {
