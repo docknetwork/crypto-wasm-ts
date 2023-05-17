@@ -31,7 +31,8 @@ import {
   TYPE_STR,
   STATUS_TYPE_STR,
   PublicKey,
-  DEFAULT_SIGNATURE_PARAMS
+  DEFAULT_SIGNATURE_PARAMS,
+  SignatureParams
 } from './types-and-consts';
 import {
   ICircomPredicate,
@@ -62,7 +63,7 @@ import {
   SaverProvingKeyUncompressed
 } from '../saver';
 import { unflatten } from 'flat';
-import { SetupParamsTracker } from './setup-params-tracker';;
+import { SetupParamsTracker } from './setup-params-tracker';
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 
@@ -313,6 +314,7 @@ export class PresentationBuilder extends Versioned {
     const credStatusAux: [number, string, Uint8Array][] = [];
 
     const setupParamsTrk = new SetupParamsTracker();
+    const sigParamsByScheme = Object.create(null);
 
     // Reset spec state (incase this method is called more than once)
     this.spec.reset();
@@ -334,9 +336,21 @@ export class PresentationBuilder extends Versioned {
         throw new Error(`Invalid signature: ${cred.signature}`);
       }
 
-      let sigParams = DEFAULT_SIGNATURE_PARAMS[paramsClass.name]();
-      if (numAttribs !== 2) {
-        sigParams = sigParams.adapt(numAttribs);
+      sigParamsByScheme[paramsClass.name] ??= {
+        params: DEFAULT_SIGNATURE_PARAMS[paramsClass.name](),
+        num: 2
+      };
+      let sigParams: SignatureParams;
+      if (numAttribs < sigParamsByScheme[paramsClass.name].num) {
+        sigParams = sigParamsByScheme[paramsClass.name].params.adapt(numAttribs);
+      } else {
+        if (numAttribs > sigParamsByScheme[paramsClass.name].num) {
+          sigParamsByScheme[paramsClass.name] = {
+            params: sigParamsByScheme[paramsClass.name].params.adapt(numAttribs),
+            num: numAttribs
+          };
+        }
+        sigParams = sigParamsByScheme[paramsClass.name].params;
       }
 
       // CredentialBuilder version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check

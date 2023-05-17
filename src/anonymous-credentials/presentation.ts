@@ -25,7 +25,8 @@ import {
   SCHEMA_STR,
   STATUS_STR,
   PublicKey,
-  DEFAULT_SIGNATURE_PARAMS
+  DEFAULT_SIGNATURE_PARAMS,
+  SignatureParams
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
@@ -102,6 +103,7 @@ export class Presentation extends Versioned {
     const circomAux: [number, ICircomPredicate[]][] = [];
 
     const setupParamsTrk = new SetupParamsTracker();
+    const sigParamsByScheme = Object.create(null);
 
     for (let i = 0; i < this.spec.credentials.length; i++) {
       const presentedCred = this.spec.credentials[i];
@@ -116,9 +118,21 @@ export class Presentation extends Versioned {
         throw new Error(`Invalid public key: ${publicKeys[i]}`);
       }
 
-      let sigParams = DEFAULT_SIGNATURE_PARAMS[paramsClass.name]();
-      if (numAttribs !== 2) {
-        sigParams = sigParams.adapt(numAttribs);
+      sigParamsByScheme[paramsClass.name] ??= {
+        params: DEFAULT_SIGNATURE_PARAMS[paramsClass.name](),
+        num: 2
+      };
+      let sigParams: SignatureParams;
+      if (numAttribs < sigParamsByScheme[paramsClass.name].num) {
+        sigParams = sigParamsByScheme[paramsClass.name].params.adapt(numAttribs);
+      } else {
+        if (numAttribs > sigParamsByScheme[paramsClass.name].num) {
+          sigParamsByScheme[paramsClass.name] = {
+            params: sigParamsByScheme[paramsClass.name].params.adapt(numAttribs),
+            num: numAttribs
+          };
+        }
+        sigParams = sigParamsByScheme[paramsClass.name].params;
       }
 
       const statement = buildSignatureStatementFromParamsRef(
