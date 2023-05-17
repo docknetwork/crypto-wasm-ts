@@ -11,6 +11,7 @@ import {
   AttributeEquality,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  DEFAULT_SIGNATURE_LABEL_BYTES,
   FlattenedSchema,
   MEM_CHECK_STR,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
@@ -182,7 +183,7 @@ export function buildSignatureStatementFromParamsRef(
   if (paramsClassByPublicKey(pk) !== sigParams.constructor) {
     throw new Error(`Public key and params have different schemes: ${pk}, ${sigParams}`);
   }
-  
+
   if (sigParams instanceof BBSSignatureParams) {
     const setupParams = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount));
     const setupPk = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
@@ -236,6 +237,37 @@ export function buildWitness(signature: Signature, unrevealedMessages: Map<numbe
     throw new Error(`Signature is invalid ${signature}`);
   }
 }
+
+/**
+ * Returns signature params adapted for the provided message count reusing them from the provided map.
+ * @param sigParamsByScheme
+ * @param paramsClass
+ * @param msgCount
+ */
+export const getSignatureParamsForMsgCount = (
+  sigParamsByScheme: { [name: string]: { params: SignatureParams; msgCount: number } },
+  paramsClass: SignatureParamsClass,
+  msgCount: number
+): SignatureParams => {
+  sigParamsByScheme[paramsClass.name] ??= {
+    params: paramsClass.generate(msgCount, DEFAULT_SIGNATURE_LABEL_BYTES[paramsClass.name]),
+    msgCount
+  };
+  let sigParams: SignatureParams;
+  if (msgCount < sigParamsByScheme[paramsClass.name].msgCount) {
+    sigParams = sigParamsByScheme[paramsClass.name].params.adapt(msgCount);
+  } else {
+    if (msgCount > sigParamsByScheme[paramsClass.name].msgCount) {
+      sigParamsByScheme[paramsClass.name] = {
+        params: sigParamsByScheme[paramsClass.name].params.adapt(msgCount),
+        msgCount
+      };
+    }
+    sigParams = sigParamsByScheme[paramsClass.name].params;
+  }
+
+  return sigParams;
+};
 
 export function accumulatorStatement(
   checkType: string,

@@ -24,9 +24,7 @@ import {
   REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
-  PublicKey,
-  DEFAULT_SIGNATURE_PARAMS,
-  SignatureParams
+  PublicKey
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
@@ -38,7 +36,8 @@ import {
   flattenTill2ndLastKey,
   getTransformedMinMax,
   paramsClassByPublicKey,
-  saverStatement
+  saverStatement,
+  getSignatureParamsForMsgCount
 } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import { SaverCiphertext } from '../saver';
@@ -117,23 +116,7 @@ export class Presentation extends Versioned {
       if (paramsClass == null) {
         throw new Error(`Invalid public key: ${publicKeys[i]}`);
       }
-
-      sigParamsByScheme[paramsClass.name] ??= {
-        params: DEFAULT_SIGNATURE_PARAMS[paramsClass.name](),
-        num: 2
-      };
-      let sigParams: SignatureParams;
-      if (numAttribs < sigParamsByScheme[paramsClass.name].num) {
-        sigParams = sigParamsByScheme[paramsClass.name].params.adapt(numAttribs);
-      } else {
-        if (numAttribs > sigParamsByScheme[paramsClass.name].num) {
-          sigParamsByScheme[paramsClass.name] = {
-            params: sigParamsByScheme[paramsClass.name].params.adapt(numAttribs),
-            num: numAttribs
-          };
-        }
-        sigParams = sigParamsByScheme[paramsClass.name].params;
-      }
+      const sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, paramsClass, numAttribs);
 
       const statement = buildSignatureStatementFromParamsRef(
         setupParamsTrk,

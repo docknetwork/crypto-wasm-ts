@@ -30,9 +30,7 @@ import {
   STATUS_STR,
   TYPE_STR,
   STATUS_TYPE_STR,
-  PublicKey,
-  DEFAULT_SIGNATURE_PARAMS,
-  SignatureParams
+  PublicKey
 } from './types-and-consts';
 import {
   ICircomPredicate,
@@ -52,7 +50,8 @@ import {
   createWitEq,
   getTransformedMinMax,
   paramsClassBySignature,
-  saverStatement
+  saverStatement,
+  getSignatureParamsForMsgCount
 } from './util';
 import {
   SaverChunkedCommitmentGens,
@@ -335,23 +334,7 @@ export class PresentationBuilder extends Versioned {
       if (paramsClass == null) {
         throw new Error(`Invalid signature: ${cred.signature}`);
       }
-
-      sigParamsByScheme[paramsClass.name] ??= {
-        params: DEFAULT_SIGNATURE_PARAMS[paramsClass.name](),
-        num: 2
-      };
-      let sigParams: SignatureParams;
-      if (numAttribs < sigParamsByScheme[paramsClass.name].num) {
-        sigParams = sigParamsByScheme[paramsClass.name].params.adapt(numAttribs);
-      } else {
-        if (numAttribs > sigParamsByScheme[paramsClass.name].num) {
-          sigParamsByScheme[paramsClass.name] = {
-            params: sigParamsByScheme[paramsClass.name].params.adapt(numAttribs),
-            num: numAttribs
-          };
-        }
-        sigParams = sigParamsByScheme[paramsClass.name].params;
-      }
+      const sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, paramsClass, numAttribs);
 
       // CredentialBuilder version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
       // type, i.e. "membership" or "non-membership" are always revealed.
