@@ -3,14 +3,14 @@ import { encodeMessageForSigning, bbsVerify, bbsSign, VerifyResult } from '@dock
 import { BBSPublicKey, BBSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { bbsBlindSign } from '@docknetwork/crypto-wasm';
-import { Encoder, WithFieldEncoder } from '../encoder';
+import { Encoder, MessageEncoder } from '../encoder';
 import { encodeRevealedMessageObject, flattenMessageStructure } from '../sign-verify-js-objs';
 import { MessageStructure, SignedMessages } from '../types';
 
 /**
  * `BBS` signature.
  */
-export class BBSSignature extends WithFieldEncoder {
+export class BBSSignature extends MessageEncoder {
   /**
    * Signer creates a new signature
    * @param messages - Ordered list of messages. Order and contents should be kept same for both signer and verifier
@@ -123,23 +123,23 @@ export class BBSBlindSignature extends BytearrayWrapper {
     messagesToBlind: Map<number, Uint8Array>,
     params: BBSSignatureParams,
     encodeMessages: boolean,
-    unblindedMessages?: Map<number, Uint8Array>
+    revealedMessages?: Map<number, Uint8Array>
   ): BBSBlindSignatureRequest {
     const commitment = params.commitToMessages(messagesToBlind, encodeMessages);
     const blindedIndices: number[] = [];
     for (const k of messagesToBlind.keys()) {
       blindedIndices.push(k);
     }
-    let encodedUnblindedMessages: Map<number, Uint8Array> | undefined;
-    if (unblindedMessages) {
-      encodedUnblindedMessages = new Map();
-      for (const [idx, msg] of unblindedMessages) {
-        encodedUnblindedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
+    let encodedrevealedMessages: Map<number, Uint8Array> | undefined;
+    if (revealedMessages) {
+      encodedrevealedMessages = new Map();
+      for (const [idx, msg] of revealedMessages) {
+        encodedrevealedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
       }
     }
 
     blindedIndices.sort((a, b) => a - b);
-    return { commitment, blindedIndices, unblindedMessages: encodedUnblindedMessages };
+    return { commitment, blindedIndices, revealedMessages: encodedrevealedMessages };
   }
 
   /**
@@ -178,15 +178,15 @@ export class BBSBlindSignature extends BytearrayWrapper {
    * Generate a blind signature from request
    * @param request
    * @param secretKey
-   * @param h
+   * @param params
    * @returns {BBSBlindSignature}
    */
   static fromRequest(
-    { commitment, unblindedMessages }: BBSBlindSignatureRequest,
+    { commitment, revealedMessages }: BBSBlindSignatureRequest,
     secretKey: BBSSecretKey,
     params: BBSSignatureParams
   ): BBSBlindSignature {
-    return this.generate(commitment, unblindedMessages || new Map(), secretKey, params, false);
+    return this.generate(commitment, revealedMessages ?? new Map(), secretKey, params, false);
   }
 }
 
@@ -208,5 +208,5 @@ export interface BBSBlindSignatureRequest {
    * mandatory as the signer might already know the messages to sign. This is used when the requester wants to inform the
    * signer of some or all of the message
    */
-  unblindedMessages?: Map<number, Uint8Array>;
+  revealedMessages?: Map<number, Uint8Array>;
 }

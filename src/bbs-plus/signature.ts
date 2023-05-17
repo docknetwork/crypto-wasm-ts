@@ -11,10 +11,10 @@ import {
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { encodeRevealedMessageObject, flattenMessageStructure } from '../sign-verify-js-objs';
-import { Encoder, WithFieldEncoder } from '../encoder';
+import { Encoder, MessageEncoder } from '../encoder';
 import { MessageStructure, SignedMessages } from '../types';
 
-export class BBSPlusSignatureG1 extends WithFieldEncoder {
+export class BBSPlusSignatureG1 extends MessageEncoder {
   /**
    * Signer creates a new signature
    * @param messages - Ordered list of messages. Order and contents should be kept same for both signer and verifier
@@ -73,7 +73,7 @@ export abstract class BBSPlusBlindSignature extends BytearrayWrapper {
   }
 }
 
-export class BBSPlusBlindSignatureG1 extends WithFieldEncoder {
+export class BBSPlusBlindSignatureG1 extends MessageEncoder {
   /**
    * Generates a blind signature over the commitment of unrevealed messages and revealed messages
    * @param commitment - Commitment over unrevealed messages sent by the requester of the blind signature. Its assumed that
@@ -105,15 +105,15 @@ export class BBSPlusBlindSignatureG1 extends WithFieldEncoder {
    * Generate a blind signature from request
    * @param request
    * @param secretKey
-   * @param h
+   * @param params
    * @returns {BBSPlusBlindSignatureG1}
    */
   static fromRequest(
-    { commitment, unblindedMessages }: BBSPlusBlindSignatureRequest,
+    { commitment, revealedMessages }: BBSPlusBlindSignatureRequest,
     secretKey: BBSPlusSecretKey,
     params: BBSPlusSignatureParamsG1
   ): BBSPlusBlindSignatureG1 {
-    return this.generate(commitment, unblindedMessages || new Map(), secretKey, params, false);
+    return this.generate(commitment, revealedMessages ?? new Map(), secretKey, params, false);
   }
 
   /**
@@ -132,7 +132,7 @@ export class BBSPlusBlindSignatureG1 extends WithFieldEncoder {
    * @param params
    * @param encodeMessages
    * @param blinding - If not provided, a random blinding is generated
-   * @param unblindedMessages - Any messages that the requester wishes to inform the signer about. This is for informational
+   * @param revealedMessages - Any messages that the requester wishes to inform the signer about. This is for informational
    * purpose only and has no cryptographic use.
    */
   static generateRequest(
@@ -140,23 +140,23 @@ export class BBSPlusBlindSignatureG1 extends WithFieldEncoder {
     params: BBSPlusSignatureParamsG1,
     encodeMessages: boolean,
     blinding?: Uint8Array,
-    unblindedMessages?: Map<number, Uint8Array>
+    revealedMessages?: Map<number, Uint8Array>
   ): [Uint8Array, BBSPlusBlindSignatureRequest] {
     const [commitment, b] = params.commitToMessages(messagesToBlind, encodeMessages, blinding);
     const blindedIndices: number[] = [];
     for (const k of messagesToBlind.keys()) {
       blindedIndices.push(k);
     }
-    let encodedUnblindedMessages: Map<number, Uint8Array> | undefined;
-    if (unblindedMessages) {
-      encodedUnblindedMessages = new Map();
-      for (const [idx, msg] of unblindedMessages) {
-        encodedUnblindedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
+    let encodedrevealedMessages: Map<number, Uint8Array> | undefined;
+    if (revealedMessages) {
+      encodedrevealedMessages = new Map();
+      for (const [idx, msg] of revealedMessages) {
+        encodedrevealedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
       }
     }
 
     blindedIndices.sort((a, b) => a - b);
-    return [b, { commitment, blindedIndices, unblindedMessages: encodedUnblindedMessages }];
+    return [b, { commitment, blindedIndices, revealedMessages: encodedrevealedMessages }];
   }
 
   /**
@@ -210,5 +210,5 @@ export interface BBSPlusBlindSignatureRequest {
    * mandatory as the signer might already know the messages to sign. This is used when the requester wants to inform the
    * signer of some or all of the message
    */
-  unblindedMessages?: Map<number, Uint8Array>;
+  revealedMessages?: Map<number, Uint8Array>;
 }

@@ -41,9 +41,9 @@ import {
 import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { getR1CS, ParsedR1CSFile } from '../r1cs';
-import { BBSPublicKey, BBSSignatureParams } from '../bbs';
+import { BBSSignatureParams } from '../bbs';
 import { generateSetupParamForPSSignatureParameters } from '@docknetwork/crypto-wasm';
-import { PSPublicKey, PSSignatureParams } from 'src/ps';
+import { PSPublicKey, PSSignatureParams } from '../ps';
 import { generateSetupParamForPSPublicKey } from '@docknetwork/crypto-wasm';
 
 /**

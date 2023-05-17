@@ -16,7 +16,7 @@ export type ToPositiveIntFunc = (value: unknown) => number;
 /**
  * A class for dealing with message encoding/decoding.
  */
-export abstract class WithFieldEncoder extends BytearrayWrapper {
+export abstract class MessageEncoder extends BytearrayWrapper {
   // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
   static readonly maxEncodedLength = 32;
   static readonly textEncoder = new TextEncoder();
@@ -134,7 +134,7 @@ export class Encoder {
       return encoder(value);
     } else {
       if (!strict && value instanceof Uint8Array) {
-        return WithFieldEncoder.encodeMessageForSigning(value);
+        return MessageEncoder.encodeMessageForSigning(value);
       } else {
         throw new Error(
           `Cannot encode message with name ${name} and value ${value} as neither was any encoder provided nor it was an Uint8Array. Its type was ${typeof value}`
@@ -190,7 +190,7 @@ export class Encoder {
       return this.defaultEncoder(value);
     } else {
       if (!strict && value instanceof Uint8Array) {
-        return WithFieldEncoder.encodeMessageForSigning(value);
+        return MessageEncoder.encodeMessageForSigning(value);
       } else {
         throw new Error(
           `Cannot encode value ${value} as neither was default encoder present nor it was an Uint8Array. Its type was ${typeof value}`
@@ -206,7 +206,7 @@ export class Encoder {
       if (!isPositiveInteger(v)) {
         throw new Error(`Expected positive integer but ${v} has type ${typeof v}`);
       }
-      return WithFieldEncoder.encodePositiveNumberForSigning(v as number);
+      return MessageEncoder.encodePositiveNumberForSigning(v as number);
     };
   }
 
@@ -239,7 +239,7 @@ export class Encoder {
   static integerEncoder(minimum: number): EncodeFunc {
     const f = Encoder.integerToPositiveInt(minimum);
     return (v: unknown) => {
-      return WithFieldEncoder.encodePositiveNumberForSigning(f(v));
+      return MessageEncoder.encodePositiveNumberForSigning(f(v));
     };
   }
 
@@ -268,7 +268,7 @@ export class Encoder {
   static positiveDecimalNumberEncoder(maxDecimalPlaces: number): EncodeFunc {
     const f = Encoder.positiveDecimalNumberToPositiveInt(maxDecimalPlaces);
     return (v: unknown) => {
-      return WithFieldEncoder.encodePositiveNumberForSigning(f(v));
+      return MessageEncoder.encodePositiveNumberForSigning(f(v));
     };
   }
 
@@ -279,7 +279,7 @@ export class Encoder {
    */
   static reversibleEncoderString(compress = false): EncodeFunc {
     return (v: unknown) => {
-      return WithFieldEncoder.reversibleEncodeStringForSigning(v as string, compress);
+      return MessageEncoder.reversibleEncodeStringForSigning(v as string, compress);
     };
   }
 
@@ -314,7 +314,7 @@ export class Encoder {
   static decimalNumberEncoder(minimum: number, maxDecimalPlaces: number): EncodeFunc {
     const f = Encoder.decimalNumberToPositiveInt(minimum, maxDecimalPlaces);
     return (v: unknown) => {
-      return WithFieldEncoder.encodePositiveNumberForSigning(f(v));
+      return MessageEncoder.encodePositiveNumberForSigning(f(v));
     };
   }
 
@@ -325,7 +325,7 @@ export class Encoder {
     const te = new TextEncoder();
     return (v: unknown) => {
       // @ts-ignore
-      return WithFieldEncoder.encodeMessageForSigning(te.encode(v.toString()));
+      return MessageEncoder.encodeMessageForSigning(te.encode(v.toString()));
     };
   }
 

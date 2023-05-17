@@ -197,14 +197,14 @@ describe(`${Scheme} Requesting blind signatures`, () => {
       );
 
       // User unblinds the blind signature
-      const unblindedSig = isPS()
+      const revealedSig = isPS()
         ? blingSignature.signature.unblind(blindings, sigPk)
         : isBBSPlus()
         ? blingSignature.signature.unblind(blinding)
         : blingSignature.signature;
 
-      // The unblinded signature can now be used in the usual verification process
-      checkResult(SignatureParams.verifyMessageObject(attributes, unblindedSig, sigPk, sigParams, GlobalEncoder));
+      // The revealed signature can now be used in the usual verification process
+      checkResult(SignatureParams.verifyMessageObject(attributes, revealedSig, sigPk, sigParams, GlobalEncoder));
 
       // Proof of knowledge of signature can be created and verified as usual.
     }
