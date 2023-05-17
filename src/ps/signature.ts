@@ -12,14 +12,14 @@ import {
 import { PSPublicKey, PSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { encodeRevealedMessageObject } from '../sign-verify-js-objs';
-import { Encoder, WithFieldEncoder } from '../encoder';
+import { Encoder, MessageEncoder } from '../encoder';
 import { psAggregateSignatures } from '@docknetwork/crypto-wasm';
 import { MessageStructure, SignedMessages } from '../types';
 
 /**
  *  Modified Pointcheval-Sanders signature used in `Coconut`.
  */
-export class PSSignature extends WithFieldEncoder {
+export class PSSignature extends MessageEncoder {
   /**
    * Signer creates a new signature
    * @param messages - Ordered list of messages. Order and contents should be kept same for both signer and verifier

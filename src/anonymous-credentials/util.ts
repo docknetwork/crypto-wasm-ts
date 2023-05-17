@@ -160,7 +160,7 @@ export function paramsClassBySignature(signature: Signature): SignatureParamsCla
   }
 }
 
-export function paramsClassByPk(pk: PublicKey): SignatureParamsClass | null {
+export function paramsClassByPublicKey(pk: PublicKey): SignatureParamsClass | null {
   if (pk instanceof BBSPublicKey) {
     return BBSSignatureParams;
   } else if (pk instanceof BBSPlusPublicKeyG2) {
@@ -172,22 +172,6 @@ export function paramsClassByPk(pk: PublicKey): SignatureParamsClass | null {
   }
 }
 
-const SIG_LABELS = {
-  [BBSSignatureParams.name]: BBS_SIGNATURE_PARAMS_LABEL_BYTES,
-  [BBSPlusSignatureParamsG1.name]: BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  [PSSignatureParams.name]: PS_SIGNATURE_PARAMS_LABEL_BYTES
-};
-
-export function buildSignatureParams(sigOrPk: Signature | PublicKey, messageCount: number): SignatureParams {
-  const paramsClass = paramsClassBySignature(sigOrPk as Signature) || paramsClassByPk(sigOrPk as PublicKey);
-
-  if (paramsClass !== null) {
-    return paramsClass.generate(messageCount, SIG_LABELS[paramsClass.name]);
-  } else {
-    throw new Error(`Invalid type: ${sigOrPk}`);
-  }
-}
-
 export function buildSignatureStatementFromParamsRef(
   setupParamsTrk: SetupParamsTracker,
   sigParams: SignatureParams,
@@ -195,7 +179,7 @@ export function buildSignatureStatementFromParamsRef(
   messageCount: number,
   revealedMessages: Map<number, Uint8Array>
 ): Uint8Array {
-  if (paramsClassByPk(pk) !== sigParams.constructor) {
+  if (paramsClassByPublicKey(pk) !== sigParams.constructor) {
     throw new Error(`Public key and params have different schemes: ${pk}, ${sigParams}`);
   }
   

@@ -1,15 +1,12 @@
 import { bbsGenerateKeyPair, bbsGeneratePublicKey, bbsGenerateSigningKey } from '@docknetwork/crypto-wasm';
-import { BBSPlusPublicKeyG1, BBSPlusPublicKeyG2, BBSPlusSecretKey } from '../bbs-plus';
+import { BBSPlusPublicKeyG2 } from '../bbs-plus';
 import { BBSSignatureParams } from './params';
+import { BytearrayWrapper } from '../bytearray-wrapper';
 
 /**
  * `BBS` secret key.
  */
-export class BBSSecretKey extends BBSPlusSecretKey {
-  generatePublicKeyG1(_): BBSPlusPublicKeyG1 {
-    throw new Error('Not supported')
-  }
-
+export class BBSSecretKey extends BytearrayWrapper {
   generatePublicKey(params: BBSSignatureParams): BBSPublicKey {
     return new BBSPublicKey(bbsGeneratePublicKey(this.value, params.value));
   }

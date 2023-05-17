@@ -24,18 +24,19 @@ import {
   REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
-  PublicKey
+  PublicKey,
+  DEFAULT_SIGNATURE_PARAMS
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
   accumulatorStatement,
   buildContextForProof,
-  buildSignatureParams,
   buildSignatureStatementFromParamsRef,
   createWitEq,
   deepClone,
   flattenTill2ndLastKey,
   getTransformedMinMax,
+  paramsClassByPublicKey,
   saverStatement
 } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
@@ -110,7 +111,15 @@ export class Presentation extends Versioned {
 
       const revealedEncoded = Presentation.encodeRevealed(i, presentedCred, presentedCredSchema, flattenedSchema[0]);
 
-      const sigParams = buildSignatureParams(publicKeys[i], numAttribs);
+      const paramsClass = paramsClassByPublicKey(publicKeys[i]);
+      if (paramsClass == null) {
+        throw new Error(`Invalid public key: ${publicKeys[i]}`);
+      }
+
+      let sigParams = DEFAULT_SIGNATURE_PARAMS[paramsClass.name]();
+      if (numAttribs !== 2) {
+        sigParams = sigParams.adapt(numAttribs);
+      }
 
       const statement = buildSignatureStatementFromParamsRef(
         setupParamsTrk,

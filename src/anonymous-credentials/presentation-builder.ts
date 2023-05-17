@@ -30,7 +30,8 @@ import {
   STATUS_STR,
   TYPE_STR,
   STATUS_TYPE_STR,
-  PublicKey
+  PublicKey,
+  DEFAULT_SIGNATURE_PARAMS
 } from './types-and-consts';
 import {
   ICircomPredicate,
@@ -45,11 +46,11 @@ import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembers
 import {
   accumulatorStatement,
   buildContextForProof,
-  buildSignatureParams,
   buildSignatureStatementFromParamsRef,
   buildWitness,
   createWitEq,
   getTransformedMinMax,
+  paramsClassBySignature,
   saverStatement
 } from './util';
 import {
@@ -61,7 +62,7 @@ import {
   SaverProvingKeyUncompressed
 } from '../saver';
 import { unflatten } from 'flat';
-import { SetupParamsTracker } from './setup-params-tracker';
+import { SetupParamsTracker } from './setup-params-tracker';;
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 
@@ -328,7 +329,15 @@ export class PresentationBuilder extends Versioned {
       if (revealedNames === undefined) {
         revealedNames = new Set();
       }
-      const sigParams = buildSignatureParams(cred.signature, numAttribs);
+      const paramsClass = paramsClassBySignature(cred.signature);
+      if (paramsClass == null) {
+        throw new Error(`Invalid signature: ${cred.signature}`);
+      }
+
+      let sigParams = DEFAULT_SIGNATURE_PARAMS[paramsClass.name]();
+      if (numAttribs !== 2) {
+        sigParams = sigParams.adapt(numAttribs);
+      }
 
       // CredentialBuilder version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
       // type, i.e. "membership" or "non-membership" are always revealed.

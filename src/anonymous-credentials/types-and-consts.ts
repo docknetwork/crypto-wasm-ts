@@ -1,4 +1,4 @@
-import { BBSPublicKey, BBSSignature, BBSSignatureParams } from 'src/bbs';
+import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
 import {
   SaverChunkedCommitmentGens,
@@ -8,8 +8,8 @@ import {
   SaverProvingKeyUncompressed
 } from '../saver';
 import { R1CS } from '@docknetwork/crypto-wasm';
-import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG2 } from 'src/bbs-plus';
-import { PSPublicKey, PSSignature, PSSignatureParams } from 'src/ps';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1, BBSPlusSignatureParamsG2 } from '../bbs-plus';
+import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 
 export type StringOrObject = string | object;
 // Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation.
@@ -27,12 +27,15 @@ export type PredicateParamType =
   | Uint8Array;
 
 export type FlattenedSchema = [string[], object[]];
-export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext }
+export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext };
 
-export type PublicKey =  BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
+export type PublicKey = BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
 export type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature;
 export type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG2 | PSSignatureParams;
-export type SignatureParamsClass = typeof BBSSignatureParams | typeof BBSPlusSignatureParamsG2 | typeof PSSignatureParams;
+export type SignatureParamsClass =
+  | typeof BBSSignatureParams
+  | typeof BBSPlusSignatureParamsG2
+  | typeof PSSignatureParams;
 
 export const VERSION_STR = 'version';
 export const CRYPTO_VERSION_STR = 'cryptoVersion';
@@ -50,7 +53,6 @@ export const NON_MEM_CHECK_STR = 'non-membership';
 export const BBS_CRED_PROOF_TYPE = 'Bls12381BBSSignatureDock2023';
 export const BBS_PLUS_CRED_PROOF_TYPE = 'Bls12381BBS+SignatureDock2022';
 export const PS_CRED_PROOF_TYPE = 'Bls12381PSSignatureDock2023';
-
 
 const te = new TextEncoder();
 // Label used for generating BBS+ signature parameters
@@ -76,3 +78,37 @@ export const ACCUMULATOR_PROVING_KEY_LABEL_BYTES = te.encode(ACCUMULATOR_PROVING
 // Label used for generating SAVER encryption generators
 export const SAVER_ENCRYPTION_GENS_LABEL = 'DockSAVEREncryptionGens2022';
 export const SAVER_ENCRYPTION_GENS_BYTES = te.encode(SAVER_ENCRYPTION_GENS_LABEL);
+
+function once<T>(f: () => T) {
+  const NO_VALUE = {};
+  let calculated: typeof NO_VALUE | T = NO_VALUE;
+
+  return function () {
+    if (calculated === NO_VALUE) {
+      return (calculated = f());
+    } else {
+      return calculated;
+    }
+  };
+}
+
+export const DEFAULT_SIGNATURE_LABEL_BYTES = {
+  [BBSSignatureParams.name]: BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  [BBSPlusSignatureParamsG1.name]: BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
+  [PSSignatureParams.name]: PS_SIGNATURE_PARAMS_LABEL_BYTES
+};
+
+export const DEFAULT_SIGNATURE_PARAMS = Object.setPrototypeOf(
+  {
+    [BBSSignatureParams.name]: once(() =>
+      BBSSignatureParams.generate(2, DEFAULT_SIGNATURE_LABEL_BYTES[BBSSignatureParams.name])
+    ),
+    [BBSPlusSignatureParamsG1.name]: once(() =>
+      BBSPlusSignatureParamsG1.generate(2, DEFAULT_SIGNATURE_LABEL_BYTES[BBSPlusSignatureParamsG1.name])
+    ),
+    [PSSignatureParams.name]: once(() =>
+      PSSignatureParams.generate(2, DEFAULT_SIGNATURE_LABEL_BYTES[PSSignatureParams.name])
+    )
+  },
+  null
+);

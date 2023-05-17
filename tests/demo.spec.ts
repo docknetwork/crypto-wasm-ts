@@ -496,7 +496,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       // return BlindSignature.fromReq(blindSigReq.commitment, otherMsgs, sk, sigParams, false);
       return isPS()
         ? BlindSignature.fromRequest({ ...blindSigReq.request, revealedMessages: otherMsgs }, sk, h)
-        : BlindSignature.fromRequest({ ...blindSigReq.request, unblindedMessages: otherMsgs }, sk, sigParams, false);
+        : BlindSignature.fromRequest({ ...blindSigReq.request, revealedMessages: otherMsgs }, sk, sigParams, false);
     }
 
     function issueBlindSigWithCredVerif(
@@ -562,7 +562,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       return isPS()
         ? BlindSignature.fromRequest({ ...blindSigReq.request, revealedMessages: otherMsgs }, sk, h)
         : BlindSignature.fromRequest(
-            { ...blindSigReq.request, unblindedMessages: otherMsgs },
+            { ...blindSigReq.request, revealedMessages: otherMsgs },
             sk,
             sigParamsForRequestedCredential,
             false
@@ -648,7 +648,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       return isPS()
         ? BlindSignature.fromRequest({ ...blindSigReq.request, revealedMessages: otherMsgs }, sk, h)
         : BlindSignature.fromRequest(
-            { ...blindSigReq.request, unblindedMessages: otherMsgs },
+            { ...blindSigReq.request, revealedMessages: otherMsgs },
             sk,
             sigParamsForRequestedCredential
           );
@@ -886,7 +886,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       pk: PublicKey,
       sigParams: SignatureParams
     ): [Signature, Uint8Array[]] {
-      const unblinded = isPS()
+      const revealed = isPS()
         ? blindedSig.unblind(blindings, pk)
         : isBBSPlus()
         ? blindedSig.unblind(blinding)
@@ -894,11 +894,11 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       let final: Uint8Array[] = [];
       final.push(Signature.encodeMessageForSigning(holderSecret));
       final = final.concat(msgs);
-      const res1 = unblinded.verify(final, pk, sigParams, false);
+      const res1 = revealed.verify(final, pk, sigParams, false);
       if (!res1.verified) {
-        throw new Error(`Failed to verify unblinded sig1 due to ${res1.error}`);
+        throw new Error(`Failed to verify revealed sig1 due to ${res1.error}`);
       }
-      return [unblinded, final];
+      return [revealed, final];
     }
 
     await initializeWasm();
