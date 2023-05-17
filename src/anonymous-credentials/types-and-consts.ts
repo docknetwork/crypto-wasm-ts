@@ -105,18 +105,3 @@ export const DEFAULT_SIGNATURE_LABEL_BYTES = Object.setPrototypeOf(
   },
   null
 );
-
-export const DEFAULT_SIGNATURE_PARAMS = Object.setPrototypeOf(
-  {
-    [BBSSignatureParams.name]: once(() =>
-      BBSSignatureParams.generate(2, DEFAULT_SIGNATURE_LABEL_BYTES[BBSSignatureParams.name])
-    ),
-    [BBSPlusSignatureParamsG1.name]: once(() =>
-      BBSPlusSignatureParamsG1.generate(2, DEFAULT_SIGNATURE_LABEL_BYTES[BBSPlusSignatureParamsG1.name])
-    ),
-    [PSSignatureParams.name]: once(() =>
-      PSSignatureParams.generate(2, DEFAULT_SIGNATURE_LABEL_BYTES[PSSignatureParams.name])
-    )
-  },
-  null
-);
