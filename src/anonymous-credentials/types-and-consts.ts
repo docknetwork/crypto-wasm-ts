@@ -8,7 +8,12 @@ import {
   SaverProvingKeyUncompressed
 } from '../saver';
 import { R1CS } from '@docknetwork/crypto-wasm';
-import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1, BBSPlusSignatureParamsG2 } from '../bbs-plus';
+import {
+  BBSPlusPublicKeyG2,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
+  BBSPlusSignatureParamsG2
+} from '../bbs-plus';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 
 export type StringOrObject = string | object;
@@ -92,11 +97,14 @@ function once<T>(f: () => T) {
   };
 }
 
-export const DEFAULT_SIGNATURE_LABEL_BYTES = {
-  [BBSSignatureParams.name]: BBS_SIGNATURE_PARAMS_LABEL_BYTES,
-  [BBSPlusSignatureParamsG1.name]: BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  [PSSignatureParams.name]: PS_SIGNATURE_PARAMS_LABEL_BYTES
-};
+export const DEFAULT_SIGNATURE_LABEL_BYTES = Object.setPrototypeOf(
+  {
+    [BBSSignatureParams.name]: BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+    [BBSPlusSignatureParamsG1.name]: BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
+    [PSSignatureParams.name]: PS_SIGNATURE_PARAMS_LABEL_BYTES
+  },
+  null
+);
 
 export const DEFAULT_SIGNATURE_PARAMS = Object.setPrototypeOf(
   {
