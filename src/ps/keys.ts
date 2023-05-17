@@ -23,7 +23,7 @@ export class PSPublicKey extends BytearrayWrapper {
   adaptForLess(messageCount: number) {
     const adapted = psAdaptPublicKeyForLessMessages(this.value, messageCount);
     if (adapted == null) {
-      throw new Error(`Failed to adapt secret key ${this} for ${messageCount}`)
+      throw new Error(`Failed to adapt public key ${this} for ${messageCount} messages`)
     }
 
     return new (this.constructor as typeof PSPublicKey)(adapted);
@@ -45,7 +45,7 @@ export class PSSecretKey extends BytearrayWrapper {
   adaptForLess(messageCount: number) {
     const adapted = psAdaptSecretKeyForLessMessages(this.value, messageCount);
     if (adapted == null) {
-      throw new Error(`Failed to adapt secret key ${this} for ${messageCount}`)
+      throw new Error(`Failed to adapt secret key ${this} for ${messageCount} messages`)
     }
 
     return new PSSecretKey(adapted);
@@ -54,7 +54,7 @@ export class PSSecretKey extends BytearrayWrapper {
   adaptForMore(seed: Uint8Array, messageCount: number) {
     const adapted = psAdaptSecretKeyForMoreMessages(this.value, seed, messageCount);
     if (adapted == null) {
-      throw new Error(`Failed to adapt secret key ${this} for ${messageCount}`)
+      throw new Error(`Failed to adapt secret key ${this} for ${messageCount} messages`)
     }
 
     return new PSSecretKey(adapted);
