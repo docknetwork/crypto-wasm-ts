@@ -313,7 +313,7 @@ export class PresentationBuilder extends Versioned {
     const credStatusAux: [number, string, Uint8Array][] = [];
 
     const setupParamsTrk = new SetupParamsTracker();
-    const sigParamsByScheme = Object.create(null);
+    const sigParamsByScheme = new Map();
 
     // Reset spec state (incase this method is called more than once)
     this.spec.reset();

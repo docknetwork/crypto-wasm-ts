@@ -84,11 +84,3 @@ export const ACCUMULATOR_PROVING_KEY_LABEL_BYTES = te.encode(ACCUMULATOR_PROVING
 export const SAVER_ENCRYPTION_GENS_LABEL = 'DockSAVEREncryptionGens2022';
 export const SAVER_ENCRYPTION_GENS_BYTES = te.encode(SAVER_ENCRYPTION_GENS_LABEL);
 
-export const DEFAULT_SIGNATURE_LABEL_BYTES = Object.setPrototypeOf(
-  {
-    [BBSSignatureParams.name]: BBS_SIGNATURE_PARAMS_LABEL_BYTES,
-    [BBSPlusSignatureParamsG1.name]: BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-    [PSSignatureParams.name]: PS_SIGNATURE_PARAMS_LABEL_BYTES
-  },
-  null
-);
