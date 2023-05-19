@@ -212,7 +212,7 @@ export function buildSignatureStatementFromParamsRef(
     case PSSignatureParams:
       let psPK = pk as PSPublicKey;
       const supported = psPK.supportedMessageCount();
-      if (messageCount != supported)
+      if (messageCount !== supported)
         if (messageCount < supported) {
           psPK = psPK.adaptForLess(messageCount);
         } else {
