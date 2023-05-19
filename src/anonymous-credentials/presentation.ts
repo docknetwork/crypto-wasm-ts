@@ -102,7 +102,7 @@ export class Presentation extends Versioned {
     const circomAux: [number, ICircomPredicate[]][] = [];
 
     const setupParamsTrk = new SetupParamsTracker();
-    const sigParamsByScheme = Object.create(null);
+    const sigParamsByScheme = new Map();
 
     for (let i = 0; i < this.spec.credentials.length; i++) {
       const presentedCred = this.spec.credentials[i];

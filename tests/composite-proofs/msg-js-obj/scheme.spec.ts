@@ -118,7 +118,7 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
       const statement1 = buildStatement(
         sigParams,
-        isPS() ? pk.adaptForLess(sigParams.supportedMessageCount())! : pk,
+        isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk,
         revealedMsgs,
         false
       );
@@ -143,7 +143,7 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
       const statement2 = buildStatement(
         sigParams,
-        isPS() ? pk.adaptForLess(sigParams.supportedMessageCount())! : pk,
+        isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk,
         revealedMsgsFromVerifier,
         false
       );
@@ -219,7 +219,7 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
     const statement1 = buildStatement(
       sigParams1,
-      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount())! : pk1,
+      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()) : pk1,
       revealedMsgs1,
       false
     );
@@ -242,7 +242,7 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
     const statement2 = buildStatement(
       sigParams2,
-      isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount())! : pk2,
+      isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount()) : pk2,
       revealedMsgs2,
       false
     );
@@ -271,13 +271,13 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
     const statement3 = buildStatement(
       sigParams1,
-      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount())! : pk1,
+      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()) : pk1,
       revealedMsgs1FromVerifier,
       false
     );
     const statement4 = buildStatement(
       sigParams2,
-      isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount())! : pk2,
+      isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount()) : pk2,
       revealedMsgs2FromVerifier,
       false
     );
@@ -374,7 +374,7 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
     const statement1 = buildStatement(
       sigParams1,
-      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount())! : pk1,
+      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()) : pk1,
       revealedMsgs1,
       false
     );
@@ -396,7 +396,7 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
     const statement2 = buildStatement(
       sigParams2,
-      isPS() ? pk2.adaptForLess(sigParams1.supportedMessageCount())! : pk2,
+      isPS() ? pk2.adaptForLess(sigParams1.supportedMessageCount()) : pk2,
       revealedMsgs2,
       false
     );
@@ -424,7 +424,7 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
     const statement3 = buildStatement(
       sigParams3,
-      isPS() ? pk3.adaptForLess(sigParams3.supportedMessageCount())! : pk3,
+      isPS() ? pk3.adaptForLess(sigParams3.supportedMessageCount()) : pk3,
       revealedMsgs3,
       false
     );
@@ -540,19 +540,19 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
     const statement4 = buildStatement(
       sigParams1,
-      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount())! : pk1,
+      isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()) : pk1,
       revealedMsgs1FromVerifier,
       false
     );
     const statement5 = buildStatement(
       sigParams2,
-      isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount())! : pk2,
+      isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount()) : pk2,
       revealedMsgs2FromVerifier,
       false
     );
     const statement6 = buildStatement(
       sigParams3,
-      isPS() ? pk3.adaptForLess(sigParams3.supportedMessageCount())! : pk3,
+      isPS() ? pk3.adaptForLess(sigParams3.supportedMessageCount()) : pk3,
       revealedMsgs3FromVerifier,
       false
     );

@@ -11,7 +11,6 @@ import {
   AttributeEquality,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
-  DEFAULT_SIGNATURE_LABEL_BYTES,
   FlattenedSchema,
   MEM_CHECK_STR,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
@@ -37,7 +36,13 @@ import {
 import { flatten } from 'flat';
 import { PresentationSpecification } from './presentation-specification';
 import { ValueType, ValueTypes } from './schema';
-import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1, Encoder } from '../bbs-plus';
+import {
+  BBSPlusPublicKeyG2,
+  BBSPlusSignatureG1,
+  BBSPlusSignatureParamsG1,
+  BBSPlusSignatureParamsG2,
+  Encoder
+} from '../bbs-plus';
 import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '../composite-proof';
 import { SetupParamsTracker } from './setup-params-tracker';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
@@ -183,46 +188,64 @@ export function buildSignatureStatementFromParamsRef(
   if (paramsClassByPublicKey(pk) !== sigParams.constructor) {
     throw new Error(`Public key and params have different schemes: ${pk}, ${sigParams}`);
   }
+  let setupParams: SetupParam,
+    setupPK: SetupParam,
+    buildStatement: (
+      sigParamsRef: number,
+      publicKeyRef: number,
+      revealedMessages: Map<number, Uint8Array>,
+      encodeMessages: boolean
+    ) => Uint8Array;
 
-  if (sigParams instanceof BBSSignatureParams) {
-    const setupParams = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount));
-    const setupPk = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
+  switch (sigParams.constructor) {
+    case BBSSignatureParams:
+      setupParams = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount) as BBSSignatureParams);
+      setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
+      buildStatement = Statement.bbsSignatureFromSetupParamRefs;
+      break;
+    case BBSPlusSignatureParamsG1:
+      setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
+      setupParams = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount) as BBSPlusSignatureParamsG1);
 
-    return Statement.bbsSignatureFromSetupParamRefs(
-      setupParamsTrk.add(setupParams),
-      setupParamsTrk.add(setupPk),
-      revealedMessages,
-      false
-    );
-  } else if (sigParams instanceof BBSPlusSignatureParamsG1) {
-    const setupPk = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
-    const setupParams = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount));
+      buildStatement = Statement.bbsPlusSignatureFromSetupParamRefs;
+      break;
+    case PSSignatureParams:
+      let psPK = pk as PSPublicKey;
+      const supported = psPK.supportedMessageCount();
+      if (messageCount != supported)
+        if (messageCount < supported) {
+          psPK = psPK.adaptForLess(messageCount);
+        } else {
+          throw new Error(`Unsupported message count: supported = ${supported}, received = ${messageCount}`);
+        }
 
-    return Statement.bbsPlusSignatureFromSetupParamRefs(
-      setupParamsTrk.add(setupParams),
-      setupParamsTrk.add(setupPk),
-      revealedMessages,
-      false
-    );
-  } else if (sigParams instanceof PSSignatureParams) {
-    let psPK = pk as PSPublicKey;
-    const supported = psPK.supportedMessageCount();
-    if (messageCount < psPK.supportedMessageCount()) {
-      psPK = psPK.adaptForLess(messageCount)!;
-    } else {
-      throw new Error(`Unsupported message count: supported = ${supported}, received = ${messageCount}`);
-    }
+      setupPK = SetupParam.psSignaturePublicKey(psPK);
+      setupParams = SetupParam.psSignatureParams(sigParams as PSSignatureParams);
 
-    const setupPk = SetupParam.psSignaturePublicKey(psPK);
-    const setupParams = SetupParam.psSignatureParams(sigParams);
+      buildStatement = Statement.psSignatureFromSetupParamRefs;
+      break;
+    default:
+      throw new Error(`Signature params are invalid ${sigParams}`);
+  }
 
-    return Statement.psSignatureFromSetupParamRefs(
-      setupParamsTrk.add(setupParams),
-      setupParamsTrk.add(setupPk),
-      revealedMessages
-    );
-  } else {
-    throw new Error(`Signature params are invalid ${sigParams}`);
+  return buildStatement(setupParamsTrk.add(setupParams), setupParamsTrk.add(setupPK), revealedMessages, false);
+}
+
+/**
+ * Returns default label bytes for the signature params class (if any).
+ * @param signatureParamsClass
+ * @returns
+ */
+export function getDefaultLabelBytesForSignatureParams(signatureParamsClass: SignatureParamsClass): Uint8Array | null {
+  switch (signatureParamsClass) {
+    case BBSSignatureParams:
+      return BBS_SIGNATURE_PARAMS_LABEL_BYTES;
+    case BBSPlusSignatureParamsG2:
+      return BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES;
+    case PSSignatureParams:
+      return PS_SIGNATURE_PARAMS_LABEL_BYTES;
+    default:
+      return null;
   }
 }
 
@@ -245,28 +268,35 @@ export function buildWitness(signature: Signature, unrevealedMessages: Map<numbe
  * @param msgCount
  */
 export const getSignatureParamsForMsgCount = (
-  sigParamsByScheme: { [name: string]: { params: SignatureParams; msgCount: number } },
+  sigParamsByScheme: Map<SignatureParamsClass, { params: SignatureParams; msgCount: number }>,
   paramsClass: SignatureParamsClass,
   msgCount: number
 ): SignatureParams => {
-  sigParamsByScheme[paramsClass.name] ??= {
-    params: paramsClass.generate(msgCount, DEFAULT_SIGNATURE_LABEL_BYTES[paramsClass.name]),
-    msgCount
-  };
-  let sigParams: SignatureParams;
-  if (msgCount < sigParamsByScheme[paramsClass.name].msgCount) {
-    sigParams = sigParamsByScheme[paramsClass.name].params.adapt(msgCount);
-  } else {
-    if (msgCount > sigParamsByScheme[paramsClass.name].msgCount) {
-      sigParamsByScheme[paramsClass.name] = {
-        params: sigParamsByScheme[paramsClass.name].params.adapt(msgCount),
-        msgCount
-      };
+  let sigParamsEntry = sigParamsByScheme.get(paramsClass);
+  if (sigParamsEntry == null) {
+    const labelBytes = getDefaultLabelBytesForSignatureParams(paramsClass);
+    if (labelBytes == null) {
+      throw new Error(`Failed to get default label bytes for signature params: ${paramsClass}`);
     }
-    sigParams = sigParamsByScheme[paramsClass.name].params;
+
+    sigParamsEntry = {
+      params: paramsClass.generate(msgCount, labelBytes),
+      msgCount
+    };
+    sigParamsByScheme.set(paramsClass, sigParamsEntry);
+
+    return sigParamsEntry.params;
   }
 
-  return sigParams;
+  const currentMsgCount = sigParamsEntry.msgCount;
+  if (msgCount !== currentMsgCount) {
+    sigParamsEntry = { params: sigParamsEntry.params.adapt(msgCount), msgCount };
+    if (msgCount > currentMsgCount) {
+      sigParamsByScheme.set(paramsClass, sigParamsEntry);
+    }
+  }
+
+  return sigParamsEntry.params;
 };
 
 export function accumulatorStatement(
