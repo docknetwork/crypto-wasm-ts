@@ -40,7 +40,6 @@ import {
   BBSPlusPublicKeyG2,
   BBSPlusSignatureG1,
   BBSPlusSignatureParamsG1,
-  BBSPlusSignatureParamsG2,
   Encoder
 } from '../bbs-plus';
 import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '../composite-proof';
@@ -240,7 +239,7 @@ export function getDefaultLabelBytesForSignatureParams(signatureParamsClass: Sig
   switch (signatureParamsClass) {
     case BBSSignatureParams:
       return BBS_SIGNATURE_PARAMS_LABEL_BYTES;
-    case BBSPlusSignatureParamsG2:
+    case BBSPlusSignatureParamsG1:
       return BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES;
     case PSSignatureParams:
       return PS_SIGNATURE_PARAMS_LABEL_BYTES;
