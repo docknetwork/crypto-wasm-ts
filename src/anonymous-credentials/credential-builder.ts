@@ -204,7 +204,7 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
   }
 
   static hasSameFieldsAsSchema(cred: object, schema: CredentialSchema): boolean {
-    return areArraysEqual(schema.flatten()[0], Object.keys(flatten(cred) as object).sort());
+    return areArraysEqual(schema.flatten()[0], Object.keys(flatten(cred)).sort());
   }
 
   protected abstract signMessageObject(

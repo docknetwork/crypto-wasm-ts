@@ -149,7 +149,7 @@ export class SetupParam extends BytearrayWrapper {
   }
 
   static r1cs(r1cs: R1CS | ParsedR1CSFile): SetupParam {
-    let processedR1cs = getR1CS(r1cs);
+    const processedR1cs = getR1CS(r1cs);
     return new SetupParam(
       generateSetupParamForR1CS(
         processedR1cs.curveName,

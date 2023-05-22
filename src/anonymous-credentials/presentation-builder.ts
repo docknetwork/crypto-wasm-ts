@@ -273,7 +273,7 @@ export class PresentationBuilder extends Versioned {
     wasmBytes?: Uint8Array,
     provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
   ) {
-    if (circuitPrivateVars.length == 0) {
+    if (circuitPrivateVars.length === 0) {
       throw new Error('Provide at least one private variable mapping');
     }
     this.validateCredIndex(credIdx);
@@ -322,7 +322,7 @@ export class PresentationBuilder extends Versioned {
     // Also collect encoded attributes used in any predicate
     for (let i = 0; i < numCreds; i++) {
       const cred = this.credentials[i][0];
-      const schema = cred.schema as CredentialSchema;
+      const schema = cred.schema;
       const flattenedSchema = schema.flatten();
 
       const numAttribs = flattenedSchema[0].length;
@@ -425,7 +425,7 @@ export class PresentationBuilder extends Versioned {
       }
 
       function circomAttrForSpec(attrName: string, encodedAttrs: Map<number, Uint8Array>): object {
-        const nameIdx = flattenedSchema[0].indexOf(attrName as string);
+        const nameIdx = flattenedSchema[0].indexOf(attrName);
         encodedAttrs.set(nameIdx, unrevealedAttrsEncoded.get(nameIdx) as Uint8Array);
         return unflatten({ [attrName]: null });
       }

@@ -38,7 +38,7 @@ export class PSSignature extends MessageEncoder {
       throw new Error(
         `Number of messages ${
           messages.length
-        } is different from ${params.supportedMessageCount()} supported by the secret key`
+        } is different from ${secretKey.supportedMessageCount()} supported by the secret key`
       );
     }
     const sig = psSign(messages, secretKey.value, params.value);

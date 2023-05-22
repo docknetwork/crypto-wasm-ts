@@ -75,9 +75,8 @@ export function getSigParamsOfRequiredSize<S extends ISignatureParams>(
   msgCount: number,
   labelOrParams: Uint8Array | S
 ): S {
-  let sigParams;
+  let sigParams: S;
   if (labelOrParams instanceof SignatureParamsClass) {
-    labelOrParams = labelOrParams as S;
     if (labelOrParams.supportedMessageCount() !== msgCount) {
       if (labelOrParams.label === undefined) {
         throw new Error(`Signature params mismatch, needed ${msgCount}, got ${labelOrParams.supportedMessageCount()}`);
@@ -166,7 +165,7 @@ export function encodeRevealedMsgs(
  */
 export function isValidMsgStructure(messages: object, msgStructure: MessageStructure): boolean {
   const namesInStruct = Object.keys(flattenMessageStructure(msgStructure)).sort();
-  const namesInMsgs = Object.keys(flatten(messages) as object).sort();
+  const namesInMsgs = Object.keys(flatten(messages)).sort();
   return (
     namesInMsgs.length === namesInStruct.length &&
     (() => {
