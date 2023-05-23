@@ -490,7 +490,7 @@ export class Statement {
     wasmBytes: Uint8Array,
     snarkPk: LegoProvingKeyUncompressed
   ): Uint8Array {
-    let processedR1cs = getR1CS(r1cs);
+    const processedR1cs = getR1CS(r1cs);
     return generateR1CSCircomProverStatement(
       processedR1cs.curveName,
       processedR1cs.numPublic,
@@ -507,7 +507,7 @@ export class Statement {
     wasmBytes: Uint8Array,
     snarkPk: LegoProvingKey
   ): Uint8Array {
-    let processedR1cs = getR1CS(r1cs);
+    const processedR1cs = getR1CS(r1cs);
     return generateR1CSCircomProverStatement(
       processedR1cs.curveName,
       processedR1cs.numPublic,

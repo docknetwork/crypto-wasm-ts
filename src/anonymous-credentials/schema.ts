@@ -474,7 +474,7 @@ export class CredentialSchema extends Versioned {
     CredentialSchema.validate(schema);
 
     super(CredentialSchema.VERSION);
-    this.schema = schema as ISchema;
+    this.schema = schema;
     // This is the schema in JSON-schema format. Kept to output in credentials or in `toJSON` without converting back from
     // internal representation; trading off memory for CPU time.
     this.jsonSchema = jsonSchema;
@@ -835,7 +835,7 @@ export class CredentialSchema extends Versioned {
     terms.add(SCHEMA_STR);
     terms.add(CRYPTO_VERSION_STR);
 
-    let ctx = {
+    const ctx = {
       dk: 'https://ld.dock.io/credentials#'
     };
 
@@ -890,7 +890,7 @@ export class CredentialSchema extends Versioned {
   ): object {
     // util function needed only in this func
     const createFullName = (old: string, neww: string): string => {
-      return old.length == 0 ? neww : `${old}.${neww}`;
+      return old.length === 0 ? neww : `${old}.${neww}`;
     };
 
     // Will either have a "type" property or will be defined using "$ref"
@@ -1081,14 +1081,14 @@ export class CredentialSchema extends Versioned {
       } else if ('type' in schemaProps[key]) {
         // key in schema
         if (
-          schemaProps[key]['type'] == 'string' ||
-          schemaProps[key]['type'] == 'integer' ||
-          schemaProps[key]['type'] == 'number'
+          schemaProps[key]['type'] === 'string' ||
+          schemaProps[key]['type'] === 'integer' ||
+          schemaProps[key]['type'] === 'number'
         ) {
           if (schemaProps[key]['type'] !== typ) {
             throw new Error(`Mismatch in credential and given schema type: ${schemaProps[key]['type']} !== ${typ}`);
           }
-        } else if (schemaProps[key]['type'] == 'array' && typ == 'array') {
+        } else if (schemaProps[key]['type'] === 'array' && typ === 'array') {
           if (schemaProps[key]['items'].length < value.length) {
             // If cred has more items than schema, add the missing ones
             value.slice(schemaProps[key]['items'].length).forEach((v) => {
@@ -1098,7 +1098,7 @@ export class CredentialSchema extends Versioned {
             // If cred has less items than schema, delete those items
             schemaProps[key]['items'] = schemaProps[key]['items'].slice(0, value.length);
           }
-        } else if (schemaProps[key]['type'] == 'object' && typ == 'object') {
+        } else if (schemaProps[key]['type'] === 'object' && typ === 'object') {
           const schemaKeys = new Set([...Object.keys(schemaProps[key]['properties'])]);
           const valKeys = new Set([...Object.keys(value)]);
           for (const vk of valKeys) {

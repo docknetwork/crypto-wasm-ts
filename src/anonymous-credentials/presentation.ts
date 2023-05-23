@@ -85,7 +85,7 @@ export class Presentation extends Versioned {
     circomOutputs?: Map<number, Uint8Array[][]>
   ): VerifyResult {
     const numCreds = this.spec.credentials.length;
-    if (publicKeys.length != numCreds) {
+    if (publicKeys.length !== numCreds) {
       throw new Error(`Supply same no of public keys as creds. ${publicKeys.length} != ${numCreds}`);
     }
 
@@ -361,7 +361,7 @@ export class Presentation extends Versioned {
         attributeEqualities: this.spec.attributeEqualities
       },
       attributeCiphertexts,
-      proof: b58.encode((this.proof as CompositeProofG1).bytes)
+      proof: b58.encode(this.proof.bytes)
     };
   }
 

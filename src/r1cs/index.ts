@@ -19,7 +19,7 @@ export interface ParsedR1CSFile {
  * @param parsed
  */
 export function processParsedR1CSFile(parsed: ParsedR1CSFile): R1CS {
-  const curveName = parsed.curve.name as string;
+  const curveName = parsed.curve.name;
   const numPublic = 1 + parsed.nPubInputs + parsed.nOutputs;
   const numPrivate = parsed.nVars - numPublic;
 

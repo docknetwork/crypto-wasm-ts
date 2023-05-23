@@ -627,7 +627,7 @@ export class UniversalAccumulator extends Accumulator {
       if (storePresent) {
         await initialElementsStore.add(e);
       }
-      if (currentBatch.length == batchSize) {
+      if (currentBatch.length === batchSize) {
         // Batch full, take product
         products.push(universalAccumulatorComputeInitialFv(currentBatch, secretKey.value));
         currentBatch = [];
@@ -800,7 +800,7 @@ export class UniversalAccumulator extends Accumulator {
     const ds: Uint8Array[] = [];
     for (const member of members) {
       currentBatch.push(member);
-      if (currentBatch.length == batchSize) {
+      if (currentBatch.length === batchSize) {
         ds.push(universalAccumulatorComputeD(nonMember, currentBatch));
         currentBatch = [];
       }
@@ -874,7 +874,7 @@ export class UniversalAccumulator extends Accumulator {
     const members = await state.elements();
     for (const member of members) {
       currentBatch.push(member);
-      if (currentBatch.length == batchSize) {
+      if (currentBatch.length === batchSize) {
         // Current batch is full, compute `d` for all non-members
         for (let i = 0; i < nonMembers.length; i++) {
           dsForAll[i].push(universalAccumulatorComputeD(nonMembers[i], currentBatch));

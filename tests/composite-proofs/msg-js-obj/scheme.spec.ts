@@ -86,11 +86,11 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
 
       // `revealedMsgsRaw` contains the messages being revealed without the values being encoded. The idea is for the
       // verifier to encode it independently.
-      if (i == 1) {
+      if (i === 1) {
         expect(revealedMsgsRaw).toEqual({ fname: 'John', country: 'USA' });
       }
 
-      if (i == 2) {
+      if (i === 2) {
         expect(revealedMsgsRaw).toEqual({
           lname: 'Smith',
           location: {

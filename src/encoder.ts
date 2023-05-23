@@ -88,7 +88,7 @@ export abstract class MessageEncoder extends BytearrayWrapper {
       const chars: string[] = [];
       for (let i = 0; i < this.maxEncodedLength; i++) {
         // If a null character found then stop looking further
-        if (decoded.charCodeAt(i) == 0) {
+        if (decoded.charCodeAt(i) === 0) {
           break;
         }
         chars.push(decoded.charAt(i));

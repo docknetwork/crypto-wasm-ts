@@ -20,7 +20,7 @@ export class CircomCircuit {
    * @param inputs
    */
   static isSatisfied(r1cs: R1CS | ParsedR1CSFile, wasmBytes: Uint8Array, inputs: CircomInputs): boolean {
-    let processedR1cs = getR1CS(r1cs);
+    const processedR1cs = getR1CS(r1cs);
     return r1csCircuitSatisfied(
       processedR1cs.curveName,
       processedR1cs.numPublic,
