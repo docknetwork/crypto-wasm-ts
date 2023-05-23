@@ -361,7 +361,7 @@ export class Presentation extends Versioned {
         attributeEqualities: this.spec.attributeEqualities
       },
       attributeCiphertexts,
-      proof: b58.encode((this.proof).bytes)
+      proof: b58.encode(this.proof.bytes)
     };
   }
 
