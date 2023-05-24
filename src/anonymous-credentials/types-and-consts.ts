@@ -12,7 +12,6 @@ import {
   BBSPlusPublicKeyG2,
   BBSPlusSignatureG1,
   BBSPlusSignatureParamsG1,
-  BBSPlusSignatureParamsG2
 } from '../bbs-plus';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 
@@ -36,10 +35,10 @@ export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext };
 
 export type PublicKey = BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
 export type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature;
-export type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG2 | PSSignatureParams;
+export type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG1 | PSSignatureParams;
 export type SignatureParamsClass =
   | typeof BBSSignatureParams
-  | typeof BBSPlusSignatureParamsG2
+  | typeof BBSPlusSignatureParamsG1
   | typeof PSSignatureParams;
 
 export const VERSION_STR = 'version';
