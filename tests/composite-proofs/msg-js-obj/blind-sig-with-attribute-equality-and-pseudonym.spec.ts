@@ -256,21 +256,13 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     // To prove attribute `user-id` is same in `signature2` and `pseudonym2`
     const witnessEq2 = new WitnessEqualityMetaStatement();
     witnessEq2.addWitnessRef(stId2, getIndicesForMsgNames(['sensitive.user-id'], attributes4Struct)[0]);
-    if (isBBSPlus()) {
-      witnessEq2.addWitnessRef(stId3, 1);
-    } else if (isBBS()) {
-      witnessEq2.addWitnessRef(stId3, 0);
-    }
+    witnessEq2.addWitnessRef(stId3, 0);
     proverMetaStatements.addWitnessEquality(witnessEq2);
 
     // To prove attribute `secret` is same in `signature2` and `pseudonym2`
     const witnessEq3 = new WitnessEqualityMetaStatement();
     witnessEq3.addWitnessRef(stId2, getIndicesForMsgNames(['sensitive.secret'], attributes4Struct)[0]);
-    if (isBBSPlus()) {
-      witnessEq3.addWitnessRef(stId3, 2);
-    } else if (isBBS()) {
-      witnessEq3.addWitnessRef(stId3, 1);
-    }
+    witnessEq3.addWitnessRef(stId3, 1);
     proverMetaStatements.addWitnessEquality(witnessEq3);
 
     const proofSpecProver = new ProofSpecG1(proverStatements, proverMetaStatements);
@@ -292,20 +284,12 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
 
     const witnessEq5 = new WitnessEqualityMetaStatement();
     witnessEq5.addWitnessRef(stId5, getIndicesForMsgNames(['sensitive.user-id'], attributes4Struct)[0]);
-    if (isBBSPlus()) {
-      witnessEq5.addWitnessRef(stId6, 1);
-    } else if (isBBS()) {
-      witnessEq5.addWitnessRef(stId6, 0);
-    }
+    witnessEq5.addWitnessRef(stId6, 0);
     verifierMetaStatements.addWitnessEquality(witnessEq5);
 
     const witnessEq6 = new WitnessEqualityMetaStatement();
     witnessEq6.addWitnessRef(stId5, getIndicesForMsgNames(['sensitive.secret'], attributes4Struct)[0]);
-    if (isBBSPlus()) {
-      witnessEq6.addWitnessRef(stId6, 2);
-    } else if (isBBS()) {
-      witnessEq6.addWitnessRef(stId6, 1);
-    }
+    witnessEq6.addWitnessRef(stId6, 1);
     verifierMetaStatements.addWitnessEquality(witnessEq6);
 
     const proofSpecVerifier = new ProofSpecG1(verifierStatements, verifierMetaStatements);
