@@ -115,7 +115,7 @@ export class BBSBlindSignature extends BytearrayWrapper {
    * @param messagesToBlind - messages the requester wants to hide from the signer. The key of the map is the index of the
    * message as per the params.
    * @param params
-   * @param encodedMessages
+   * @param encodeMessages
    * @param revealedMessages - Any messages that the requester wishes to inform the signer about. This is for informational
    * purpose only and has no cryptographic use.
    */

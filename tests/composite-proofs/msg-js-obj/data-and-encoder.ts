@@ -152,6 +152,33 @@ export const attributes3Struct = {
   rank: null
 };
 
+// 4th attribute set.
+export const attributes4 = {
+  fname: 'John',
+  lname: 'Smith',
+  sensitive: {
+    secret: 'another-pseudorandom-secret',
+    email: 'john.smith@example.com',
+    'user-id': 'user:123-xyz-#'
+  },
+  'poll-id': 'test-poll',
+  'registration-id': '12345671209'
+};
+
+// This is the structure of `attributes4`. Similar to `attributes1Struct`, does not contain attribute values but the names
+// and the structure of `attributes4`
+export const attributes4Struct = {
+  fname: null,
+  lname: null,
+  sensitive: {
+    secret: null,
+    email: null,
+    'user-id': null
+  },
+  'poll-id': null,
+  'registration-id': null
+};
+
 // The default encoder
 export const defaultEncoder = (v: unknown) => {
   // @ts-ignore

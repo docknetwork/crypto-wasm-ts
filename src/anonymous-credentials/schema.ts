@@ -1,6 +1,6 @@
 import pointer from 'json-pointer';
 import { Versioned } from './versioned';
-import { EncodeFunc, Encoder } from '../bbs-plus';
+import { EncodeFunc, Encoder } from '../encoder';
 import { isPositiveInteger } from '../util';
 import {
   CRYPTO_VERSION_STR,

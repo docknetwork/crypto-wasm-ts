@@ -227,8 +227,7 @@ export function getBBSStatementForBlindSigRequest(
 
 /**
  * Get the `BBS` witness to be used in composite proof for the blind signature request
- * @param request
- * @param sigParams
+ * @param messages
  */
 export function getBBSWitnessForBlindSigRequest(messages: Map<number, Uint8Array>): Uint8Array {
   const sortedMessages = [...messages.entries()];
@@ -252,8 +251,8 @@ export function getBBSPlusStatementForBlindSigRequest(
 
 /**
  * Get the `BBS+` witness to be used in composite proof for the blind signature request
- * @param request
- * @param sigParams
+ * @param messages
+ * @param blinding
  */
 export function getBBSPlusWitnessForBlindSigRequest(
   messages: Map<number, Uint8Array>,
