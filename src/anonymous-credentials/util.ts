@@ -36,12 +36,7 @@ import {
 import { flatten } from 'flat';
 import { PresentationSpecification } from './presentation-specification';
 import { ValueType, ValueTypes } from './schema';
-import {
-  BBSPlusPublicKeyG2,
-  BBSPlusSignatureG1,
-  BBSPlusSignatureParamsG1,
-  Encoder
-} from '../bbs-plus';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1, Encoder } from '../bbs-plus';
 import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '../composite-proof';
 import { SetupParamsTracker } from './setup-params-tracker';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
@@ -201,27 +196,29 @@ export function buildSignatureStatementFromParamsRef(
       setupParams = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount) as BBSSignatureParams);
       setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
       buildStatement = Statement.bbsSignatureFromSetupParamRefs;
+
       break;
     case BBSPlusSignatureParamsG1:
       setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
       setupParams = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount) as BBSPlusSignatureParamsG1);
-
       buildStatement = Statement.bbsPlusSignatureFromSetupParamRefs;
+
       break;
     case PSSignatureParams:
       let psPK = pk as PSPublicKey;
       const supported = psPK.supportedMessageCount();
-      if (messageCount !== supported)
+      if (messageCount !== supported) {
         if (messageCount < supported) {
           psPK = psPK.adaptForLess(messageCount);
         } else {
           throw new Error(`Unsupported message count - supported up to ${supported}, received = ${messageCount}`);
         }
+      }
 
       setupPK = SetupParam.psSignaturePublicKey(psPK);
       setupParams = SetupParam.psSignatureParams(sigParams.adapt(messageCount) as PSSignatureParams);
-
       buildStatement = Statement.psSignatureFromSetupParamRefs;
+
       break;
     default:
       throw new Error(`Signature params are invalid ${sigParams}`);
