@@ -215,11 +215,11 @@ export function buildSignatureStatementFromParamsRef(
         if (messageCount < supported) {
           psPK = psPK.adaptForLess(messageCount);
         } else {
-          throw new Error(`Unsupported message count: supported = ${supported}, received = ${messageCount}`);
+          throw new Error(`Unsupported message count - supported up to ${supported}, received = ${messageCount}`);
         }
 
       setupPK = SetupParam.psSignaturePublicKey(psPK);
-      setupParams = SetupParam.psSignatureParams(sigParams as PSSignatureParams);
+      setupParams = SetupParam.psSignatureParams(sigParams.adapt(messageCount) as PSSignatureParams);
 
       buildStatement = Statement.psSignatureFromSetupParamRefs;
       break;

@@ -83,7 +83,7 @@ export class PSSignatureParams implements ISignatureParams {
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
     const supportedMsgCount = secretKey.supportedMessageCount();
     if (supportedMsgCount < msgCount) {
-      throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`);
+      throw new Error(`Unsupported message count - supported up to ${supportedMsgCount}, received: ${msgCount}`);
     } else if (supportedMsgCount > msgCount) {
       secretKey = secretKey.adaptForLess(msgCount);
     }
@@ -117,7 +117,7 @@ export class PSSignatureParams implements ISignatureParams {
     const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
     const supportedMsgCount = publicKey.supportedMessageCount();
     if (supportedMsgCount < msgCount) {
-      throw new Error(`Unsupported message count - supported: ${supportedMsgCount}, received: ${msgCount}`);
+      throw new Error(`Unsupported message count - supported up to ${supportedMsgCount}, received: ${msgCount}`);
     } else if (supportedMsgCount > msgCount) {
       publicKey = publicKey.adaptForLess(msgCount);
     }

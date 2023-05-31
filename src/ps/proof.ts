@@ -47,7 +47,7 @@ export class PSPoKSignatureProtocol {
         }
 
         const blinding = blindings.get(idx);
-        if (blinding !== void 0) {
+        if (blinding != null) {
           return { BlindMessageWithConcreteBlinding: { message, blinding } };
         } else {
           return { BlindMessageRandomly: message };

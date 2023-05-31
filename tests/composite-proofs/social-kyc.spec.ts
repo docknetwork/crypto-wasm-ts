@@ -19,7 +19,7 @@ import {
   getWitnessForBlindSigRequest,
   getStatementForBlindSigRequest,
   encodeMessageForSigningIfPS,
-  encodeMessageIfNotPS,
+  encodeMessageForSigningIfNotPS,
   Scheme
 } from '../scheme';
 
@@ -112,7 +112,7 @@ describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
     // The witness to the Pedersen commitment contains the blinding at index 0 by convention and then the hidden attributes
     const witnesses = new Witnesses(
       getWitnessForBlindSigRequest(
-        new Map([...blindedAttributes].map(([idx, attr]) => [idx, encodeMessageIfNotPS(attr)])),
+        new Map([...blindedAttributes].map(([idx, attr]) => [idx, encodeMessageForSigningIfNotPS(attr)])),
         blinding,
         blindings
       )

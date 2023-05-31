@@ -25,7 +25,8 @@ import {
   isBBSPlus,
   getWitnessForBlindSigRequest,
   getStatementForBlindSigRequest,
-  Scheme
+  Scheme,
+  adaptKeyForParams
 } from '../../scheme';
 import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
 
@@ -134,8 +135,8 @@ describe(`${Scheme} Requesting blind signatures`, () => {
     ]) {
       hiddenAttrNames = hiddenAttrNames as Set<any>;
       const sigParams = getAdaptedSignatureParamsForMessages(params, attributesStruct);
-      const sigPk = isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk;
-      const sigSk = isPS() ? sk.adaptForLess(sigParams.supportedMessageCount()) : sk;
+      const sigPk = adaptKeyForParams(pk, sigParams);
+      const sigSk = adaptKeyForParams(sk, sigParams);
 
       const [names, encodedValues] = GlobalEncoder.encodeMessageObject(attributes);
       const hiddenMsgs = new Map<number, Uint8Array>();

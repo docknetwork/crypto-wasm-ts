@@ -36,7 +36,8 @@ import {
   buildStatementFromSetupParamsRef,
   buildWitness,
   isPS,
-  Scheme
+  Scheme,
+  adaptKeyForParams
 } from '../../../scheme';
 
 // Test for a scenario where a user have 20 assets and liabilities, in different credentials (signed documents). The user
@@ -258,13 +259,13 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
     proverSetupParams.push(buildSignatureParamsSetupParam(sigParamsAssets));
     proverSetupParams.push(buildSignatureParamsSetupParam(sigParamsLiabilities));
     proverSetupParams.push(
-      buildPublicKeySetupParam(isPS() ? sigPk.adaptForLess(sigParamsAssets.supportedMessageCount()) : sigPk)
+      buildPublicKeySetupParam(adaptKeyForParams(sigPk, sigParamsAssets))
     );
     proverSetupParams.push(SetupParam.r1cs(r1cs));
     proverSetupParams.push(SetupParam.bytes(wasm));
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(provingKey));
     proverSetupParams.push(
-      buildPublicKeySetupParam(isPS() ? sigPk.adaptForLess(sigParamsLiabilities.supportedMessageCount()) : sigPk)
+      buildPublicKeySetupParam(adaptKeyForParams(sigPk, sigParamsLiabilities))
     );
 
     const statementsProver = new Statements();
@@ -393,7 +394,7 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
     verifierSetupParams.push(buildSignatureParamsSetupParam(sigParamsAssets));
     verifierSetupParams.push(buildSignatureParamsSetupParam(sigParamsLiabilities));
     verifierSetupParams.push(
-      buildPublicKeySetupParam(isPS() ? sigPk.adaptForLess(sigParamsAssets.supportedMessageCount()) : sigPk)
+      buildPublicKeySetupParam(adaptKeyForParams(sigPk, sigParamsAssets))
     );
 
     // generateFieldElementFromNumber(1) as the condition "sum of assets - sum of liabilities > minDiff" should be true,
@@ -401,7 +402,7 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
     verifierSetupParams.push(SetupParam.fieldElementVec([generateFieldElementFromNumber(1), minDiffEncoded]));
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(verifyingKey));
     verifierSetupParams.push(
-      buildPublicKeySetupParam(isPS() ? sigPk.adaptForLess(sigParamsLiabilities.supportedMessageCount()) : sigPk)
+      buildPublicKeySetupParam(adaptKeyForParams(sigPk, sigParamsLiabilities))
     );
 
     const statementsVerifier = new Statements();

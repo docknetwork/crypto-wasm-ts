@@ -14,7 +14,7 @@ export type EncodeFunc = (value: unknown) => Uint8Array;
 export type ToPositiveIntFunc = (value: unknown) => number;
 
 /**
- * A class for dealing with message encoding/decoding.
+ * A class extending `BytearrayWrapper` containing instruments for dealing with message encoding/decoding.
  */
 export abstract class MessageEncoder extends BytearrayWrapper {
   // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
@@ -99,7 +99,7 @@ export abstract class MessageEncoder extends BytearrayWrapper {
 }
 
 /**
- * Encodes the input to a field element for signing with BBS+ in group G1.
+ * Encodes the input to a field element for signing.
  * Used when working with messages that are specified as JS objects. This encoder object will contain
  * the mapping from message name (key in JS object) to an encoding function.
  *
@@ -173,7 +173,7 @@ export class Encoder {
   }
 
   /**
-   * Encode messages given as JS Map. It flattens the object into a sorted list and encodes each value as per the known
+   * Encode messages given as JS object. It flattens the object into a sorted list and encodes each value as per the known
    * encoding functions.
    * Returns a Map with names as keys and encoded messages as values.
    * @param messages
