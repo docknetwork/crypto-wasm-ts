@@ -27,7 +27,7 @@ import {
   GlobalEncoder
 } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams } from '../../scheme';
+import { adaptKeyForParams, buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams } from '../../scheme';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -129,9 +129,9 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     const sigParams2 = getAdaptedSignatureParamsForMessages(params2, attributes2Struct);
     const sigParams3 = getAdaptedSignatureParamsForMessages(params3, attributes3Struct);
 
-    const sigPk1 = isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()) : pk1;
-    const sigPk2 = isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount()) : pk2;
-    const sigPk3 = isPS() ? pk3.adaptForLess(sigParams3.supportedMessageCount()) : pk3;
+    const sigPk1 = adaptKeyForParams(pk1, sigParams1);
+    const sigPk2 = adaptKeyForParams(pk2, sigParams2);
+    const sigPk3 = adaptKeyForParams(pk3, sigParams3);
 
     // Prover needs to do many bound checks with the same verification key
     const proverSetupParams: SetupParam[] = [];

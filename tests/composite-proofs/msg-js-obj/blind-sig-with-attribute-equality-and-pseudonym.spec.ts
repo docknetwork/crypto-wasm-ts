@@ -27,7 +27,7 @@ import {
   isBBSPlus,
   getWitnessForBlindSigRequest,
   getStatementForBlindSigRequest,
-  Scheme, buildStatement, buildWitness, isBBS
+  Scheme, buildStatement, buildWitness, isBBS, adaptKeyForParams
 } from '../../scheme';
 
 const skipIfPS = isPS() ? describe.skip : describe;
@@ -92,11 +92,11 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     };
 
     const sigParams1 = getAdaptedSignatureParamsForMessages(params, attributes1Struct);
-    const sigPk1 = isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()) : pk1;
+    const sigPk1 = adaptKeyForParams(pk1, sigParams1);
 
     const sigParams2 = getAdaptedSignatureParamsForMessages(params, attributes4Struct);
-    const sigPk2 = isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount()) : pk2;
-    const sigSk2 = isPS() ? sk2.adaptForLess(sigParams2.supportedMessageCount()) : sk2;
+    const sigPk2 = adaptKeyForParams(pk2, sigParams2);
+    const sigSk2 = adaptKeyForParams(sk2, sigParams2);
 
     const [names, encodedValues] = GlobalEncoder.encodeMessageObject(attributes4);
     const hiddenMsgs = new Map<number, Uint8Array>();
@@ -220,10 +220,10 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     // Prove knowledge of both signatures and share a pseudonym from 2 attributes of 2nd signature
 
     const sigParams1 = getAdaptedSignatureParamsForMessages(params, attributes1Struct);
-    const sigPk1 = isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()) : pk1;
+    const sigPk1 = adaptKeyForParams(pk1, sigParams1);
 
     const sigParams2 = getAdaptedSignatureParamsForMessages(params, attributes4Struct);
-    const sigPk2 = isPS() ? pk2.adaptForLess(sigParams2.supportedMessageCount()) : pk2;
+    const sigPk2 = adaptKeyForParams(pk2, sigParams2);
 
     const revealedNames = new Set<string>();
     revealedNames.add('poll-id');

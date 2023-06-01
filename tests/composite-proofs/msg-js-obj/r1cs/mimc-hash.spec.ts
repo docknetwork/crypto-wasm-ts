@@ -31,7 +31,8 @@ import {
   buildStatement,
   buildWitness,
   isPS,
-  Scheme
+  Scheme,
+  adaptKeyForParams
 } from '../../../scheme';
 
 // Test for a scenario where user wants to prove that certain attribute of his credential is the preimage of a public MiMC hash.
@@ -150,7 +151,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
     revealedNames.add('fname');
 
     const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
-    const sigPk = isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk;
+    const sigPk = adaptKeyForParams(pk, sigParams);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames,
@@ -197,7 +198,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
 
     const statement3 = buildStatement(
       sigParams,
-      isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk,
+      adaptKeyForParams(pk, sigParams),
       revealedMsgsFromVerifier,
       false
     );

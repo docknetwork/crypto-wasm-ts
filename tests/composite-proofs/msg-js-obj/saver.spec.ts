@@ -25,7 +25,7 @@ import {
 } from '../../../src';
 import { attributes1, attributes1Struct, GlobalEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { buildStatement, buildWitness, isPS, KeyPair, Scheme, Signature, SignatureParams } from '../../scheme';
+import { adaptKeyForParams, buildStatement, buildWitness, isPS, KeyPair, Scheme, Signature, SignatureParams } from '../../scheme';
 
 describe(`${Scheme} Verifiable encryption using SAVER`, () => {
   beforeAll(async () => {
@@ -104,7 +104,7 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
 
     // Both prover and verifier can independently create this struct
     const sigParams = getAdaptedSignatureParamsForMessages(params, attributes1Struct);
-    const sigPk = isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk;
+    const sigPk = adaptKeyForParams(pk, sigParams);
 
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,

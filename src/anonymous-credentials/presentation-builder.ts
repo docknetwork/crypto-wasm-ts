@@ -331,7 +331,7 @@ export class PresentationBuilder extends Versioned {
         revealedNames = new Set();
       }
       const paramsClass = paramsClassBySignature(cred.signature);
-      if (paramsClass == null) {
+      if (paramsClass === null) {
         throw new Error(`Invalid signature: ${cred.signature}`);
       }
       const sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, paramsClass, numAttribs);

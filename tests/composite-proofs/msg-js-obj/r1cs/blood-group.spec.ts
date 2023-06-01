@@ -30,7 +30,8 @@ import {
   buildStatement,
   buildWitness,
   isPS,
-  Scheme
+  Scheme,
+  adaptKeyForParams
 } from '../../../scheme';
 
 // Test for a scenario where a user wants to prove that his blood group is AB- without revealing the blood group.
@@ -138,7 +139,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     revealedNames.add('fname');
 
     const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
-    const sigPK = isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk;
+    const sigPK = adaptKeyForParams(pk, sigParams);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames,
@@ -209,7 +210,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     revealedNames.add('fname');
 
     const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
-    const sigPK = isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk;
+    const sigPK = adaptKeyForParams(pk, sigParams);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes2,
       revealedNames,
@@ -219,7 +220,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
 
     const statement1 = buildStatement(
       sigParams,
-      isPS() ? pk.adaptForLess(sigParams.supportedMessageCount()) : pk,
+      adaptKeyForParams(pk, sigParams),
       revealedMsgs,
       false
     );

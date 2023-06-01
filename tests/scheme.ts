@@ -38,7 +38,7 @@ import {
   getPSWitnessesForBlindSigRequest,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  PS_SIGNATURE_PARAMS_LABEL_BYTES,
+  PS_SIGNATURE_PARAMS_LABEL_BYTES
 } from '../src';
 
 export { Presentation } from '../src/anonymous-credentials/presentation';
@@ -63,10 +63,11 @@ export let Scheme: string = process.env.TEST_SIGNATURE_SCHEME || 'BBS',
   CredentialBuilder,
   Credential,
   encodeMessageForSigningIfPS: (msg: Uint8Array) => Uint8Array,
-  encodeMessageIfNotPS: (msg: Uint8Array) => Uint8Array,
+  encodeMessageForSigningIfNotPS: (msg: Uint8Array) => Uint8Array,
   isBBS = () => false,
   isBBSPlus = () => false,
-  isPS = () => false;
+  isPS = () => false,
+  adaptKeyForParams = (key, _params) => key;
 
 switch (Scheme) {
   case 'BBS':
@@ -87,7 +88,7 @@ switch (Scheme) {
     CredentialBuilder = BBSCredentialBuilder;
     Credential = BBSCredential;
     encodeMessageForSigningIfPS = (msg) => msg;
-    encodeMessageIfNotPS = encodeMessageForSigning;
+    encodeMessageForSigningIfNotPS = encodeMessageForSigning;
     SignatureLabelBytes = BBS_SIGNATURE_PARAMS_LABEL_BYTES;
     isBBS = () => true;
     break;
@@ -110,7 +111,7 @@ switch (Scheme) {
     Credential = BBSPlusCredential;
     SignatureLabelBytes = BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES;
     encodeMessageForSigningIfPS = (msg) => msg;
-    encodeMessageIfNotPS = encodeMessageForSigning;
+    encodeMessageForSigningIfNotPS = encodeMessageForSigning;
     isBBSPlus = () => true;
     break;
   case 'PS':
@@ -132,8 +133,9 @@ switch (Scheme) {
     Credential = PSCredential;
     SignatureLabelBytes = PS_SIGNATURE_PARAMS_LABEL_BYTES;
     encodeMessageForSigningIfPS = encodeMessageForSigning;
-    encodeMessageIfNotPS = (msg) => msg;
+    encodeMessageForSigningIfNotPS = (msg) => msg;
     isPS = () => true;
+    adaptKeyForParams = (key, params) => key.adaptForLess(params.supportedMessageCount());
     break;
   default:
     throw new Error(

@@ -36,7 +36,8 @@ import {
   isBBSPlus,
   getWitnessForBlindSigRequest,
   isBBS,
-  Scheme
+  Scheme,
+  adaptKeyForParams
 } from './scheme';
 import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
 
@@ -347,7 +348,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       // Holder secret is at index 0 in statement 0
       witnessEq1.addWitnessRef(0, 0);
       // Holder secret is at index 1 in statement 1, the opening of commitment of the blind signature respect
-      witnessEq1.addWitnessRef(2, +(blinding != null));
+      witnessEq1.addWitnessRef(2, +(blinding != void 0));
 
       // Prove equality of holder's user id in `credential` and accumulator membership.
       const witnessEq2 = new WitnessEqualityMetaStatement();
@@ -407,7 +408,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
 
       const statement1 = buildStatement(
         sigParams,
-        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
         false
       );
@@ -418,7 +419,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
 
       const statement3 = buildStatement(
         sigParams2,
-        !isPS() ? pk2 : pk2.adaptForLess(sigParams2.supportedMessageCount()),
+        adaptKeyForParams(pk2, sigParams2),
         revealedMsgs2,
         false
       );
@@ -441,7 +442,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       const witnessEq1 = new WitnessEqualityMetaStatement();
       witnessEq1.addWitnessRef(0, 0);
       witnessEq1.addWitnessRef(2, 0);
-      witnessEq1.addWitnessRef(4, +(blinding != null));
+      witnessEq1.addWitnessRef(4, +(blinding != void 0));
 
       // Prove equality of holder's user id in `credential` and accumulator membership.
       const witnessEq2 = new WitnessEqualityMetaStatement();
@@ -524,7 +525,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
       const statement1 = buildStatement(
         sigParams,
-        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
         false
       );
@@ -600,14 +601,14 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
 
       const statement1 = buildStatement(
         sigParams,
-        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
         false
       );
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const statement3 = buildStatement(
         sigParams2,
-        !isPS() ? pk2 : pk2.adaptForLess(sigParams2.supportedMessageCount()),
+        adaptKeyForParams(pk2, sigParams2),
         revealedMsgs2,
         false
       );
@@ -697,7 +698,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
 
       const statement1 = buildStatement(
         sigParams,
-        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
         false
       );
@@ -708,7 +709,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
 
       const statement3 = buildStatement(
         sigParams2,
-        !isPS() ? pk2 : pk2.adaptForLess(sigParams2.supportedMessageCount()),
+        adaptKeyForParams(pk2, sigParams2),
         revealedMsgs2,
         false
       );
@@ -719,7 +720,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
 
       const statement5 = buildStatement(
         sigParams3,
-        !isPS() ? pk3 : pk3.adaptForLess(sigParams3.supportedMessageCount()),
+        adaptKeyForParams(pk3, sigParams3),
         revealedMsgs3,
         false
       );
@@ -808,21 +809,21 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
 
       const statement1 = buildStatement(
         sigParams,
-        !isPS() ? pk : pk.adaptForLess(sigParams.supportedMessageCount()),
+        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
         false
       );
       const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
       const statement3 = buildStatement(
         sigParams2,
-        !isPS() ? pk2 : pk2.adaptForLess(sigParams2.supportedMessageCount()),
+        adaptKeyForParams(pk2, sigParams2),
         revealedMsgs2,
         false
       );
       const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
       const statement5 = buildStatement(
         sigParams3,
-        !isPS() ? pk3 : pk3.adaptForLess(sigParams3.supportedMessageCount()),
+        adaptKeyForParams(pk3, sigParams3),
         revealedMsgs3,
         false
       );

@@ -10,7 +10,7 @@ import {
   isBBSPlus,
   encodeMessageForSigningIfPS,
   isPS,
-  encodeMessageIfNotPS,
+  encodeMessageForSigningIfNotPS,
   Scheme
 } from '../scheme';
 import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
@@ -78,7 +78,7 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
     // The witness to the Pedersen commitment contains the blinding at index 0 by convention and then the hidden messages
     const witnesses = new Witnesses(
       getWitnessForBlindSigRequest(
-        new Map([...blindedMessages].map(([idx, attr]) => [idx, encodeMessageIfNotPS(attr)])),
+        new Map([...blindedMessages].map(([idx, attr]) => [idx, encodeMessageForSigningIfNotPS(attr)])),
         blinding,
         blindings
       )

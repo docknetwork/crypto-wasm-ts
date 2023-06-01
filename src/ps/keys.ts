@@ -22,8 +22,8 @@ export class PSPublicKey extends BytearrayWrapper {
 
   adaptForLess(messageCount: number) {
     const adapted = psAdaptPublicKeyForLessMessages(this.value, messageCount);
-    if (adapted == null) {
-      throw new Error(`Failed to adapt public key ${this} for ${messageCount} messages`)
+    if (adapted === null) {
+      throw new Error(`Failed to adapt public key ${this} for ${messageCount} messages`);
     }
 
     return new (this.constructor as typeof PSPublicKey)(adapted);
@@ -44,8 +44,10 @@ export class PSSecretKey extends BytearrayWrapper {
 
   adaptForLess(messageCount: number) {
     const adapted = psAdaptSecretKeyForLessMessages(this.value, messageCount);
-    if (adapted == null) {
-      throw new Error(`Failed to adapt secret key ${this} for ${messageCount} messages`)
+    if (adapted === null) {
+      throw new Error(
+        `Failed to adapt secret key ${this} supporting ${this.supportedMessageCount()} messages for less messages - ${messageCount}`
+      );
     }
 
     return new PSSecretKey(adapted);
@@ -53,8 +55,10 @@ export class PSSecretKey extends BytearrayWrapper {
 
   adaptForMore(seed: Uint8Array, messageCount: number) {
     const adapted = psAdaptSecretKeyForMoreMessages(this.value, seed, messageCount);
-    if (adapted == null) {
-      throw new Error(`Failed to adapt secret key ${this} for ${messageCount} messages`)
+    if (adapted === null) {
+      throw new Error(
+        `Failed to adapt secret key ${this} supporting ${this.supportedMessageCount()} messages for more messages - ${messageCount}`
+      );
     }
 
     return new PSSecretKey(adapted);
@@ -67,7 +71,7 @@ export class PSSecretKey extends BytearrayWrapper {
   static dealShamirSS(messageCount: number, threshold: number, total: number): [PSSecretKey, PSSecretKey[]] {
     const [thresholdKey, participantKeys] = psShamirDeal(messageCount, threshold, total);
 
-    return [new PSSecretKey(thresholdKey), participantKeys.map(key => new PSSecretKey(key))]
+    return [new PSSecretKey(thresholdKey), participantKeys.map((key) => new PSSecretKey(key))];
   }
 
   generatePublicKey(params: PSSignatureParams): PSPublicKey {
@@ -84,7 +88,9 @@ export class PSKeypair {
 
   constructor(sk: PSSecretKey, pk: PSPublicKey) {
     if (sk.supportedMessageCount() !== pk.supportedMessageCount()) {
-      throw new Error(`Incompatible public/secret keys: public key supports ${pk.supportedMessageCount()} messages while ${sk.supportedMessageCount()}`)
+      throw new Error(
+        `Incompatible public/secret keys: public key supports ${pk.supportedMessageCount()} messages while secret key supports ${sk.supportedMessageCount()}`
+      );
     }
     this.sk = sk;
     this.pk = pk;

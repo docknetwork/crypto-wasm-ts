@@ -25,7 +25,7 @@ import { checkResult, stringToBytes } from '../../utils';
 import { InMemoryState } from '../../../src/accumulator/in-memory-persistence';
 import { attributes1, attributes1Struct, attributes2, attributes2Struct, defaultEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams } from '../../scheme';
+import { adaptKeyForParams, buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams } from '../../scheme';
 
 describe(`${Scheme} Accumulator`, () => {
   beforeAll(async () => {
@@ -173,8 +173,8 @@ describe(`${Scheme} Accumulator`, () => {
     const sigParams1 = getAdaptedSignatureParamsForMessages(params1, attributes1Struct);
     const sigParams2 = getAdaptedSignatureParamsForMessages(params2, attributes2Struct);
 
-    const sigPk1 = isPS() ? pk1.adaptForLess(sigParams1.supportedMessageCount()) : pk1;
-    const sigPk2 = isPS() ? pk2.adaptForLess(sigParams1.supportedMessageCount()) : pk2;
+    const sigPk1 = adaptKeyForParams(pk1, sigParams1);
+    const sigPk2 = adaptKeyForParams(pk2, sigParams2);
 
     const [revealedMsgs1, unrevealedMsgs1, revealedMsgsRaw1] = getRevealedAndUnrevealed(
       attributes1,

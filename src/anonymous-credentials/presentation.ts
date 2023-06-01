@@ -113,7 +113,7 @@ export class Presentation extends Versioned {
       const revealedEncoded = Presentation.encodeRevealed(i, presentedCred, presentedCredSchema, flattenedSchema[0]);
 
       const paramsClass = paramsClassByPublicKey(publicKeys[i]);
-      if (paramsClass == null) {
+      if (paramsClass === null) {
         throw new Error(`Invalid public key: ${publicKeys[i]}`);
       }
       const sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, paramsClass, numAttribs);
