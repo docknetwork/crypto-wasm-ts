@@ -140,7 +140,7 @@ export class PSBlindSignature extends BytearrayWrapper {
           throw new Error(`Invalid revealed message with index ${idx} - this index is already committed`);
         }
         let msgBlinding = blindings.get(idx);
-        if (msgBlinding == null) {
+        if (msgBlinding === void 0) {
           msgBlinding = this.generateBlinding();
           blindings.set(idx, msgBlinding);
         }
@@ -214,11 +214,11 @@ export class PSBlindSignature extends BytearrayWrapper {
             const revealedMessage = revealedMessages.get(idx);
             const commitment = blindedMessages.get(idx);
 
-            if (revealedMessage != null && commitment != null) {
+            if (revealedMessage !== void 0 && commitment !== void 0) {
               throw new Error(`Found both revealed message and commitment for ${idx}`);
-            } else if (revealedMessage != null) {
+            } else if (revealedMessage !== void 0) {
               return { value: { RevealedMessage: revealedMessage }, done: false };
-            } else if (commitment != null) {
+            } else if (commitment !== void 0) {
               return { value: { BlindedMessage: commitment }, done: false };
             } else if (revealedMessages.size + blindedMessages.size !== idx) {
               const missedCommitments = [...blindedMessages.entries()].filter(([key]) => key > idx);

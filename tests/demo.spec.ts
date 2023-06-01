@@ -348,7 +348,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       // Holder secret is at index 0 in statement 0
       witnessEq1.addWitnessRef(0, 0);
       // Holder secret is at index 1 in statement 1, the opening of commitment of the blind signature respect
-      witnessEq1.addWitnessRef(2, +(blinding != null));
+      witnessEq1.addWitnessRef(2, +(blinding != void 0));
 
       // Prove equality of holder's user id in `credential` and accumulator membership.
       const witnessEq2 = new WitnessEqualityMetaStatement();
@@ -442,7 +442,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       const witnessEq1 = new WitnessEqualityMetaStatement();
       witnessEq1.addWitnessRef(0, 0);
       witnessEq1.addWitnessRef(2, 0);
-      witnessEq1.addWitnessRef(4, +(blinding != null));
+      witnessEq1.addWitnessRef(4, +(blinding != void 0));
 
       // Prove equality of holder's user id in `credential` and accumulator membership.
       const witnessEq2 = new WitnessEqualityMetaStatement();

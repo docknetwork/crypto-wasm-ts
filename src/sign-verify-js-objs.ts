@@ -43,7 +43,7 @@ export function encodeRevealedMessageObject(
   flattenedAllNames.forEach((n, i) => {
     const msg = encodedByName[n];
 
-    if (msg != null) {
+    if (msg !== void 0) {
       encodedByIndex.set(i, msg);
     }
   });
@@ -301,7 +301,7 @@ export function getPSWitnessesForBlindSigRequest(
     Witness.pedersenCommitment([blinding, ...sortedMessages.map(([_, msg]) => msg)]),
     ...sortedMessages.map(([idx, msg]) => {
       const blinding = blindings.get(idx);
-      if (blinding == null) throw new Error(`Missing blinding for ${idx}`);
+      if (blinding === void 0) throw new Error(`Missing blinding for ${idx}`);
 
       return Witness.pedersenCommitment([blinding, msg]);
     })

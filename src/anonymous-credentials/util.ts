@@ -269,9 +269,9 @@ export const getSignatureParamsForMsgCount = (
   msgCount: number
 ): SignatureParams => {
   let sigParamsEntry = sigParamsByScheme.get(paramsClass);
-  if (sigParamsEntry == null) {
+  if (sigParamsEntry === void 0) {
     const labelBytes = getDefaultLabelBytesForSignatureParams(paramsClass);
-    if (labelBytes == null) {
+    if (labelBytes === null) {
       throw new Error(`Failed to get default label bytes for signature params: ${paramsClass}`);
     }
 
