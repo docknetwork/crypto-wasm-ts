@@ -71,7 +71,7 @@ import { AttributeBoundPseudonym, Pseudonym, PseudonymBases } from '../Pseudonym
  * Arguments required to generate the corresponding AttributeBoundPseudonym
  * */
 export interface BoundedPseudonym {
-  /** Keys are credentialNumbers, Values are the attribute names */
+  /** Keys are credential indices, values are the attribute names in that credential*/
   attributeNames: Map<number, Set<string>>;
   basesForAttributes: Uint8Array[];
   baseForSecretKey?: Uint8Array;
@@ -106,10 +106,10 @@ export class PresentationBuilder extends Versioned {
   // Attributes revealed from each credential, key of the map is the credential index
   revealedAttributes: Map<number, Set<string>>;
 
-  // List of arguments required to calculate the list of AttributeBoundPseudonym to be presented
+  // Arguments required to calculate the attribute bound pseudonyms to be presented
   boundedPseudonyms: BoundedPseudonym[];
 
-  // List of arguments required to calculate the list of Pseudonym to be presented
+  // Arguments required to calculate the pseudonyms to be presented
   unboundedPseudonyms: UnboundedPseudonym[];
 
   // Attributes proved equal in zero knowledge
@@ -548,19 +548,19 @@ export class PresentationBuilder extends Versioned {
       }
 
       // Get encoded attributes which are used in bounded pseudonyms
-      pseudonymLoop: for (let j = 0; j < this.boundedPseudonyms.length; j++) {
+      for (let j = 0; j < this.boundedPseudonyms.length; j++) {
         const attributeBoundPseudonym = this.boundedPseudonyms[j];
         const attributeNames = attributeBoundPseudonym.attributeNames.get(i);
         if (attributeNames === undefined) {
           // this bounded pseudonym does not use any attributes from credential indexed `i`
-          continue pseudonymLoop;
+          continue;
         }
         const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
-        attributeLoop: for (const attributeName of attributeNames.values()) {
+        for (const attributeName of attributeNames.values()) {
           const attributeIndex = flattenedSchema[0].indexOf(attributeName);
           if (encodedAttrs.has(attributeIndex)) {
             // attribute already used before, no need to set it again!
-            continue attributeLoop;
+            continue;
           }
           const attribute = unrevealedAttrsEncoded.get(attributeIndex);
           if (attribute === undefined) {
@@ -601,19 +601,11 @@ export class PresentationBuilder extends Versioned {
       const attributeBoundPseudonym = this.boundedPseudonyms[i];
       const attributes: Uint8Array[] = [];
       for (const [credIdx, attributeNames] of attributeBoundPseudonym.attributeNames.entries()) {
-        const encodedAttrs = unrevealedMsgsEncoded.get(credIdx);
+        const encodedAttrs = unrevealedMsgsEncoded.get(credIdx) as Map<number, Uint8Array>;
         const flattenedSchema = flattenedSchemas[credIdx];
-        if (encodedAttrs === undefined) {
-          throw new Error(`Credential index ${credIdx} necessary to generate bounded pseudonym ${i} not found`);
-        }
         for (const attributeName of attributeNames.values()) {
           const attributeIndex = flattenedSchema[0].indexOf(attributeName);
-          const attribute = encodedAttrs.get(attributeIndex);
-          if (attribute === undefined) {
-            throw new Error(
-              `Cannot find attribute '${attributeName}' in credential #${credIdx} for bounded pseudonym #${i}`
-            );
-          }
+          const attribute = encodedAttrs.get(attributeIndex) as Uint8Array;
           attributes.push(attribute);
           const witnessEq = new WitnessEqualityMetaStatement();
           witnessEq.addWitnessRef(credIdx, attributeIndex);
