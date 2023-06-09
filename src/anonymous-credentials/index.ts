@@ -5,3 +5,4 @@ export * from './presentation-builder';
 export * from './presentation-specification';
 export * from './types-and-consts';
 export * from './util';
+export * from './blinded-credential-request-builder';

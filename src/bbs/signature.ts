@@ -4,7 +4,11 @@ import { BBSPublicKey, BBSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { bbsBlindSign } from '@docknetwork/crypto-wasm';
 import { Encoder, MessageEncoder } from '../encoder';
-import { encodeRevealedMessageObject, flattenMessageStructure } from '../sign-verify-js-objs';
+import {
+  encodeRevealedMessageObject,
+  flattenMessageStructure,
+  getBlindedIndicesAndRevealedMessages
+} from '../sign-verify-js-objs';
 import { MessageStructure, SignedMessages } from '../types';
 
 /**
@@ -126,20 +130,12 @@ export class BBSBlindSignature extends BytearrayWrapper {
     revealedMessages?: Map<number, Uint8Array>
   ): BBSBlindSignatureRequest {
     const commitment = params.commitToMessages(messagesToBlind, encodeMessages);
-    const blindedIndices: number[] = [];
-    for (const k of messagesToBlind.keys()) {
-      blindedIndices.push(k);
-    }
-    let encodedrevealedMessages: Map<number, Uint8Array> | undefined;
-    if (revealedMessages) {
-      encodedrevealedMessages = new Map();
-      for (const [idx, msg] of revealedMessages) {
-        encodedrevealedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
-      }
-    }
-
-    blindedIndices.sort((a, b) => a - b);
-    return { commitment, blindedIndices, revealedMessages: encodedrevealedMessages };
+    const [blindedIndices, encodedRevealedMessages] = getBlindedIndicesAndRevealedMessages(
+      messagesToBlind,
+      encodeMessages,
+      revealedMessages
+    );
+    return { commitment, blindedIndices, revealedMessages: encodedRevealedMessages };
   }
 
   /**

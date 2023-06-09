@@ -1,6 +1,6 @@
 import { pedersenCommitmentG1, generateRandomG1Element } from '@docknetwork/crypto-wasm';
 import { BytearrayWrapper } from './bytearray-wrapper';
-import { base64ToBytearray, bytearrayToBase64 } from './util';
+import { base58ToBytearray, bytearrayToBase58 } from './util';
 
 /**
  * A pseudonym is meant to be used as a unique identifier. It can be considered as a public key where the creator of the
@@ -27,11 +27,11 @@ export class Pseudonym extends BytearrayWrapper {
   }
 
   static decode(value: Uint8Array): string {
-    return bytearrayToBase64(value);
+    return bytearrayToBase58(value);
   }
 
   static encode(value: string): Uint8Array {
-    return base64ToBytearray(value);
+    return base58ToBytearray(value);
   }
 }
 
@@ -74,11 +74,11 @@ export class AttributeBoundPseudonym extends BytearrayWrapper {
  */
 export class PseudonymBases {
   static decode(base: Uint8Array): string {
-    return bytearrayToBase64(base);
+    return bytearrayToBase58(base);
   }
 
   static encode(base: string): Uint8Array {
-    return base64ToBytearray(base);
+    return base58ToBytearray(base);
   }
 
   /**

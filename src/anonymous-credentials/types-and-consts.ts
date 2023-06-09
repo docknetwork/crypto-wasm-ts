@@ -26,6 +26,10 @@ export type PredicateParamType =
   | R1CS
   | Uint8Array;
 
+export type BlindedAttributeEquality = [string, AttributeRef[]];
+
+// The 1st element is an array of all attribute names as flattened and sorted and 2nd element is an array of types of those attributes
+// in the same order
 export type FlattenedSchema = [string[], object[]];
 export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext };
 
@@ -49,7 +53,11 @@ export const ID_STR = 'id';
 export const REV_CHECK_STR = 'revocationCheck';
 export const REV_ID_STR = 'revocationId';
 export const MEM_CHECK_STR = 'membership';
+export const PROOF_STR = 'proof';
 export const NON_MEM_CHECK_STR = 'non-membership';
+export const SIG_TYPE_BBS = 'BBS';
+export const SIG_TYPE_BBS_PLUS = 'BBS+';
+export const SIG_TYPE_PS = 'PS';
 export const BBS_CRED_PROOF_TYPE = 'Bls12381BBSSignatureDock2023';
 export const BBS_PLUS_CRED_PROOF_TYPE = 'Bls12381BBS+SignatureDock2022';
 export const PS_CRED_PROOF_TYPE = 'Bls12381PSSignatureDock2023';

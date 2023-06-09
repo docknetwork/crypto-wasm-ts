@@ -1,5 +1,12 @@
 import { Versioned } from './versioned';
-import { ICircomPredicate, IPresentedCredential, PresentationSpecification } from './presentation-specification';
+import {
+  IBoundedPseudonymCommitKey,
+  ICircomPredicate,
+  IPresentedAttributeBounds,
+  IPresentedAttributeVE,
+  IPresentedCredential,
+  PresentationSpecification
+} from './presentation-specification';
 import {
   CompositeProofG1,
   MetaStatements,
@@ -24,7 +31,9 @@ import {
   REV_ID_STR,
   SCHEMA_STR,
   STATUS_STR,
-  PublicKey
+  PublicKey,
+  SIG_TYPE_BBS,
+  SIG_TYPE_BBS_PLUS
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
@@ -37,7 +46,8 @@ import {
   getTransformedMinMax,
   paramsClassByPublicKey,
   saverStatement,
-  getSignatureParamsForMsgCount
+  getSignatureParamsForMsgCount,
+  createWitEqForBlindedCred
 } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import { SaverCiphertext } from '../saver';
@@ -45,6 +55,8 @@ import b58 from 'bs58';
 import { SetupParamsTracker } from './setup-params-tracker';
 import { flattenObjectToKeyValuesList } from '../util';
 import { Pseudonym, PseudonymBases } from '../Pseudonym';
+import { BBSSignatureParams } from '../bbs';
+import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
 
 export class Presentation extends Versioned {
   readonly spec: PresentationSpecification;
@@ -53,6 +65,8 @@ export class Presentation extends Versioned {
   // This is intentionally not part of presentation specification as this is created as part of the proof generation,
   // not before.
   readonly attributeCiphertexts?: Map<number, AttributeCiphertexts>;
+  // Similar to above for blinded attributes
+  readonly blindedAttributeCiphertexts?: AttributeCiphertexts;
   readonly context?: string;
   readonly nonce?: Uint8Array;
 
@@ -62,12 +76,14 @@ export class Presentation extends Versioned {
     proof: CompositeProofG1,
     attributeCiphertexts?: Map<number, AttributeCiphertexts>,
     context?: string,
-    nonce?: Uint8Array
+    nonce?: Uint8Array,
+    blindedAttributeCiphertexts?: AttributeCiphertexts
   ) {
     super(version);
     this.spec = spec;
     this.proof = proof;
     this.attributeCiphertexts = attributeCiphertexts;
+    this.blindedAttributeCiphertexts = blindedAttributeCiphertexts;
     this.context = context;
     this.nonce = nonce;
   }
@@ -78,12 +94,14 @@ export class Presentation extends Versioned {
    * @param accumulatorPublicKeys - Mapping credential index -> accumulator public key
    * @param predicateParams - Setup params for various predicates
    * @param circomOutputs - Values for the outputs variables of the Circom programs used for predicates
+   * @param blindedAttributesCircomOutputs - Outputs for Circom predicates on blinded attributes
    */
   verify(
     publicKeys: PublicKey[],
     accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
     predicateParams?: Map<string, PredicateParamType>,
-    circomOutputs?: Map<number, Uint8Array[][]>
+    circomOutputs?: Map<number, Uint8Array[][]>,
+    blindedAttributesCircomOutputs?: Uint8Array[][]
   ): VerifyResult {
     const numCreds = this.spec.credentials.length;
     if (publicKeys.length !== numCreds) {
@@ -95,11 +113,18 @@ export class Presentation extends Versioned {
 
     const flattenedSchemas: FlattenedSchema[] = [];
 
+    // For the following arrays of pairs, the 1st item of each pair is the credential index
+
     // For credentials with status, i.e. using accumulators, type is [credIndex, revCheckType, accumulator]
     const credStatusAux: [number, string, Uint8Array][] = [];
 
-    const boundsAux: [number, object][] = [];
-    const verEncAux: [number, object][] = [];
+    // For bound check on credential attributes
+    const boundsAux: [number, { [key: string]: string | IPresentedAttributeBounds }][] = [];
+
+    // For verifiable encryption of credential attributes
+    const verEncAux: [number, { [key: string]: string | IPresentedAttributeVE }][] = [];
+
+    // For circom predicates on credential attributes
     const circomAux: [number, ICircomPredicate[]][] = [];
 
     const setupParamsTrk = new SetupParamsTracker();
@@ -164,130 +189,54 @@ export class Presentation extends Versioned {
     }
 
     boundsAux.forEach(([i, b]) => {
-      const bounds = flattenTill2ndLastKey(b) as object;
-      bounds[0].forEach((name, j) => {
-        const nameIdx = flattenedSchemas[i][0].indexOf(name);
-        const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
-        const [min, max] = [bounds[1][j]['min'], bounds[1][j]['max']];
-        const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
-
-        const paramId = bounds[1][j]['paramId'];
-        const param = predicateParams?.get(paramId);
-        Presentation.addLegoVerifyingKeyToTracker(paramId, param, setupParamsTrk);
-        const statement = Statement.boundCheckVerifierFromSetupParamRefs(
-          transformedMin,
-          transformedMax,
-          setupParamsTrk.indexForParam(paramId)
-        );
-        const sIdx = statements.add(statement);
-        const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(i, nameIdx);
-        witnessEq.addWitnessRef(sIdx, 0);
-        metaStatements.addWitnessEquality(witnessEq);
-      });
+      this.processBoundChecks(
+        i,
+        (n: string) => {
+          return flattenedSchemas[i][0].indexOf(n);
+        },
+        b,
+        flattenedSchemas[i],
+        statements,
+        metaStatements,
+        setupParamsTrk,
+        predicateParams
+      );
     });
 
     verEncAux.forEach(([i, v]) => {
-      const verEnc = flattenTill2ndLastKey(v) as object;
-      verEnc[0].forEach((name, j) => {
-        const valTyp = CredentialSchema.typeOfName(name, flattenedSchemas[i]);
-        if (valTyp.type !== ValueType.RevStr) {
-          throw new Error(
-            `Attribute name ${name} of credential index ${i} should be a reversible string type but was ${valTyp}`
-          );
-        }
-        const nameIdx = flattenedSchemas[i][0].indexOf(name);
-        const commGensId = verEnc[1][j]['commitmentGensId'];
-        if (commGensId === undefined) {
-          throw new Error(`Commitment gens id not found for ${name}`);
-        }
-        const commGens = predicateParams?.get(commGensId);
-        if (commGens === undefined) {
-          throw new Error(`Commitment gens not found for id ${commGensId}`);
-        }
-        const encKeyId = verEnc[1][j]['encryptionKeyId'];
-        if (encKeyId === undefined) {
-          throw new Error(`Encryption key id not found for ${name}`);
-        }
-        const encKey = predicateParams?.get(encKeyId);
-        if (encKey === undefined) {
-          throw new Error(`Encryption key not found for id ${encKey}`);
-        }
-        const snarkVkId = verEnc[1][j]['snarkKeyId'];
-        if (snarkVkId === undefined) {
-          throw new Error(`Snark verification key id not found for ${name}`);
-        }
-        const snarkVk = predicateParams?.get(snarkVkId);
-        if (snarkVk === undefined) {
-          throw new Error(`Snark verification key not found for id ${snarkVkId}`);
-        }
-        const chunkBitSize = verEnc[1][j]['chunkBitSize'];
-        const statement = saverStatement(
-          false,
-          chunkBitSize,
-          commGensId,
-          encKeyId,
-          snarkVkId,
-          commGens,
-          encKey,
-          snarkVk,
-          setupParamsTrk
-        );
-        const sIdx = statements.add(statement);
-        const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(i, nameIdx);
-        witnessEq.addWitnessRef(sIdx, 0);
-        metaStatements.addWitnessEquality(witnessEq);
-      });
+      this.processVerifiableEncs(
+        i,
+        (n: string) => {
+          return flattenedSchemas[i][0].indexOf(n);
+        },
+        v,
+        flattenedSchemas[i],
+        statements,
+        metaStatements,
+        setupParamsTrk,
+        predicateParams
+      );
     });
 
     circomAux.forEach(([i, predicates]) => {
       const outputs = circomOutputs?.get(i);
-      predicates.forEach((pred, j) => {
-        const param = predicateParams?.get(pred.snarkKeyId);
-        Presentation.addLegoVerifyingKeyToTracker(pred.snarkKeyId, param, setupParamsTrk);
-
-        let publicInputs = pred.publicVars.flatMap((pv) => {
-          return pv.value;
-        });
-        if (outputs !== undefined && outputs.length > j) {
-          publicInputs = outputs[j].concat(publicInputs);
-        }
-        const unqId = `circom-outputs-${i}__${j}`;
-        setupParamsTrk.addForParamId(unqId, SetupParam.fieldElementVec(publicInputs));
-
-        const statement = Statement.r1csCircomVerifierFromSetupParamRefs(
-          setupParamsTrk.indexForParam(unqId),
-          setupParamsTrk.indexForParam(pred.snarkKeyId)
-        );
-        const sIdx = statements.add(statement);
-
-        function addWitnessEquality(attributeName: object) {
-          const attr = flattenObjectToKeyValuesList(attributeName) as object;
-          const nameIdx = flattenedSchemas[i][0].indexOf(attr[0][0]);
-          const witnessEq = new WitnessEqualityMetaStatement();
-          witnessEq.addWitnessRef(i, nameIdx);
-          witnessEq.addWitnessRef(sIdx, predicateWitnessIdx++);
-          metaStatements.addWitnessEquality(witnessEq);
-        }
-
-        let predicateWitnessIdx = 0;
-        pred.privateVars.forEach((privateVars) => {
-          if (Array.isArray(privateVars.attributeName)) {
-            privateVars.attributeName.forEach((a) => {
-              addWitnessEquality(a);
-            });
-          } else {
-            addWitnessEquality(privateVars.attributeName);
-          }
-        });
-      });
+      this.processCircomPredicates(
+        i,
+        (n: string) => {
+          return flattenedSchemas[i][0].indexOf(n);
+        },
+        predicates,
+        statements,
+        metaStatements,
+        setupParamsTrk,
+        predicateParams,
+        outputs
+      );
     });
 
-    // verify boundedPseudonyms
-    for (const [pseudonym, boundedPseudonym] of this.spec.boundedPseudonyms.entries()) {
-      const basesForAttributes = PseudonymBases.encodeBasesForAttributes(boundedPseudonym.commitKey.basesForAttributes);
-      const decodedBaseForSecretKey = boundedPseudonym.commitKey.baseForSecretKey;
+    function createPseudonymStatement(pseudonym: string, commitKey: IBoundedPseudonymCommitKey): number {
+      const basesForAttributes = PseudonymBases.encodeBasesForAttributes(commitKey.basesForAttributes);
+      const decodedBaseForSecretKey = commitKey.baseForSecretKey;
       const baseForSecretKey =
         decodedBaseForSecretKey !== undefined
           ? PseudonymBases.encodeBaseForSecretKey(decodedBaseForSecretKey)
@@ -298,24 +247,167 @@ export class Presentation extends Versioned {
         basesForAttributes,
         baseForSecretKey
       );
-      const sIdx = statements.add(statement);
+      return statements.add(statement);
+    }
+
+    function addWitnessEqualitiesForPseudonym(
+      attributeNames: string[],
+      witnessIndexGetter: (string) => number,
+      credStatementIdx: number,
+      pseudonymStIdx: number,
+      attrIdx: number
+    ): number {
+      for (const attributeName of attributeNames) {
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(credStatementIdx, witnessIndexGetter(attributeName));
+        witnessEq.addWitnessRef(pseudonymStIdx, attrIdx++);
+        metaStatements.addWitnessEquality(witnessEq);
+      }
+      return attrIdx;
+    }
+
+    // verify boundedPseudonyms
+    for (const [pseudonym, boundedPseudonym] of Object.entries(this.spec.boundedPseudonyms)) {
+      const sIdx = createPseudonymStatement(pseudonym, boundedPseudonym.commitKey);
 
       let attrIdx = 0; // mirroring how it is constructed on the prover side
-      for (const [credIdx, attributeNames] of boundedPseudonym.attributes.entries()) {
-        for (const attributeName of attributeNames) {
-          const witnessEq = new WitnessEqualityMetaStatement();
-          witnessEq.addWitnessRef(credIdx, flattenedSchemas[credIdx][0].indexOf(attributeName));
-          witnessEq.addWitnessRef(sIdx, attrIdx++);
-          metaStatements.addWitnessEquality(witnessEq);
-        }
+      for (const [credIdx, attributeNames] of Object.entries(boundedPseudonym.attributes)) {
+        attrIdx = addWitnessEqualitiesForPseudonym(
+          attributeNames,
+          (n: string) => {
+            return flattenedSchemas[credIdx][0].indexOf(n);
+          },
+          parseInt(credIdx),
+          sIdx,
+          attrIdx
+        );
       }
     }
 
     // verify unboundedPseudonyms
-    for (const [pseudonym, unboundedPseudonym] of this.spec.unboundedPseudonyms.entries()) {
+    for (const [pseudonym, unboundedPseudonym] of Object.entries(this.spec.unboundedPseudonyms)) {
       const baseForSecretKey = PseudonymBases.encodeBaseForSecretKey(unboundedPseudonym.commitKey.baseForSecretKey);
       const statement = Statement.pseudonymVerifier(Pseudonym.encode(pseudonym), baseForSecretKey);
       statements.add(statement);
+    }
+
+    if (this.spec.blindCredentialRequest !== undefined) {
+      const flattenedSchema = this.spec.blindCredentialRequest.schema.flatten();
+      const flattenedBlindedAttrs = flatten(this.spec.blindCredentialRequest.blindedAttributes) as object;
+      let blindedSubjectIndices: number[] = [];
+      const blindedSubjectNameToIndex = new Map<string, number>();
+      for (const name of Object.keys(flattenedBlindedAttrs)) {
+        const index = flattenedSchema[0].indexOf(name);
+        blindedSubjectIndices.push(index);
+        blindedSubjectNameToIndex.set(name, index);
+      }
+      blindedSubjectIndices = blindedSubjectIndices.sort((a, b) => a - b);
+      const sigType = this.spec.blindCredentialRequest.sigType;
+      const numAttribs = flattenedSchema[0].length;
+      let sigParams;
+      // Offset of attributes in the Pedersen Commitment, its 0 for BBS and 1 for BBS+ as the commitment in BBS+ is perfectly hiding.
+      let pedCommWitnessOffset;
+
+      if (sigType === SIG_TYPE_BBS) {
+        sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BBSSignatureParams, numAttribs);
+        pedCommWitnessOffset = 0;
+      } else if (sigType === SIG_TYPE_BBS_PLUS) {
+        sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BBSPlusSignatureParamsG1, numAttribs);
+        pedCommWitnessOffset = 1;
+      } else {
+        throw new Error('Blind signing not yet implemented for PS');
+      }
+      const commKey = sigParams.getParamsForIndices(blindedSubjectIndices);
+      const pedCommStId = statements.add(
+        Statement.pedersenCommitmentG1(commKey, this.spec.blindCredentialRequest.commitment)
+      );
+
+      const getAttrIndexInPedComm = (attr: number | string): number => {
+        if (typeof attr === 'number') {
+          return blindedSubjectIndices.indexOf(attr) + pedCommWitnessOffset;
+        } else {
+          const index = blindedSubjectNameToIndex.get(attr);
+          if (index === undefined) {
+            throw new Error(`Missing attribute ${attr} in subject to index map`);
+          }
+          return blindedSubjectIndices.indexOf(index) + pedCommWitnessOffset;
+        }
+      };
+
+      for (const [name, otherAttributeRefs] of this.spec.blindCredentialRequest.blindedAttributeEqualities) {
+        const index = blindedSubjectNameToIndex.get(name);
+        if (index === undefined) {
+          throw new Error(`Missing attribute ${name} in subject to index map`);
+        }
+        metaStatements.addWitnessEquality(
+          createWitEqForBlindedCred(pedCommStId, getAttrIndexInPedComm(index), otherAttributeRefs, flattenedSchemas)
+        );
+      }
+
+      if (this.spec.blindCredentialRequest.bounds !== undefined) {
+        this.processBoundChecks(
+          pedCommStId,
+          getAttrIndexInPedComm,
+          this.spec.blindCredentialRequest.bounds,
+          flattenedSchema,
+          statements,
+          metaStatements,
+          setupParamsTrk,
+          predicateParams
+        );
+      }
+
+      if (this.spec.blindCredentialRequest.verifiableEncryptions !== undefined) {
+        this.processVerifiableEncs(
+          pedCommStId,
+          getAttrIndexInPedComm,
+          this.spec.blindCredentialRequest.verifiableEncryptions,
+          flattenedSchema,
+          statements,
+          metaStatements,
+          setupParamsTrk,
+          predicateParams
+        );
+      }
+
+      if (this.spec.blindCredentialRequest.circomPredicates !== undefined) {
+        this.processCircomPredicates(
+          pedCommStId,
+          getAttrIndexInPedComm,
+          this.spec.blindCredentialRequest.circomPredicates,
+          statements,
+          metaStatements,
+          setupParamsTrk,
+          predicateParams,
+          blindedAttributesCircomOutputs
+        );
+      }
+
+      if (this.spec.blindCredentialRequest.pseudonyms !== undefined) {
+        for (const [pseudonym, boundedPseudonym] of Object.entries(this.spec.blindCredentialRequest.pseudonyms)) {
+          const sIdx = createPseudonymStatement(pseudonym, boundedPseudonym.commitKey);
+
+          let attrIdx = 0; // mirroring how it is constructed on the prover side
+          for (const [credIdx, attributeNames] of Object.entries(boundedPseudonym.credentialAttributes)) {
+            attrIdx = addWitnessEqualitiesForPseudonym(
+              attributeNames,
+              (n: string) => {
+                return flattenedSchemas[credIdx][0].indexOf(n);
+              },
+              parseInt(credIdx),
+              sIdx,
+              attrIdx
+            );
+          }
+          attrIdx = addWitnessEqualitiesForPseudonym(
+            boundedPseudonym.blindedAttributes,
+            getAttrIndexInPedComm,
+            pedCommStId,
+            sIdx,
+            attrIdx
+          );
+        }
+      }
     }
 
     const ctx = buildContextForProof(this.version, this.spec, this.context);
@@ -368,13 +460,174 @@ export class Presentation extends Versioned {
     return encoded;
   }
 
+  private processBoundChecks(
+    statementIdx: number,
+    witnessIndexGetter: (string) => number,
+    b: { [key: string]: string | IPresentedAttributeBounds },
+    flattenedSchema: FlattenedSchema,
+    statements: Statements,
+    metaStatements: MetaStatements,
+    setupParamsTrk: SetupParamsTracker,
+    predicateParams?: Map<string, PredicateParamType>
+  ) {
+    const [names, bounds] = flattenTill2ndLastKey(b);
+    names.forEach((name, j) => {
+      const nameIdx = witnessIndexGetter(name);
+      const valTyp = CredentialSchema.typeOfName(name, flattenedSchema);
+      const [min, max] = [bounds[j]['min'], bounds[j]['max']];
+      const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
+
+      const paramId = bounds[j]['paramId'];
+      const param = predicateParams?.get(paramId);
+      Presentation.addLegoVerifyingKeyToTracker(paramId, param, setupParamsTrk);
+      const statement = Statement.boundCheckVerifierFromSetupParamRefs(
+        transformedMin,
+        transformedMax,
+        setupParamsTrk.indexForParam(paramId)
+      );
+      const sIdx = statements.add(statement);
+      const witnessEq = new WitnessEqualityMetaStatement();
+      witnessEq.addWitnessRef(statementIdx, nameIdx);
+      witnessEq.addWitnessRef(sIdx, 0);
+      metaStatements.addWitnessEquality(witnessEq);
+    });
+  }
+
+  private processVerifiableEncs(
+    statementIdx: number,
+    witnessIndexGetter: (string) => number,
+    v: { [key: string]: string | IPresentedAttributeVE },
+    flattenedSchema: FlattenedSchema,
+    statements: Statements,
+    metaStatements: MetaStatements,
+    setupParamsTrk: SetupParamsTracker,
+    predicateParams?: Map<string, PredicateParamType>
+  ) {
+    const [names, verEnc] = flattenTill2ndLastKey(v);
+    names.forEach((name, j) => {
+      const valTyp = CredentialSchema.typeOfName(name, flattenedSchema);
+      if (valTyp.type !== ValueType.RevStr) {
+        throw new Error(
+          `Attribute name ${name} of credential index ${statementIdx} should be a reversible string type but was ${valTyp}`
+        );
+      }
+      const nameIdx = witnessIndexGetter(name);
+      const commGensId = verEnc[j]['commitmentGensId'];
+      if (commGensId === undefined) {
+        throw new Error(`Commitment gens id not found for ${name}`);
+      }
+      const commGens = predicateParams?.get(commGensId);
+      if (commGens === undefined) {
+        throw new Error(`Commitment gens not found for id ${commGensId}`);
+      }
+      const encKeyId = verEnc[j]['encryptionKeyId'];
+      if (encKeyId === undefined) {
+        throw new Error(`Encryption key id not found for ${name}`);
+      }
+      const encKey = predicateParams?.get(encKeyId);
+      if (encKey === undefined) {
+        throw new Error(`Encryption key not found for id ${encKey}`);
+      }
+      const snarkVkId = verEnc[j]['snarkKeyId'];
+      if (snarkVkId === undefined) {
+        throw new Error(`Snark verification key id not found for ${name}`);
+      }
+      const snarkVk = predicateParams?.get(snarkVkId);
+      if (snarkVk === undefined) {
+        throw new Error(`Snark verification key not found for id ${snarkVkId}`);
+      }
+      const chunkBitSize = verEnc[j]['chunkBitSize'];
+      const statement = saverStatement(
+        false,
+        chunkBitSize,
+        commGensId,
+        encKeyId,
+        snarkVkId,
+        commGens,
+        encKey,
+        snarkVk,
+        setupParamsTrk
+      );
+      const sIdx = statements.add(statement);
+      const witnessEq = new WitnessEqualityMetaStatement();
+      witnessEq.addWitnessRef(statementIdx, nameIdx);
+      witnessEq.addWitnessRef(sIdx, 0);
+      metaStatements.addWitnessEquality(witnessEq);
+    });
+  }
+
+  private processCircomPredicates(
+    statementIdx: number,
+    witnessIndexGetter: (string) => number,
+    predicates: ICircomPredicate[],
+    statements: Statements,
+    metaStatements: MetaStatements,
+    setupParamsTrk: SetupParamsTracker,
+    predicateParams?: Map<string, PredicateParamType>,
+    outputs?: Uint8Array[][]
+  ) {
+    predicates.forEach((pred, j) => {
+      const param = predicateParams?.get(pred.snarkKeyId);
+      Presentation.addLegoVerifyingKeyToTracker(pred.snarkKeyId, param, setupParamsTrk);
+
+      let publicInputs = pred.publicVars.flatMap((pv) => {
+        return pv.value;
+      });
+      if (outputs !== undefined && outputs.length > j) {
+        publicInputs = outputs[j].concat(publicInputs);
+      }
+      const unqId = `circom-outputs-${statementIdx}__${j}`;
+      setupParamsTrk.addForParamId(unqId, SetupParam.fieldElementVec(publicInputs));
+
+      const statement = Statement.r1csCircomVerifierFromSetupParamRefs(
+        setupParamsTrk.indexForParam(unqId),
+        setupParamsTrk.indexForParam(pred.snarkKeyId)
+      );
+      const sIdx = statements.add(statement);
+
+      function addWitnessEquality(attributeName: object) {
+        const attr = flattenObjectToKeyValuesList(attributeName) as object;
+        const nameIdx = witnessIndexGetter(attr[0][0]);
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(statementIdx, nameIdx);
+        witnessEq.addWitnessRef(sIdx, predicateWitnessIdx++);
+        metaStatements.addWitnessEquality(witnessEq);
+      }
+
+      let predicateWitnessIdx = 0;
+      pred.privateVars.forEach((privateVars) => {
+        if (Array.isArray(privateVars.attributeName)) {
+          privateVars.attributeName.forEach((a) => {
+            addWitnessEquality(a);
+          });
+        } else {
+          addWitnessEquality(privateVars.attributeName);
+        }
+      });
+    });
+  }
+
   toJSON(): object {
     const attributeCiphertexts = {};
     if (this.attributeCiphertexts !== undefined) {
       for (const [i, v] of this.attributeCiphertexts.entries()) {
         attributeCiphertexts[i] = {};
-        Presentation.toBs58(v, attributeCiphertexts[i]);
+        Presentation.ciphertextToBs58(v, attributeCiphertexts[i]);
       }
+    }
+
+    function formatCircomPreds(circomPredicates: ICircomPredicate[]): object {
+      return circomPredicates.map((v) => {
+        const r = deepClone(v) as object;
+        // @ts-ignore
+        r.publicVars = v.publicVars.map((pv) => {
+          return {
+            varName: pv.varName,
+            value: Array.isArray(pv.value) ? pv.value.map(b58.encode) : b58.encode(pv.value)
+          };
+        });
+        return r;
+      });
     }
 
     const creds: object[] = [];
@@ -384,7 +637,28 @@ export class Presentation extends Versioned {
         // @ts-ignore
         current.status?.accumulated = b58.encode(cred.status.accumulated);
       }
+      if (cred.circomPredicates !== undefined) {
+        // @ts-ignore
+        current.circomPredicates = formatCircomPreds(cred.circomPredicates);
+      }
       creds.push(current);
+    }
+
+    let blindCredentialRequest, blindedAttributeCiphertexts;
+    if (this.spec.blindCredentialRequest !== undefined) {
+      blindCredentialRequest = deepClone(this.spec.blindCredentialRequest) as object;
+      blindCredentialRequest.schema = JSON.stringify(this.spec.blindCredentialRequest.schema.toJSON());
+      blindCredentialRequest.commitment = b58.encode(this.spec.blindCredentialRequest.commitment);
+      if (this.blindedAttributeCiphertexts !== undefined) {
+        blindedAttributeCiphertexts = {};
+        Presentation.ciphertextToBs58(this.blindedAttributeCiphertexts, blindedAttributeCiphertexts);
+      }
+      if (this.spec.blindCredentialRequest.circomPredicates !== undefined) {
+        blindCredentialRequest.circomPredicates = formatCircomPreds(this.spec.blindCredentialRequest.circomPredicates);
+      }
+      if (this.spec.blindCredentialRequest.pseudonyms !== undefined) {
+        blindCredentialRequest.pseudonyms = this.spec.blindCredentialRequest.pseudonyms;
+      }
     }
 
     return {
@@ -394,33 +668,38 @@ export class Presentation extends Versioned {
       spec: {
         credentials: creds,
         attributeEqualities: this.spec.attributeEqualities,
-        boundedPseudonyms: this.spec.boundedPseudonyms
+        boundedPseudonyms: this.spec.boundedPseudonyms,
+        unboundedPseudonyms: this.spec.unboundedPseudonyms,
+        blindCredentialRequest
       },
       attributeCiphertexts,
+      blindedAttributeCiphertexts,
       proof: b58.encode(this.proof.bytes)
     };
   }
 
-  static toBs58(v: object, ret: object) {
+  // Store base58 representation of ciphertexts present in `v` in `ret`
+  static ciphertextToBs58(v: object, ret: object) {
     Object.keys(v).forEach((k) => {
       if (v[k] instanceof SaverCiphertext) {
         // @ts-ignore
         ret[k] = b58.encode(v[k].bytes);
       } else {
         ret[k] = {};
-        Presentation.toBs58(v[k], ret[k]);
+        Presentation.ciphertextToBs58(v[k], ret[k]);
       }
     });
   }
 
-  static fromBs58(v: object, ret: AttributeCiphertexts) {
+  // Convert base58 encoded ciphertexts present in `v` and store in `ret`
+  static ciphertextFromBs58(v: object, ret: AttributeCiphertexts) {
     Object.keys(v).forEach((k) => {
       if (typeof v[k] === 'string') {
         ret[k] = new SaverCiphertext(b58.decode(v[k]));
       } else {
         ret[k] = {};
         // @ts-ignore
-        Presentation.fromBs58(v[k], ret[k]);
+        Presentation.ciphertextFromBs58(v[k], ret[k]);
       }
     });
   }
@@ -445,15 +724,32 @@ export class Presentation extends Versioned {
 
   static fromJSON(j: object): Presentation {
     // @ts-ignore
-    const { version, context, nonce, spec, attributeCiphertexts, proof } = j;
+    const { version, context, nonce, spec, attributeCiphertexts, blindedAttributeCiphertexts, proof } = j;
     const nnc = nonce ? b58.decode(nonce) : undefined;
+
+    function formatCircomPreds(pred: object): ICircomPredicate[] {
+      const circomPredicates = deepClone(pred) as object[];
+      circomPredicates.forEach((cp) => {
+        cp['publicVars'] = cp['publicVars'].map((pv) => {
+          return {
+            varName: pv['varName'],
+            value: Array.isArray(pv['value']) ? pv['value'].map(b58.decode) : b58.decode(pv['value'])
+          };
+        });
+      });
+      // @ts-ignore
+      return circomPredicates;
+    }
 
     const presSpec = new PresentationSpecification();
     for (const cred of spec['credentials']) {
-      let status;
+      let status, circomPredicates;
       if (cred['status'] !== undefined) {
         status = deepClone(cred['status']) as object;
         status['accumulated'] = b58.decode(cred['status']['accumulated']);
+      }
+      if (cred['circomPredicates'] !== undefined) {
+        circomPredicates = formatCircomPreds(cred['circomPredicates']);
       }
       presSpec.addPresentedCredential(
         cred['version'],
@@ -462,22 +758,42 @@ export class Presentation extends Versioned {
         status,
         cred['bounds'],
         cred['verifiableEncryptions'],
-        cred['circomPredicates']
+        circomPredicates
       );
     }
     presSpec.attributeEqualities = spec['attributeEqualities'];
     presSpec.boundedPseudonyms = spec['boundedPseudonyms'];
+    presSpec.unboundedPseudonyms = spec['unboundedPseudonyms'];
 
     const atc = new Map<number, AttributeCiphertexts>();
     if (attributeCiphertexts !== undefined) {
       Object.keys(attributeCiphertexts).forEach((k) => {
         const c = attributeCiphertexts[k];
         const rc = {};
-        Presentation.fromBs58(c, rc);
+        Presentation.ciphertextFromBs58(c, rc);
         atc.set(parseInt(k), rc);
       });
     }
 
-    return new Presentation(version, presSpec, new CompositeProofG1(b58.decode(proof)), atc, context, nnc);
+    let bac;
+    if (spec['blindCredentialRequest'] !== undefined) {
+      const req = deepClone(spec['blindCredentialRequest']) as object;
+      req['schema'] = CredentialSchema.fromJSON(JSON.parse(req['schema']));
+      req['commitment'] = b58.decode(req['commitment']);
+      if (blindedAttributeCiphertexts !== undefined) {
+        bac = {};
+        Presentation.ciphertextFromBs58(blindedAttributeCiphertexts, bac);
+      }
+      if (spec['blindCredentialRequest']['circomPredicates'] !== undefined) {
+        req['circomPredicates'] = formatCircomPreds(spec['blindCredentialRequest']['circomPredicates']);
+      }
+      if (spec['blindCredentialRequest']['pseudonyms'] !== undefined) {
+        req['pseudonyms'] = spec['blindCredentialRequest']['pseudonyms'];
+      }
+      // @ts-ignore
+      presSpec.blindCredentialRequest = req;
+    }
+
+    return new Presentation(version, presSpec, new CompositeProofG1(b58.decode(proof)), atc, context, nnc, bac);
   }
 }

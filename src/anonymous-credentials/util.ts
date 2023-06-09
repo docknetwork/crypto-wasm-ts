@@ -19,7 +19,8 @@ import {
   SAVER_ENCRYPTION_GENS_BYTES,
   Signature,
   SignatureParams,
-  SignatureParamsClass
+  SignatureParamsClass,
+  AttributeRef
 } from './types-and-consts';
 import {
   SaverChunkedCommitmentGens,
@@ -103,7 +104,7 @@ export function buildContextForProof(
       ctx = ctx.concat(Array.from(context));
     }
   }
-  ctx = ctx.concat(Array.from(te.encode(presSpec.toJSON())));
+  ctx = ctx.concat(Array.from(te.encode(JSON.stringify(presSpec.toJSON()))));
   return new Uint8Array(ctx);
 }
 
@@ -135,6 +136,24 @@ export function getTransformedMinMax(name: string, valTyp: ValueTypes, min: numb
 export function createWitEq(eql: AttributeEquality, flattenedSchemas: FlattenedSchema[]): WitnessEqualityMetaStatement {
   const witnessEq = new WitnessEqualityMetaStatement();
   for (const [cIdx, name] of eql) {
+    const i = flattenedSchemas[cIdx][0].indexOf(name);
+    if (i === -1) {
+      throw new Error(`Attribute name ${name} was not found`);
+    }
+    witnessEq.addWitnessRef(cIdx, i);
+  }
+  return witnessEq;
+}
+
+export function createWitEqForBlindedCred(
+  statementIdx: number,
+  attrIdx: number,
+  attrRefs: AttributeRef[],
+  flattenedSchemas: FlattenedSchema[]
+): WitnessEqualityMetaStatement {
+  const witnessEq = new WitnessEqualityMetaStatement();
+  witnessEq.addWitnessRef(statementIdx, attrIdx);
+  for (const [cIdx, name] of attrRefs) {
     const i = flattenedSchemas[cIdx][0].indexOf(name);
     if (i === -1) {
       throw new Error(`Attribute name ${name} was not found`);

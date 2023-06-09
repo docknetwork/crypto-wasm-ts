@@ -10,7 +10,8 @@ import {
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
   STATUS_STR,
-  SUBJECT_STR
+  SUBJECT_STR,
+  PROOF_STR
 } from './types-and-consts';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { isEmptyObject } from '../util';
@@ -77,7 +78,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
     }
 
     (this.constructor as typeof Credential).applyDefaultProofMetadataIfNeeded(s);
-    delete s['proof']['proofValue'];
+    delete s[PROOF_STR]['proofValue'];
 
     return s;
   }
@@ -95,7 +96,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
     }
 
     (this.constructor as typeof Credential).applyDefaultProofMetadataIfNeeded(j);
-    j['proof']['proofValue'] = b58.encode((this.signature as any).bytes);
+    j[PROOF_STR]['proofValue'] = b58.encode((this.signature as any).bytes);
     return j;
   }
 
@@ -107,7 +108,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
     //   type: 'schema:Text',
     //   proofValue: 'schema:Text',
     // };
-    jctx['@context'][1]['proof'] = CredentialSchema.getDummyContextValue('proof');
+    jctx['@context'][1][PROOF_STR] = CredentialSchema.getDummyContextValue(PROOF_STR);
     jctx['@context'][1]['type'] = CredentialSchema.getDummyContextValue('type');
     jctx['@context'][1]['proofValue'] = CredentialSchema.getDummyContextValue('proofValue');
     j = { ...j, ...jctx };
@@ -152,7 +153,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
     // deserialization, it is. This doesn't break anything for now but can cause unexpected errors in future as the
     // deserialized object won't be exactly same as the object that was serialized.
     if (!isEmptyObject(trimmedProof)) {
-      topLevelFields.set('proof', trimmedProof);
+      topLevelFields.set(PROOF_STR, trimmedProof);
     }
 
     return [
@@ -184,8 +185,8 @@ export class BBSCredential extends Credential<BBSPublicKey, BBSSignature, BBSSig
    * @param s
    */
   static applyDefaultProofMetadataIfNeeded(s: object) {
-    if (!s['proof']) {
-      s['proof'] = {
+    if (!s[PROOF_STR]) {
+      s[PROOF_STR] = {
         type: BBS_CRED_PROOF_TYPE
       };
     }
@@ -226,8 +227,8 @@ export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSig
    * @param s
    */
   static applyDefaultProofMetadataIfNeeded(s: object) {
-    if (!s['proof']) {
-      s['proof'] = {
+    if (!s[PROOF_STR]) {
+      s[PROOF_STR] = {
         type: BBS_PLUS_CRED_PROOF_TYPE
       };
     }
@@ -268,8 +269,8 @@ export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatu
    * @param s
    */
   static applyDefaultProofMetadataIfNeeded(s: object) {
-    if (!s['proof']) {
-      s['proof'] = {
+    if (!s[PROOF_STR]) {
+      s[PROOF_STR] = {
         type: PS_CRED_PROOF_TYPE
       };
     }

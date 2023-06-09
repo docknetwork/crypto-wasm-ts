@@ -1,7 +1,6 @@
 import { BBSPlusSignatureParamsG1 } from './params';
 import {
   bbsPlusBlindSignG1,
-  encodeMessageForSigning,
   bbsPlusSignG1,
   bbsPlusUnblindSigG1,
   bbsPlusVerifyG1,
@@ -10,7 +9,7 @@ import {
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import { encodeRevealedMessageObject, flattenMessageStructure } from '../sign-verify-js-objs';
+import { encodeRevealedMessageObject, getBlindedIndicesAndRevealedMessages } from '../sign-verify-js-objs';
 import { Encoder, MessageEncoder } from '../encoder';
 import { MessageStructure, SignedMessages } from '../types';
 
@@ -143,20 +142,12 @@ export class BBSPlusBlindSignatureG1 extends MessageEncoder {
     revealedMessages?: Map<number, Uint8Array>
   ): [Uint8Array, BBSPlusBlindSignatureRequest] {
     const [commitment, b] = params.commitToMessages(messagesToBlind, encodeMessages, blinding);
-    const blindedIndices: number[] = [];
-    for (const k of messagesToBlind.keys()) {
-      blindedIndices.push(k);
-    }
-    let encodedrevealedMessages: Map<number, Uint8Array> | undefined;
-    if (revealedMessages) {
-      encodedrevealedMessages = new Map();
-      for (const [idx, msg] of revealedMessages) {
-        encodedrevealedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
-      }
-    }
-
-    blindedIndices.sort((a, b) => a - b);
-    return [b, { commitment, blindedIndices, revealedMessages: encodedrevealedMessages }];
+    const [blindedIndices, encodedRevealedMessages] = getBlindedIndicesAndRevealedMessages(
+      messagesToBlind,
+      encodeMessages,
+      revealedMessages
+    );
+    return [b, { commitment, blindedIndices, revealedMessages: encodedRevealedMessages }];
   }
 
   /**

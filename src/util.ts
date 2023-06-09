@@ -1,6 +1,7 @@
 import { generateFieldElementFromBytes, generateRandomFieldElement } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 import { LegoProvingKey } from './legosnark';
+import b58 from 'bs58';
 
 export function isEmptyObject(obj) {
   if (!obj) {
@@ -97,6 +98,14 @@ export function bytearrayToBase64(b: Uint8Array): string {
 export function base64ToBytearray(base64Str: string): Uint8Array {
   const buffer = Buffer.from(base64Str, 'base64');
   return Uint8Array.from(buffer);
+}
+
+export function bytearrayToBase58(b: Uint8Array): string {
+  return b58.encode(b);
+}
+
+export function base58ToBytearray(base58Str: string): Uint8Array {
+  return b58.decode(base58Str);
 }
 
 export function areArraysEqual(arr1: string[] | number[] | boolean[], arr2: string[] | number[] | boolean[]): boolean {

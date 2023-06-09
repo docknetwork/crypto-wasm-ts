@@ -1,18 +1,7 @@
-import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
-  CRYPTO_VERSION_STR,
-  MEM_CHECK_STR,
-  NON_MEM_CHECK_STR,
-  ID_STR,
-  REV_CHECK_STR,
-  REV_ID_STR,
   SCHEMA_STR,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  STATUS_STR,
-  STATUS_TYPE_STR,
-  SUBJECT_STR,
-  TYPE_STR,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   PS_SIGNATURE_PARAMS_LABEL_BYTES
 } from './types-and-consts';
@@ -29,6 +18,7 @@ import {
 } from '../bbs-plus';
 import { PSPublicKey, PSSecretKey, PSSignature, PSSignatureParams } from '../ps';
 import { SignedMessages } from '../types';
+import { CredentialBuilderCommon } from './credential-builder-common';
 
 export interface ISigningOpts {
   // Whether the credential should contain exactly the same fields (object keys, array items, literals) as the
@@ -44,82 +34,25 @@ export const DefaultSigningOpts: ISigningOpts = {
 /**
  * Create a credential
  */
-export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, SignatureParams> extends Versioned {
+export abstract class CredentialBuilder<
+  SecretKey,
+  PublicKey,
+  Signature,
+  SignatureParams
+> extends CredentialBuilderCommon {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
   static VERSION = '0.2.0';
 
-  // Each credential references the schema which is included as an attribute
-  _schema?: CredentialSchema;
-  _subject?: object | object[];
-  _credStatus?: object;
   _encodedAttributes?: { [key: string]: Uint8Array };
-  _topLevelFields: Map<string, unknown>;
   _sig?: Signature;
 
   constructor() {
     super(CredentialBuilder.VERSION);
-    this._topLevelFields = new Map();
-  }
-
-  /**
-   * Currently supports only 1 subject. Nothing tricky in supporting more but more parsing and serialization work
-   * @param subject
-   */
-  set subject(subject: object | object[]) {
-    this._subject = subject;
-  }
-
-  // @ts-ignore
-  get subject(): object | object[] | undefined {
-    return this._subject;
-  }
-
-  set schema(schema: CredentialSchema) {
-    this._schema = schema;
-  }
-
-  // @ts-ignore
-  get schema(): CredentialSchema | undefined {
-    return this._schema;
-  }
-
-  set credStatus(subject: object | undefined) {
-    this._credStatus = subject;
-  }
-
-  get credStatus(): object | undefined {
-    return this._credStatus;
-  }
-
-  setCredentialStatus(registryId: string, revCheck: string, memberValue: unknown) {
-    if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR) {
-      throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} but was ${revCheck}`);
-    }
-    this._credStatus = {
-      [TYPE_STR]: STATUS_TYPE_STR,
-      [ID_STR]: registryId,
-      [REV_CHECK_STR]: revCheck,
-      [REV_ID_STR]: memberValue
-    };
   }
 
   get signature(): Signature | undefined {
     return this._sig;
-  }
-
-  setTopLevelField(name: string, value: unknown) {
-    if (value !== undefined) {
-      this._topLevelFields.set(name, value);
-    }
-  }
-
-  getTopLevelField(name: string): unknown {
-    const v = this._topLevelFields.get(name);
-    if (v === undefined) {
-      throw new Error(`Top level field ${name} is absent`);
-    }
-    return v;
   }
 
   /**
@@ -158,24 +91,6 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
       this._sig,
       this._credStatus
     );
-  }
-
-  serializeForSigning(): object {
-    // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
-    const s = {
-      [CRYPTO_VERSION_STR]: this._version,
-      [SCHEMA_STR]: JSON.stringify(this.schema?.toJSON()),
-      [SUBJECT_STR]: this._subject
-    };
-    for (const [k, v] of this._topLevelFields.entries()) {
-      s[k] = v;
-    }
-    if (this._credStatus !== undefined) {
-      s[STATUS_STR] = this._credStatus;
-    }
-
-    this.applyDefaultProofMetadataIfNeeded(s);
-    return s;
   }
 
   /**
@@ -217,8 +132,6 @@ export abstract class CredentialBuilder<SecretKey, PublicKey, Signature, Signatu
     sig: Signature,
     credStatus?: object
   ): Credential<PublicKey, Signature, SignatureParams>;
-
-  protected abstract applyDefaultProofMetadataIfNeeded(s: object);
 }
 
 /**

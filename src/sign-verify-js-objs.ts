@@ -8,6 +8,7 @@ import { BBSBlindSignatureRequest, BBSSignatureParams } from './bbs';
 import { PSBlindSignatureRequest, PSSignatureParams } from './ps';
 import { Witness } from './composite-proof/witness';
 import { ISignatureParams, MessageStructure } from './types';
+import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
 
 export function flattenMessageStructure(msgStructure: MessageStructure): object {
   return flatten(msgStructure);
@@ -306,4 +307,24 @@ export function getPSWitnessesForBlindSigRequest(
       return Witness.pedersenCommitment([blinding, msg]);
     })
   ];
+}
+
+export function getBlindedIndicesAndRevealedMessages(
+  messagesToBlind: Map<number, Uint8Array>,
+  encodeMessages: boolean,
+  revealedMessages?: Map<number, Uint8Array>
+): [number[], Map<number, Uint8Array> | undefined] {
+  const blindedIndices: number[] = [];
+  for (const k of messagesToBlind.keys()) {
+    blindedIndices.push(k);
+  }
+  let encodedRevealedMessages: Map<number, Uint8Array> | undefined;
+  if (revealedMessages) {
+    encodedRevealedMessages = new Map();
+    for (const [idx, msg] of revealedMessages) {
+      encodedRevealedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
+    }
+  }
+  blindedIndices.sort((a, b) => a - b);
+  return [blindedIndices, encodedRevealedMessages];
 }

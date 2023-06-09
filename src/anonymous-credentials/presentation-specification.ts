@@ -1,5 +1,6 @@
-import { AttributeEquality, ID_STR, REV_CHECK_STR, TYPE_STR } from './types-and-consts';
+import { AttributeEquality, BlindedAttributeEquality, ID_STR, REV_CHECK_STR, TYPE_STR } from './types-and-consts';
 import b58 from 'bs58';
+import { CredentialSchema } from './schema';
 
 export interface IPresentedStatus {
   [ID_STR]: string;
@@ -72,7 +73,7 @@ export interface IBoundedPseudonymCommitKey {
 export interface IPresentedBoundedPseudonym {
   commitKey: IBoundedPseudonymCommitKey;
   // key is credIdx, values are attribute names in the credential corresponding to the credIdx
-  attributes: Map<number, Set<string>>;
+  attributes: { [key: number]: string[] };
 }
 
 export interface IUnboundedPseudonymCommitKey {
@@ -83,6 +84,31 @@ export interface IPresentedUnboundedPseudonym {
   commitKey: IUnboundedPseudonymCommitKey;
 }
 
+// Pseudonym bounded to credential as well as blinded attributes. Used when requesting blinded credential.
+export interface IPresentedBoundedPseudonymInBlindedCredReq {
+  commitKey: IBoundedPseudonymCommitKey;
+  // key is credIdx, values are attribute names in the credential corresponding to the credIdx
+  credentialAttributes: { [key: number]: string[] };
+  blindedAttributes: string[];
+}
+
+export interface IBlindCredentialRequest {
+  sigType: string;
+  version: string;
+  schema: CredentialSchema;
+  blindedAttributes: object;
+  commitment: Uint8Array;
+  // Bounds proved of any attribute(s)
+  bounds?: { [key: string]: string | IPresentedAttributeBounds };
+  // Verifiable encryption of any blinded attributes
+  verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE };
+  // Predicates proved using Circom. Can be over any number of blinded attributes
+  circomPredicates?: ICircomPredicate[];
+  // Equalities between the blinded attributes and credential attributes
+  blindedAttributeEqualities: BlindedAttributeEquality[];
+  pseudonyms?: { [key: string]: IPresentedBoundedPseudonymInBlindedCredReq };
+}
+
 /**
  * Specifies what the presentation is proving like what credentials, what's being revealed, which attributes are being proven
  * equal, bounds being enforced, etc
@@ -91,22 +117,24 @@ export class PresentationSpecification {
   credentials: IPresentedCredential[];
   attributeEqualities: AttributeEquality[];
   // key == pseudonym
-  boundedPseudonyms: Map<string, IPresentedBoundedPseudonym>;
+  boundedPseudonyms: { [key: string]: IPresentedBoundedPseudonym };
   // key == pseudonym
-  unboundedPseudonyms: Map<string, IPresentedUnboundedPseudonym>;
+  unboundedPseudonyms: { [key: string]: IPresentedUnboundedPseudonym };
+  blindCredentialRequest?: IBlindCredentialRequest;
 
   constructor() {
     this.credentials = [];
     this.attributeEqualities = [];
-    this.boundedPseudonyms = new Map();
-    this.unboundedPseudonyms = new Map();
+    this.boundedPseudonyms = {};
+    this.unboundedPseudonyms = {};
   }
 
   reset() {
     this.credentials = [];
     this.attributeEqualities = [];
-    this.boundedPseudonyms = new Map();
-    this.unboundedPseudonyms = new Map();
+    this.boundedPseudonyms = {};
+    this.unboundedPseudonyms = {};
+    this.blindCredentialRequest = undefined;
   }
 
   addPresentedCredential(
@@ -145,7 +173,7 @@ export class PresentationSpecification {
     return this.credentials[credIndex].status;
   }
 
-  toJSON(): string {
+  toJSON(): object {
     const j = {
       credentials: [],
       attributeEqualities: this.attributeEqualities,
@@ -175,6 +203,7 @@ export class PresentationSpecification {
       // @ts-ignore
       j.credentials.push(curJ);
     }
-    return JSON.stringify(j);
+
+    return j;
   }
 }

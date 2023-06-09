@@ -1,5 +1,22 @@
-import { STATUS_STR, SUBJECT_STR, CredentialSchema, IJsonSchema, SCHEMA_TYPE_STR } from '../../src';
-import { CredentialBuilder } from '../scheme'
+import {
+  Accumulator,
+  AccumulatorSecretKey,
+  CredentialSchema,
+  dockSaverEncryptionGensUncompressed,
+  IAccumulatorState,
+  IJsonSchema,
+  SaverDecryptor,
+  SCHEMA_TYPE_STR,
+  STATUS_STR,
+  SUBJECT_STR,
+  SaverCiphertext,
+  AttributeCiphertexts,
+  PseudonymBases,
+  AttributeBoundPseudonym, AccumulatorPublicKey, PredicateParamType
+} from '../../src';
+import { Credential, CredentialBuilder, Presentation, PublicKey } from '../scheme';
+import * as _ from 'lodash';
+import { checkResult } from '../utils';
 
 export function getExampleSchema(num): IJsonSchema {
   const schema = CredentialSchema.essential();
@@ -493,4 +510,99 @@ export function checkSchemaFromJson(schemaJson: string, schema: CredentialSchema
   expect(schm.parsingOptions).toEqual(schema.parsingOptions);
   expect(schm.version).toEqual(schema.version);
   expect(schm.type).toEqual(SCHEMA_TYPE_STR);
+}
+
+// Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
+export async function prefillAccumulator(
+  accumulator: Accumulator,
+  secretKey: AccumulatorSecretKey,
+  state: IAccumulatorState,
+  credSchema: CredentialSchema,
+  memberValPrefix: string,
+  memberNameInSchema: string,
+  totalMembers: number
+) {
+  const members: Uint8Array[] = [];
+  for (let i = 1; i <= totalMembers; i++) {
+    // For this test, user id is of this form
+    const userId = `${memberValPrefix}${i}`;
+    members.push(credSchema.encoder.encodeMessage(memberNameInSchema, userId));
+  }
+  // Adding a single batch as `totalMembers` is fairly small (100s) in this test but in practice choose a reasonable
+  // batch size to not take up complete system's memory
+  await accumulator.addBatch(members, secretKey, state);
+  return members;
+}
+
+// Check if the ciphertext of attributes included in the presentation can be decrypted correctly
+export function checkCiphertext(
+  credential: Credential | { schema: CredentialSchema; subject: object | object[] },
+  ciphertexts: AttributeCiphertexts,
+  attrName: string,
+  saverSk,
+  saverDk,
+  saverVerifyingKey,
+  chunkBitSize
+) {
+  // Decryptor gets the ciphertext from the verifier and decrypts it
+  // @ts-ignore
+  let ciphertext = _.get(ciphertexts, `${SUBJECT_STR}.${attrName}`) as SaverCiphertext;
+  let decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, saverVerifyingKey, chunkBitSize);
+  expect(decrypted.message).toEqual(
+    credential.schema?.encoder.encodeMessage(`${SUBJECT_STR}.${attrName}`, _.get(credential.subject, attrName))
+  );
+
+  // Decryptor shares the decryption result with verifier which the verifier can check for correctness.
+  expect(
+    ciphertext.verifyDecryption(
+      decrypted,
+      saverDk,
+      saverVerifyingKey,
+      dockSaverEncryptionGensUncompressed(),
+      chunkBitSize
+    ).verified
+  ).toEqual(true);
+}
+
+export function getDecodedBoundedPseudonym(
+  credentials:
+    | Credential[]
+    | {
+        schema: CredentialSchema;
+        subject: object | object[];
+      }[],
+  attributesNames: string[],
+  basesForAttributes: Uint8Array[],
+  baseForSecretKey?: Uint8Array,
+  secretKey?: Uint8Array
+): [string, string[], string | undefined] {
+  expect(attributesNames.length).toEqual(credentials.length);
+  expect(attributesNames.length).toEqual(basesForAttributes.length);
+  const basesForAttributesDecoded = PseudonymBases.decodeBasesForAttributes(basesForAttributes);
+  const baseForSecretKeyDecoded =
+    baseForSecretKey !== undefined ? PseudonymBases.decodeBaseForSecretKey(baseForSecretKey) : undefined;
+  const attributes: Uint8Array[] = [];
+  for (let i = 0; i < attributesNames.length; i++) {
+    attributes.push(
+      credentials[i].schema.encoder.encodeMessage(
+        `${SUBJECT_STR}.${attributesNames[i]}`,
+        _.get(credentials[i].subject, attributesNames[i])
+      )
+    );
+  }
+  const expectedBoundedPseudonym = AttributeBoundPseudonym.new(
+    basesForAttributes,
+    attributes,
+    baseForSecretKey,
+    secretKey
+  );
+  const decodedBoundedPseudonym = PseudonymBases.decode(expectedBoundedPseudonym.value);
+  return [decodedBoundedPseudonym, basesForAttributesDecoded, baseForSecretKeyDecoded];
+}
+
+export function checkPresentationJson(pres: Presentation, pks: PublicKey[], accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>, predicateParams?: Map<string, PredicateParamType>, circomOutputs?: Map<number, Uint8Array[][]>) {
+  const presJson = pres.toJSON();
+  const recreatedPres = Presentation.fromJSON(presJson);
+  checkResult(recreatedPres.verify(pks, accumulatorPublicKeys, predicateParams, circomOutputs));
+  expect(presJson).toEqual(recreatedPres.toJSON());
 }

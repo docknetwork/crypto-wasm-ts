@@ -17,7 +17,7 @@ import {
   Scheme
 } from '../scheme'
 
-import { getExampleSchema } from './utils';
+import { checkPresentationJson, getExampleSchema } from './utils';
 import { checkResult, getWasmBytes, parseR1CSFile } from '../utils';
 
 describe(`${Scheme} Presentation creation and verification with Circom predicates`, () => {
@@ -143,6 +143,8 @@ describe(`${Scheme} Presentation creation and verification with Circom predicate
     circomOutputs.set(0, [[generateFieldElementFromNumber(1)]]);
     checkResult(pres1.verify([pk], undefined, pp, circomOutputs));
 
+    checkPresentationJson(pres1, [pk], undefined, pp, circomOutputs);
+
     // Setting the output variable "0" would fail the proof verification because the grade does belong to the required set
     let wrongCircomOutputs = new Map();
     wrongCircomOutputs.set(0, [[generateFieldElementFromNumber(0)]]);
@@ -192,6 +194,8 @@ describe(`${Scheme} Presentation creation and verification with Circom predicate
     const circomOutputs1 = new Map();
     circomOutputs1.set(0, [[generateFieldElementFromNumber(0)]]);
     checkResult(pres2.verify([pk], undefined, pp1, circomOutputs1));
+
+    checkPresentationJson(pres2, [pk], undefined, pp1, circomOutputs1);
 
     // Setting the output variable "1" would fail the proof verification because the grade does not belong to the required set
     wrongCircomOutputs = new Map();
@@ -307,5 +311,7 @@ describe(`${Scheme} Presentation creation and verification with Circom predicate
       [generateFieldElementFromNumber(0)]
     ]);
     checkResult(pres1.verify([pk], undefined, pp, circomOutputs));
+
+    checkPresentationJson(pres1, [pk], undefined, pp, circomOutputs);
   });
 });
