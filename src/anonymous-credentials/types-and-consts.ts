@@ -57,9 +57,10 @@ export const PROOF_STR = 'proof';
 export const NON_MEM_CHECK_STR = 'non-membership';
 export const SIG_TYPE_BBS = 'BBS';
 export const SIG_TYPE_BBS_PLUS = 'BBS+';
-export const SIG_TYPE_PS = 'PS';
 export const BBS_CRED_PROOF_TYPE = 'Bls12381BBSSignatureDock2023';
+export const BBS_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBSSignatureDock2023';
 export const BBS_PLUS_CRED_PROOF_TYPE = 'Bls12381BBS+SignatureDock2022';
+export const BBS_PLUS_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBS+SignatureDock2023';
 export const PS_CRED_PROOF_TYPE = 'Bls12381PSSignatureDock2023';
 
 const te = new TextEncoder();

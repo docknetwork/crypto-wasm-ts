@@ -129,14 +129,6 @@ export class PresentationSpecification {
     this.unboundedPseudonyms = {};
   }
 
-  reset() {
-    this.credentials = [];
-    this.attributeEqualities = [];
-    this.boundedPseudonyms = {};
-    this.unboundedPseudonyms = {};
-    this.blindCredentialRequest = undefined;
-  }
-
   addPresentedCredential(
     version: string,
     schema: string,

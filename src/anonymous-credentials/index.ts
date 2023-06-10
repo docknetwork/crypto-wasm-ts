@@ -1,8 +1,12 @@
 export * from './schema';
-export * from './credential';
 export * from './credential-builder';
-export * from './presentation-builder';
+export * from './credential';
+export { PresentationBuilder } from './presentation-builder';
 export * from './presentation-specification';
+export * from './presentation';
 export * from './types-and-consts';
 export * from './util';
 export * from './blinded-credential-request-builder';
+export * from './blinded-credential-request';
+export * from './blinded-credential-builder';
+export * from './blinded-credential';

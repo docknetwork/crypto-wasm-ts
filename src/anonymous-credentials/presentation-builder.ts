@@ -39,10 +39,7 @@ import {
   ICircuitPrivateVars,
   IPresentedAttributeBounds,
   IPresentedAttributeVE,
-  IPresentedBoundedPseudonym,
-  IPresentedBoundedPseudonymInBlindedCredReq,
   IPresentedStatus,
-  IPresentedUnboundedPseudonym,
   PresentationSpecification
 } from './presentation-specification';
 import { Presentation } from './presentation';
@@ -784,7 +781,7 @@ export class PresentationBuilder extends Versioned {
       const blindedSubjectValues = blindedSubjectIndices.map((i) => encodedSubject.get(i) as Uint8Array);
       // Statement index corresponding to the Pedersen commitment of the blinded attributes
       let pedCommStId;
-      // Offset of attributes in the Pedersen Commitment, its 0 for BBS and 1 for BBS+ as the commitment in BBS+ is perfectly hiding. 
+      // Offset of attributes in the Pedersen Commitment, its 0 for BBS and 1 for BBS+ as the commitment in BBS+ is perfectly hiding.
       let pedCommWitnessOffset;
 
       if (sigParams instanceof BBSSignatureParams || sigParams instanceof BBSPlusSignatureParamsG1) {
@@ -918,29 +915,41 @@ export class PresentationBuilder extends Versioned {
     this._proofSpec = new QuasiProofSpecG1(statements, metaStatements, setupParamsTrk.setupParams, ctx);
     this.proof = CompositeProofG1.generateUsingQuasiProofSpec(this._proofSpec, witnesses, this._nonce);
 
+    // Ciphertexts of credential attributes
     let attributeCiphertexts;
+    // Ciphertexts of blinded attributes
+    let blindedAttributeCiphertexts;
+    // Statements which correspond to encryption of attributes and thus will have corresponding ciphertexts
+    const encryptionStatementIndices: number[] = [];
+    // Get statement indices which correspond to encryption of credential attributes
     if (credAttrToSId.size > 0) {
-      // Get all encryption statement indices and get their corresponding ciphertexts
-      const allSIds: number[] = [];
       for (const v of credAttrToSId.values()) {
         for (const sId of v.values()) {
-          allSIds.push(sId);
+          encryptionStatementIndices.push(sId);
         }
-      }
-      const ciphertexts = this.proof.getSaverCiphertexts(allSIds);
-
-      attributeCiphertexts = new Map();
-      for (const [i, v] of credAttrToSId.entries()) {
-        attributeCiphertexts.set(i, this.formatAttributeCiphertexts(v, allSIds, ciphertexts));
       }
     }
 
-    let blindedAttributeCiphertexts;
+    // Get statement indices which correspond to encryption of blinded attributes
     if (blindAttrToSId.size > 0) {
-      const allSIds = Array.from(blindAttrToSId.values());
-      // TODO: Remove this call by combining it from above call
-      const ciphertexts = this.proof.getSaverCiphertexts(allSIds);
-      blindedAttributeCiphertexts = this.formatAttributeCiphertexts(blindAttrToSId, allSIds, ciphertexts);
+      encryptionStatementIndices.push(...blindAttrToSId.values());
+    }
+
+    // Get all encryption statement indices and get their corresponding ciphertexts
+    const ciphertexts = this.proof.getSaverCiphertexts(encryptionStatementIndices);
+
+    if (credAttrToSId.size > 0) {
+      attributeCiphertexts = new Map();
+      for (const [i, v] of credAttrToSId.entries()) {
+        attributeCiphertexts.set(i, this.formatAttributeCiphertexts(v, encryptionStatementIndices, ciphertexts));
+      }
+    }
+    if (blindAttrToSId.size > 0) {
+      blindedAttributeCiphertexts = this.formatAttributeCiphertexts(
+        blindAttrToSId,
+        encryptionStatementIndices,
+        ciphertexts
+      );
     }
 
     return new Presentation(

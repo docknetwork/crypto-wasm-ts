@@ -6,11 +6,10 @@ import {
   SUBJECT_STR
 } from './types-and-consts';
 import { BBSCredential, BBSPlusCredential } from './credential';
-import { BBSBlindSignature, BBSSecretKey, BBSSignature, BBSSignatureParams } from '../bbs';
+import { BBSBlindSignature, BBSSecretKey, BBSSignatureParams } from '../bbs';
 import {
   BBSPlusBlindSignatureG1,
   BBSPlusSecretKey,
-  BBSPlusSignatureParams,
   BBSPlusSignatureParamsG1
 } from '../bbs-plus';
 import { CredentialSchema } from './schema';
@@ -51,9 +50,9 @@ export class BBSBlindedCredentialBuilder extends BlindedCredentialBuilder {
 
   /**
    * Blind sign a credential
-   * @param secretKey 
-   * @param sigParams 
-   * @returns 
+   * @param secretKey
+   * @param sigParams
+   * @returns
    */
   sign(
     secretKey: BBSSecretKey,
@@ -68,7 +67,6 @@ export class BBSBlindedCredentialBuilder extends BlindedCredentialBuilder {
       // @ts-ignore
       this.subject,
       this._topLevelFields,
-      this.blindedCredReq.blindedAttributes,
       sig,
       this.credStatus
     );
@@ -82,9 +80,9 @@ export class BBSPlusBlindedCredentialBuilder extends BlindedCredentialBuilder {
 
   /**
    * Blind sign a credential
-   * @param secretKey 
-   * @param sigParams 
-   * @returns 
+   * @param secretKey
+   * @param sigParams
+   * @returns
    */
   sign(
     secretKey: BBSPlusSecretKey,
@@ -105,7 +103,6 @@ export class BBSPlusBlindedCredentialBuilder extends BlindedCredentialBuilder {
       // @ts-ignore
       this.subject,
       this._topLevelFields,
-      this.blindedCredReq.blindedAttributes,
       sig,
       this.credStatus
     );

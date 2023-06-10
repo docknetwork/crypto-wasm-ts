@@ -78,7 +78,7 @@ export class BBSBlindedCredentialRequest extends BlindedCredentialRequest {
 
   /**
    * Return the blinded credential builder which will be used to create the blinded credential
-   * @returns 
+   * @returns
    */
   generateBlindedCredentialBuilder(): BBSBlindedCredentialBuilder {
     // @ts-ignore
@@ -99,7 +99,7 @@ export class BBSPlusBlindedCredentialRequest extends BlindedCredentialRequest {
 
   /**
    * Return the blinded credential builder which will be used to create the blinded credential
-   * @returns 
+   * @returns
    */
   generateBlindedCredentialBuilder(): BBSPlusBlindedCredentialBuilder {
     // @ts-ignore

@@ -195,11 +195,11 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
 
   /**
    * Add a pseudonym to only credential attributes
-   * @param basesForAttribute 
-   * @param attributeNames 
-   * @param baseForSecretKey 
-   * @param secretKey 
-   * @returns 
+   * @param basesForAttribute
+   * @param attributeNames
+   * @param baseForSecretKey
+   * @param secretKey
+   * @returns
    */
   addPseudonymToCredentialAttributes(
     basesForAttribute: Uint8Array[],
@@ -212,8 +212,8 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
 
   /**
    * Mark a blinded attribute equal to one or more credential attributes
-   * @param equality 
-   */ 
+   * @param equality
+   */
   markBlindedAttributesEqual(equality: BlindedAttributeEquality) {
     this.attributeEqualities.push(equality);
   }
@@ -295,8 +295,8 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
    * @param basesForAttributes - The bases at the beginning of array will be used for credential attributes and then in the end for blinded attributes.
    * @param credentialAttributeNames - Map with key as the credential index and value as an array of attribute to use in pseudonym.
    * @param blindedAttributeNames - Array of blinded attribute to use in pseudonym
-   * @param baseForSecretKey 
-   * @param secretKey 
+   * @param baseForSecretKey
+   * @param secretKey
    */
   addPseudonymToCredentialAndBlindedAttributes(
     basesForAttributes: Uint8Array[],
@@ -384,8 +384,8 @@ export class BBSBlindedCredentialRequestBuilder extends BlindedCredentialRequest
 
   /**
    * Create the request to be sent to the signer
-   * @param sigParams 
-   * @returns 
+   * @param sigParams
+   * @returns
    */
   finalize(sigParams: Uint8Array | BBSSignatureParams = BBS_SIGNATURE_PARAMS_LABEL_BYTES): BBSBlindedCredentialRequest {
     return new BBSBlindedCredentialRequest(this.version, super.createPresentation(sigParams));
@@ -393,7 +393,7 @@ export class BBSBlindedCredentialRequestBuilder extends BlindedCredentialRequest
 
   /**
    * BBS does not use blinding so return undefined
-   * @returns 
+   * @returns
    */
   getBlinding(): undefined {
     return undefined;
@@ -414,8 +414,8 @@ export class BBSPlusBlindedCredentialRequestBuilder extends BlindedCredentialReq
 
   /**
    * Create the request to be sent to the signer and the blinding to be kept to later unblind the credential
-   * @param sigParams 
-   * @returns 
+   * @param sigParams
+   * @returns
    */
   finalize(
     sigParams: Uint8Array | BBSPlusSignatureParamsG1 = BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES

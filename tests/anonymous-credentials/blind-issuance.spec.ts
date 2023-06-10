@@ -1,9 +1,9 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   AccumulatorPublicKey,
-  AccumulatorSecretKey,
-  BBSBlindedCredentialRequestBuilder,
-  BBSPlusBlindedCredentialRequestBuilder, BlindedCredentialRequestBuilder,
+  AccumulatorSecretKey, BBSBlindedCredential,
+  BBSBlindedCredentialRequestBuilder, BBSPlusBlindedCredential,
+  BBSPlusBlindedCredentialRequestBuilder, BlindedCredential, BlindedCredentialRequestBuilder,
   CredentialSchema,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
@@ -93,6 +93,18 @@ function checkReqJson(req: BlindedCredentialRequest, pks: PublicKey[], accumulat
   const recreatedReq = isBBS() ? BBSBlindedCredentialRequest.fromJSON(reqJson) : BBSPlusBlindedCredentialRequest.fromJSON(reqJson);
   checkResult(recreatedReq.verify(pks, accumulatorPublicKeys, predicateParams, circomOutputs, blindedAttributesCircomOutputs));
   expect(recreatedReq.toJSON()).toEqual(reqJson);
+}
+
+function checkBlindedCredJson(blindedCred: BlindedCredential<any>, pk: PublicKey, blindedSubject: object, blinding?) {
+  const credJson = blindedCred.toJSON();
+  const recreatedCred = isBBS() ? BBSBlindedCredential.fromJSON(credJson) : BBSPlusBlindedCredential.fromJSON(credJson);
+  // @ts-ignore
+  const cred = isBBS()
+    // @ts-ignore
+    ? recreatedCred.toCredential(blindedSubject)
+    : recreatedCred.toCredential(blindedSubject, blinding);
+  checkResult(cred.verify(pk));
+  expect(recreatedCred.toJSON()).toEqual(credJson);
 }
 
 const skipIfPS = isPS() ? describe.skip : describe;
@@ -262,6 +274,17 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
         dockAccumulatorParams()
       )
     ).toEqual(true);
+
+    /*const credJson = blindedCred.toJSON();
+    const recreatedCred = isBBS() ? BBSBlindedCredential.fromJSON(credJson) : BBSPlusBlindedCredential.fromJSON(credJson);
+    // @ts-ignore
+    const cred = isBBS()
+      // @ts-ignore
+      ? recreatedCred.toCredential(blindedSubject)
+      : recreatedCred.toCredential(blindedSubject, blinding);
+    checkResult(cred.verify(pk1));
+    expect(recreatedCred.toJSON()).toEqual(credJson);*/
+    checkBlindedCredJson(blindedCred, pk1, blindedSubject, blinding);
   });
 
   it('should be able to request a blinded-credential while presenting another credential and proving some attributes equal', () => {
@@ -326,6 +349,8 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
     checkResult(credential2.verify(pk2));
+
+    checkBlindedCredJson(blindedCred, pk2, blindedSubject, blinding);
   });
 
   it('should be able to request a blinded-credential while presenting 2 credentials and proving some attributes equal and predicates on some credential attributes', () => {
@@ -525,6 +550,8 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
     checkResult(credential3.verify(pk3));
+
+    checkBlindedCredJson(blindedCred, pk3, blindedSubject, blinding);
   });
 
   it('should be able to request a blinded-credential and prove bounds on and verifiably encrypt some of the blinded attributes', () => {
@@ -562,6 +589,18 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
       blockNo: 2010334
     });
 
+    reqBuilder.verifiablyEncryptCredentialAttribute(
+      0,
+      'credentialSubject.sensitive.SSN',
+      chunkBitSize,
+      commGensId,
+      ekId,
+      snarkPkId,
+      commGens,
+      saverEk,
+      saverProvingKey
+    );
+
     reqBuilder.enforceBoundsOnBlindedAttribute(
       'credentialSubject.timeOfBirth',
       1662010849610,
@@ -575,9 +614,6 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
       commGensId,
       ekId,
       snarkPkId,
-      commGens,
-      saverEk,
-      saverProvingKey
     );
 
     const [req, blinding] = finalize(reqBuilder);
@@ -587,6 +623,19 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
         timeOfBirth: { min: 1662010849610, max: 1662010849620, paramId: boundCheckSnarkId }
       }
     });
+    expect(req.presentation.spec.credentials[0].verifiableEncryptions).toEqual({
+      credentialSubject: {
+        sensitive: {
+          SSN: {
+            chunkBitSize,
+            commitmentGensId: commGensId,
+            encryptionKeyId: ekId,
+            snarkKeyId: snarkPkId
+          }
+        }
+      }
+    });
+    expect(req.presentation.attributeCiphertexts).toBeDefined();
     expect(req.presentation.spec.blindCredentialRequest.verifiableEncryptions).toEqual({
       credentialSubject: {
         sensitive: {
@@ -611,6 +660,16 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
     checkResult(req.verify([pk1], acc, pp));
 
     checkReqJson(req, [pk1], acc, pp);
+
+    checkCiphertext(
+      credential1,
+      req.presentation.attributeCiphertexts?.get(0),
+      'sensitive.SSN',
+      saverSk,
+      saverDk,
+      saverVerifyingKey,
+      chunkBitSize
+    );
 
     checkCiphertext(
       { schema, subject: blindedSubject },
@@ -640,6 +699,8 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
     checkResult(credential.verify(pk3));
+
+    checkBlindedCredJson(blindedCred, pk3, blindedSubject, blinding);
   });
 
   it('should be able to request a blinded-credential and prove Circom predicates on some of the blinded attributes', async () => {
@@ -943,5 +1004,7 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
     checkResult(credential3.verify(pk3));
+
+    checkBlindedCredJson(blindedCred, pk3, blindedSubject, blinding);
   });
 });
