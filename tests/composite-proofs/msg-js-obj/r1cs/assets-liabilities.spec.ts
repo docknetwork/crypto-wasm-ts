@@ -163,11 +163,10 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
           id5: (i + 5) * 10000
         }
       });
-      signedAssets.push(SignatureParams.signMessageObject(assetAttributes[i], sk, assetSigParams, encoder));
+      signedAssets.push(Signature.signMessageObject(assetAttributes[i], sk, assetSigParams, encoder));
       checkResult(
-        SignatureParams.verifyMessageObject(
+        signedAssets[i].signature.verifyMessageObject(
           assetAttributes[i],
-          signedAssets[i].signature,
           sigPk,
           assetSigParams,
           encoder
@@ -190,11 +189,10 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
           id4: (i + 4) * 100
         }
       });
-      signedLiabilities.push(SignatureParams.signMessageObject(liabilityAttributes[i], sk, liablSigParams, encoder));
+      signedLiabilities.push(Signature.signMessageObject(liabilityAttributes[i], sk, liablSigParams, encoder));
       checkResult(
-        SignatureParams.verifyMessageObject(
+        signedLiabilities[i].signature.verifyMessageObject(
           liabilityAttributes[i],
-          signedLiabilities[i].signature,
           sigPk,
           liablSigParams,
           encoder

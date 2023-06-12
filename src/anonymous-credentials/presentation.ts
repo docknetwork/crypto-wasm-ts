@@ -16,7 +16,7 @@ import {
   Statements,
   WitnessEqualityMetaStatement
 } from '../composite-proof';
-import { CredentialSchema, ValueType } from './schema';
+import { CredentialSchema, getTransformedMinMax, ValueType } from './schema';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 import {
@@ -43,7 +43,6 @@ import {
   createWitEq,
   deepClone,
   flattenTill2ndLastKey,
-  getTransformedMinMax,
   paramsClassByPublicKey,
   saverStatement,
   getSignatureParamsForMsgCount,

@@ -80,6 +80,59 @@ export class PSSignature extends MessageEncoder {
 
     return new PSSignature(psAggregateSignatures(rawSignatures, h));
   }
+
+  static signMessageObject(
+    messages: Object,
+    secretKey: PSSecretKey,
+    labelOrParams: Uint8Array | PSSignatureParams,
+    encoder: Encoder
+  ): SignedMessages<PSSignature> {
+    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
+    const encodedMessageList = Object.values(encodedMessages);
+    const msgCount = encodedMessageList.length;
+
+    const sigParams = PSSignatureParams.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    const supportedMsgCount = secretKey.supportedMessageCount();
+    if (supportedMsgCount < msgCount) {
+      throw new Error(`Unsupported message count - supported up to ${supportedMsgCount}, received: ${msgCount}`);
+    } else if (supportedMsgCount > msgCount) {
+      secretKey = secretKey.adaptForLess(msgCount);
+    }
+    const signature = PSSignature.generate(encodedMessageList, secretKey, sigParams);
+
+    return {
+      encodedMessages,
+      signature
+    };
+  }
+
+  /**
+   * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
+   * to signing and then verifies the signature.
+   * @param messages
+   * @param signature
+   * @param publicKey
+   * @param labelOrParams
+   * @param encoder
+   */
+  verifyMessageObject(
+    messages: object,
+    publicKey: PSPublicKey,
+    labelOrParams: Uint8Array | PSSignatureParams,
+    encoder: Encoder
+  ): VerifyResult {
+    const [_, encodedValues] = encoder.encodeMessageObject(messages);
+    const msgCount = encodedValues.length;
+
+    const sigParams = PSSignatureParams.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    const supportedMsgCount = publicKey.supportedMessageCount();
+    if (supportedMsgCount < msgCount) {
+      throw new Error(`Unsupported message count - supported up to ${supportedMsgCount}, received: ${msgCount}`);
+    } else if (supportedMsgCount > msgCount) {
+      publicKey = publicKey.adaptForLess(msgCount);
+    }
+    return this.verify(encodedValues, publicKey, sigParams);
+  }
 }
 
 /**

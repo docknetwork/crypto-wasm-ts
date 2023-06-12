@@ -12,9 +12,9 @@ import {
   Witnesses
 } from '../composite-proof';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
-import { CircomInputs, getR1CS, ParsedR1CSFile } from '../r1cs';
+import { CircomInputs } from '../r1cs';
 import { R1CS } from '@docknetwork/crypto-wasm';
-import { CredentialSchema, ValueType } from './schema';
+import { CredentialSchema, getTransformedMinMax, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
@@ -50,7 +50,6 @@ import {
   buildSignatureStatementFromParamsRef,
   buildWitness,
   createWitEq,
-  getTransformedMinMax,
   paramsClassBySignature,
   saverStatement,
   getSignatureParamsForMsgCount,
@@ -70,6 +69,7 @@ import { SetupParamsTracker } from './setup-params-tracker';
 import { AttributeBoundPseudonym, Pseudonym, PseudonymBases } from '../Pseudonym';
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
+import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
 
 /**
  * Arguments required to generate the corresponding AttributeBoundPseudonym

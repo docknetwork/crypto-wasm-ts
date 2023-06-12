@@ -1,4 +1,4 @@
-import { VerifyResult, bbsCommitMsgs } from '@docknetwork/crypto-wasm';
+import { bbsCommitMsgs } from '@docknetwork/crypto-wasm';
 import {
   bbsGenerateSignatureParams,
   bbsSignatureParamsToBytes,
@@ -7,11 +7,8 @@ import {
   bbsAdaptSigParamsForMsgCount,
   BbsSigParams
 } from '@docknetwork/crypto-wasm';
-import { BBSSignature } from './signature';
-import { BBSPublicKey, BBSSecretKey } from './keys';
-import { Encoder } from '../encoder';
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
-import { ISignatureParams, MessageStructure, SignedMessages } from '../types';
+import { ISignatureParams, MessageStructure } from '../types';
 
 /**
  * `BBS` signature parameters.
@@ -75,47 +72,6 @@ export class BBSSignatureParams implements ISignatureParams {
       newParams = bbsAdaptSigParamsForMsgCount(this.value, this.label, newMsgCount);
     }
     return new (this.constructor as typeof BBSSignatureParams)(newParams, this.label) as this;
-  }
-
-  static signMessageObject(
-    messages: Object,
-    secretKey: BBSSecretKey,
-    labelOrParams: Uint8Array | BBSSignatureParams,
-    encoder: Encoder
-  ): SignedMessages<BBSSignature> {
-    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
-    const encodedMessageList = Object.values(encodedMessages);
-
-    const sigParams = this.getSigParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
-    const signature = BBSSignature.generate(encodedMessageList, secretKey, sigParams, false);
-
-    return {
-      encodedMessages,
-      signature
-    };
-  }
-
-  /**
-   * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
-   * to signing and then verifies the signature.
-   * @param messages
-   * @param signature
-   * @param publicKey
-   * @param labelOrParams
-   * @param encoder
-   */
-  static verifyMessageObject(
-    messages: object,
-    signature: BBSSignature,
-    publicKey: BBSPublicKey,
-    labelOrParams: Uint8Array | BBSSignatureParams,
-    encoder: Encoder
-  ): VerifyResult {
-    const [_, encodedValues] = encoder.encodeMessageObject(messages);
-    const msgCount = encodedValues.length;
-
-    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
-    return signature.verify(encodedValues, publicKey, sigParams, false);
   }
 
   /**

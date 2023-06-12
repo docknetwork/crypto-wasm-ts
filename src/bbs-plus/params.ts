@@ -14,12 +14,7 @@ import {
   BbsPlusSigParams
 } from '@docknetwork/crypto-wasm';
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
-import { ISignatureParams, MessageStructure, SignedMessages } from '../types';
-import { BBSPlusPublicKeyG1, BBSPlusSecretKey } from './keys';
-import { BBSPlusSignatureG1 } from './signature';
-import { Encoder } from '../encoder';
-import { VerifyResult } from '@docknetwork/crypto-wasm';
-
+import { ISignatureParams, MessageStructure } from '../types';
 /**
  * `BBS+` Signature parameters.
  */
@@ -145,47 +140,6 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
   ): [Uint8Array, Uint8Array] {
     const commitment = bbsPlusCommitMsgsInG1(messageToCommit, blinding, this.value, encodeMessages);
     return [commitment, blinding];
-  }
-
-  static signMessageObject(
-    messages: Object,
-    secretKey: BBSPlusSecretKey,
-    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
-    encoder: Encoder
-  ): SignedMessages<BBSPlusSignatureG1> {
-    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
-    const encodedMessageList = Object.values(encodedMessages);
-
-    const sigParams = this.getSigParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
-    const signature = BBSPlusSignatureG1.generate(encodedMessageList, secretKey, sigParams, false);
-
-    return {
-      encodedMessages,
-      signature
-    };
-  }
-
-  /**
-   * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
-   * to signing and then verifies the signature.
-   * @param messages
-   * @param signature
-   * @param publicKey
-   * @param labelOrParams
-   * @param encoder
-   */
-  static verifyMessageObject(
-    messages: object,
-    signature: BBSPlusSignatureG1,
-    publicKey: BBSPlusPublicKeyG1,
-    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
-    encoder: Encoder
-  ): VerifyResult {
-    const [_, encodedValues] = encoder.encodeMessageObject(messages);
-    const msgCount = encodedValues.length;
-
-    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
-    return signature.verify(encodedValues, publicKey, sigParams, false);
   }
 
   /**

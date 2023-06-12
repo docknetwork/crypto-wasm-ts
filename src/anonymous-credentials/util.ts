@@ -9,18 +9,18 @@ import {
   ACCUMULATOR_PARAMS_LABEL_BYTES,
   ACCUMULATOR_PROVING_KEY_LABEL_BYTES,
   AttributeEquality,
+  AttributeRef,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   FlattenedSchema,
   MEM_CHECK_STR,
-  PS_SIGNATURE_PARAMS_LABEL_BYTES,
   PredicateParamType,
+  PS_SIGNATURE_PARAMS_LABEL_BYTES,
   PublicKey,
   SAVER_ENCRYPTION_GENS_BYTES,
   Signature,
   SignatureParams,
-  SignatureParamsClass,
-  AttributeRef
+  SignatureParamsClass
 } from './types-and-consts';
 import {
   SaverChunkedCommitmentGens,
@@ -36,8 +36,7 @@ import {
 } from '../saver';
 import { flatten } from 'flat';
 import { PresentationSpecification } from './presentation-specification';
-import { ValueType, ValueTypes } from './schema';
-import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1, Encoder } from '../bbs-plus';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '../composite-proof';
 import { SetupParamsTracker } from './setup-params-tracker';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
@@ -106,31 +105,6 @@ export function buildContextForProof(
   }
   ctx = ctx.concat(Array.from(te.encode(JSON.stringify(presSpec.toJSON()))));
   return new Uint8Array(ctx);
-}
-
-export function getTransformedMinMax(name: string, valTyp: ValueTypes, min: number, max: number): [number, number] {
-  let transformedMin, transformedMax;
-  switch (valTyp.type) {
-    case ValueType.PositiveInteger:
-      transformedMin = min;
-      transformedMax = max;
-      break;
-    case ValueType.Integer:
-      transformedMin = Encoder.integerToPositiveInt(valTyp.minimum)(min);
-      transformedMax = Encoder.integerToPositiveInt(valTyp.minimum)(max);
-      break;
-    case ValueType.PositiveNumber:
-      transformedMin = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(min);
-      transformedMax = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(max);
-      break;
-    case ValueType.Number:
-      transformedMin = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(min);
-      transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
-      break;
-    default:
-      throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
-  }
-  return [transformedMin, transformedMax];
 }
 
 export function createWitEq(eql: AttributeEquality, flattenedSchemas: FlattenedSchema[]): WitnessEqualityMetaStatement {

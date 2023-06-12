@@ -73,9 +73,8 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
 export class BBSCredential extends Credential<BBSPublicKey, BBSSignature, BBSSignatureParams> {
   verify(publicKey: BBSPublicKey, signatureParams?: BBSSignatureParams): VerifyResult {
     const cred = this.serializeForSigning();
-    return BBSSignatureParams.verifyMessageObject(
+    return this.signature.verifyMessageObject(
       cred,
-      this.signature,
       publicKey,
       signatureParams ?? BBS_SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder
@@ -115,9 +114,8 @@ export class BBSCredential extends Credential<BBSPublicKey, BBSSignature, BBSSig
 export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1> {
   verify(publicKey: BBSPlusPublicKeyG2, signatureParams?: BBSPlusSignatureParamsG1): VerifyResult {
     const cred = this.serializeForSigning();
-    return BBSPlusSignatureParamsG1.verifyMessageObject(
+    return this.signature.verifyMessageObject(
       cred,
-      this.signature,
       publicKey,
       signatureParams ?? BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder
@@ -157,9 +155,8 @@ export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSig
 export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatureParams> {
   verify(publicKey: PSPublicKey, signatureParams?: PSSignatureParams): VerifyResult {
     const cred = this.serializeForSigning();
-    return PSSignatureParams.verifyMessageObject(
+    return this.signature.verifyMessageObject(
       cred,
-      this.signature,
       publicKey,
       signatureParams ?? PS_SIGNATURE_PARAMS_LABEL_BYTES,
       this.schema.encoder

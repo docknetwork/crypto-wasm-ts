@@ -49,9 +49,9 @@ import {
 import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 import { AttributeBoundPseudonym, Pseudonym } from '../Pseudonym';
 import { isPositiveInteger } from '../util';
-import { getR1CS, ParsedR1CSFile } from '../r1cs';
 import { BBSSignatureParams } from '../bbs';
 import { PSPublicKey, PSSignatureParams } from '../ps';
+import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
 
 /**
  * Relation which needs to be proven. Contains any public data that needs to be known to both prover and verifier

@@ -7,7 +7,7 @@ import {
   generateRandomFieldElement,
   VerifyResult
 } from '@docknetwork/crypto-wasm';
-import { BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
+import { BBSPlusPublicKeyG1, BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { encodeRevealedMessageObject, getBlindedIndicesAndRevealedMessages } from '../sign-verify-js-objs';
 import { Encoder, MessageEncoder } from '../encoder';
@@ -59,6 +59,45 @@ export class BBSPlusSignatureG1 extends MessageEncoder {
       );
     }
     return bbsPlusVerifyG1(messages, this.value, publicKey.value, params.value, encodeMessages);
+  }
+
+  static signMessageObject(
+    messages: Object,
+    secretKey: BBSPlusSecretKey,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+    encoder: Encoder
+  ): SignedMessages<BBSPlusSignatureG1> {
+    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
+    const encodedMessageList = Object.values(encodedMessages);
+
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
+    const signature = BBSPlusSignatureG1.generate(encodedMessageList, secretKey, sigParams, false);
+
+    return {
+      encodedMessages,
+      signature
+    };
+  }
+
+  /**
+   * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
+   * to signing and then verifies the signature.
+   * @param messages
+   * @param publicKey
+   * @param labelOrParams
+   * @param encoder
+   */
+  verifyMessageObject(
+    messages: object,
+    publicKey: BBSPlusPublicKeyG1,
+    labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
+    encoder: Encoder
+  ): VerifyResult {
+    const [_, encodedValues] = encoder.encodeMessageObject(messages);
+    const msgCount = encodedValues.length;
+
+    const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(msgCount, labelOrParams);
+    return this.verify(encodedValues, publicKey, sigParams, false);
   }
 }
 

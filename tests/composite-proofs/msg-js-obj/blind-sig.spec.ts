@@ -1,6 +1,7 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, stringToBytes } from '../../utils';
 import {
+  BBSSignature,
   CompositeProofG1,
   getAdaptedSignatureParamsForMessages,
   MetaStatements,
@@ -188,7 +189,7 @@ describe(`${Scheme} Requesting blind signatures`, () => {
 
       // Signer generates the blind signature using the signature request and attributes known to him. It sends the blind
       // signature to the user
-      const blingSignature = BlindSignature.blindSignMessageObject(
+      const blindSignature = BlindSignature.blindSignMessageObject(
         request,
         knownAttributes,
         sigSk,
@@ -199,13 +200,13 @@ describe(`${Scheme} Requesting blind signatures`, () => {
 
       // User unblinds the blind signature
       const revealedSig = isPS()
-        ? blingSignature.signature.unblind(blindings, sigPk)
+        ? blindSignature.signature.unblind(blindings, sigPk)
         : isBBSPlus()
-        ? blingSignature.signature.unblind(blinding)
-        : blingSignature.signature;
+        ? blindSignature.signature.unblind(blinding)
+        : new BBSSignature(blindSignature.signature.value);
 
       // The revealed signature can now be used in the usual verification process
-      checkResult(SignatureParams.verifyMessageObject(attributes, revealedSig, sigPk, sigParams, GlobalEncoder));
+      checkResult(revealedSig.verifyMessageObject(attributes, sigPk, sigParams, GlobalEncoder));
 
       // Proof of knowledge of signature can be created and verified as usual.
     }

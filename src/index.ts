@@ -14,3 +14,6 @@ export * from './sign-verify-js-objs';
 export * from './anonymous-credentials';
 export * from './ps';
 export * from './types';
+export { getR1CS } from './r1cs/file';
+export { processParsedR1CSFile } from './r1cs/file';
+export { ParsedR1CSFile } from './r1cs/file';

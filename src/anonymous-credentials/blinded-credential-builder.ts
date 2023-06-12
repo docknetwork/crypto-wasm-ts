@@ -7,11 +7,7 @@ import {
 } from './types-and-consts';
 import { BBSCredential, BBSPlusCredential } from './credential';
 import { BBSBlindSignature, BBSSecretKey, BBSSignatureParams } from '../bbs';
-import {
-  BBSPlusBlindSignatureG1,
-  BBSPlusSecretKey,
-  BBSPlusSignatureParamsG1
-} from '../bbs-plus';
+import { BBSPlusBlindSignatureG1, BBSPlusSecretKey, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { CredentialSchema } from './schema';
 import { BBSBlindedCredential, BBSPlusBlindedCredential } from './blinded-credential';
 

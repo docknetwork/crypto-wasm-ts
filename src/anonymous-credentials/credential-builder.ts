@@ -149,7 +149,7 @@ export class BBSCredentialBuilder extends CredentialBuilder<
     labelOrParams: Uint8Array | BBSSignatureParams = BBS_SIGNATURE_PARAMS_LABEL_BYTES,
     encoder: Encoder
   ): SignedMessages<BBSSignature> {
-    return BBSSignatureParams.signMessageObject(messages, secretKey, labelOrParams, encoder);
+    return BBSSignature.signMessageObject(messages, secretKey, labelOrParams, encoder);
   }
 
   protected newCredential(
@@ -183,7 +183,7 @@ export class BBSPlusCredentialBuilder extends CredentialBuilder<
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1 = BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
     encoder: Encoder
   ): SignedMessages<BBSPlusSignatureG1> {
-    return BBSPlusSignatureParamsG1.signMessageObject(messages, secretKey, labelOrParams, encoder);
+    return BBSPlusSignatureG1.signMessageObject(messages, secretKey, labelOrParams, encoder);
   }
 
   protected newCredential(
@@ -213,7 +213,7 @@ export class PSCredentialBuilder extends CredentialBuilder<PSSecretKey, PSPublic
     labelOrParams: Uint8Array | PSSignatureParams = PS_SIGNATURE_PARAMS_LABEL_BYTES,
     encoder: Encoder
   ): SignedMessages<PSSignature> {
-    return PSSignatureParams.signMessageObject(messages, secretKey, labelOrParams, encoder);
+    return PSSignature.signMessageObject(messages, secretKey, labelOrParams, encoder);
   }
 
   protected newCredential(

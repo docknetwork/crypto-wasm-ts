@@ -28,7 +28,6 @@ import {
   SaverProvingKeyUncompressed
 } from '../saver';
 import { generateRandomFieldElement, R1CS } from '@docknetwork/crypto-wasm';
-import { getR1CS, ParsedR1CSFile } from '../r1cs';
 import { BBSBlindedCredentialRequest, BBSPlusBlindedCredentialRequest } from './blinded-credential-request';
 import { unflatten } from 'flat';
 import { BBSSignatureParams } from '../bbs';
@@ -36,6 +35,7 @@ import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { IPresentedAttributeBounds, IPresentedAttributeVE } from './presentation-specification';
 import { Presentation } from './presentation';
+import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 

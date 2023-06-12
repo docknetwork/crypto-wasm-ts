@@ -47,8 +47,8 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
     const sk = keypair.secretKey;
     const pk = keypair.publicKey;
 
-    const signed = SignatureParams.signMessageObject(attributes1, sk, label, GlobalEncoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes1, signed.signature, pk, label, GlobalEncoder));
+    const signed = Signature.signMessageObject(attributes1, sk, label, GlobalEncoder);
+    checkResult(signed.signature.verifyMessageObject(attributes1, pk, label, GlobalEncoder));
 
     // Setup for decryptor
     let saverEncGens, saverSk, saverProvingKey, saverVerifyingKey, saverEk, saverDk;

@@ -1135,3 +1135,28 @@ export class CredentialSchema extends Versioned {
     }
   }
 }
+
+export function getTransformedMinMax(name: string, valTyp: ValueTypes, min: number, max: number): [number, number] {
+  let transformedMin, transformedMax;
+  switch (valTyp.type) {
+    case ValueType.PositiveInteger:
+      transformedMin = min;
+      transformedMax = max;
+      break;
+    case ValueType.Integer:
+      transformedMin = Encoder.integerToPositiveInt(valTyp.minimum)(min);
+      transformedMax = Encoder.integerToPositiveInt(valTyp.minimum)(max);
+      break;
+    case ValueType.PositiveNumber:
+      transformedMin = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(min);
+      transformedMax = Encoder.positiveDecimalNumberToPositiveInt(valTyp.decimalPlaces)(max);
+      break;
+    case ValueType.Number:
+      transformedMin = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(min);
+      transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
+      break;
+    default:
+      throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
+  }
+  return [transformedMin, transformedMax];
+}

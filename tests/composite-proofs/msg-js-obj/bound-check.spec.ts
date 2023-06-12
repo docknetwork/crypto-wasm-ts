@@ -27,7 +27,7 @@ import {
   GlobalEncoder
 } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { adaptKeyForParams, buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams } from '../../scheme';
+import { adaptKeyForParams, buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams, Signature } from '../../scheme';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -68,14 +68,14 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     const pk3 = keypair3.publicKey;
 
     // Sign and verify all signatures
-    const signed1 = SignatureParams.signMessageObject(attributes1, sk1, label1, GlobalEncoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, GlobalEncoder));
+    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, GlobalEncoder);
+    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, GlobalEncoder));
 
-    const signed2 = SignatureParams.signMessageObject(attributes2, sk2, label2, GlobalEncoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, GlobalEncoder));
+    const signed2 = Signature.signMessageObject(attributes2, sk2, label2, GlobalEncoder);
+    checkResult(signed2.signature.verifyMessageObject(attributes2, pk2, label2, GlobalEncoder));
 
-    const signed3 = SignatureParams.signMessageObject(attributes3, sk3, label3, GlobalEncoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes3, signed3.signature, pk3, label3, GlobalEncoder));
+    const signed3 = Signature.signMessageObject(attributes3, sk3, label3, GlobalEncoder);
+    checkResult(signed3.signature.verifyMessageObject(attributes3, pk3, label3, GlobalEncoder));
 
     // Verifier creates SNARK proving and verification key
     const [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);

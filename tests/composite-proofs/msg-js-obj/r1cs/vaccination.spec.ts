@@ -118,10 +118,10 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
   function sign(vDays: number, tDays: number): [SignedMessages<Signature>, SignedMessages<Signature>] {
     vaccinationAttributes.vaccination.date = now - vDays * secondsInADay;
     diseaseTestAttributes.test.date = now - tDays * secondsInADay;
-    const signedV = SignatureParams.signMessageObject(vaccinationAttributes, sigSk, label, encoder);
-    checkResult(SignatureParams.verifyMessageObject(vaccinationAttributes, signedV.signature, sigPk, label, encoder));
-    const signedT = SignatureParams.signMessageObject(diseaseTestAttributes, sigSk, label, encoder);
-    checkResult(SignatureParams.verifyMessageObject(diseaseTestAttributes, signedT.signature, sigPk, label, encoder));
+    const signedV = Signature.signMessageObject(vaccinationAttributes, sigSk, label, encoder);
+    checkResult(signedV.signature.verifyMessageObject(vaccinationAttributes, sigPk, label, encoder));
+    const signedT = Signature.signMessageObject(diseaseTestAttributes, sigSk, label, encoder);
+    checkResult(signedT.signature.verifyMessageObject(diseaseTestAttributes, sigPk, label, encoder));
     return [signedV, signedT];
   }
 

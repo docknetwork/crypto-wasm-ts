@@ -24,7 +24,7 @@ import {
   attributes3Struct,
   defaultEncoder
 } from './data-and-encoder';
-import { SignatureParams, KeyPair, isPS, buildStatement, buildWitness, Scheme, adaptKeyForParams } from '../../scheme';
+import { SignatureParams, KeyPair, isPS, buildStatement, buildWitness, Scheme, adaptKeyForParams, Signature } from '../../scheme';
 import { checkMapsEqual, signedToHex } from './index';
 
 describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
@@ -61,8 +61,8 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
     ]) {
       expect(isValidMsgStructure(attributes, attributesStruct)).toEqual(true);
 
-      const signed = SignatureParams.signMessageObject(attributes, sk, label, encoder);
-      checkResult(SignatureParams.verifyMessageObject(attributes, signed.signature, pk, label, encoder));
+      const signed = Signature.signMessageObject(attributes, sk, label, encoder);
+      checkResult(signed.signature.verifyMessageObject(attributes, pk, label, encoder));
 
       // For debugging
       console.log(signedToHex(signed));
@@ -184,11 +184,11 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
     const encoder = new Encoder(undefined, defaultEncoder);
 
     // Sign and verify all signatures
-    const signed1 = SignatureParams.signMessageObject(attributes1, sk1, label1, encoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
+    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, encoder);
+    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, encoder));
 
-    const signed2 = SignatureParams.signMessageObject(attributes2, sk2, label2, encoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
+    const signed2 = Signature.signMessageObject(attributes2, sk2, label2, encoder);
+    checkResult(signed2.signature.verifyMessageObject(attributes2, pk2, label2, encoder));
 
     // Reveal
     // - first name ("fname" attribute) from both sets of signed attributes
@@ -323,14 +323,14 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
     const encoder = new Encoder(undefined, defaultEncoder);
 
     // Sign and verify all signatures
-    const signed1 = SignatureParams.signMessageObject(attributes1, sk1, label1, encoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
+    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, encoder);
+    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, encoder));
 
-    const signed2 = SignatureParams.signMessageObject(attributes2, sk2, label2, encoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
+    const signed2 = Signature.signMessageObject(attributes2, sk2, label2, encoder);
+    checkResult(signed2.signature.verifyMessageObject(attributes2, pk2, label2, encoder));
 
-    const signed3 = SignatureParams.signMessageObject(attributes3, sk3, label3, encoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes3, signed3.signature, pk3, label3, encoder));
+    const signed3 = Signature.signMessageObject(attributes3, sk3, label3, encoder);
+    checkResult(signed3.signature.verifyMessageObject(attributes3, pk3, label3, encoder));
 
     // Reveal
     // - first name ("fname" attribute) from all 3 sets of signed attributes

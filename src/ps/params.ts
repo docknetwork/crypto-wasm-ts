@@ -5,15 +5,11 @@ import {
   psIsSignatureParamsValid,
   psAdaptSignatureParamsForMsgCount,
   PSSigParams,
-  VerifyResult,
   psMessageCommitment
 } from '@docknetwork/crypto-wasm';
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
-import { PSPublicKey, PSSecretKey } from './keys';
-import { PSSignature } from './signature';
-import { Encoder } from '../encoder';
 import { psMultiMessageCommitment } from '@docknetwork/crypto-wasm';
-import { ISignatureParams, MessageStructure, SignedMessages } from '../types';
+import { ISignatureParams, MessageStructure } from '../types';
 
 /**
  * Modified Pointcheval-Sanders signature parameters used in `Coconut`.
@@ -68,60 +64,6 @@ export class PSSignatureParams implements ISignatureParams {
       newParams = psAdaptSignatureParamsForMsgCount(this.value, this.label, newMsgCount);
     }
     return new (this.constructor as typeof PSSignatureParams)(newParams, this.label) as this;
-  }
-
-  static signMessageObject(
-    messages: Object,
-    secretKey: PSSecretKey,
-    labelOrParams: Uint8Array | PSSignatureParams,
-    encoder: Encoder
-  ): SignedMessages<PSSignature> {
-    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
-    const encodedMessageList = Object.values(encodedMessages);
-    const msgCount = encodedMessageList.length;
-
-    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
-    const supportedMsgCount = secretKey.supportedMessageCount();
-    if (supportedMsgCount < msgCount) {
-      throw new Error(`Unsupported message count - supported up to ${supportedMsgCount}, received: ${msgCount}`);
-    } else if (supportedMsgCount > msgCount) {
-      secretKey = secretKey.adaptForLess(msgCount);
-    }
-    const signature = PSSignature.generate(encodedMessageList, secretKey, sigParams);
-
-    return {
-      encodedMessages,
-      signature
-    };
-  }
-
-  /**
-   * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
-   * to signing and then verifies the signature.
-   * @param messages
-   * @param signature
-   * @param publicKey
-   * @param labelOrParams
-   * @param encoder
-   */
-  static verifyMessageObject(
-    messages: object,
-    signature: PSSignature,
-    publicKey: PSPublicKey,
-    labelOrParams: Uint8Array | PSSignatureParams,
-    encoder: Encoder
-  ): VerifyResult {
-    const [_, encodedValues] = encoder.encodeMessageObject(messages);
-    const msgCount = encodedValues.length;
-
-    const sigParams = this.getSigParamsOfRequiredSize(msgCount, labelOrParams);
-    const supportedMsgCount = publicKey.supportedMessageCount();
-    if (supportedMsgCount < msgCount) {
-      throw new Error(`Unsupported message count - supported up to ${supportedMsgCount}, received: ${msgCount}`);
-    } else if (supportedMsgCount > msgCount) {
-      publicKey = publicKey.adaptForLess(msgCount);
-    }
-    return signature.verify(encodedValues, publicKey, sigParams);
   }
 
   /**

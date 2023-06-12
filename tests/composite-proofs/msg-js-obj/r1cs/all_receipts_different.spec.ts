@@ -123,9 +123,9 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
         amount: minAmount + Math.ceil(Math.random() * 100),
         otherDetails: Math.random().toString(36).slice(2, 20) // https://stackoverflow.com/a/38622545
       });
-      signed.push(SignatureParams.signMessageObject(receiptsAttributes[i], sk, params, encoder));
+      signed.push(Signature.signMessageObject(receiptsAttributes[i], sk, params, encoder));
       checkResult(
-        SignatureParams.verifyMessageObject(receiptsAttributes[i], signed[i].signature, sigPk, params, encoder)
+        signed[i].signature.verifyMessageObject(receiptsAttributes[i], sigPk, params, encoder)
       );
     }
   });

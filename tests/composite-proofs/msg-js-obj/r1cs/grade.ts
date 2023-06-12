@@ -97,11 +97,11 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
 
-    signed1 = SignatureParams.signMessageObject(attributes1, sk, label, encoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, sigPk, label, encoder));
+    signed1 = Signature.signMessageObject(attributes1, sk, label, encoder);
+    checkResult(signed1.signature.verifyMessageObject(attributes1, sigPk, label, encoder));
 
-    signed2 = SignatureParams.signMessageObject(attributes2, sk, label, encoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, sigPk, label, encoder));
+    signed2 = Signature.signMessageObject(attributes2, sk, label, encoder);
+    checkResult(signed2.signature.verifyMessageObject(attributes2, sigPk, label, encoder));
   });
 
   it('proof verifies when grade is either A+, A, B+, B or C', () => {

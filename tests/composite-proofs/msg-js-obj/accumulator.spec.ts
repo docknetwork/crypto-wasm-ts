@@ -25,7 +25,7 @@ import { checkResult, stringToBytes } from '../../utils';
 import { InMemoryState } from '../../../src/accumulator/in-memory-persistence';
 import { attributes1, attributes1Struct, attributes2, attributes2Struct, defaultEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { adaptKeyForParams, buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams } from '../../scheme';
+import { adaptKeyForParams, buildStatement, buildWitness, KeyPair, Scheme, SignatureParams, Signature } from '../../scheme';
 
 describe(`${Scheme} Accumulator`, () => {
   beforeAll(async () => {
@@ -107,7 +107,7 @@ describe(`${Scheme} Accumulator`, () => {
     // Sign and verify all signatures
 
     // Signer 1 signs the attributes
-    const signed1 = SignatureParams.signMessageObject(attributes1, sk1, label1, encoder);
+    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, encoder);
 
     // Accumulator manager 1 generates the witness for the accumulator member, i.e. attribute signed1.encodedMessages['user-id']
     // and gives the witness to the user.
@@ -117,7 +117,7 @@ describe(`${Scheme} Accumulator`, () => {
       accumState1
     );
 
-    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label1, encoder));
+    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator1 = PositiveAccumulator.fromAccumulated(accumulator1.accumulated);
@@ -131,7 +131,7 @@ describe(`${Scheme} Accumulator`, () => {
     ).toEqual(true);
 
     // Signer 2 signs the attributes
-    const signed2 = SignatureParams.signMessageObject(attributes2, sk2, label2, encoder);
+    const signed2 = Signature.signMessageObject(attributes2, sk2, label2, encoder);
 
     // Accumulator manager 2 generates the witness and gives it to the user
     const accumWitness2 = await accumulator2.membershipWitness(
@@ -140,7 +140,7 @@ describe(`${Scheme} Accumulator`, () => {
       accumState2
     );
 
-    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk2, label2, encoder));
+    checkResult(signed2.signature.verifyMessageObject(attributes2, pk2, label2, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator2 = PositiveAccumulator.fromAccumulated(accumulator2.accumulated);

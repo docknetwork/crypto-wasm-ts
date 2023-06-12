@@ -2,8 +2,9 @@ import { generateRandomG1Element, initializeWasm } from '@docknetwork/crypto-was
 import { checkResult, stringToBytes } from '../../utils';
 import {
   AttributeBoundPseudonym,
+  BBSSignature,
   CompositeProofG1,
-  getAdaptedSignatureParamsForMessages, getIndicesForMsgNames, getRevealedAndUnrevealed, MetaStatement,
+  getAdaptedSignatureParamsForMessages, getIndicesForMsgNames, getRevealedAndUnrevealed,
   MetaStatements,
   ProofSpecG1,
   PseudonymBases,
@@ -21,6 +22,7 @@ import {
 } from './data-and-encoder';
 import {
   KeyPair,
+  Signature,
   BlindSignature,
   SignatureParams,
   isPS,
@@ -60,8 +62,8 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     pk2 = keypair2.publicKey;
 
     // User requests `signature1` and verifies it
-    signed1 = SignatureParams.signMessageObject(attributes1, sk1, label, GlobalEncoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk1, label, GlobalEncoder));
+    signed1 = Signature.signMessageObject(attributes1, sk1, label, GlobalEncoder);
+    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label, GlobalEncoder));
 
     // pseudonym1 is for attribute `user-id` only
     basesForPseudonym1 = PseudonymBases.generateBasesForAttributes(1, scope1);
@@ -206,9 +208,9 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
       : isBBSPlus()
         // @ts-ignore
         ? blingSignature.signature.unblind(blinding)
-        : blingSignature.signature;
+        : new BBSSignature(blingSignature.signature.value);
 
-    checkResult(SignatureParams.verifyMessageObject(attributes4, unblindedSig, sigPk2, sigParams2, GlobalEncoder));
+    checkResult(unblindedSig.verifyMessageObject(attributes4, sigPk2, sigParams2, GlobalEncoder));
 
     signed2 = {
       encodedMessages: GlobalEncoder.encodeMessageObjectAsObject(attributes4),

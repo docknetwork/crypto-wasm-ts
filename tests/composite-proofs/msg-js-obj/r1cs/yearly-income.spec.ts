@@ -129,9 +129,9 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
           amount: Math.floor(Math.random() * 2000) // salary will be under 2000
         }
       });
-      signed.push(SignatureParams.signMessageObject(payslipAttributes[i], sk, params, encoder));
+      signed.push(Signature.signMessageObject(payslipAttributes[i], sk, params, encoder));
       checkResult(
-        SignatureParams.verifyMessageObject(payslipAttributes[i], signed[i].signature, sigPk, params, encoder)
+        signed[i].signature.verifyMessageObject(payslipAttributes[i], sigPk, params, encoder)
       );
     }
   });

@@ -1,6 +1,6 @@
 import { CircomInputs } from './circom-inputs';
 import { R1CS, r1csCircuitSatisfied, r1csGenerateWires } from '@docknetwork/crypto-wasm';
-import { getR1CS, ParsedR1CSFile } from './index';
+import { getR1CS, ParsedR1CSFile } from './file';
 
 export class CircomCircuit {
   /**

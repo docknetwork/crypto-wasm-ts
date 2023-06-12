@@ -1,6 +1,6 @@
 import { LegoProvingKey } from '../legosnark';
 import { R1CS, r1csSnarkSetup } from '@docknetwork/crypto-wasm';
-import { ParsedR1CSFile, processParsedR1CSFile } from './index';
+import { ParsedR1CSFile, processParsedR1CSFile } from './file';
 
 /**
  * Create SNARK proving and verifying key from the parsed R1CS file.

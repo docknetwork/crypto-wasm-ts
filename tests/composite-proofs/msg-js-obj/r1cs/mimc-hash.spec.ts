@@ -131,11 +131,11 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
     const sk = keypair.secretKey;
     pk = keypair.publicKey;
 
-    signed1 = SignatureParams.signMessageObject(attributes1, sk, label, encoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes1, signed1.signature, pk, label, encoder));
+    signed1 = Signature.signMessageObject(attributes1, sk, label, encoder);
+    checkResult(signed1.signature.verifyMessageObject(attributes1, pk, label, encoder));
 
-    signed2 = SignatureParams.signMessageObject(attributes2, sk, label, encoder);
-    checkResult(SignatureParams.verifyMessageObject(attributes2, signed2.signature, pk, label, encoder));
+    signed2 = Signature.signMessageObject(attributes2, sk, label, encoder);
+    checkResult(signed2.signature.verifyMessageObject(attributes2, pk, label, encoder));
   });
 
   it('proof verifies when public key hash matches the expected hash', () => {
