@@ -1,13 +1,5 @@
+import { AccumulatorPublicKey } from '../accumulator';
 import {
-  Accumulator,
-  AccumulatorParams,
-  AccumulatorPublicKey,
-  MembershipProvingKey,
-  NonMembershipProvingKey
-} from '../accumulator';
-import {
-  ACCUMULATOR_PARAMS_LABEL_BYTES,
-  ACCUMULATOR_PROVING_KEY_LABEL_BYTES,
   AttributeEquality,
   AttributeRef,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
@@ -17,7 +9,6 @@ import {
   PredicateParamType,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
   PublicKey,
-  SAVER_ENCRYPTION_GENS_BYTES,
   Signature,
   SignatureParams,
   SignatureParamsClass
@@ -25,8 +16,6 @@ import {
 import {
   SaverChunkedCommitmentGens,
   SaverChunkedCommitmentGensUncompressed,
-  SaverEncryptionGens,
-  SaverEncryptionGensUncompressed,
   SaverEncryptionKey,
   SaverEncryptionKeyUncompressed,
   SaverProvingKey,
@@ -35,32 +24,11 @@ import {
   SaverVerifyingKeyUncompressed
 } from '../saver';
 import { flatten } from 'flat';
-import { PresentationSpecification } from './presentation-specification';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '../composite-proof';
 import { SetupParamsTracker } from './setup-params-tracker';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
-
-export function dockAccumulatorParams(): AccumulatorParams {
-  return Accumulator.generateParams(ACCUMULATOR_PARAMS_LABEL_BYTES);
-}
-
-export function dockAccumulatorMemProvingKey(): MembershipProvingKey {
-  return MembershipProvingKey.generate(ACCUMULATOR_PROVING_KEY_LABEL_BYTES);
-}
-
-export function dockAccumulatorNonMemProvingKey(): NonMembershipProvingKey {
-  return NonMembershipProvingKey.generate(ACCUMULATOR_PROVING_KEY_LABEL_BYTES);
-}
-
-export function dockSaverEncryptionGens(): SaverEncryptionGens {
-  return SaverEncryptionGens.generate(SAVER_ENCRYPTION_GENS_BYTES);
-}
-
-export function dockSaverEncryptionGensUncompressed(): SaverEncryptionGensUncompressed {
-  return SaverEncryptionGens.generate(SAVER_ENCRYPTION_GENS_BYTES).decompress();
-}
 
 export function flattenTill2ndLastKey(obj: object): [string[], object[]] {
   const flattened = {};
@@ -80,31 +48,6 @@ export function flattenTill2ndLastKey(obj: object): [string[], object[]] {
   // @ts-ignore
   const values = keys.map((k) => flattened[k]);
   return [keys, values];
-}
-
-/**
- * The context passed to the proof contains the version and the presentation spec as well. This is done to bind the
- * presentation spec and the version cryptographically to the proof.
- * @param version
- * @param presSpec
- * @param context
- */
-export function buildContextForProof(
-  version: string,
-  presSpec: PresentationSpecification,
-  context?: string | Uint8Array
-): Uint8Array {
-  const te = new TextEncoder();
-  let ctx = Array.from(te.encode(version));
-  if (context !== undefined) {
-    if (typeof context === 'string') {
-      ctx = ctx.concat(Array.from(te.encode(context)));
-    } else {
-      ctx = ctx.concat(Array.from(context));
-    }
-  }
-  ctx = ctx.concat(Array.from(te.encode(JSON.stringify(presSpec.toJSON()))));
-  return new Uint8Array(ctx);
 }
 
 export function createWitEq(eql: AttributeEquality, flattenedSchemas: FlattenedSchema[]): WitnessEqualityMetaStatement {

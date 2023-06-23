@@ -7,9 +7,11 @@ import {
   LegoProvingKeyUncompressed,
   LegoVerifyingKey,
   LegoVerifyingKeyUncompressed,
-  ParsedR1CSFile
+  ParsedR1CSFile,
+  PublicKeyBase
 } from '../src';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
+import { Participant, Round1Msg, Share } from '../src/frost-dkg';
 
 /**
  * Converts a UTF-8 Encoded string to a byte array
@@ -156,4 +158,62 @@ export function getBoundCheckSnarkKeys(
     snarkVerifyingKey = pk.getVerifyingKeyUncompressed();
   }
   return [snarkProvingKey, snarkVerifyingKey];
+}
+
+export function runFrostKeygen(participants: Participant[], pkBase: PublicKeyBase): [Uint8Array[], Uint8Array[], Uint8Array] {
+  const msgs = new Map<number, Round1Msg>();
+  for (let i = 0; i < participants.length; i++) {
+    expect(participants[i].hasStarted()).toEqual(false);
+    const msg = participants[i].startRound1(pkBase);
+    expect(participants[i].hasStarted()).toEqual(true);
+    msgs.set(participants[i].id, msg);
+  }
+
+  for (const [senderId, msg] of msgs) {
+    for (let i = 0; i < participants.length; i++) {
+      if (participants[i].id != senderId) {
+        participants[i].processReceivedMessageInRound1(msg, pkBase);
+      }
+    }
+  }
+
+  const shares = new Map<number, Share[]>();
+  for (let i = 0; i < participants.length; i++) {
+    expect(participants[i].hasFinishedRound1()).toEqual(false);
+    const s = participants[i].finishRound1();
+    expect(participants[i].hasFinishedRound1()).toEqual(true);
+    shares.set(participants[i].id, s);
+  }
+
+  for (const [senderId, s] of shares) {
+    for (let i = 0; i < participants.length; i++) {
+      if (participants[i].id != senderId) {
+        participants[i].processReceivedSharesInRound2(senderId, s[participants[i].id - 1], pkBase);
+      }
+    }
+  }
+
+  const sks: Uint8Array[] = [];
+  const pks: Uint8Array[] = [];
+  const pkWithIds: [number, Uint8Array][] = [];
+  let expectedTpk: Uint8Array;
+  for (let i = 0; i < participants.length; i++) {
+    expect(participants[i].hasFinishedRound2()).toEqual(false);
+    const [s, p, t] = participants[i].finishRound2(pkBase);
+    expect(participants[i].hasFinishedRound2()).toEqual(true);
+    sks.push(s);
+    pks.push(p);
+    pkWithIds.push([participants[i].id, p]);
+    if (i === 0) {
+      expectedTpk = t;
+    } else {
+      // @ts-ignore
+      expect(expectedTpk).toEqual(t);
+    }
+  }
+
+  // @ts-ignore
+  expect(expectedTpk as Uint8Array).toEqual(participants[0].generateThresholdPublicKeyFromPublicKeys(pkWithIds).value);
+  // @ts-ignore
+  return [sks, pks, expectedTpk];
 }

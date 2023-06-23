@@ -23,30 +23,29 @@ import {
   AttributeCiphertexts,
   CRYPTO_VERSION_STR,
   FlattenedSchema,
+  ID_STR,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
-  ID_STR,
+  PublicKey,
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
-  STATUS_STR,
-  PublicKey,
   SIG_TYPE_BBS,
-  SIG_TYPE_BBS_PLUS
+  SIG_TYPE_BBS_PLUS,
+  STATUS_STR
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
   accumulatorStatement,
-  buildContextForProof,
   buildSignatureStatementFromParamsRef,
   createWitEq,
+  createWitEqForBlindedCred,
   deepClone,
   flattenTill2ndLastKey,
-  paramsClassByPublicKey,
-  saverStatement,
   getSignatureParamsForMsgCount,
-  createWitEqForBlindedCred
+  paramsClassByPublicKey,
+  saverStatement
 } from './util';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import { SaverCiphertext } from '../saver';
@@ -56,6 +55,31 @@ import { flattenObjectToKeyValuesList } from '../util';
 import { Pseudonym, PseudonymBases } from '../Pseudonym';
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
+
+/**
+ * The context passed to the proof contains the version and the presentation spec as well. This is done to bind the
+ * presentation spec and the version cryptographically to the proof.
+ * @param version
+ * @param presSpec
+ * @param context
+ */
+export function buildContextForProof(
+  version: string,
+  presSpec: PresentationSpecification,
+  context?: string | Uint8Array
+): Uint8Array {
+  const te = new TextEncoder();
+  let ctx = Array.from(te.encode(version));
+  if (context !== undefined) {
+    if (typeof context === 'string') {
+      ctx = ctx.concat(Array.from(te.encode(context)));
+    } else {
+      ctx = ctx.concat(Array.from(context));
+    }
+  }
+  ctx = ctx.concat(Array.from(te.encode(JSON.stringify(presSpec.toJSON()))));
+  return new Uint8Array(ctx);
+}
 
 export class Presentation extends Versioned {
   readonly spec: PresentationSpecification;

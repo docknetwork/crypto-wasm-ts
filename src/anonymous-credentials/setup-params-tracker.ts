@@ -1,11 +1,10 @@
 import { SetupParam } from '../composite-proof';
 import {
   dockAccumulatorMemProvingKey,
-  dockAccumulatorNonMemProvingKey,
-  dockAccumulatorParams,
+  dockAccumulatorNonMemProvingKey, dockAccumulatorParams,
   dockSaverEncryptionGens,
   dockSaverEncryptionGensUncompressed
-} from './util';
+} from './types-and-consts';
 
 /**
  * Track `SetupParam` create during proving and verification. This class is meant for internal use only.

@@ -1,3 +1,5 @@
+import { BytearrayWrapper } from './bytearray-wrapper';
+
 export interface ISignatureParams {
   label?: Uint8Array;
 
@@ -13,3 +15,8 @@ export interface SignedMessages<Signature> {
   encodedMessages: { [key: string]: Uint8Array };
   signature: Signature;
 }
+
+/**
+ * The publicly known value (elliptic curve base point) which is used with (multiplied by) the secret key to generate the public key
+ */
+export class PublicKeyBase extends BytearrayWrapper {}

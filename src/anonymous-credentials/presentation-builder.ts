@@ -42,11 +42,10 @@ import {
   IPresentedStatus,
   PresentationSpecification
 } from './presentation-specification';
-import { Presentation } from './presentation';
+import { buildContextForProof, Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
 import {
   accumulatorStatement,
-  buildContextForProof,
   buildSignatureStatementFromParamsRef,
   buildWitness,
   createWitEq,
@@ -845,6 +844,7 @@ export class PresentationBuilder extends Versioned {
         this.spec.blindCredentialRequest.bounds = this.formatAttributesForSpec(this.blindCredReq.bounds);
       }
 
+      // Create statements, witnesses and meta-statements for verifiable encryption of blinded attributes
       if (this.blindCredReq.verifEnc.size > 0) {
         const tempMap = new Map();
         this.processVerifiableEncs(
@@ -864,6 +864,7 @@ export class PresentationBuilder extends Versioned {
         );
       }
 
+      // Create statements, witnesses and meta-statements for enforcing Circom predicates on blinded attributes
       if (this.blindCredReq.circPred.length > 0) {
         this.processCircomPredicates(
           pedCommStId,
@@ -879,6 +880,7 @@ export class PresentationBuilder extends Versioned {
         this.spec.blindCredentialRequest.circomPredicates = predicatesForSpec;
       }
 
+      // Create statements, witnesses and meta-statements for pseudonyms bounded to blinded and/or credential attributes
       if (this.blindCredReq.pseudonyms.length > 0) {
         const presentedBoundedPseudonyms = {};
         for (const attributeBoundPseudonym of this.blindCredReq.pseudonyms) {

@@ -38,8 +38,8 @@ describe(`${Scheme} signature sunny day scenario`, () => {
     const sk = SecretKey.generate(isPS() ? messageCount : void 0);
     const pk = isBBSPlus() ? sk.generatePublicKeyG2(params) : sk.generatePublicKey(params);
 
-    const sig = Signature.generate(messages, sk, params);
-    const result = sig.verify(messages, pk, params);
+    const sig = isPS() ? Signature.generate(messages, sk, params) : Signature.generate(messages, sk, params, false);
+    const result = isPS() ? sig.verify(messages, pk, params) : sig.verify(messages, pk, params, false);
     console.log(`Signature verified ? ${JSON.stringify(result)}`);
     expect(result.verified).toEqual(true);
 
@@ -56,11 +56,11 @@ describe(`${Scheme} signature sunny day scenario`, () => {
     const protocol = isPS()
       ? PoKSignatureProtocol.initialize(messages, sig, pk, params, blindings, revealed)
       : PoKSignatureProtocol.initialize(messages, sig, params, false, blindings, revealed);
-    const challengeContributionP = protocol.challengeContribution(params, pk);
+    const challengeContributionP = isPS() ? protocol.challengeContribution(params, pk) : protocol.challengeContribution(params, false, revealedMsgs);
     const challengeProver = bytesToChallenge(challengeContributionP);
     const proof = protocol.generateProof(challengeProver);
 
-    let challengeContributionV = proof.challengeContribution(params, pk);
+    let challengeContributionV = isPS() ? proof.challengeContribution(params, pk) : proof.challengeContribution(params, false, revealedMsgs);
     let challengeVerifier = bytesToChallenge(challengeContributionV);
 
     const result1 = isPS()
@@ -96,29 +96,34 @@ describe(`${Scheme} signature`, () => {
 
     expect(pk.isValid()).toEqual(true);
 
-    const sig = Signature.generate(messages, sk, params);
-    expect(sig.verify(messages, pk, params).verified).toEqual(true);
+    const sig = isPS() ? Signature.generate(messages, sk, params) : Signature.generate(messages, sk, params, false);
+    let result = isPS() ? sig.verify(messages, pk, params) : sig.verify(messages, pk, params, false);
+    expect(result.verified).toEqual(true);
     // Passing different `encodeMessages` to verify and sign results in error
-    expect(() => sig.verify(getMessages(messageCount), pk, params)).toThrow();
+    expect(() => isPS() ? sig.verify(getMessages(messageCount), pk, params) : sig.verify(getMessages(messageCount), pk, params, false)).toThrow();
 
     // Pre encoded message
-    const sig1 = Signature.generate(messages, sk, params);
-    expect(sig1.verify(messages, pk, params).verified).toEqual(true);
+    const sig1 = isPS() ? Signature.generate(messages, sk, params) : Signature.generate(messages, sk, params, false);
+    result = isPS() ? sig1.verify(messages, pk, params) : sig.verify(messages, pk, params, false);
+    expect(result.verified).toEqual(true);
 
     // No revealed messages and no user supplied blindings
     let protocol = isPS()
       ? PoKSignatureProtocol.initialize(messages, sig, pk, params, blindings)
       : PoKSignatureProtocol.initialize(messages, sig, params, false, blindings);
-    let challengeContributionP = protocol.challengeContribution(params, pk);
+    let challengeContributionP = isPS() ? protocol.challengeContribution(params, pk) : protocol.challengeContribution(params, false, new Map());
     let challengeProver = bytesToChallenge(challengeContributionP);
     let proof = protocol.generateProof(challengeProver);
 
-    let challengeContributionV = proof.challengeContribution(params, pk);
+    let challengeContributionV = isPS() ? proof.challengeContribution(params, pk) : proof.challengeContribution(params, false, new Map());
     let challengeVerifier = bytesToChallenge(challengeContributionV);
 
     expect(challengeProver).toEqual(challengeVerifier);
 
-    expect(proof.verify(challengeVerifier, pk, params).verified).toEqual(true);
+    result = isPS()
+      ? proof.verify(challengeVerifier, pk, params, new Map())
+      : proof.verify(challengeVerifier, pk, params, false, new Map());
+    expect(result.verified).toEqual(true);
 
     // 2 revealed messages but no user supplied blindings
     let revealed: Set<number> = new Set();
@@ -131,11 +136,11 @@ describe(`${Scheme} signature`, () => {
     protocol = isPS()
       ? PoKSignatureProtocol.initialize(messages, sig, pk, params, blindings, revealed)
       : PoKSignatureProtocol.initialize(messages, sig, params, false, blindings, revealed);
-    challengeContributionP = protocol.challengeContribution(params, pk);
+    challengeContributionP = isPS() ? protocol.challengeContribution(params, pk) : protocol.challengeContribution(params, false, revealedMsgs);
     challengeProver = bytesToChallenge(challengeContributionP);
     proof = protocol.generateProof(challengeProver);
 
-    challengeContributionV = proof.challengeContribution(params, pk);
+    challengeContributionV = isPS() ? proof.challengeContribution(params, pk) : proof.challengeContribution(params, false, revealedMsgs);
     challengeVerifier = bytesToChallenge(challengeContributionV);
 
     expect(challengeProver).toEqual(challengeVerifier);
@@ -152,11 +157,11 @@ describe(`${Scheme} signature`, () => {
     protocol = isPS()
       ? PoKSignatureProtocol.initialize(messages, sig, pk, params, blindings, revealed)
       : PoKSignatureProtocol.initialize(messages, sig, params, false, blindings, revealed);
-    challengeContributionP = protocol.challengeContribution(params, pk);
+    challengeContributionP = isPS() ? protocol.challengeContribution(params, pk) : protocol.challengeContribution(params, false, revealedMsgs);
     challengeProver = bytesToChallenge(challengeContributionP);
     proof = protocol.generateProof(challengeProver);
 
-    challengeContributionV = proof.challengeContribution(params, pk);
+    challengeContributionV = isPS() ? proof.challengeContribution(params, pk) : proof.challengeContribution(params, false, revealedMsgs);
     challengeVerifier = bytesToChallenge(challengeContributionV);
 
     expect(challengeProver).toEqual(challengeVerifier);
@@ -295,8 +300,9 @@ describe(`${Scheme} signature`, () => {
       const sk = SecretKey.generate(isPS() ? messages.length : void 0);
       const pk = isBBSPlus() ? sk.generatePublicKeyG2(params) : sk.generatePublicKey(params);
 
-      const sig = Signature.generate(encodedMessages, sk, params);
-      expect(sig.verify(encodedMessages, pk, params).verified).toEqual(true);
+      const sig = isPS() ? Signature.generate(encodedMessages, sk, params) : Signature.generate(encodedMessages, sk, params, false);
+      const result = isPS() ? sig.verify(encodedMessages, pk, params) : sig.verify(encodedMessages, pk, params, false);
+      expect(result.verified).toEqual(true);
 
       // Reveal all messages! This is done for testing purposes only.
       let revealed: Set<number> = new Set();
@@ -309,11 +315,11 @@ describe(`${Scheme} signature`, () => {
         ? PoKSignatureProtocol.initialize(encodedMessages, sig, pk, params, blindings, revealed)
         : PoKSignatureProtocol.initialize(encodedMessages, sig, params, false, blindings, revealed);
 
-      const challengeContributionP = protocol.challengeContribution(params, pk);
+      const challengeContributionP = isPS() ? protocol.challengeContribution(params, pk) : protocol.challengeContribution(params, false, revealedMsgs);
       const challengeProver = bytesToChallenge(challengeContributionP);
       const proof = protocol.generateProof(challengeProver);
 
-      const challengeContributionV = proof.challengeContribution(params, pk);
+      const challengeContributionV = isPS() ? proof.challengeContribution(params, pk) : proof.challengeContribution(params, false, revealedMsgs);
       const challengeVerifier = bytesToChallenge(challengeContributionV);
 
       expect(challengeProver).toEqual(challengeVerifier);

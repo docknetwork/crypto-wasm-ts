@@ -275,15 +275,6 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
       )
     ).toEqual(true);
 
-    /*const credJson = blindedCred.toJSON();
-    const recreatedCred = isBBS() ? BBSBlindedCredential.fromJSON(credJson) : BBSPlusBlindedCredential.fromJSON(credJson);
-    // @ts-ignore
-    const cred = isBBS()
-      // @ts-ignore
-      ? recreatedCred.toCredential(blindedSubject)
-      : recreatedCred.toCredential(blindedSubject, blinding);
-    checkResult(cred.verify(pk1));
-    expect(recreatedCred.toJSON()).toEqual(credJson);*/
     checkBlindedCredJson(blindedCred, pk1, blindedSubject, blinding);
   });
 
