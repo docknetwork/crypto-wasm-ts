@@ -1,7 +1,8 @@
 import { SetupParam } from '../composite-proof';
 import {
   dockAccumulatorMemProvingKey,
-  dockAccumulatorNonMemProvingKey, dockAccumulatorParams,
+  dockAccumulatorNonMemProvingKey,
+  dockAccumulatorParams,
   dockSaverEncryptionGens,
   dockSaverEncryptionGensUncompressed
 } from './types-and-consts';

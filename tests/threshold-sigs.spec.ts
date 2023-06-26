@@ -63,8 +63,12 @@ describe('Threshold BBS+ and BBS', () => {
       keygenBbsPlus.push(new ParticipantG2(i, threshold, total, protocolIdBbsPlus));
       keygenBbs.push(new ParticipantG2(i, threshold, total, protocolIdBbs));
     }
+
+    // The public key in both BBS+ and BBS uses the elliptic curve point from signature params
     const pkBaseBbsPlus = ParticipantG2.generatePublicKeyBaseFromBbsPlusParams(paramsBbsPlus);
     const pkBaseBbs = ParticipantG2.generatePublicKeyBaseFromBbsParams(paramsBbs);
+
+    // All participants generate their secret key, public key and the threshold key
     const [s1, p1, t1] = runFrostKeygen(keygenBbsPlus, pkBaseBbsPlus);
     const [s2, p2, t2] = runFrostKeygen(keygenBbs, pkBaseBbs);
 
@@ -87,6 +91,7 @@ describe('Threshold BBS+ and BBS', () => {
   });
 
   it("run base OT phase", () => {
+    // The base OT phase will be used for both BBS+ and BBS
     let pkBase = new PublicKeyBase(generateRandomG1Element());
     const participants: BaseOTParticipant[] = [];
     const senderPks = new Map<number, Map<number, SenderPublicKey>>();
@@ -144,7 +149,7 @@ describe('Threshold BBS+ and BBS', () => {
       const others = new Set(participatingSignerIds);
       others.delete(i);
       // @ts-ignore
-      const signer = new signerClass(i, others, sigBatchSize, protocolId);
+      const signer = new signerClass(i, others, threshold, sigBatchSize, protocolId);
       signers.push(signer);
     }
 
@@ -160,12 +165,24 @@ describe('Threshold BBS+ and BBS', () => {
     }
 
     for (let i = 0; i < threshold; i++) {
+      expect(signers[i].hasReceivedCommitmentsFromAll()).toEqual(false);
+    }
+
+    for (let i = 0; i < threshold; i++) {
       for (const [senderId, comm] of comms) {
         const receiverId = signers[i].id;
         if (receiverId !== senderId) {
           signers[i].processReceivedCommitments(senderId, comm, commsZero.get(senderId)?.get(receiverId) as CommitmentsForZeroSharing);
         }
       }
+    }
+
+    for (let i = 0; i < threshold; i++) {
+      expect(signers[i].hasReceivedCommitmentsFromAll()).toEqual(true);
+    }
+
+    for (let i = 0; i < threshold; i++) {
+      expect(signers[i].hasReceivedSharesFromAll()).toEqual(false);
     }
 
     for (let senderId = 1; senderId <= threshold; senderId++) {
@@ -175,6 +192,25 @@ describe('Threshold BBS+ and BBS', () => {
           signers[receiverId - 1].processReceivedShares(senderId, s, z);
         }
       }
+    }
+
+    for (let i = 0; i < threshold; i++) {
+      expect(signers[i].hasReceivedSharesFromAll()).toEqual(true);
+    }
+
+    // Test if `getSharesForOtherSigners` works correctly
+    for (let senderId = 1; senderId <= threshold; senderId++) {
+      const receivers: number[] = [];
+      const shares = [];
+      for (let receiverId = 1; receiverId <= threshold; receiverId++) {
+        if (receiverId !== senderId) {
+          const s = signers[senderId - 1].getSharesForOtherSigner(receiverId);
+          // @ts-ignore
+          shares.push(s);
+          receivers.push(receiverId);
+        }
+      }
+      expect(signers[senderId - 1].getSharesForOtherSigners(receivers)).toEqual(shares);
     }
 
     for (let i = 0; i < threshold; i++) {
