@@ -1,4 +1,4 @@
-import { bytearrayToHex } from './util';
+import { bytearrayToHex, hexToBytearray } from './util';
 
 /**
  * Wraps a bytearray, i.e. Uint8Array. Used to give distinct types to objects as most of them are bytearrays because that
@@ -34,5 +34,9 @@ export class BytearrayWrapper {
    */
   get hex(): string {
     return bytearrayToHex(this.value);
+  }
+
+  static fromHex(hex: string) {
+    return new this(hexToBytearray(hex));
   }
 }

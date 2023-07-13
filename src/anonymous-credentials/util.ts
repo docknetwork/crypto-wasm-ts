@@ -194,8 +194,9 @@ export function buildWitness(signature: Signature, unrevealedMessages: Map<numbe
 }
 
 /**
- * Returns signature params adapted for the provided message count reusing them from the provided map.
- * @param sigParamsByScheme
+ * Returns signature params adapted for the provided message count reusing them from the provided map. Acts as a cache lookup
+ * and can update the cache.
+ * @param sigParamsByScheme - The cache of signature params
  * @param paramsClass
  * @param msgCount
  */

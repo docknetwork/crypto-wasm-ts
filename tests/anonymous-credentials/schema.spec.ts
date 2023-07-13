@@ -15,10 +15,8 @@ import {
   TYPE_STR
 } from '../../src';
 import { getExampleSchema } from './utils';
-import * as util from 'util';
-import { Scheme } from '../scheme';
 
-describe(`${Scheme} Credential Schema`, () => {
+describe('Credential Schema', () => {
   beforeAll(async () => {
     await initializeWasm();
   });
@@ -738,13 +736,14 @@ describe(`${Scheme} Credential Schema`, () => {
   });
 
   it('to and from JSON', () => {
-    for (let i = 1; i <= 11; i++) {
+    for (let i = 1; i <= 12; i++) {
       const schema = getExampleSchema(i);
       const cs = new CredentialSchema(schema);
       const j = cs.toJSON();
       expect(CredentialSchema.asEmbeddedJsonSchema(cs.jsonSchema)).toEqual(j[ID_STR]);
       expect(CredentialSchema.extractJsonSchemaFromEmbedded(j[ID_STR])).toEqual(cs.jsonSchema);
       const recreatedCs = CredentialSchema.fromJSON(j);
+      expect(j).toEqual(recreatedCs.toJSON());
       expect(cs.version).toEqual(recreatedCs.version);
       expect(cs.jsonSchema).toEqual(recreatedCs.jsonSchema);
       expect(cs.schema).toEqual(recreatedCs.schema);
@@ -757,7 +756,7 @@ describe(`${Scheme} Credential Schema`, () => {
       // TODO: Test encoding functions are same as well, this can be done in the credentials suite by using a deserialized schema
     }
 
-    // version should match what was in JSON and not whats in `CredentialSchema` class
+    // version should match what was in JSON and not what's in `CredentialSchema` class
     const cs1 = new CredentialSchema(getExampleSchema(1));
     const j1 = cs1.toJSON();
     j1[VERSION_STR] = '91.329.68';

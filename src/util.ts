@@ -91,6 +91,14 @@ export function bytearrayToHex(b: Uint8Array): string {
   return hex;
 }
 
+export function hexToBytearray(h: string): Uint8Array {
+  const bytes = new Array<number>(h.length / 2);
+  for (let c = 0; c < h.length; c += 2) {
+    bytes[c / 2] = parseInt(h.substring(c, c + 2), 16);
+  }
+  return new Uint8Array(bytes);
+}
+
 export function bytearrayToBase64(b: Uint8Array): string {
   return Buffer.from(b).toString('base64');
 }

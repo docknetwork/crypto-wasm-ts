@@ -6,7 +6,7 @@ import {
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
-  STATUS_TYPE_STR,
+  VB_ACCUMULATOR_22,
   SUBJECT_STR,
   TYPE_STR
 } from '../../src';
@@ -282,7 +282,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
       [ID_STR]: 'dock:accumulator:accumId123',
       [REV_CHECK_STR]: MEM_CHECK_STR,
       [REV_ID_STR]: 'user:A-123',
-      [TYPE_STR]: STATUS_TYPE_STR
+      [TYPE_STR]: VB_ACCUMULATOR_22
     });
     // In practice there will be an accumulator as well
   });

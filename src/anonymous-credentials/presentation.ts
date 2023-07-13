@@ -21,19 +21,25 @@ import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { flatten } from 'flat';
 import {
   AttributeCiphertexts,
+  BBS_BLINDED_CRED_PROOF_TYPE,
+  BBS_PLUS_BLINDED_CRED_PROOF_TYPE,
   CRYPTO_VERSION_STR,
   FlattenedSchema,
   ID_STR,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
+  BlindSignatureTypes,
+  RevocationStatusProtocols,
+  SignatureTypes,
   PredicateParamType,
   PublicKey,
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
-  SIG_TYPE_BBS,
-  SIG_TYPE_BBS_PLUS,
-  STATUS_STR
+  STATUS_STR,
+  BoundCheckProtocols,
+  VerifiableEncryptionProtocols,
+  CircomProtocols
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
@@ -207,8 +213,10 @@ export class Presentation extends Versioned {
       metaStatements.addWitnessEquality(witnessEq);
     });
 
-    for (const eql of this.spec.attributeEqualities) {
-      metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
+    if (this.spec.attributeEqualities !== undefined) {
+      for (const eql of this.spec.attributeEqualities) {
+        metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
+      }
     }
 
     boundsAux.forEach(([i, b]) => {
@@ -290,28 +298,32 @@ export class Presentation extends Versioned {
     }
 
     // verify boundedPseudonyms
-    for (const [pseudonym, boundedPseudonym] of Object.entries(this.spec.boundedPseudonyms)) {
-      const sIdx = createPseudonymStatement(pseudonym, boundedPseudonym.commitKey);
+    if (this.spec.boundedPseudonyms !== undefined) {
+      for (const [pseudonym, boundedPseudonym] of Object.entries(this.spec.boundedPseudonyms)) {
+        const sIdx = createPseudonymStatement(pseudonym, boundedPseudonym.commitKey);
 
-      let attrIdx = 0; // mirroring how it is constructed on the prover side
-      for (const [credIdx, attributeNames] of Object.entries(boundedPseudonym.attributes)) {
-        attrIdx = addWitnessEqualitiesForPseudonym(
-          attributeNames,
-          (n: string) => {
-            return flattenedSchemas[credIdx][0].indexOf(n);
-          },
-          parseInt(credIdx),
-          sIdx,
-          attrIdx
-        );
+        let attrIdx = 0; // mirroring how it is constructed on the prover side
+        for (const [credIdx, attributeNames] of Object.entries(boundedPseudonym.attributes)) {
+          attrIdx = addWitnessEqualitiesForPseudonym(
+            attributeNames,
+            (n: string) => {
+              return flattenedSchemas[credIdx][0].indexOf(n);
+            },
+            parseInt(credIdx),
+            sIdx,
+            attrIdx
+          );
+        }
       }
     }
 
     // verify unboundedPseudonyms
-    for (const [pseudonym, unboundedPseudonym] of Object.entries(this.spec.unboundedPseudonyms)) {
-      const baseForSecretKey = PseudonymBases.encodeBaseForSecretKey(unboundedPseudonym.commitKey.baseForSecretKey);
-      const statement = Statement.pseudonymVerifier(Pseudonym.encode(pseudonym), baseForSecretKey);
-      statements.add(statement);
+    if (this.spec.unboundedPseudonyms !== undefined) {
+      for (const [pseudonym, unboundedPseudonym] of Object.entries(this.spec.unboundedPseudonyms)) {
+        const baseForSecretKey = PseudonymBases.encodeBaseForSecretKey(unboundedPseudonym.commitKey.baseForSecretKey);
+        const statement = Statement.pseudonymVerifier(Pseudonym.encode(pseudonym), baseForSecretKey);
+        statements.add(statement);
+      }
     }
 
     if (this.spec.blindCredentialRequest !== undefined) {
@@ -331,10 +343,10 @@ export class Presentation extends Versioned {
       // Offset of attributes in the Pedersen Commitment, its 0 for BBS and 1 for BBS+ as the commitment in BBS+ is perfectly hiding.
       let pedCommWitnessOffset;
 
-      if (sigType === SIG_TYPE_BBS) {
+      if (sigType === BBS_BLINDED_CRED_PROOF_TYPE) {
         sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BBSSignatureParams, numAttribs);
         pedCommWitnessOffset = 0;
-      } else if (sigType === SIG_TYPE_BBS_PLUS) {
+      } else if (sigType === BBS_PLUS_BLINDED_CRED_PROOF_TYPE) {
         sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BBSPlusSignatureParamsG1, numAttribs);
         pedCommWitnessOffset = 1;
       } else {
@@ -357,14 +369,16 @@ export class Presentation extends Versioned {
         }
       };
 
-      for (const [name, otherAttributeRefs] of this.spec.blindCredentialRequest.blindedAttributeEqualities) {
-        const index = blindedSubjectNameToIndex.get(name);
-        if (index === undefined) {
-          throw new Error(`Missing attribute ${name} in subject to index map`);
+      if (this.spec.blindCredentialRequest.blindedAttributeEqualities !== undefined) {
+        for (const [name, otherAttributeRefs] of this.spec.blindCredentialRequest.blindedAttributeEqualities) {
+          const index = blindedSubjectNameToIndex.get(name);
+          if (index === undefined) {
+            throw new Error(`Missing attribute ${name} in subject to index map`);
+          }
+          metaStatements.addWitnessEquality(
+            createWitEqForBlindedCred(pedCommStId, getAttrIndexInPedComm(index), otherAttributeRefs, flattenedSchemas)
+          );
         }
-        metaStatements.addWitnessEquality(
-          createWitEqForBlindedCred(pedCommStId, getAttrIndexInPedComm(index), otherAttributeRefs, flattenedSchemas)
-        );
       }
 
       if (this.spec.blindCredentialRequest.bounds !== undefined) {
@@ -631,8 +645,9 @@ export class Presentation extends Versioned {
   }
 
   toJSON(): object {
-    const attributeCiphertexts = {};
+    let attributeCiphertexts;
     if (this.attributeCiphertexts !== undefined) {
+      attributeCiphertexts = {};
       for (const [i, v] of this.attributeCiphertexts.entries()) {
         attributeCiphertexts[i] = {};
         Presentation.ciphertextToBs58(v, attributeCiphertexts[i]);
@@ -684,21 +699,38 @@ export class Presentation extends Versioned {
       }
     }
 
-    return {
+    const spec = {
+      credentials: creds
+    };
+    if (this.spec.attributeEqualities !== undefined) {
+      spec['attributeEqualities'] = this.spec.attributeEqualities;
+    }
+    if (this.spec.boundedPseudonyms !== undefined) {
+      spec['boundedPseudonyms'] = this.spec.boundedPseudonyms;
+    }
+    if (this.spec.unboundedPseudonyms !== undefined) {
+      spec['unboundedPseudonyms'] = this.spec.unboundedPseudonyms;
+    }
+    if (blindCredentialRequest !== undefined) {
+      spec['blindCredentialRequest'] = blindCredentialRequest;
+    }
+
+    const p = {
       version: this.version,
       context: this.context,
       nonce: this.nonce ? b58.encode(this.nonce) : null,
-      spec: {
-        credentials: creds,
-        attributeEqualities: this.spec.attributeEqualities,
-        boundedPseudonyms: this.spec.boundedPseudonyms,
-        unboundedPseudonyms: this.spec.unboundedPseudonyms,
-        blindCredentialRequest
-      },
-      attributeCiphertexts,
-      blindedAttributeCiphertexts,
+      spec,
       proof: b58.encode(this.proof.bytes)
     };
+
+    if (attributeCiphertexts !== undefined) {
+      p['attributeCiphertexts'] = attributeCiphertexts;
+    }
+    if (blindedAttributeCiphertexts !== undefined) {
+      p['blindedAttributeCiphertexts'] = blindedAttributeCiphertexts;
+    }
+
+    return p;
   }
 
   // Store base58 representation of ciphertexts present in `v` in `ret`
@@ -753,6 +785,9 @@ export class Presentation extends Versioned {
     function formatCircomPreds(pred: object): ICircomPredicate[] {
       const circomPredicates = deepClone(pred) as object[];
       circomPredicates.forEach((cp) => {
+        if (cp['protocol'] !== undefined && !Object.values(CircomProtocols).includes(cp['protocol'])) {
+          throw new Error(`Unrecognized protocol ${cp['protocol']} for Circom`);
+        }
         cp['publicVars'] = cp['publicVars'].map((pv) => {
           return {
             varName: pv['varName'],
@@ -766,13 +801,54 @@ export class Presentation extends Versioned {
 
     const presSpec = new PresentationSpecification();
     for (const cred of spec['credentials']) {
-      let status, circomPredicates;
+      if (typeof cred['bounds'] === 'object') {
+        const bounds = flattenTill2ndLastKey(cred['bounds']);
+        for (let i = 0; i < bounds[0].length; i++) {
+          if (
+            bounds[1][i]['protocol'] !== undefined &&
+            !Object.values(BoundCheckProtocols).includes(bounds[1][i]['protocol'])
+          ) {
+            throw new Error(
+              `Unrecognized protocol ${bounds[1][i]['protocol']} for bound check for attribute ${bounds[0][i]}`
+            );
+          }
+        }
+      }
+
+      if (typeof cred['verifiableEncryptions'] === 'object') {
+        const vencs = flattenTill2ndLastKey(cred['verifiableEncryptions']);
+        for (let i = 0; i < vencs[0].length; i++) {
+          if (
+            vencs[1][i]['protocol'] !== undefined &&
+            !Object.values(VerifiableEncryptionProtocols).includes(vencs[1][i]['protocol'])
+          ) {
+            throw new Error(
+              `Unrecognized protocol ${vencs[1][i]['protocol']} for verifiable encryption for attribute ${vencs[0][i]}`
+            );
+          }
+        }
+      }
+
+      let status, circomPredicates, sigType;
       if (cred['status'] !== undefined) {
-        status = deepClone(cred['status']) as object;
-        status['accumulated'] = b58.decode(cred['status']['accumulated']);
+        if (Object.values(RevocationStatusProtocols).includes(cred['status']['type'])) {
+          status = deepClone(cred['status']) as object;
+          status['accumulated'] = b58.decode(cred['status']['accumulated']);
+        } else {
+          throw new Error(
+            `status type should be one of ${RevocationStatusProtocols} but was ${cred['status']['type']}`
+          );
+        }
       }
       if (cred['circomPredicates'] !== undefined) {
         circomPredicates = formatCircomPreds(cred['circomPredicates']);
+      }
+      if (cred['sigType'] !== undefined) {
+        if (Object.values(SignatureTypes).includes(cred['sigType'])) {
+          sigType = cred['sigType'];
+        } else {
+          throw new Error(`sigType should be one of ${SignatureTypes} but was ${cred['sigType']}`);
+        }
       }
       presSpec.addPresentedCredential(
         cred['version'],
@@ -781,15 +857,17 @@ export class Presentation extends Versioned {
         status,
         cred['bounds'],
         cred['verifiableEncryptions'],
-        circomPredicates
+        circomPredicates,
+        sigType
       );
     }
     presSpec.attributeEqualities = spec['attributeEqualities'];
     presSpec.boundedPseudonyms = spec['boundedPseudonyms'];
     presSpec.unboundedPseudonyms = spec['unboundedPseudonyms'];
 
-    const atc = new Map<number, AttributeCiphertexts>();
+    let atc;
     if (attributeCiphertexts !== undefined) {
+      atc = new Map<number, AttributeCiphertexts>();
       Object.keys(attributeCiphertexts).forEach((k) => {
         const c = attributeCiphertexts[k];
         const rc = {};
@@ -801,6 +879,9 @@ export class Presentation extends Versioned {
     let bac;
     if (spec['blindCredentialRequest'] !== undefined) {
       const req = deepClone(spec['blindCredentialRequest']) as object;
+      if (!Object.values(BlindSignatureTypes).includes(req['sigType'])) {
+        throw new Error(`sigType should be one of ${BlindSignatureTypes} but was ${req['sigType']}`);
+      }
       req['schema'] = CredentialSchema.fromJSON(JSON.parse(req['schema']));
       req['commitment'] = b58.decode(req['commitment']);
       if (blindedAttributeCiphertexts !== undefined) {

@@ -1,6 +1,5 @@
 import {
   AccumulatorPublicKey,
-  AttributeBoundPseudonym,
   CredentialSchema,
   dockAccumulatorParams,
   dockSaverEncryptionGens,
@@ -14,7 +13,7 @@ import {
   randomFieldElement,
   REV_ID_STR,
   STATUS_STR,
-  STATUS_TYPE_STR,
+  VB_ACCUMULATOR_22,
   SUBJECT_STR,
   TYPE_STR,
   SaverChunkedCommitmentGens,
@@ -23,7 +22,7 @@ import {
   SaverEncryptionKeyUncompressed,
   SaverProvingKeyUncompressed,
   SaverSecretKey,
-  SaverVerifyingKeyUncompressed,
+  SaverVerifyingKeyUncompressed, BoundCheckProtocols, VerifiableEncryptionProtocols
 } from '../../src';
 import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
@@ -129,9 +128,9 @@ describe(`${Scheme} Presentation creation and verification`, () => {
   beforeAll(async () => {
     await initializeWasm();
     const params = SignatureParams.generate(100, SignatureLabelBytes);
-    const keypair1 = KeyPair.generate(params);
-    const keypair2 = KeyPair.generate(params);
-    const keypair3 = KeyPair.generate(params);
+    const keypair1 = KeyPair.generate(params, stringToBytes('seed1'));
+    const keypair2 = KeyPair.generate(params, stringToBytes('seed2'));
+    const keypair3 = KeyPair.generate(params, stringToBytes('seed3'));
     const keypair4 = KeyPair.generate(params);
     sk1 = keypair1.sk;
     pk1 = keypair1.pk;
@@ -230,7 +229,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     credential3 = builder3.sign(sk3);
     checkResult(credential3.verify(pk3));
 
-    const accumKeypair3 = PositiveAccumulator.generateKeypair(dockAccumulatorParams());
+    const seed = stringToBytes('secret-seed-for-accum');
+    const accumKeypair3 = PositiveAccumulator.generateKeypair(dockAccumulatorParams(), seed);
     accumulator3Pk = accumKeypair3.publicKey;
     accumulator3 = PositiveAccumulator.initialize(dockAccumulatorParams());
     const accumState3 = new InMemoryState();
@@ -515,8 +515,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     // verify boundedPseudonym generated locally by prover
 
     const [decodedBoundedPseudonym, basesForAttributes, baseForSecretKey] = getDecodedBoundedPseudonym([credential1, credential1, credential2], ['SSN', 'email', 'sensitive.userId'], bases1ForAttributes, base1ForSecretKey, proverSecretKey1);
-    expect(Object.keys(pres1.spec.boundedPseudonyms).length).toEqual(1);
-    expect(pres1.spec.boundedPseudonyms[decodedBoundedPseudonym]).toEqual({
+    expect(Object.keys(pres1.spec.boundedPseudonyms as object).length).toEqual(1);
+    expect((pres1.spec.boundedPseudonyms as object)[decodedBoundedPseudonym]).toEqual({
       commitKey: {
         basesForAttributes: basesForAttributes,
         baseForSecretKey: baseForSecretKey
@@ -527,8 +527,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     // verify unboundedPseudonym generated locally by prover
     const expectedUnboundedPseudonym = Pseudonym.new(base1ForSecretKey, proverSecretKey1);
     const decodedUnboundedPseudonym = PseudonymBases.decode(expectedUnboundedPseudonym.value);
-    expect(Object.keys(pres1.spec.unboundedPseudonyms).length).toEqual(1);
-    expect(pres1.spec.unboundedPseudonyms[decodedUnboundedPseudonym]).toEqual({
+    expect(Object.keys(pres1.spec.unboundedPseudonyms as object).length).toEqual(1);
+    expect((pres1.spec.unboundedPseudonyms as object)[decodedUnboundedPseudonym]).toEqual({
       commitKey: {
         baseForSecretKey: baseForSecretKey
       }
@@ -576,6 +576,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     expect(pres.nonce).not.toBeDefined();
     checkResult(pres.verify([pk1]));
 
+    checkPresentationJson(pres, [pk1]);
+
     const builder2 = new PresentationBuilder();
     expect(builder2.addCredential(credential1, pk1)).toEqual(0);
     builder2.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
@@ -590,6 +592,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     expect(areUint8ArraysEqual(pres.nonce as Uint8Array, nonce)).toEqual(true);
     checkResult(pres.verify([pk1]));
 
+    checkPresentationJson(pres, [pk1]);
+
     const builder3 = new PresentationBuilder();
     expect(builder3.addCredential(credential1, pk1)).toEqual(0);
     builder3.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
@@ -602,6 +606,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     expect(pres.context).not.toBeDefined();
     expect(areUint8ArraysEqual(pres.nonce as Uint8Array, nonce)).toEqual(true);
     checkResult(pres.verify([pk1]));
+
+    checkPresentationJson(pres, [pk1]);
   });
 
   it('from a nested credential - `credential2`', () => {
@@ -664,7 +670,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     // are as expected
     expect(pres3.spec.getStatus(0)).toEqual({
       id: 'dock:accumulator:accumId123',
-      [TYPE_STR]: STATUS_TYPE_STR,
+      [TYPE_STR]: VB_ACCUMULATOR_22,
       revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
@@ -786,14 +792,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     // are as expected for both credentials
     expect(pres5.spec.getStatus(0)).toEqual({
       id: 'dock:accumulator:accumId123',
-      [TYPE_STR]: STATUS_TYPE_STR,
+      [TYPE_STR]: VB_ACCUMULATOR_22,
       revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
     });
     expect(pres5.spec.getStatus(1)).toEqual({
       id: 'dock:accumulator:accumId124',
-      [TYPE_STR]: STATUS_TYPE_STR,
+      [TYPE_STR]: VB_ACCUMULATOR_22,
       revocationCheck: 'membership',
       accumulated: accumulator4.accumulated,
       extra: { blockNo: 2010340 }
@@ -890,14 +896,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
     expect(pres6.spec.getStatus(2)).toEqual({
       id: 'dock:accumulator:accumId123',
-      [TYPE_STR]: STATUS_TYPE_STR,
+      [TYPE_STR]: VB_ACCUMULATOR_22,
       revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
     });
     expect(pres6.spec.getStatus(3)).toEqual({
       id: 'dock:accumulator:accumId124',
-      [TYPE_STR]: STATUS_TYPE_STR,
+      [TYPE_STR]: VB_ACCUMULATOR_22,
       revocationCheck: 'membership',
       accumulated: accumulator4.accumulated,
       extra: { blockNo: 2010340 }
@@ -972,17 +978,20 @@ describe(`${Scheme} Presentation creation and verification`, () => {
         timeOfBirth: {
           min: minTime,
           max: maxTime,
-          paramId: pkId
+          paramId: pkId,
+          protocol: BoundCheckProtocols.Legogroth16
         },
         BMI: {
           min: minBMI,
           max: maxBMI,
-          paramId: pkId
+          paramId: pkId,
+          protocol: BoundCheckProtocols.Legogroth16
         },
         score: {
           min: minScore,
           max: maxScore,
-          paramId: pkId
+          paramId: pkId,
+          protocol: BoundCheckProtocols.Legogroth16
         }
       }
     });
@@ -1055,17 +1064,20 @@ describe(`${Scheme} Presentation creation and verification`, () => {
         timeOfBirth: {
           min: minTime,
           max: maxTime,
-          paramId: pkId
+          paramId: pkId,
+          protocol: BoundCheckProtocols.Legogroth16
         },
         BMI: {
           min: minBMI,
           max: maxBMI,
-          paramId: pkId
+          paramId: pkId,
+          protocol: BoundCheckProtocols.Legogroth16
         },
         score: {
           min: minScore,
           max: maxScore,
-          paramId: pkId
+          paramId: pkId,
+          protocol: BoundCheckProtocols.Legogroth16
         }
       }
     });
@@ -1079,12 +1091,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
                 lat: {
                   min: minLat,
                   max: maxLat,
-                  paramId: pkId
+                  paramId: pkId,
+                  protocol: BoundCheckProtocols.Legogroth16
                 },
                 long: {
                   min: minLong,
                   max: maxLong,
-                  paramId: pkId
+                  paramId: pkId,
+                  protocol: BoundCheckProtocols.Legogroth16
                 }
               }
             }
@@ -1094,7 +1108,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     });
     expect(pres2.spec.getStatus(2)).toEqual({
       id: 'dock:accumulator:accumId123',
-      [TYPE_STR]: STATUS_TYPE_STR,
+      [TYPE_STR]: VB_ACCUMULATOR_22,
       revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
@@ -1148,7 +1162,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
           chunkBitSize,
           commitmentGensId: commGensId,
           encryptionKeyId: ekId,
-          snarkKeyId: snarkPkId
+          snarkKeyId: snarkPkId,
+          protocol: VerifiableEncryptionProtocols.Saver
         }
       }
     });
@@ -1227,7 +1242,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
           chunkBitSize,
           commitmentGensId: commGensId,
           encryptionKeyId: ekId,
-          snarkKeyId: snarkPkId
+          snarkKeyId: snarkPkId,
+          protocol: VerifiableEncryptionProtocols.Saver
         }
       }
     });
@@ -1238,14 +1254,15 @@ describe(`${Scheme} Presentation creation and verification`, () => {
             chunkBitSize,
             commitmentGensId: commGensId,
             encryptionKeyId: ekId,
-            snarkKeyId: snarkPkId
+            snarkKeyId: snarkPkId,
+            protocol: VerifiableEncryptionProtocols.Saver
           }
         }
       }
     });
     expect(pres2.spec.getStatus(2)).toEqual({
       id: 'dock:accumulator:accumId123',
-      [TYPE_STR]: STATUS_TYPE_STR,
+      [TYPE_STR]: VB_ACCUMULATOR_22,
       revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
@@ -1399,17 +1416,20 @@ describe(`${Scheme} Presentation creation and verification`, () => {
         timeOfBirth: {
           min: minTime,
           max: maxTime,
-          paramId: boundCheckSnarkId
+          paramId: boundCheckSnarkId,
+          protocol: BoundCheckProtocols.Legogroth16
         },
         BMI: {
           min: minBMI,
           max: maxBMI,
-          paramId: boundCheckSnarkId
+          paramId: boundCheckSnarkId,
+          protocol: BoundCheckProtocols.Legogroth16
         },
         score: {
           min: minScore,
           max: maxScore,
-          paramId: boundCheckSnarkId
+          paramId: boundCheckSnarkId,
+          protocol: BoundCheckProtocols.Legogroth16
         }
       }
     });
@@ -1419,7 +1439,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
           chunkBitSize,
           commitmentGensId: commGensId,
           encryptionKeyId: ekId,
-          snarkKeyId: snarkPkId
+          snarkKeyId: snarkPkId,
+          protocol: VerifiableEncryptionProtocols.Saver
         }
       }
     });
@@ -1434,12 +1455,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
                 lat: {
                   min: minLat,
                   max: maxLat,
-                  paramId: boundCheckSnarkId
+                  paramId: boundCheckSnarkId,
+                  protocol: BoundCheckProtocols.Legogroth16
                 },
                 long: {
                   min: minLong,
                   max: maxLong,
-                  paramId: boundCheckSnarkId
+                  paramId: boundCheckSnarkId,
+                  protocol: BoundCheckProtocols.Legogroth16
                 }
               }
             }
@@ -1454,14 +1477,15 @@ describe(`${Scheme} Presentation creation and verification`, () => {
             chunkBitSize,
             commitmentGensId: commGensId,
             encryptionKeyId: ekId,
-            snarkKeyId: snarkPkId
+            snarkKeyId: snarkPkId,
+            protocol: VerifiableEncryptionProtocols.Saver
           }
         }
       }
     });
     expect(pres1.spec.getStatus(2)).toEqual({
       id: 'dock:accumulator:accumId123',
-      [TYPE_STR]: STATUS_TYPE_STR,
+      [TYPE_STR]: VB_ACCUMULATOR_22,
       revocationCheck: 'membership',
       accumulated: accumulator3.accumulated,
       extra: { blockNo: 2010334 }
@@ -1609,12 +1633,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
               lat: {
                 min: minLat0,
                 max: maxLat0,
-                paramId: boundCheckSnarkId
+                paramId: boundCheckSnarkId,
+                protocol: BoundCheckProtocols.Legogroth16
               },
               long: {
                 min: minLong0,
                 max: maxLong0,
-                paramId: boundCheckSnarkId
+                paramId: boundCheckSnarkId,
+                protocol: BoundCheckProtocols.Legogroth16
               }
             }
           }
@@ -1625,12 +1651,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
               lat: {
                 min: minLat1,
                 max: maxLat1,
-                paramId: boundCheckSnarkId
+                paramId: boundCheckSnarkId,
+                protocol: BoundCheckProtocols.Legogroth16
               },
               long: {
                 min: minLong1,
                 max: maxLong1,
-                paramId: boundCheckSnarkId
+                paramId: boundCheckSnarkId,
+                protocol: BoundCheckProtocols.Legogroth16
               }
             }
           }
@@ -1641,12 +1669,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
               lat: {
                 min: minLat2,
                 max: maxLat2,
-                paramId: boundCheckSnarkId
+                paramId: boundCheckSnarkId,
+                protocol: BoundCheckProtocols.Legogroth16
               },
               long: {
                 min: minLong2,
                 max: maxLong2,
-                paramId: boundCheckSnarkId
+                paramId: boundCheckSnarkId,
+                protocol: BoundCheckProtocols.Legogroth16
               }
             }
           }
@@ -1765,12 +1795,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       issuanceDate: {
         min: minIssuanceDate,
         max: maxIssuanceDate,
-        paramId: boundCheckSnarkId
+        paramId: boundCheckSnarkId,
+        protocol: BoundCheckProtocols.Legogroth16
       },
       expirationDate: {
         min: minExpDate,
         max: maxExpDate,
-        paramId: boundCheckSnarkId
+        paramId: boundCheckSnarkId,
+        protocol: BoundCheckProtocols.Legogroth16
       }
     });
 

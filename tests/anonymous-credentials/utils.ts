@@ -17,6 +17,7 @@ import {
 import { Credential, CredentialBuilder, Presentation, PublicKey } from '../scheme';
 import * as _ from 'lodash';
 import { checkResult } from '../utils';
+import fs from 'fs';
 
 export function getExampleSchema(num): IJsonSchema {
   const schema = CredentialSchema.essential();
@@ -605,4 +606,12 @@ export function checkPresentationJson(pres: Presentation, pks: PublicKey[], accu
   const recreatedPres = Presentation.fromJSON(presJson);
   checkResult(recreatedPres.verify(pks, accumulatorPublicKeys, predicateParams, circomOutputs));
   expect(presJson).toEqual(recreatedPres.toJSON());
+}
+
+export function writeSerializedObject(obj: any, fileName: string) {
+  if (Array.isArray(obj)) {
+    fs.writeFileSync(`${__dirname}/serialized-objects/${fileName}`, new Uint8Array(obj));
+  } else {
+    fs.writeFileSync(`${__dirname}/serialized-objects/${fileName}`, obj);
+  }
 }

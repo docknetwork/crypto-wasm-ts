@@ -11,11 +11,12 @@ import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   BlindedAttributeEquality,
+  BlindSignatureTypes,
+  BoundCheckProtocols,
   PublicKey,
-  SIG_TYPE_BBS,
-  SIG_TYPE_BBS_PLUS,
   SignatureParams,
-  SUBJECT_STR
+  SUBJECT_STR,
+  VerifiableEncryptionProtocols
 } from './types-and-consts';
 import { AccumulatorPublicKey, AccumulatorWitness } from '../accumulator';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
@@ -47,7 +48,10 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   // underlying crypto changes.
   static VERSION = '0.1.0';
 
+  // The schema of the whole (unblinded credential). This should include all attributes, i.e. blinded and unblinded
   _schema?: CredentialSchema;
+
+  // The attributes of the credential subject that will be blinded (hidden from the issuer)
   _subjectToBlind?: object | object[];
 
   protected sigParams?: SignatureParams;
@@ -98,6 +102,13 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     return this._schema;
   }
 
+  /**
+   * Create a commitment to the blinded attributes.
+   * @param encodedSubject - The blinded attributes in encoded (as a field element) form. The key of the map is the index
+   * of the attributes in the flattened attributes list
+   * @param totalAttributes - Total number of attributes (blinded and unblinded) in the credential
+   * @param labelOrParams - Signature params or the label to generate them.
+   */
   abstract computeCommitment(
     encodedSubject: Map<number, Uint8Array>,
     totalAttributes: number,
@@ -106,7 +117,9 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
 
   abstract getBlinding(): Uint8Array | undefined;
 
-  abstract getSigType(): string;
+  static getSigType(): BlindSignatureTypes {
+    throw new Error('This method should be implemented by extending class');
+  }
 
   addCredentialToPresentation(credential: Credential, pk: PublicKey): number {
     return this.presentationBuilder.addCredential(credential, pk);
@@ -231,7 +244,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     if (this.bounds.get(attributeName) !== undefined) {
       throw new Error(`Already enforced bounds on attribute ${attributeName}`);
     }
-    this.bounds.set(attributeName, { min, max, paramId: provingKeyId });
+    this.bounds.set(attributeName, { min, max, paramId: provingKeyId, protocol: BoundCheckProtocols.Legogroth16 });
     this.presentationBuilder.updatePredicateParams(provingKeyId, provingKey);
   }
 
@@ -255,7 +268,8 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
       chunkBitSize,
       commitmentGensId: commGensId,
       encryptionKeyId: encryptionKeyId,
-      snarkKeyId: snarkPkId
+      snarkKeyId: snarkPkId,
+      protocol: VerifiableEncryptionProtocols.Saver
     });
     this.presentationBuilder.updatePredicateParams(commGensId, commGens);
     this.presentationBuilder.updatePredicateParams(encryptionKeyId, encryptionKey);
@@ -350,7 +364,8 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     const commitment = this.computeCommitment(encodedSubject, flattenedSchema[0].length, sigParams);
     this.presentationBuilder.blindCredReq = {
       req: {
-        sigType: this.getSigType(),
+        // @ts-ignore
+        sigType: this.constructor.getSigType(),
         version: this.version,
         schema,
         blindedAttributes,
@@ -399,8 +414,8 @@ export class BBSBlindedCredentialRequestBuilder extends BlindedCredentialRequest
     return undefined;
   }
 
-  getSigType(): string {
-    return SIG_TYPE_BBS;
+  static getSigType(): BlindSignatureTypes {
+    return BlindSignatureTypes.Bbs;
   }
 }
 
@@ -441,8 +456,8 @@ export class BBSPlusBlindedCredentialRequestBuilder extends BlindedCredentialReq
     return commitment;
   }
 
-  getSigType(): string {
-    return SIG_TYPE_BBS_PLUS;
+  static getSigType(): BlindSignatureTypes {
+    return BlindSignatureTypes.BbsPlus;
   }
 }
 

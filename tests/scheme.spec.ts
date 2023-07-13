@@ -1,5 +1,10 @@
 import { generateRandomG1Element, encodeMessageForSigning } from '@docknetwork/crypto-wasm';
-import { initializeWasm, randomFieldElement, bytesToChallenge, PSBlindSignature } from '../src';
+import {
+  initializeWasm,
+  randomFieldElement,
+  bytesToChallenge,
+  PSBlindSignature,
+} from '../src';
 import { checkResult, getRevealedUnrevealed, stringToBytes } from './utils';
 import {
   BlindSignature,
@@ -10,7 +15,7 @@ import {
   SecretKey,
   encodeMessageForSigningIfPS,
   isBBSPlus,
-  Scheme
+  Scheme, PublicKey
 } from './scheme';
 
 function getMessages(count: number): Uint8Array[] {
@@ -41,7 +46,14 @@ describe(`${Scheme} signature sunny day scenario`, () => {
     const sig = isPS() ? Signature.generate(messages, sk, params) : Signature.generate(messages, sk, params, false);
     const result = isPS() ? sig.verify(messages, pk, params) : sig.verify(messages, pk, params, false);
     console.log(`Signature verified ? ${JSON.stringify(result)}`);
-    expect(result.verified).toEqual(true);
+    checkResult(result);
+
+    // Check serialization
+    const pkHex = pk.hex;
+    const skHex = sk.hex;
+    const sig_ = isPS() ? Signature.generate(messages, SecretKey.fromHex(skHex), params) : Signature.generate(messages, SecretKey.fromHex(skHex), params, false);
+    const result_ = isPS() ? sig_.verify(messages, PublicKey.fromHex(pkHex), params) : sig_.verify(messages, PublicKey.fromHex(pkHex), params, false);
+    checkResult(result_);
 
     // 2 revealed messages and 1 user supplied blinding
     let revealed: Set<number> = new Set();

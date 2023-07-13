@@ -25,9 +25,9 @@ import {
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
   STATUS_STR,
-  STATUS_TYPE_STR,
+  VB_ACCUMULATOR_22,
   SUBJECT_STR,
-  TYPE_STR
+  TYPE_STR, BoundCheckProtocols, VerifiableEncryptionProtocols
 } from '../../src';
 import {
   SignatureParams,
@@ -107,6 +107,7 @@ function checkBlindedCredJson(blindedCred: BlindedCredential<any>, pk: PublicKey
   expect(recreatedCred.toJSON()).toEqual(credJson);
 }
 
+// Skip the tests if PS signatures are used as blind sigs are not integrated yet
 const skipIfPS = isPS() ? describe.skip : describe;
 
 skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
@@ -177,12 +178,12 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
     await initializeWasm();
     const params = SignatureParams.generate(100, SignatureLabelBytes);
 
-    const keypair1 = KeyPair.generate(params);
+    const keypair1 = KeyPair.generate(params, stringToBytes('seed1'));
     sk1 = keypair1.sk;
     pk1 = keypair1.pk;
 
     schema1 = new CredentialSchema(getExampleSchema(10));
-    const accumKeypair1 = PositiveAccumulator.generateKeypair(dockAccumulatorParams());
+    const accumKeypair1 = PositiveAccumulator.generateKeypair(dockAccumulatorParams(), stringToBytes('secret-seed-for-accum'));
     accumulator1Pk = accumKeypair1.publicKey;
     accumulator1Sk = accumKeypair1.secretKey;
     accumulator1 = PositiveAccumulator.initialize(dockAccumulatorParams());
@@ -197,7 +198,7 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
       300
     );
 
-    const keypair2 = KeyPair.generate(params);
+    const keypair2 = KeyPair.generate(params, stringToBytes('seed2'));
     sk2 = keypair2.sk;
     pk2 = keypair2.pk;
 
@@ -308,7 +309,7 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
     });
     expect(req.presentation.spec.getStatus(0)).toEqual({
       id: 'dock:accumulator:accumId124',
-      [TYPE_STR]: STATUS_TYPE_STR,
+      [TYPE_STR]: VB_ACCUMULATOR_22,
       revocationCheck: 'membership',
       accumulated: accumulator1.accumulated,
       extra: { blockNo: 2010334 }
@@ -447,7 +448,7 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
     expect(req.presentation.spec.credentials[0].bounds).toEqual({
       credentialSubject: {
         education: {
-          transcript: { CGPA: { min: 2.5, max: 3.5, paramId: boundCheckSnarkId } }
+          transcript: { CGPA: { min: 2.5, max: 3.5, paramId: boundCheckSnarkId, protocol: BoundCheckProtocols.Legogroth16 } }
         }
       }
     });
@@ -458,7 +459,8 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
             chunkBitSize,
             commitmentGensId: commGensId,
             encryptionKeyId: ekId,
-            snarkKeyId: snarkPkId
+            snarkKeyId: snarkPkId,
+            protocol: VerifiableEncryptionProtocols.Saver
           }
         }
       }
@@ -469,7 +471,8 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
           chunkBitSize,
           commitmentGensId: commGensId,
           encryptionKeyId: ekId,
-          snarkKeyId: snarkPkId
+          snarkKeyId: snarkPkId,
+          protocol: VerifiableEncryptionProtocols.Saver
         }
       }
     });
@@ -611,7 +614,7 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
 
     expect(req.presentation.spec.blindCredentialRequest.bounds).toEqual({
       credentialSubject: {
-        timeOfBirth: { min: 1662010849610, max: 1662010849620, paramId: boundCheckSnarkId }
+        timeOfBirth: { min: 1662010849610, max: 1662010849620, paramId: boundCheckSnarkId, protocol: BoundCheckProtocols.Legogroth16 }
       }
     });
     expect(req.presentation.spec.credentials[0].verifiableEncryptions).toEqual({
@@ -621,7 +624,8 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
             chunkBitSize,
             commitmentGensId: commGensId,
             encryptionKeyId: ekId,
-            snarkKeyId: snarkPkId
+            snarkKeyId: snarkPkId,
+            protocol: VerifiableEncryptionProtocols.Saver
           }
         }
       }
@@ -634,7 +638,8 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
             chunkBitSize,
             commitmentGensId: commGensId,
             encryptionKeyId: ekId,
-            snarkKeyId: snarkPkId
+            snarkKeyId: snarkPkId,
+            protocol: VerifiableEncryptionProtocols.Saver
           }
         }
       }

@@ -18,7 +18,7 @@ import {
 } from '../scheme'
 
 import { checkPresentationJson, getExampleSchema } from './utils';
-import { checkResult, getWasmBytes, parseR1CSFile } from '../utils';
+import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../utils';
 
 describe(`${Scheme} Presentation creation and verification with Circom predicates`, () => {
   let sk: SecretKey, pk: PublicKey;
@@ -43,7 +43,7 @@ describe(`${Scheme} Presentation creation and verification with Circom predicate
   beforeAll(async () => {
     await initializeWasm();
     const params = SignatureParams.generate(100, SignatureLabelBytes);
-    const keypair = KeyPair.generate(params);
+    const keypair = KeyPair.generate(params, stringToBytes('seed1'));
     sk = keypair.sk;
     pk = keypair.pk;
 

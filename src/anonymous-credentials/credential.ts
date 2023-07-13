@@ -2,15 +2,16 @@ import { CredentialSchema } from './schema';
 import {
   BBS_CRED_PROOF_TYPE,
   BBS_PLUS_CRED_PROOF_TYPE,
-  CRYPTO_VERSION_STR,
-  PS_CRED_PROOF_TYPE,
-  SCHEMA_STR,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  CRYPTO_VERSION_STR,
+  SignatureTypes,
+  PROOF_STR,
+  PS_CRED_PROOF_TYPE,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
+  SCHEMA_STR,
   STATUS_STR,
-  SUBJECT_STR,
-  PROOF_STR
+  SUBJECT_STR
 } from './types-and-consts';
 import { VerifyResult } from '@docknetwork/crypto-wasm';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
@@ -64,9 +65,14 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
    * @protected
    */
   protected static validateProofType(typ: string) {
-    if (![BBS_CRED_PROOF_TYPE, BBS_PLUS_CRED_PROOF_TYPE, PS_CRED_PROOF_TYPE].includes(typ)) {
-      throw new Error(`Invalid proof type ${typ}`);
+    const expectedTyp = this.getSigType();
+    if (typ !== expectedTyp) {
+      throw new Error(`Expected proof type to be ${expectedTyp} but found ${typ}`);
     }
+  }
+
+  static getSigType(): SignatureTypes {
+    throw new Error('This method should be implemented by extending class');
   }
 }
 
@@ -109,6 +115,10 @@ export class BBSCredential extends Credential<BBSPublicKey, BBSSignature, BBSSig
       credentialStatus
     );
   }
+
+  static getSigType(): SignatureTypes {
+    return SignatureTypes.Bbs;
+  }
 }
 
 export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1> {
@@ -150,6 +160,10 @@ export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSig
       credentialStatus
     );
   }
+
+  static getSigType(): SignatureTypes {
+    return SignatureTypes.BbsPlus;
+  }
 }
 
 export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatureParams> {
@@ -190,5 +204,9 @@ export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatu
       new PSSignature(sig),
       credentialStatus
     );
+  }
+
+  static getSigType(): SignatureTypes {
+    return SignatureTypes.Ps;
   }
 }

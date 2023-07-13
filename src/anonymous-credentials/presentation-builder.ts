@@ -20,18 +20,21 @@ import {
   AttributeEquality,
   CRYPTO_VERSION_STR,
   FlattenedSchema,
+  ID_STR,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
+  BoundCheckProtocols,
+  CircomProtocols,
+  RevocationStatusProtocols,
+  VerifiableEncryptionProtocols,
   PredicateParamType,
-  ID_STR,
+  PublicKey,
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
+  SignatureParams,
   STATUS_STR,
-  TYPE_STR,
-  STATUS_TYPE_STR,
-  PublicKey,
-  SignatureParams
+  TYPE_STR
 } from './types-and-consts';
 import {
   IBlindCredentialRequest,
@@ -49,10 +52,10 @@ import {
   buildSignatureStatementFromParamsRef,
   buildWitness,
   createWitEq,
-  paramsClassBySignature,
-  saverStatement,
+  createWitEqForBlindedCred,
   getSignatureParamsForMsgCount,
-  createWitEqForBlindedCred
+  paramsClassBySignature,
+  saverStatement
 } from './util';
 import {
   SaverChunkedCommitmentGens,
@@ -254,7 +257,7 @@ export class PresentationBuilder extends Versioned {
     } else {
       b = new Map();
     }
-    b.set(attributeName, { min, max, paramId: provingKeyId });
+    b.set(attributeName, { min, max, paramId: provingKeyId, protocol: BoundCheckProtocols.Legogroth16 });
     this.bounds.set(credIdx, b);
     this.updatePredicateParams(provingKeyId, provingKey);
   }
@@ -301,7 +304,8 @@ export class PresentationBuilder extends Versioned {
       chunkBitSize,
       commitmentGensId: commGensId,
       encryptionKeyId: encryptionKeyId,
-      snarkKeyId: snarkPkId
+      snarkKeyId: snarkPkId,
+      protocol: VerifiableEncryptionProtocols.Saver
     });
     this.updatePredicateParams(commGensId, commGens);
     this.updatePredicateParams(encryptionKeyId, encryptionKey);
@@ -464,7 +468,7 @@ export class PresentationBuilder extends Versioned {
         }
         presentedStatus = {
           [ID_STR]: cred.credentialStatus[ID_STR],
-          [TYPE_STR]: STATUS_TYPE_STR,
+          [TYPE_STR]: RevocationStatusProtocols.Vb22,
           [REV_CHECK_STR]: cred.credentialStatus[REV_CHECK_STR],
           accumulated: s[1],
           extra: s[3]
@@ -575,7 +579,9 @@ export class PresentationBuilder extends Versioned {
         presentedStatus,
         attributeBounds,
         attributeEncs,
-        predicatesForSpec
+        predicatesForSpec,
+        // @ts-ignore
+        cred.constructor.getSigType()
       );
 
       flattenedSchemas.push(flattenedSchema);
@@ -666,46 +672,50 @@ export class PresentationBuilder extends Versioned {
       return [decodedPseudonym, decodedBasesForAttributes, decodedBaseForSecretKey];
     }
 
-    // Create statements and witnesses for each boundedPseudonyms
-    const presentedBoundedPseudonyms = {};
-    for (let i = 0; i < this.boundedPseudonyms.length; i++) {
-      const attributeBoundPseudonym = this.boundedPseudonyms[i];
-      const [witnessEqs, attributes] = createWitnessEqualitiesForPseudonyms(attributeBoundPseudonym.attributeNames);
-      const [decodedPseudonym, decodedBasesForAttributes, decodedBaseForSecretKey] =
-        createStatementAndWitnessesForPseudonyms(attributeBoundPseudonym, attributes, witnessEqs);
-      presentedBoundedPseudonyms[decodedPseudonym] = {
-        commitKey: {
-          basesForAttributes: decodedBasesForAttributes,
-          baseForSecretKey: decodedBaseForSecretKey
-        },
-        attributes: Object.fromEntries(attributeBoundPseudonym.attributeNames)
-      };
+    // Create statements and witnesses for each bounded pseudonyms
+    if (this.boundedPseudonyms.length > 0) {
+      const presentedBoundedPseudonyms = {};
+      for (let i = 0; i < this.boundedPseudonyms.length; i++) {
+        const attributeBoundPseudonym = this.boundedPseudonyms[i];
+        const [witnessEqs, attributes] = createWitnessEqualitiesForPseudonyms(attributeBoundPseudonym.attributeNames);
+        const [decodedPseudonym, decodedBasesForAttributes, decodedBaseForSecretKey] =
+          createStatementAndWitnessesForPseudonyms(attributeBoundPseudonym, attributes, witnessEqs);
+        presentedBoundedPseudonyms[decodedPseudonym] = {
+          commitKey: {
+            basesForAttributes: decodedBasesForAttributes,
+            baseForSecretKey: decodedBaseForSecretKey
+          },
+          attributes: Object.fromEntries(attributeBoundPseudonym.attributeNames)
+        };
+      }
+      this.spec.boundedPseudonyms = presentedBoundedPseudonyms;
     }
-    this.spec.boundedPseudonyms = presentedBoundedPseudonyms;
 
-    // Create statements and witnesses for each unboundedPseudonyms
-    const presentedUnboundedPseudonyms = {};
-    for (let i = 0; i < this.unboundedPseudonyms.length; i++) {
-      const unboundedPseudonym = this.unboundedPseudonyms[i];
-      const pseudonym = Pseudonym.new(unboundedPseudonym.baseForSecretKey, unboundedPseudonym.secretKey);
-      const decodedBaseForSecretKey = PseudonymBases.decodeBaseForSecretKey(unboundedPseudonym.baseForSecretKey);
-      const decodedPseudonym = Pseudonym.decode(pseudonym.value);
-      presentedUnboundedPseudonyms[decodedPseudonym] = {
-        commitKey: {
-          baseForSecretKey: decodedBaseForSecretKey
-        }
-      };
-      const statement = Statement.pseudonym(pseudonym, unboundedPseudonym.baseForSecretKey);
-      statements.add(statement);
-      const witness = Witness.pseudonym(unboundedPseudonym.secretKey);
-      witnesses.add(witness);
+    // Create statements and witnesses for each unbounded pseudonyms
+    if (this.unboundedPseudonyms.length > 0) {
+      const presentedUnboundedPseudonyms = {};
+      for (let i = 0; i < this.unboundedPseudonyms.length; i++) {
+        const unboundedPseudonym = this.unboundedPseudonyms[i];
+        const pseudonym = Pseudonym.new(unboundedPseudonym.baseForSecretKey, unboundedPseudonym.secretKey);
+        const decodedBaseForSecretKey = PseudonymBases.decodeBaseForSecretKey(unboundedPseudonym.baseForSecretKey);
+        const decodedPseudonym = Pseudonym.decode(pseudonym.value);
+        presentedUnboundedPseudonyms[decodedPseudonym] = {
+          commitKey: {
+            baseForSecretKey: decodedBaseForSecretKey
+          }
+        };
+        const statement = Statement.pseudonym(pseudonym, unboundedPseudonym.baseForSecretKey);
+        statements.add(statement);
+        const witness = Witness.pseudonym(unboundedPseudonym.secretKey);
+        witnesses.add(witness);
+      }
+      this.spec.unboundedPseudonyms = presentedUnboundedPseudonyms;
     }
-    this.spec.unboundedPseudonyms = presentedUnboundedPseudonyms;
 
     // Create meta-statements for enforcing attribute equalities
     for (const eql of this.attributeEqualities) {
       metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
-      this.spec.attributeEqualities.push(eql);
+      this.spec.addAttributeEquality(eql);
     }
 
     // For enforcing attribute bounds, add statement and witness
@@ -819,11 +829,13 @@ export class PresentationBuilder extends Versioned {
       };
 
       // Create meta-statements for enforcing equalities between blinded attributes and other credential attributes
-      for (const [name, otherAttributeRefs] of this.blindCredReq.req.blindedAttributeEqualities) {
-        const index = getAttrIndexInPedComm(name);
-        metaStatements.addWitnessEquality(
-          createWitEqForBlindedCred(pedCommStId, index, otherAttributeRefs, flattenedSchemas)
-        );
+      if (this.blindCredReq.req.blindedAttributeEqualities !== undefined) {
+        for (const [name, otherAttributeRefs] of this.blindCredReq.req.blindedAttributeEqualities) {
+          const index = getAttrIndexInPedComm(name);
+          metaStatements.addWitnessEquality(
+            createWitEqForBlindedCred(pedCommStId, index, otherAttributeRefs, flattenedSchemas)
+          );
+        }
       }
 
       this.spec.blindCredentialRequest = this.blindCredReq.req;
@@ -1277,7 +1289,8 @@ export class PresentationBuilder extends Versioned {
             };
           }),
           circuitId: predicate.circuitId,
-          snarkKeyId: predicate.provingKeyId
+          snarkKeyId: predicate.provingKeyId,
+          protocol: CircomProtocols.Legogroth16
         });
       });
     }
