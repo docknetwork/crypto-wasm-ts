@@ -275,6 +275,7 @@ export function getExampleSchema(num): IJsonSchema {
         properties: {
           fname: { type: 'string' },
           lname: { type: 'string' },
+          isbool: { type: 'boolean' },
           sensitive: {
             type: 'object',
             properties: {
@@ -385,6 +386,17 @@ export function getExampleBuilder(num): CredentialBuilder {
     },
     { useDefaults: true }
   );
+
+
+  const schema3 = CredentialSchema.essential();
+  schema.properties[SUBJECT_STR] = {
+    type: 'object',
+    properties: {
+      fname: { type: 'string' },
+      isbool: { type: 'boolean' }
+    }
+  };
+  const credSchema3 = new CredentialSchema(schema3, {useDefaults: true});
 
   const builder = new CredentialBuilder();
   switch (num) {
@@ -498,6 +510,10 @@ export function getExampleBuilder(num): CredentialBuilder {
       for (const k of ['@context', 'id', 'type', 'identifier', 'name', 'description']) {
         builder.setTopLevelField(k, unsignedCred[k]);
       }
+      break;
+    case 11:
+      builder.schema = credSchema3;
+      builder.subject = { fname: 'John', isbool: true };
       break;
     default:
       throw new Error(`Cannot find builder number ${num}`);

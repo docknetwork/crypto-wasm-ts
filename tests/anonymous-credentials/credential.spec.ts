@@ -152,6 +152,46 @@ describe(`${Scheme} Credential signing and verification`, () => {
     });
   });
 
+  it('for credential with boolean fields', () => {
+    const schema = CredentialSchema.essential();
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isbool: { type: 'boolean' }
+      }
+    };
+    const credSchema = new CredentialSchema(schema);
+
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
+
+    builder.subject = { fname: 'John', isnotbool: true };
+    expect(() => builder.sign(sk)).toThrow();
+
+    builder.subject = { fname: 'John', isbool: true };
+    const cred = builder.sign(sk);
+
+    checkResult(cred.verify(pk));
+    const recreatedCred = checkJsonConvForCred(cred, pk);
+    expect(recreatedCred.subject).toEqual({ fname: 'John', isbool: true });
+
+    // The credential JSON should be valid as per the JSON schema
+    let res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(true);
+
+    // The credential JSON fails to validate for an incorrect schema
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isbool: { type: 'number' }
+      }
+    };
+    res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(false);
+  });
+
   it('for credential with numeric fields', () => {
     const schema = getExampleSchema(8);
     const credSchema = new CredentialSchema(schema);
@@ -899,6 +939,33 @@ describe(`${Scheme} Credential signing and verification`, () => {
         description: { type: 'string' }
       }
     });
+
+    builder = getExampleBuilder(11);
+    const ns10 = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
+    expect(ns10.jsonSchema).toEqual({
+      '$schema': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            fname: { type: 'string' },
+            isbool: { type: 'boolean' },
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof,
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+    check(builder, sk, pk);
 
     function check(builder: CredentialBuilder, sk: SecretKey, pk: PublicKey) {
       expect(() => builder.sign(sk)).toThrow();

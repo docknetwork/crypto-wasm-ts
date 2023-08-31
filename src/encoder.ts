@@ -211,6 +211,18 @@ export class Encoder {
   }
 
   /**
+   * Returns an encoding function to be used on a message that is a boolean, encoded as positive int (0 or 1)
+   */
+  static booleanEncoder(): EncodeFunc {
+    return (v: unknown) => {
+      if (typeof v !== 'boolean') {
+        throw new Error(`Expected boolean but ${v} has type ${typeof v}`);
+      }
+      return MessageEncoder.encodePositiveNumberForSigning(v ? 1 : 0);
+    };
+  }
+
+  /**
    * Returns a function that can convert any input integer to a positive integer when its minimum
    * negative value is known. Does that by adding an offset of abs(minimum) to the input
    * @param minimum

@@ -170,6 +170,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     builder2.subject = {
       fname: 'John',
       lname: 'Smith',
+      isbool: true,
       sensitive: {
         secret: 'my-secret-that-wont-tell-anyone',
         email: 'john.smith@example.com',

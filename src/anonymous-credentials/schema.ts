@@ -405,6 +405,7 @@ export class CredentialSchema extends Versioned {
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
   private static readonly POSITIVE_INT_TYPE = 'positiveInteger';
+  private static readonly BOOLEAN_TYPE = 'boolean';
   private static readonly INT_TYPE = 'integer';
   private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
   private static readonly NUM_TYPE = 'decimalNumber';
@@ -449,6 +450,7 @@ export class CredentialSchema extends Versioned {
   static POSSIBLE_TYPES = new Set<string>([
     this.STR_TYPE,
     this.STR_REV_TYPE,
+    this.BOOLEAN_TYPE,
     this.POSITIVE_INT_TYPE,
     this.INT_TYPE,
     this.POSITIVE_NUM_TYPE,
@@ -495,6 +497,9 @@ export class CredentialSchema extends Versioned {
       switch (value['type']) {
         case CredentialSchema.STR_REV_TYPE:
           f = Encoder.reversibleEncoderString(value['compress']);
+          break;
+        case CredentialSchema.BOOLEAN_TYPE:
+          f = Encoder.booleanEncoder();
           break;
         case CredentialSchema.POSITIVE_INT_TYPE:
           f = Encoder.positiveIntegerEncoder();
@@ -544,6 +549,7 @@ export class CredentialSchema extends Versioned {
 
   static validateGeneric(schema: object, ignoreKeys: Set<string> = new Set()) {
     const [names, values] = this.flattenSchemaObj(schema);
+
     for (let i = 0; i < names.length; i++) {
       if (ignoreKeys.has(names[i])) {
         continue;
@@ -617,6 +623,8 @@ export class CredentialSchema extends Versioned {
       case CredentialSchema.STR_REV_TYPE:
         return { type: ValueType.RevStr, compress: value['compress'] };
       case CredentialSchema.POSITIVE_INT_TYPE:
+        return { type: ValueType.PositiveInteger };
+      case CredentialSchema.BOOLEAN_TYPE:
         return { type: ValueType.PositiveInteger };
       case CredentialSchema.INT_TYPE:
         return { type: ValueType.Integer, minimum: value['minimum'] };
@@ -921,6 +929,8 @@ export class CredentialSchema extends Versioned {
           return node;
         case 'integer':
           return this.parseIntegerType(node, parsingOpts, nodeKeyName);
+        case 'boolean':
+          return this.parseBooleanType(node, parsingOpts, nodeKeyName);
         case 'number':
           return this.parseNumberType(node, parsingOpts, nodeKeyName);
         case 'object':
@@ -972,6 +982,10 @@ export class CredentialSchema extends Versioned {
     return min >= 0 ? { type: this.POSITIVE_INT_TYPE } : { type: this.INT_TYPE, minimum: min };
   }
 
+  static parseBooleanType(node: { minimum?: number }, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
+    return { type: this.BOOLEAN_TYPE };
+  }
+
   static parseNumberType(
     node: { minimum?: number; multipleOf: number },
     parsingOpts: ISchemaParsingOpts,
@@ -1019,6 +1033,9 @@ export class CredentialSchema extends Versioned {
   private static getType(value: CredVal): string {
     let typ = typeof value as string;
     switch (typ) {
+      case 'boolean':
+        typ = 'boolean';
+        break;
       case 'number':
         if (Number.isInteger(value)) {
           typ = 'integer';
@@ -1054,6 +1071,8 @@ export class CredentialSchema extends Versioned {
         obj.properties[k] = CredentialSchema.getSubschema(v);
       }
       return obj;
+    } else if (typ === 'boolean') {
+      return { type: typ };
     } else {
       // `typ` is array
       const items: object[] = [];
@@ -1081,9 +1100,10 @@ export class CredentialSchema extends Versioned {
       } else if ('type' in schemaProps[key]) {
         // key in schema
         if (
-          schemaProps[key]['type'] === 'string' ||
-          schemaProps[key]['type'] === 'integer' ||
-          schemaProps[key]['type'] === 'number'
+          schemaProps[key]['type'] == 'string' ||
+          schemaProps[key]['type'] == 'integer' ||
+          schemaProps[key]['type'] == 'boolean' ||
+          schemaProps[key]['type'] == 'number'
         ) {
           if (schemaProps[key]['type'] !== typ) {
             throw new Error(`Mismatch in credential and given schema type: ${schemaProps[key]['type']} !== ${typ}`);
