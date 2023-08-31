@@ -80,6 +80,7 @@ describe('Credential Schema', () => {
           properties: {
             SSN: { $ref: '#/definitions/encryptableString' },
             userId: { $ref: '#/definitions/encryptableCompString' },
+            bool: {type: 'boolean'},
             vision: { type: 'integer', minimum: -20 },
             longitude: { type: 'number', minimum: -180, multipleOf: 0.001 },
             time: { type: 'integer', minimum: 0 },
@@ -93,6 +94,7 @@ describe('Credential Schema', () => {
       credentialSubject: {
         SSN: { type: 'stringReversible', compress: false },
         userId: { type: 'stringReversible', compress: true },
+        bool: { type: 'boolean' },
         vision: { type: 'integer', minimum: -20 },
         longitude: { type: 'decimalNumber', minimum: -180, decimalPlaces: 3 },
         time: { type: 'positiveInteger' },
@@ -257,6 +259,29 @@ describe('Credential Schema', () => {
       useDefaults: true,
       defaultMinimumInteger: -50,
       defaultDecimalPlaces: DefaultSchemaParsingOpts.defaultDecimalPlaces
+    });
+  });
+
+  it('validation of boolean type', () => {
+    const schema2 = CredentialSchema.essential();
+    schema2.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isbool: { type: 'boolean' }
+      }
+    };
+    const cs = new CredentialSchema(schema2, {useDefaults: true});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      isbool: { type: 'boolean' },
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isbool: { type: 'boolean' },
+      }
     });
   });
 
