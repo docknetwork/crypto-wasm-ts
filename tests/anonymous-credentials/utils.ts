@@ -12,12 +12,15 @@ import {
   SaverCiphertext,
   AttributeCiphertexts,
   PseudonymBases,
-  AttributeBoundPseudonym, AccumulatorPublicKey, PredicateParamType
+  AttributeBoundPseudonym,
+  AccumulatorPublicKey,
+  PredicateParamType
 } from '../../src';
 import { Credential, CredentialBuilder, Presentation, PublicKey } from '../scheme';
 import * as _ from 'lodash';
 import { checkResult } from '../utils';
 import fs from 'fs';
+import { BytearrayWrapper } from '../../src/bytearray-wrapper';
 
 export function getExampleSchema(num): IJsonSchema {
   const schema = CredentialSchema.essential();
@@ -617,7 +620,13 @@ export function getDecodedBoundedPseudonym(
   return [decodedBoundedPseudonym, basesForAttributesDecoded, baseForSecretKeyDecoded];
 }
 
-export function checkPresentationJson(pres: Presentation, pks: PublicKey[], accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>, predicateParams?: Map<string, PredicateParamType>, circomOutputs?: Map<number, Uint8Array[][]>) {
+export function checkPresentationJson(
+  pres: Presentation,
+  pks: PublicKey[],
+  accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
+  predicateParams?: Map<string, PredicateParamType>,
+  circomOutputs?: Map<number, Uint8Array[][]>
+) {
   const presJson = pres.toJSON();
   const recreatedPres = Presentation.fromJSON(presJson);
   checkResult(recreatedPres.verify(pks, accumulatorPublicKeys, predicateParams, circomOutputs));
@@ -625,9 +634,36 @@ export function checkPresentationJson(pres: Presentation, pks: PublicKey[], accu
 }
 
 export function writeSerializedObject(obj: any, fileName: string) {
-  if (Array.isArray(obj)) {
-    fs.writeFileSync(`${__dirname}/serialized-objects/${fileName}`, new Uint8Array(obj));
+  let objBytes;
+  if (obj instanceof BytearrayWrapper) {
+    objBytes = obj.value;
+  } else if (typeof obj.toBytes === 'function') {
+    objBytes = obj.toBytes();
+  } else if (typeof obj.toJSON === 'function') {
+    objBytes = Buffer.from(JSON.stringify(obj.toJSON()), 'utf8');
   } else {
-    fs.writeFileSync(`${__dirname}/serialized-objects/${fileName}`, obj);
+    throw new Error(`Invalid object provided: ${obj}`);
   }
+
+  fs.writeFileSync(`${__dirname}/serialized-objects/${fileName}`, new Uint8Array(objBytes));
+
+  return obj;
+}
+
+export function assertSerializedObject(obj: any, fileName: string) {
+  const { constructor } = obj;
+  const path = `${__dirname}/serialized-objects/${fileName}`;
+
+  if (constructor instanceof (BytearrayWrapper.prototype as any)) {
+    const bytes = new Uint8Array(fs.readFileSync(path));
+
+    expect([...bytes]).toEqual([...obj.value]);
+  } else {
+    const str = fs.readFileSync(path, 'utf8');
+    const json = JSON.parse(str);
+
+    expect(constructor.fromJSON(json)).toEqual(obj);
+  }
+
+  return obj;
 }

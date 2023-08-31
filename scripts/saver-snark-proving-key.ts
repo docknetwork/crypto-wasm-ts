@@ -25,11 +25,12 @@ async function main() {
 
   await initializeWasm();
   const encGens = dockSaverEncryptionGens();
-  const pkFileName = `${opts.prefix}-proving-key.bin`;
-  const vkFileName = `${opts.prefix}-verifying-key.bin`;
-  const ekFileName = `${opts.prefix}-encryption-key.bin`;
-  const dkFileName = `${opts.prefix}-decryption-key.bin`;
-  const skFileName = `${opts.prefix}-secret-key.bin`;
+  const suffix = opts.uncompressed ? '-uncompressed' : '';
+  const pkFileName = `${opts.prefix}-proving-key-16${suffix}.bin`;
+  const vkFileName = `${opts.prefix}-verifying-key-16${suffix}.bin`;
+  const ekFileName = `${opts.prefix}-encryption-key-16${suffix}.bin`;
+  const dkFileName = `${opts.prefix}-decryption-key-16${suffix}.bin`;
+  const skFileName = `${opts.prefix}-secret-key-16.bin`;
   let comp: string;
   if (opts.uncompressed) {
     comp = 'uncompressed';
