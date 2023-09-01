@@ -982,7 +982,7 @@ export class CredentialSchema extends Versioned {
     return min >= 0 ? { type: this.POSITIVE_INT_TYPE } : { type: this.INT_TYPE, minimum: min };
   }
 
-  static parseBooleanType(): object {
+  static parseBooleanType(node: object, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
     return { type: this.BOOLEAN_TYPE };
   }
 
