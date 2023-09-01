@@ -982,7 +982,7 @@ export class CredentialSchema extends Versioned {
     return min >= 0 ? { type: this.POSITIVE_INT_TYPE } : { type: this.INT_TYPE, minimum: min };
   }
 
-  static parseBooleanType(node: { minimum?: number }, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
+  static parseBooleanType(): object {
     return { type: this.BOOLEAN_TYPE };
   }
 
@@ -1055,33 +1055,41 @@ export class CredentialSchema extends Versioned {
   private static getSubschema(value: CredVal): object {
     const typ = CredentialSchema.getType(value);
 
+    if (typ === 'boolean') {
+      return { type: typ };
+    }
+
     if (typ === 'string') {
       return { type: typ };
-    } else if (typ === 'number') {
+    }
+
+    if (typ === 'number') {
       return {
         type: typ,
         minimum: DefaultSchemaParsingOpts.defaultMinimumInteger,
         multipleOf: 1 / Math.pow(10, value.toString().split('.')[1].length)
       };
-    } else if (typ === 'integer') {
+    }
+
+    if (typ === 'integer') {
       return { type: typ, minimum: DefaultSchemaParsingOpts.defaultMinimumInteger };
-    } else if (typ === 'object') {
+    }
+    
+    if (typ === 'object') {
       const obj = { type: typ, properties: {} };
       for (const [k, v] of Object.entries(value)) {
         obj.properties[k] = CredentialSchema.getSubschema(v);
       }
       return obj;
-    } else if (typ === 'boolean') {
-      return { type: typ };
-    } else {
-      // `typ` is array
-      const items: object[] = [];
-      // @ts-ignore
-      value.forEach((v) => {
-        items.push(CredentialSchema.getSubschema(v));
-      });
-      return { type: typ, items };
     }
+
+    // `typ` is array
+    const items: object[] = [];
+    // @ts-ignore
+    value.forEach((v) => {
+      items.push(CredentialSchema.getSubschema(v));
+    });
+    return { type: typ, items };
   }
 
   /**
