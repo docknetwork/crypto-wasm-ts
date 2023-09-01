@@ -169,6 +169,9 @@ describe(`${Scheme} Credential signing and verification`, () => {
     builder.subject = { fname: 'John', isnotbool: true };
     expect(() => builder.sign(sk)).toThrow();
 
+    builder.subject = { fname: 'John', isbool: "not a bool" };
+    expect(() => builder.sign(sk)).toThrow();
+
     builder.subject = { fname: 'John', isbool: true };
     const cred = builder.sign(sk);
 
