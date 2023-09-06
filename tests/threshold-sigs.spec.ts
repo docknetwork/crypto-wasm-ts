@@ -257,7 +257,7 @@ describe('Threshold BBS+ and BBS', () => {
       // @ts-ignore
       const shares: sigShareClass[] = [];
       for (let j = 0; j < threshold; j++) {
-        shares.push(signers[j].createSigShare(msgsToSign, i, paramsBbsPlus, true))
+        shares.push(signers[j].createSigShare(msgsToSign, i, params, true))
       }
 
       // Aggregate shares to form a sig
@@ -277,7 +277,7 @@ describe('Threshold BBS+ and BBS', () => {
   })
 
   it("create a threshold BBS signature", () => {
-    const protocolId = stringToBytes("test BBS+");
+    const protocolId = stringToBytes("test BBS");
     checkThresholdSig(protocolId, ThresholdBbsSigner, ThresholdBbsSignatureShare, skBbs, thresholdPkBbs, paramsBbs)
   })
 })
