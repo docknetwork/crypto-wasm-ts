@@ -90,6 +90,40 @@ describe(`${Scheme} Presentation creation and verification`, () => {
   let saverEk: SaverEncryptionKeyUncompressed;
   let saverDk: SaverDecryptionKeyUncompressed;
 
+  function setupBoundCheck() {
+    if (boundCheckProvingKey === undefined) {
+      [boundCheckProvingKey, boundCheckVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
+    }
+  }
+
+  function setupSaver() {
+    if (saverProvingKey === undefined) {
+      if (loadSnarkSetupFromFiles) {
+        saverSk = new SaverSecretKey(readByteArrayFromFile('snark-setups/saver-secret-key-16.bin'));
+        saverProvingKey = new SaverProvingKeyUncompressed(
+          readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin')
+        );
+        saverVerifyingKey = new SaverVerifyingKeyUncompressed(
+          readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin')
+        );
+        saverEk = new SaverEncryptionKeyUncompressed(
+          readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin')
+        );
+        saverDk = new SaverDecryptionKeyUncompressed(
+          readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin')
+        );
+      } else {
+        const encGens = dockSaverEncryptionGens();
+        const [saverSnarkPk, saverSec, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
+        saverSk = saverSec;
+        saverProvingKey = saverSnarkPk.decompress();
+        saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
+        saverEk = encryptionKey.decompress();
+        saverDk = decryptionKey.decompress();
+      }
+    }
+  }
+
   beforeAll(async () => {
     await initializeWasm();
     const params = SignatureParams.generate(100, SignatureLabelBytes);
@@ -105,32 +139,6 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     pk3 = keypair3.pk;
     sk4 = keypair4.sk;
     pk4 = keypair4.pk;
-
-    if (loadSnarkSetupFromFiles) {
-      saverSk = new SaverSecretKey(readByteArrayFromFile('snark-setups/saver-secret-key-16.bin'));
-      saverProvingKey = new SaverProvingKeyUncompressed(
-        readByteArrayFromFile('snark-setups/saver-proving-key-16-uncompressed.bin')
-      );
-      saverVerifyingKey = new SaverVerifyingKeyUncompressed(
-        readByteArrayFromFile('snark-setups/saver-verifying-key-16-uncompressed.bin')
-      );
-      saverEk = new SaverEncryptionKeyUncompressed(
-        readByteArrayFromFile('snark-setups/saver-encryption-key-16-uncompressed.bin')
-      );
-      saverDk = new SaverDecryptionKeyUncompressed(
-        readByteArrayFromFile('snark-setups/saver-decryption-key-16-uncompressed.bin')
-      );
-    } else {
-      const encGens = dockSaverEncryptionGens();
-      const [saverSnarkPk, saverSec, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens, chunkBitSize);
-      saverSk = saverSec;
-      saverProvingKey = saverSnarkPk.decompress();
-      saverVerifyingKey = saverSnarkPk.getVerifyingKeyUncompressed();
-      saverEk = encryptionKey.decompress();
-      saverDk = decryptionKey.decompress();
-    }
-
-    [boundCheckProvingKey, boundCheckVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
 
     const schema1 = getExampleSchema(9);
     const credSchema1 = new CredentialSchema(schema1);
@@ -922,6 +930,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
   });
 
   it('from credentials and proving bounds on attributes', () => {
+    setupBoundCheck();
 
     const pkId = 'random';
 
@@ -1117,6 +1126,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
   it('from credentials and encryption of attributes', () => {
     // Setup for decryptor
+    setupSaver();
 
     // ------------------- Presentation with 1 credential -----------------------------------------
 
@@ -1287,6 +1297,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
   });
 
   it('from credentials with proving bounds on attributes and encryption of some attributes', () => {
+    setupBoundCheck();
+    setupSaver();
 
     const boundCheckSnarkId = 'random';
     const commGensId = 'random-1';
@@ -1528,6 +1540,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
     checkResult(pres1.verify([pk1]));
 
+    setupBoundCheck();
 
     const boundCheckSnarkId = 'random';
 
@@ -1718,6 +1731,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
     checkResult(pres1.verify([pk1]));
 
+    setupBoundCheck();
 
     const boundCheckSnarkId = 'random';
 
