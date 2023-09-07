@@ -21,22 +21,22 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: yarn install --frozen-lockfile
       - run: yarn build
-#  test_bbs:
-#    name: Test BBS
-#    runs-on: ${{matrix.os}}
-#    env:
-#      TEST_SIGNATURE_SCHEME: 'BBS'
-#    strategy:
-#      matrix:
-#        node-version: [16.x, 19.x]
-#        os: [ubuntu-latest]
-#    steps:
-#      - uses: actions/checkout@v1
-#      - uses: actions/setup-node@v1
-#        with:
-#          node-version: ${{ matrix.node-version }}
-#      - run: yarn install --frozen-lockfile
-#      - run: yarn test
+  test_bbs:
+    name: Test BBS
+    runs-on: ${{matrix.os}}
+    env:
+      TEST_SIGNATURE_SCHEME: 'BBS'
+    strategy:
+      matrix:
+        node-version: [16.x, 19.x]
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: yarn install --frozen-lockfile
+      - run: yarn test
   test_bbs_plus:
     name: Test BBS+
     runs-on: ${{matrix.os}}
