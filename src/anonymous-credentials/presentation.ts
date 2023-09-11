@@ -96,7 +96,9 @@ export class Presentation extends Versioned {
   readonly attributeCiphertexts?: Map<number, AttributeCiphertexts>;
   // Similar to above for blinded attributes
   readonly blindedAttributeCiphertexts?: AttributeCiphertexts;
+  // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   readonly context?: string;
+  // To prevent replay attack
   readonly nonce?: Uint8Array;
 
   constructor(

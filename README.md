@@ -469,7 +469,7 @@ const statement1 = Statement.bbsPlusSignature(params, pk, revealedMsgs, true);
 const statements = new Statements();
 statements.add(statement1);
 
-// Optional context of the proof, this can specify the reason why the proof was created or date of the proof, etc
+// Optional context of the proof, this can specify the reason why the proof was created or date of the proof, or self-attested attributes (as JSON string), etc
 const context = stringToBytes('some context');
 ```
 

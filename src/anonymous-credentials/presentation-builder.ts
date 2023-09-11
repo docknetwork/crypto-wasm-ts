@@ -99,7 +99,9 @@ export class PresentationBuilder extends Versioned {
   // underlying crypto changes.
   static VERSION = '0.1.0';
 
+  // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;
+  // To prevent replay attack
   _nonce?: Uint8Array;
   proof?: CompositeProofG1;
   // Just for debugging

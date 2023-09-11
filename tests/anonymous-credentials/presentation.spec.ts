@@ -578,6 +578,11 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
     checkPresentationJson(pres, [pk1]);
 
+    // Change the context to be something else and the presentation should not verify
+    // @ts-ignore
+    pres.context = 'Some other context';
+    expect(pres.verify([pk1]).verified).toBe(false);
+
     const builder2 = new PresentationBuilder();
     expect(builder2.addCredential(credential1, pk1)).toEqual(0);
     builder2.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
@@ -593,6 +598,11 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     checkResult(pres.verify([pk1]));
 
     checkPresentationJson(pres, [pk1]);
+
+    // Change the nonce to be something else and the presentation should not verify
+    // @ts-ignore
+    pres.nonce = randomFieldElement();
+    expect(pres.verify([pk1]).verified).toBe(false);
 
     const builder3 = new PresentationBuilder();
     expect(builder3.addCredential(credential1, pk1)).toEqual(0);
