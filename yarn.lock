@@ -479,10 +479,10 @@
     ky-universal "^0.10.1"
     undici "^5.2.0"
 
-"@docknetwork/crypto-wasm@0.20.0":
-  version "0.20.0"
-  resolved "https://registry.yarnpkg.com/@docknetwork/crypto-wasm/-/crypto-wasm-0.20.0.tgz#3f857b700668d145700530816869d88e3a3f1143"
-  integrity sha512-q9KrSugl77sTgxxLZO/MfLI1jA4HDTwH1YJUlj1Si2AVopYmxuTLmMckC8c5IQMPkp78npkQLapMK51JrVATpg==
+"@docknetwork/crypto-wasm@0.21.0":
+  version "0.21.0"
+  resolved "https://registry.yarnpkg.com/@docknetwork/crypto-wasm/-/crypto-wasm-0.21.0.tgz#0831fa7d85c43d5e78c467d11ed4279f8a958ad4"
+  integrity sha512-iSxb0CeWO3SpIKFiBOzV4SR5qnw3GXCyiXVOvT+qJGxNsGUZJh/Qa5LR0k1YKG02b7K2034EVKKlu7D+1xCMYg==
   dependencies:
     buffer "^6.0.3"
 
