@@ -223,6 +223,30 @@ export class Encoder {
   }
 
   /**
+   * Returns an encoding function to be used on a message that is a date
+   */
+  static dateEncoder(minimum: number): EncodeFunc {
+    const f = Encoder.integerToPositiveInt(minimum);
+    return (v: unknown) => {
+      let dateVal = v instanceof Date ? v : null;
+      if (typeof v === 'string') {
+        const timestamp = Date.parse(v);
+        if (!Number.isNaN(timestamp)) {
+          dateVal = new Date(timestamp);
+        }
+      } else if (typeof v === 'number') {
+        dateVal = new Date(v);
+      }
+
+      if (!dateVal) {
+        throw new Error(`Invalid date value given: ${v} - type: ${typeof v}`);
+      }
+
+      return MessageEncoder.encodePositiveNumberForSigning(f(dateVal.getTime()));
+    };
+  }
+
+  /**
    * Returns a function that can convert any input integer to a positive integer when its minimum
    * negative value is known. Does that by adding an offset of abs(minimum) to the input
    * @param minimum

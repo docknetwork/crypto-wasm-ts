@@ -242,11 +242,13 @@ export class PresentationBuilder extends Versioned {
   enforceBounds(
     credIdx: number,
     attributeName: string,
-    min: number,
-    max: number,
+    vmin: number | Date,
+    vmax: number | Date,
     provingKeyId: string,
     provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
   ) {
+    const min = vmin instanceof Date ? vmin.getTime() : vmin;
+    const max = vmax instanceof Date ? vmax.getTime() : vmax;
     if (min >= max) {
       throw new Error(`Invalid bounds min=${min}, max=${max}`);
     }

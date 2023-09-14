@@ -262,6 +262,52 @@ describe('Credential Schema', () => {
     });
   });
 
+  it('validation of date type', () => {
+    const schema2 = CredentialSchema.essential();
+    schema2.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isdate: { type: 'string', format: 'date' }
+      }
+    };
+    const cs = new CredentialSchema(schema2, {useDefaults: true});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      isdate: { type: 'date', minimum: -4294967295 },
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isdate: { type: 'string', format: 'date' },
+      }
+    });
+  });
+
+  it('validation of date-time type', () => {
+    const schema2 = CredentialSchema.essential();
+    schema2.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isdate: { type: 'string', format: 'date-time' }
+      }
+    };
+    const cs = new CredentialSchema(schema2, {useDefaults: true});
+    expect(cs.schema[SUBJECT_STR]).toEqual({
+      fname: { type: 'string' },
+      isdate: { type: 'date', minimum: -4294967295 },
+    });
+    expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isdate: { type: 'string', format: 'date-time' },
+      }
+    });
+  });
+
   it('validation of boolean type', () => {
     const schema2 = CredentialSchema.essential();
     schema2.properties[SUBJECT_STR] = {

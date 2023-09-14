@@ -409,6 +409,7 @@ export class CredentialSchema extends Versioned {
   private static readonly INT_TYPE = 'integer';
   private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
   private static readonly NUM_TYPE = 'decimalNumber';
+  private static readonly DATE_TYPE = 'date';
 
   // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRYPTO_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
@@ -454,7 +455,8 @@ export class CredentialSchema extends Versioned {
     this.POSITIVE_INT_TYPE,
     this.INT_TYPE,
     this.POSITIVE_NUM_TYPE,
-    this.NUM_TYPE
+    this.NUM_TYPE,
+    this.DATE_TYPE
   ]);
 
   readonly schema: ISchema;
@@ -495,11 +497,14 @@ export class CredentialSchema extends Versioned {
       const value = values[i];
       let f: EncodeFunc;
       switch (value['type']) {
+        case CredentialSchema.BOOLEAN_TYPE:
+          f = Encoder.booleanEncoder();
+          break;
         case CredentialSchema.STR_REV_TYPE:
           f = Encoder.reversibleEncoderString(value['compress']);
           break;
-        case CredentialSchema.BOOLEAN_TYPE:
-          f = Encoder.booleanEncoder();
+        case CredentialSchema.DATE_TYPE:
+          f = Encoder.dateEncoder(value['minimum']);
           break;
         case CredentialSchema.POSITIVE_INT_TYPE:
           f = Encoder.positiveIntegerEncoder();
@@ -626,6 +631,8 @@ export class CredentialSchema extends Versioned {
         return { type: ValueType.PositiveInteger };
       case CredentialSchema.BOOLEAN_TYPE:
         return { type: ValueType.PositiveInteger };
+      case CredentialSchema.DATE_TYPE:
+        return { type: ValueType.Integer, minimum: value['minimum'] };
       case CredentialSchema.INT_TYPE:
         return { type: ValueType.Integer, minimum: value['minimum'] };
       case CredentialSchema.POSITIVE_NUM_TYPE:
@@ -926,6 +933,9 @@ export class CredentialSchema extends Versioned {
     if (typ !== undefined) {
       switch (typ) {
         case 'string':
+          if (node.format === 'date' || node.format === 'date-time') {
+            return this.parseDateType(node, parsingOpts, nodeKeyName);
+          }
           return node;
         case 'integer':
           return this.parseIntegerType(node, parsingOpts, nodeKeyName);
@@ -980,6 +990,11 @@ export class CredentialSchema extends Versioned {
     }
     const min = node.minimum !== undefined ? node.minimum : parsingOpts.defaultMinimumInteger;
     return min >= 0 ? { type: this.POSITIVE_INT_TYPE } : { type: this.INT_TYPE, minimum: min };
+  }
+
+  static parseDateType(node: object, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
+    const min = parsingOpts.defaultMinimumInteger;
+    return { type: this.DATE_TYPE, minimum: min };
   }
 
   static parseBooleanType(node: object, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
@@ -1074,7 +1089,7 @@ export class CredentialSchema extends Versioned {
     if (typ === 'integer') {
       return { type: typ, minimum: DefaultSchemaParsingOpts.defaultMinimumInteger };
     }
-    
+
     if (typ === 'object') {
       const obj = { type: typ, properties: {} };
       for (const [k, v] of Object.entries(value)) {

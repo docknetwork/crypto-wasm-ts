@@ -251,6 +251,92 @@ describe(`${Scheme} Credential signing and verification`, () => {
     });
   });
 
+  it('for credential with date-time fields', () => {
+    const schema = CredentialSchema.essential();
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isDateTime: { type: 'string', format: 'date-time' }
+      }
+    };
+    const credSchema = new CredentialSchema(schema);
+
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
+
+    builder.subject = { fname: 'John', isNotDateTime: true };
+    expect(() => builder.sign(sk)).toThrow();
+
+    builder.subject = { fname: 'John', isDateTime: 'not a valid date' };
+    expect(() => builder.sign(sk)).toThrow();
+
+    builder.subject = { fname: 'John', isDateTime: '2023-09-14T19:26:40.488Z' };
+    const cred = builder.sign(sk);
+
+    checkResult(cred.verify(pk));
+    const recreatedCred = checkJsonConvForCred(cred, pk);
+    expect(recreatedCred.subject).toEqual({ fname: 'John', isDateTime: '2023-09-14T19:26:40.488Z' });
+
+    // The credential JSON should be valid as per the JSON schema
+    let res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(true);
+
+    // The credential JSON fails to validate for an incorrect schema
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isDateTime: { type: 'number' }
+      }
+    };
+    res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(false);
+  });
+
+  it('for credential with date fields', () => {
+    const schema = CredentialSchema.essential();
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isDateTime: { type: 'string', format: 'date' }
+      }
+    };
+    const credSchema = new CredentialSchema(schema);
+
+    const builder = new CredentialBuilder();
+    builder.schema = credSchema;
+
+    builder.subject = { fname: 'John', isNotDateTime: true };
+    expect(() => builder.sign(sk)).toThrow();
+
+    builder.subject = { fname: 'John', isDateTime: 'not a valid date' };
+    expect(() => builder.sign(sk)).toThrow();
+
+    builder.subject = { fname: 'John', isDateTime: '2023-09-14' };
+    const cred = builder.sign(sk);
+
+    checkResult(cred.verify(pk));
+    const recreatedCred = checkJsonConvForCred(cred, pk);
+    expect(recreatedCred.subject).toEqual({ fname: 'John', isDateTime: '2023-09-14' });
+
+    // The credential JSON should be valid as per the JSON schema
+    let res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(true);
+
+    // The credential JSON fails to validate for an incorrect schema
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        isDateTime: { type: 'number' }
+      }
+    };
+    res = validate(cred.toJSON(), schema);
+    expect(res.valid).toEqual(false);
+  });
+
   it('for credential with credential status', () => {
     const schema = getExampleSchema(5);
     const credSchema = new CredentialSchema(schema);
