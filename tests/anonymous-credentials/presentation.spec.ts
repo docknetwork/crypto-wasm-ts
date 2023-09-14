@@ -457,11 +457,6 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     credential6 = builder6.sign(sk1);
     checkResult(credential6.verify(pk1));
 
-
-
-
-
-
     // Schema with date type
     const schema7 = CredentialSchema.essential();
     schema7.properties[SUBJECT_STR] = {
