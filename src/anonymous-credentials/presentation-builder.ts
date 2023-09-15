@@ -235,8 +235,8 @@ export class PresentationBuilder extends Versioned {
    *
    * @param credIdx
    * @param attributeName - Nested attribute names use the "dot" separator
-   * @param min
-   * @param max
+   * @param vmin
+   * @param vmax
    * @param provingKeyId
    * @param provingKey
    */

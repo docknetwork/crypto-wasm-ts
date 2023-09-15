@@ -232,6 +232,14 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     this.attributeEqualities.push(equality);
   }
 
+  /**
+   *
+   * @param attributeName - Nested attribute names use the "dot" separator
+   * @param vmin
+   * @param vmax
+   * @param provingKeyId
+   * @param provingKey
+   */
   enforceBoundsOnBlindedAttribute(
     attributeName: string,
     vmin: number | Date | string,
