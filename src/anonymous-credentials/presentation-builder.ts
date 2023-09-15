@@ -248,6 +248,9 @@ export class PresentationBuilder extends Versioned {
     provingKeyId: string,
     provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
   ) {
+    // TODO: This isn't clean because it's not checking if the attribute `attributeName` is of datetime type and then converting.
+    //  But finding the type is expensive (due to flattening) and I wouldn't want to do it here when its already being done in
+    //  `finalize` so we will need some caching in this object.
     const min = typeof vmin === 'number' ? vmin : convertDateToTimestamp(vmin);
     const max = typeof vmax === 'number' ? vmax : convertDateToTimestamp(vmax);
     if (min >= max) {
