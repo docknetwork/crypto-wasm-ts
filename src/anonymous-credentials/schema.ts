@@ -471,11 +471,18 @@ export class CredentialSchema extends Versioned {
    * Takes a schema object as per JSON-schema syntax (`IJsonSchema`), validates it and converts it to an internal
    * representation (`ISchema`) and stores both as the one with JSON-schema syntax is added to the credential representation.
    * @param jsonSchema
-   * @param parsingOpts
+   * @param parsingOpts - Options to parse the schema like whether to use defaults and what defaults to use
+   * @param addMissingParsingOpts - Whether to update `parsingOpts` for any missing options with default options. Pass false
+   * when deserializing to get the exact object that was serialized which is necessary when verifying signatures
    */
-  constructor(jsonSchema: IJsonSchema, parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts) {
+  constructor(jsonSchema: IJsonSchema, parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts, addMissingParsingOpts = true) {
     // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
-    const pOpts = { ...DefaultSchemaParsingOpts, ...parsingOpts };
+    let pOpts;
+    if (addMissingParsingOpts) {
+      pOpts = { ...DefaultSchemaParsingOpts, ...parsingOpts };
+    } else {
+      pOpts = { ...parsingOpts };
+    }
     const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, pOpts, '', undefined) as ISchema;
     CredentialSchema.validate(schema);
 
@@ -718,8 +725,10 @@ export class CredentialSchema extends Versioned {
     }
     const jsonSchema = this.extractJsonSchemaFromEmbedded(id);
     // Note: `parsingOptions` might still be in an incorrect format which can fail the next call
+    // Note: Passing `addMissingParsingOpts` as false to recreate the exact same object that was serialized. This is important
+    // when verifying signatures.
     // @ts-ignore
-    const credSchema = new CredentialSchema(jsonSchema, parsingOptions);
+    const credSchema = new CredentialSchema(jsonSchema, parsingOptions, false);
     credSchema.version = version;
     return credSchema;
   }
