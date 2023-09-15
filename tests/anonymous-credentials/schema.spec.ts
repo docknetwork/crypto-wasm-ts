@@ -274,7 +274,7 @@ describe('Credential Schema', () => {
     const cs = new CredentialSchema(schema2, {useDefaults: true});
     expect(cs.schema[SUBJECT_STR]).toEqual({
       fname: { type: 'string' },
-      isdate: { type: 'date', minimum: -4294967295 },
+      isdate: { type: 'date-time', minimum: -4294967295 },
     });
     expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
       type: 'object',
@@ -297,7 +297,7 @@ describe('Credential Schema', () => {
     const cs = new CredentialSchema(schema2, {useDefaults: true});
     expect(cs.schema[SUBJECT_STR]).toEqual({
       fname: { type: 'string' },
-      isdate: { type: 'date', minimum: -4294967295 },
+      isdate: { type: 'date-time', minimum: -4294967295 },
     });
     expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
       type: 'object',
