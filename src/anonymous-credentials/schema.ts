@@ -385,6 +385,7 @@ export interface IJsonSchema {
 export interface ISchemaParsingOpts {
   useDefaults: boolean;
   defaultMinimumInteger: number;
+  defaultMinimumDate: number;
   defaultDecimalPlaces: number;
 }
 
@@ -392,6 +393,7 @@ export const DefaultSchemaParsingOpts: ISchemaParsingOpts = {
   useDefaults: false,
   // Minimum value kept over a billion
   defaultMinimumInteger: -(Math.pow(2, 32) - 1),
+  defaultMinimumDate: -(Math.pow(2, 44) - 1),
   defaultDecimalPlaces: 0
 };
 
@@ -400,7 +402,7 @@ export type CredVal = string | number | object | CredVal[];
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.0.2';
+  static VERSION = '0.0.3';
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
@@ -409,6 +411,7 @@ export class CredentialSchema extends Versioned {
   private static readonly INT_TYPE = 'integer';
   private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
   private static readonly NUM_TYPE = 'decimalNumber';
+  private static readonly DATETIME_TYPE = 'date-time';
 
   // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRYPTO_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
@@ -454,7 +457,8 @@ export class CredentialSchema extends Versioned {
     this.POSITIVE_INT_TYPE,
     this.INT_TYPE,
     this.POSITIVE_NUM_TYPE,
-    this.NUM_TYPE
+    this.NUM_TYPE,
+    this.DATETIME_TYPE
   ]);
 
   readonly schema: ISchema;
@@ -467,11 +471,18 @@ export class CredentialSchema extends Versioned {
    * Takes a schema object as per JSON-schema syntax (`IJsonSchema`), validates it and converts it to an internal
    * representation (`ISchema`) and stores both as the one with JSON-schema syntax is added to the credential representation.
    * @param jsonSchema
-   * @param parsingOpts
+   * @param parsingOpts - Options to parse the schema like whether to use defaults and what defaults to use
+   * @param addMissingParsingOpts - Whether to update `parsingOpts` for any missing options with default options. Pass false
+   * when deserializing to get the exact object that was serialized which is necessary when verifying signatures
    */
-  constructor(jsonSchema: IJsonSchema, parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts) {
+  constructor(jsonSchema: IJsonSchema, parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts, addMissingParsingOpts = true) {
     // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
-    const pOpts = { ...DefaultSchemaParsingOpts, ...parsingOpts };
+    let pOpts;
+    if (addMissingParsingOpts) {
+      pOpts = { ...DefaultSchemaParsingOpts, ...parsingOpts };
+    } else {
+      pOpts = { ...parsingOpts };
+    }
     const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, pOpts, '', undefined) as ISchema;
     CredentialSchema.validate(schema);
 
@@ -495,11 +506,14 @@ export class CredentialSchema extends Versioned {
       const value = values[i];
       let f: EncodeFunc;
       switch (value['type']) {
+        case CredentialSchema.BOOLEAN_TYPE:
+          f = Encoder.booleanEncoder();
+          break;
         case CredentialSchema.STR_REV_TYPE:
           f = Encoder.reversibleEncoderString(value['compress']);
           break;
-        case CredentialSchema.BOOLEAN_TYPE:
-          f = Encoder.booleanEncoder();
+        case CredentialSchema.DATETIME_TYPE:
+          f = Encoder.dateEncoder(value['minimum']);
           break;
         case CredentialSchema.POSITIVE_INT_TYPE:
           f = Encoder.positiveIntegerEncoder();
@@ -626,6 +640,8 @@ export class CredentialSchema extends Versioned {
         return { type: ValueType.PositiveInteger };
       case CredentialSchema.BOOLEAN_TYPE:
         return { type: ValueType.PositiveInteger };
+      case CredentialSchema.DATETIME_TYPE:
+        return { type: ValueType.Integer, minimum: value['minimum'] };
       case CredentialSchema.INT_TYPE:
         return { type: ValueType.Integer, minimum: value['minimum'] };
       case CredentialSchema.POSITIVE_NUM_TYPE:
@@ -709,8 +725,10 @@ export class CredentialSchema extends Versioned {
     }
     const jsonSchema = this.extractJsonSchemaFromEmbedded(id);
     // Note: `parsingOptions` might still be in an incorrect format which can fail the next call
+    // Note: Passing `addMissingParsingOpts` as false to recreate the exact same object that was serialized. This is important
+    // when verifying signatures.
     // @ts-ignore
-    const credSchema = new CredentialSchema(jsonSchema, parsingOptions);
+    const credSchema = new CredentialSchema(jsonSchema, parsingOptions, false);
     credSchema.version = version;
     return credSchema;
   }
@@ -926,11 +944,14 @@ export class CredentialSchema extends Versioned {
     if (typ !== undefined) {
       switch (typ) {
         case 'string':
+          if (node.format === 'date' || node.format === 'date-time') {
+            return this.parseDateType(node, parsingOpts);
+          }
           return node;
         case 'integer':
           return this.parseIntegerType(node, parsingOpts, nodeKeyName);
         case 'boolean':
-          return this.parseBooleanType(node, parsingOpts, nodeKeyName);
+          return this.parseBooleanType();
         case 'number':
           return this.parseNumberType(node, parsingOpts, nodeKeyName);
         case 'object':
@@ -982,7 +1003,12 @@ export class CredentialSchema extends Versioned {
     return min >= 0 ? { type: this.POSITIVE_INT_TYPE } : { type: this.INT_TYPE, minimum: min };
   }
 
-  static parseBooleanType(node: object, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
+  static parseDateType(node: { minimum?: number }, parsingOpts: ISchemaParsingOpts): object {
+    const min = node.minimum !== undefined ? node.minimum : parsingOpts.defaultMinimumDate;
+    return { type: this.DATETIME_TYPE, minimum: min };
+  }
+
+  static parseBooleanType(): object {
     return { type: this.BOOLEAN_TYPE };
   }
 
@@ -1074,7 +1100,7 @@ export class CredentialSchema extends Versioned {
     if (typ === 'integer') {
       return { type: typ, minimum: DefaultSchemaParsingOpts.defaultMinimumInteger };
     }
-    
+
     if (typ === 'object') {
       const obj = { type: typ, properties: {} };
       for (const [k, v] of Object.entries(value)) {

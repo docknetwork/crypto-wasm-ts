@@ -37,6 +37,7 @@ import { BytearrayWrapper } from '../bytearray-wrapper';
 import { IPresentedAttributeBounds, IPresentedAttributeVE } from './presentation-specification';
 import { Presentation } from './presentation';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
+import { convertDateToTimestamp } from '../util';
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 
@@ -146,8 +147,8 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   enforceBoundsOnCredentialAttribute(
     credIdx: number,
     attributeName: string,
-    min: number,
-    max: number,
+    min: number | Date | string,
+    max: number | Date | string,
     provingKeyId: string,
     provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
   ) {
@@ -231,13 +232,23 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     this.attributeEqualities.push(equality);
   }
 
+  /**
+   *
+   * @param attributeName - Nested attribute names use the "dot" separator
+   * @param vmin
+   * @param vmax
+   * @param provingKeyId
+   * @param provingKey
+   */
   enforceBoundsOnBlindedAttribute(
     attributeName: string,
-    min: number,
-    max: number,
+    vmin: number | Date | string,
+    vmax: number | Date | string,
     provingKeyId: string,
     provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
   ) {
+    const min = typeof vmin === 'number' ? vmin : convertDateToTimestamp(vmin);
+    const max = typeof vmax === 'number' ? vmax : convertDateToTimestamp(vmax);
     if (min >= max) {
       throw new Error(`Invalid bounds min=${min}, max=${max}`);
     }

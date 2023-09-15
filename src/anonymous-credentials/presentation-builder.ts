@@ -72,6 +72,7 @@ import { AttributeBoundPseudonym, Pseudonym, PseudonymBases } from '../Pseudonym
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
+import { convertDateToTimestamp } from '../util';
 
 /**
  * Arguments required to generate the corresponding AttributeBoundPseudonym
@@ -234,19 +235,24 @@ export class PresentationBuilder extends Versioned {
    *
    * @param credIdx
    * @param attributeName - Nested attribute names use the "dot" separator
-   * @param min
-   * @param max
+   * @param vmin
+   * @param vmax
    * @param provingKeyId
    * @param provingKey
    */
   enforceBounds(
     credIdx: number,
     attributeName: string,
-    min: number,
-    max: number,
+    vmin: number | Date | string,
+    vmax: number | Date | string,
     provingKeyId: string,
     provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
   ) {
+    // TODO: This isn't clean because it's not checking if the attribute `attributeName` is of datetime type and then converting.
+    //  But finding the type is expensive (due to flattening) and I wouldn't want to do it here when its already being done in
+    //  `finalize` so we will need some caching in this object.
+    const min = typeof vmin === 'number' ? vmin : convertDateToTimestamp(vmin);
+    const max = typeof vmax === 'number' ? vmax : convertDateToTimestamp(vmax);
     if (min >= max) {
       throw new Error(`Invalid bounds min=${min}, max=${max}`);
     }
