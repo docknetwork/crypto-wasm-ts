@@ -1,5 +1,5 @@
 import { encodeMessageForSigning, fieldElementAsBytes, generateFieldElementFromNumber } from '@docknetwork/crypto-wasm';
-import { flattenObjectToKeyValuesList, isPositiveInteger } from './util';
+import { convertDateToTimestamp, flattenObjectToKeyValuesList, isPositiveInteger } from './util';
 import LZUTF8 from 'lzutf8';
 import { BytearrayWrapper } from './bytearray-wrapper';
 
@@ -228,21 +228,7 @@ export class Encoder {
   static dateEncoder(minimum: number): EncodeFunc {
     const f = Encoder.integerToPositiveInt(minimum);
     return (v: unknown) => {
-      let timestamp;
-      if (typeof v === 'string') {
-        const parsedTimestamp = Date.parse(v);
-        if (!Number.isNaN(parsedTimestamp)) {
-          timestamp = parsedTimestamp;
-        }
-      } else if (v instanceof Date) {
-        timestamp = v.getTime();
-      }
-
-      if (timestamp === undefined) {
-        throw new Error(`Invalid date value given: ${v} - type: ${typeof v}`);
-      }
-
-      return MessageEncoder.encodePositiveNumberForSigning(f(timestamp));
+      return MessageEncoder.encodePositiveNumberForSigning(f(convertDateToTimestamp(v)));
     };
   }
 

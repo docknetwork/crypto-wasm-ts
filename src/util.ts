@@ -3,6 +3,24 @@ import { flatten } from 'flat';
 import { LegoProvingKey } from './legosnark';
 import b58 from 'bs58';
 
+export function convertDateToTimestamp(v: Date | string | unknown) {
+  let timestamp: number | undefined;
+  if (typeof v === 'string') {
+    const parsedTimestamp = Date.parse(v);
+    if (!Number.isNaN(parsedTimestamp)) {
+      timestamp = parsedTimestamp;
+    }
+  } else if (v instanceof Date) {
+    timestamp = v.getTime();
+  }
+
+  if (timestamp === undefined) {
+    throw new Error(`Invalid date value given: ${v} - type: ${typeof v}`);
+  }
+
+  return timestamp;
+}
+
 export function isEmptyObject(obj) {
   if (!obj) {
     return true;

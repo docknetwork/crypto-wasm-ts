@@ -72,6 +72,7 @@ import { AttributeBoundPseudonym, Pseudonym, PseudonymBases } from '../Pseudonym
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
+import { convertDateToTimestamp } from '../util';
 
 /**
  * Arguments required to generate the corresponding AttributeBoundPseudonym
@@ -242,13 +243,13 @@ export class PresentationBuilder extends Versioned {
   enforceBounds(
     credIdx: number,
     attributeName: string,
-    vmin: number | Date,
-    vmax: number | Date,
+    vmin: number | Date | string,
+    vmax: number | Date | string,
     provingKeyId: string,
     provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
   ) {
-    const min = vmin instanceof Date ? vmin.getTime() : vmin;
-    const max = vmax instanceof Date ? vmax.getTime() : vmax;
+    const min = typeof vmin === 'number' ? vmin : convertDateToTimestamp(vmin);
+    const max = typeof vmax === 'number' ? vmax : convertDateToTimestamp(vmax);
     if (min >= max) {
       throw new Error(`Invalid bounds min=${min}, max=${max}`);
     }
