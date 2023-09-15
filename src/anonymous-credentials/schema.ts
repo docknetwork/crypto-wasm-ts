@@ -385,6 +385,7 @@ export interface IJsonSchema {
 export interface ISchemaParsingOpts {
   useDefaults: boolean;
   defaultMinimumInteger: number;
+  defaultMinimumDate: number;
   defaultDecimalPlaces: number;
 }
 
@@ -392,6 +393,7 @@ export const DefaultSchemaParsingOpts: ISchemaParsingOpts = {
   useDefaults: false,
   // Minimum value kept over a billion
   defaultMinimumInteger: -(Math.pow(2, 32) - 1),
+  defaultMinimumDate: -(Math.pow(2, 44) - 1),
   defaultDecimalPlaces: 0
 };
 
@@ -992,8 +994,8 @@ export class CredentialSchema extends Versioned {
     return min >= 0 ? { type: this.POSITIVE_INT_TYPE } : { type: this.INT_TYPE, minimum: min };
   }
 
-  static parseDateType(node: object, parsingOpts: ISchemaParsingOpts): object {
-    const min = parsingOpts.defaultMinimumInteger;
+  static parseDateType(node: { minimum?: number }, parsingOpts: ISchemaParsingOpts): object {
+    const min = node.minimum !== undefined ? node.minimum : parsingOpts.defaultMinimumDate;
     return { type: this.DATETIME_TYPE, minimum: min };
   }
 
