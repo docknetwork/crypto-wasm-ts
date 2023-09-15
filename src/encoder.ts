@@ -228,19 +228,21 @@ export class Encoder {
   static dateEncoder(minimum: number): EncodeFunc {
     const f = Encoder.integerToPositiveInt(minimum);
     return (v: unknown) => {
-      let dateVal = v instanceof Date ? v : null;
+      let timestamp;
       if (typeof v === 'string') {
-        const timestamp = Date.parse(v);
-        if (!Number.isNaN(timestamp)) {
-          dateVal = new Date(timestamp);
+        const parsedTimestamp = Date.parse(v);
+        if (!Number.isNaN(parsedTimestamp)) {
+          timestamp = parsedTimestamp;
         }
+      } else if (v instanceof Date) {
+        timestamp = v.getTime();
       }
 
-      if (!dateVal) {
+      if (timestamp === undefined) {
         throw new Error(`Invalid date value given: ${v} - type: ${typeof v}`);
       }
 
-      return MessageEncoder.encodePositiveNumberForSigning(f(dateVal.getTime()));
+      return MessageEncoder.encodePositiveNumberForSigning(f(timestamp));
     };
   }
 
