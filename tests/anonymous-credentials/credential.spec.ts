@@ -282,6 +282,16 @@ describe(`${Scheme} Credential signing and verification`, () => {
     let res = validate(cred.toJSON(), schema);
     expect(res.valid).toEqual(true);
 
+    // Check negative date-time values
+    const builderNegative = new CredentialBuilder();
+    builderNegative.schema = credSchema;
+    builderNegative.subject = { fname: 'John', isDateTime: '1800-09-14T19:26:40.488Z' };
+    const credNegative = builderNegative.sign(sk);
+
+    checkResult(credNegative.verify(pk));
+    const recreatedCredNegative = checkJsonConvForCred(credNegative, pk);
+    expect(recreatedCredNegative.subject).toEqual({ fname: 'John', isDateTime: '1800-09-14T19:26:40.488Z' });
+
     // The credential JSON fails to validate for an incorrect schema
     schema.properties[SUBJECT_STR] = {
       type: 'object',
