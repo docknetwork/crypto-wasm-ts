@@ -1,6 +1,7 @@
 import * as r1csf from 'r1csfile';
 import * as fs from 'fs';
 import * as path from 'path';
+import { error } from 'console';
 import {
   BoundCheckSnarkSetup,
   LegoProvingKey,
@@ -108,7 +109,7 @@ export function checkLegoProvingKey(provingKey: unknown) {
 export function checkResult(result: VerifyResult) {
   const verified = result.verified;
   if (!verified) {
-    console.log(result.error);
+    error(result);
   }
   expect(verified).toEqual(true);
 }

@@ -982,10 +982,11 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     expect(maxDateTime.getTime()).toBeGreaterThan(new Date(credential7.subject['myDateTime']).getTime());
     builder7.enforceBounds(0, 'credentialSubject.myDateTime', minDateTime, maxDateTime, pkId, boundCheckProvingKey);
 
+    // This call to enforceBounds will use strings, verifying the API works with Date obj or string value
     const [minDate, maxDate] = [new Date('2022-09-14'), new Date('2024-09-14')];
     expect(minDate.getTime()).toBeLessThan(new Date(credential7.subject['myDate']).getTime());
     expect(maxDate.getTime()).toBeGreaterThan(new Date(credential7.subject['myDate']).getTime());
-    builder7.enforceBounds(0, 'credentialSubject.myDate', minDate, maxDate, pkId);
+    builder7.enforceBounds(0, 'credentialSubject.myDate', minDate.toISOString(), maxDate.toISOString(), pkId);
     
     const pres1 = builder7.finalize();
 
