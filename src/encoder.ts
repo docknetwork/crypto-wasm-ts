@@ -234,8 +234,6 @@ export class Encoder {
         if (!Number.isNaN(timestamp)) {
           dateVal = new Date(timestamp);
         }
-      } else if (typeof v === 'number') {
-        dateVal = new Date(v);
       }
 
       if (!dateVal) {
