@@ -400,7 +400,7 @@ export type CredVal = string | number | object | CredVal[];
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.0.2';
+  static VERSION = '0.0.3';
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
@@ -409,7 +409,7 @@ export class CredentialSchema extends Versioned {
   private static readonly INT_TYPE = 'integer';
   private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
   private static readonly NUM_TYPE = 'decimalNumber';
-  private static readonly DATE_TYPE = 'date';
+  private static readonly DATETIME_TYPE = 'date-time';
 
   // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRYPTO_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
@@ -456,7 +456,7 @@ export class CredentialSchema extends Versioned {
     this.INT_TYPE,
     this.POSITIVE_NUM_TYPE,
     this.NUM_TYPE,
-    this.DATE_TYPE
+    this.DATETIME_TYPE
   ]);
 
   readonly schema: ISchema;
@@ -503,7 +503,7 @@ export class CredentialSchema extends Versioned {
         case CredentialSchema.STR_REV_TYPE:
           f = Encoder.reversibleEncoderString(value['compress']);
           break;
-        case CredentialSchema.DATE_TYPE:
+        case CredentialSchema.DATETIME_TYPE:
           f = Encoder.dateEncoder(value['minimum']);
           break;
         case CredentialSchema.POSITIVE_INT_TYPE:
@@ -631,7 +631,7 @@ export class CredentialSchema extends Versioned {
         return { type: ValueType.PositiveInteger };
       case CredentialSchema.BOOLEAN_TYPE:
         return { type: ValueType.PositiveInteger };
-      case CredentialSchema.DATE_TYPE:
+      case CredentialSchema.DATETIME_TYPE:
         return { type: ValueType.Integer, minimum: value['minimum'] };
       case CredentialSchema.INT_TYPE:
         return { type: ValueType.Integer, minimum: value['minimum'] };
@@ -934,13 +934,13 @@ export class CredentialSchema extends Versioned {
       switch (typ) {
         case 'string':
           if (node.format === 'date' || node.format === 'date-time') {
-            return this.parseDateType(node, parsingOpts, nodeKeyName);
+            return this.parseDateType(node, parsingOpts);
           }
           return node;
         case 'integer':
           return this.parseIntegerType(node, parsingOpts, nodeKeyName);
         case 'boolean':
-          return this.parseBooleanType(node, parsingOpts, nodeKeyName);
+          return this.parseBooleanType();
         case 'number':
           return this.parseNumberType(node, parsingOpts, nodeKeyName);
         case 'object':
@@ -992,12 +992,12 @@ export class CredentialSchema extends Versioned {
     return min >= 0 ? { type: this.POSITIVE_INT_TYPE } : { type: this.INT_TYPE, minimum: min };
   }
 
-  static parseDateType(node: object, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
+  static parseDateType(node: object, parsingOpts: ISchemaParsingOpts): object {
     const min = parsingOpts.defaultMinimumInteger;
-    return { type: this.DATE_TYPE, minimum: min };
+    return { type: this.DATETIME_TYPE, minimum: min };
   }
 
-  static parseBooleanType(node: object, parsingOpts: ISchemaParsingOpts, nodeName: string): object {
+  static parseBooleanType(): object {
     return { type: this.BOOLEAN_TYPE };
   }
 
