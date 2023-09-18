@@ -475,7 +475,11 @@ export class CredentialSchema extends Versioned {
    * @param addMissingParsingOpts - Whether to update `parsingOpts` for any missing options with default options. Pass false
    * when deserializing to get the exact object that was serialized which is necessary when verifying signatures
    */
-  constructor(jsonSchema: IJsonSchema, parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts, addMissingParsingOpts = true) {
+  constructor(
+    jsonSchema: IJsonSchema,
+    parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts,
+    addMissingParsingOpts = true
+  ) {
     // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
     let pOpts;
     if (addMissingParsingOpts) {
@@ -678,7 +682,7 @@ export class CredentialSchema extends Versioned {
               type: 'string'
             }
           }
-        },
+        }
       }
     };
     if (withDefinitions) {
@@ -874,7 +878,7 @@ export class CredentialSchema extends Versioned {
 
     const flattened = this.flatten();
 
-    // TODO: future work here to not redefine JSON-LD terms from the W3C VC context 
+    // TODO: future work here to not redefine JSON-LD terms from the W3C VC context
     for (const name of flattened[0]) {
       const nameParts = name.split('.');
       for (let j = 0; j < nameParts.length; j++) {
