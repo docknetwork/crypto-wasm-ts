@@ -103,7 +103,7 @@ export abstract class CredentialBuilder<
     const schema = this.schema as CredentialSchema;
     if (signingOpts && !CredentialBuilder.hasSameFieldsAsSchema(cred, schema)) {
       if (signingOpts.requireSameFieldsAsSchema) {
-        throw new Error('Credential does not have the fields as schema');
+        throw new Error('Credential does not have the fields as schema ' + JSON.stringify(cred));
       } else {
         // Generate new schema
         this.schema = CredentialSchema.generateAppropriateSchema(cred, schema);

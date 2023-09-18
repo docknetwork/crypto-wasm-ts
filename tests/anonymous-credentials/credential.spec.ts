@@ -743,7 +743,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           }
         },
-        issuanceDate: { type: 'string' },
+        issuanceDate: { type: 'string', format: 'date' },
         types: {
           type: 'array',
           items: [{ type: 'string' }, { type: 'string' }]

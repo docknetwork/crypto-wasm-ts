@@ -15,10 +15,55 @@ import {
   TYPE_STR
 } from '../../src';
 import { getExampleSchema } from './utils';
+import { CredentialBuilder } from '../scheme';
+
+const INTERNAL_SCHEMA_DATETIME = { "minimum": -17592186044415, "type": "date-time" };
 
 describe('Credential Schema', () => {
   beforeAll(async () => {
     await initializeWasm();
+  });
+
+  it('generates a valid json-schema', () => {
+    const builder = new CredentialBuilder();
+    builder.schema = new CredentialSchema(CredentialSchema.essential(), { useDefaults: true });
+    builder.subject = {
+      astring: 'John',
+      anumber: 123.123,
+      adate: '1999-01-01',
+      adatetime: '2023-09-14T19:26:40.488Z'
+    };
+
+    const ns = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
+    expect(ns.jsonSchema).toEqual({
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            astring: { type: 'string' },
+            anumber: {
+              minimum: -4294967295,
+              multipleOf: 0.001,
+              type: 'number',
+            },
+            adate: { type: 'string', format: 'date' },
+            adatetime: { type: 'string', format: 'date-time' },
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
   });
 
   it('JSON-schema $ref expansion with schema defined definitions', () => {
@@ -84,7 +129,9 @@ describe('Credential Schema', () => {
             vision: { type: 'integer', minimum: -20 },
             longitude: { type: 'number', minimum: -180, multipleOf: 0.001 },
             time: { type: 'integer', minimum: 0 },
-            weight: { type: 'number', minimum: 25, multipleOf: 0.1 }
+            weight: { type: 'number', minimum: 25, multipleOf: 0.1 },
+            date: { type: 'string', format: 'date' },
+            datetime: { type: 'string', format: 'date-time' },
           }
         }
       }
@@ -98,7 +145,9 @@ describe('Credential Schema', () => {
         vision: { type: 'integer', minimum: -20 },
         longitude: { type: 'decimalNumber', minimum: -180, decimalPlaces: 3 },
         time: { type: 'positiveInteger' },
-        weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 }
+        weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
+        date: INTERNAL_SCHEMA_DATETIME,
+        datetime: INTERNAL_SCHEMA_DATETIME,
       }
     });
 
@@ -700,7 +749,8 @@ describe('Credential Schema', () => {
     const cs1 = new CredentialSchema(getExampleSchema(1));
     expect(cs1.flatten()).toEqual([
       [SCHEMA_STR, `${SUBJECT_STR}.fname`, CRYPTO_VERSION_STR, 'proof.type'],
-      [{ type: 'string' }, { type: 'string' }, { type: 'string' }, { type: 'string' }]
+      [{ type: 'string' }, { type: 'string' }, { type: 'string' }, 
+      { type: 'string' }]
     ]);
 
     const cs2 = new CredentialSchema(getExampleSchema(2));

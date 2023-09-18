@@ -30,6 +30,18 @@ import { SetupParamsTracker } from './setup-params-tracker';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 
+export function isValueDate(value: string): boolean {
+  // YYYY-MM-DD
+  const datePattern = /^\d{4}-([0]\d|1[0-2])-([0-2]\d|3[01])$/;
+  return datePattern.test(value);
+}
+
+export function isValueDateTime(value: string): boolean {
+  // ISO 8601
+  const dateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|(\+|-)\d{2}:\d{2})?$/;
+  return dateTimePattern.test(value);
+}
+
 export function flattenTill2ndLastKey(obj: object): [string[], object[]] {
   const flattened = {};
   const temp = flatten(obj) as object;
