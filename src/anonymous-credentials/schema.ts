@@ -14,7 +14,7 @@ import {
   SUBJECT_STR,
   TYPE_STR
 } from './types-and-consts';
-import { flattenTill2ndLastKey } from './util';
+import { flattenTill2ndLastKey, isValueDate, isValueDateTime } from './util';
 
 /**
  * Rules
@@ -475,7 +475,11 @@ export class CredentialSchema extends Versioned {
    * @param addMissingParsingOpts - Whether to update `parsingOpts` for any missing options with default options. Pass false
    * when deserializing to get the exact object that was serialized which is necessary when verifying signatures
    */
-  constructor(jsonSchema: IJsonSchema, parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts, addMissingParsingOpts = true) {
+  constructor(
+    jsonSchema: IJsonSchema,
+    parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts,
+    addMissingParsingOpts = true
+  ) {
     // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
     let pOpts;
     if (addMissingParsingOpts) {
@@ -874,6 +878,7 @@ export class CredentialSchema extends Versioned {
 
     const flattened = this.flatten();
 
+    // TODO: future work here to not redefine JSON-LD terms from the W3C VC context
     for (const name of flattened[0]) {
       const nameParts = name.split('.');
       for (let j = 0; j < nameParts.length; j++) {
@@ -1056,8 +1061,9 @@ export class CredentialSchema extends Versioned {
     return new CredentialSchema(newJsonSchema, schema.parsingOptions);
   }
 
-  private static getType(value: CredVal): string {
+  private static getTypeAndFormat(value: CredVal): [string, string|undefined] {
     let typ = typeof value as string;
+    let format: string|undefined = undefined;
     switch (typ) {
       case 'boolean':
         typ = 'boolean';
@@ -1074,19 +1080,24 @@ export class CredentialSchema extends Versioned {
         break;
       default:
         typ = 'string';
+        if (isValueDateTime(value as string)) {
+          format = 'date-time';
+        } else if (isValueDate(value as string)) {
+          format = 'date';
+        }
     }
-    return typ;
+    return [typ, format];
   }
 
   private static getSubschema(value: CredVal): object {
-    const typ = CredentialSchema.getType(value);
+    const [typ, format] = CredentialSchema.getTypeAndFormat(value);
 
     if (typ === 'boolean') {
       return { type: typ };
     }
 
     if (typ === 'string') {
-      return { type: typ };
+      return format ? { type: typ, format } : { type: typ };
     }
 
     if (typ === 'number') {
@@ -1126,7 +1137,7 @@ export class CredentialSchema extends Versioned {
    */
   private static generateFromCredential(cred: object, schemaProps: object) {
     for (const [key, value] of Object.entries(cred)) {
-      const typ = CredentialSchema.getType(value);
+      const [typ] = CredentialSchema.getTypeAndFormat(value);
 
       if (schemaProps[key] === undefined) {
         // key not in schema
@@ -1210,7 +1221,7 @@ export function getTransformedMinMax(name: string, valTyp: ValueTypes, min: numb
       transformedMax = Encoder.decimalNumberToPositiveInt(valTyp.minimum, valTyp.decimalPlaces)(max);
       break;
     default:
-      throw new Error(`${name} should be of numeric type as per schema but was ${valTyp}`);
+      throw new Error(`${name} should be of numeric type as per schema but was ${JSON.stringify(valTyp, null, 2)}`);
   }
   return [transformedMin, transformedMax];
 }
