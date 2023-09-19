@@ -1061,9 +1061,9 @@ export class CredentialSchema extends Versioned {
     return new CredentialSchema(newJsonSchema, schema.parsingOptions);
   }
 
-  private static getTypeAndFormat(value: CredVal): any[] {
+  private static getTypeAndFormat(value: CredVal): [string, string|undefined] {
     let typ = typeof value as string;
-    let format: any = undefined;
+    let format: string|undefined = undefined;
     switch (typ) {
       case 'boolean':
         typ = 'boolean';
