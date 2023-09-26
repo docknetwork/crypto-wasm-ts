@@ -397,6 +397,10 @@ export const DefaultSchemaParsingOpts: ISchemaParsingOpts = {
   defaultDecimalPlaces: 0
 };
 
+export interface ISchemaOverrides {
+  version: string;
+}
+
 export type CredVal = string | number | object | CredVal[];
 
 export class CredentialSchema extends Versioned {
@@ -474,11 +478,13 @@ export class CredentialSchema extends Versioned {
    * @param parsingOpts - Options to parse the schema like whether to use defaults and what defaults to use
    * @param addMissingParsingOpts - Whether to update `parsingOpts` for any missing options with default options. Pass false
    * when deserializing to get the exact object that was serialized which is necessary when verifying signatures
+   * @param overrides - Override any properties of the schema
    */
   constructor(
     jsonSchema: IJsonSchema,
     parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts,
-    addMissingParsingOpts = true
+    addMissingParsingOpts = true,
+    overrides?: Partial<ISchemaOverrides>
   ) {
     // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
     let pOpts;
@@ -490,7 +496,11 @@ export class CredentialSchema extends Versioned {
     const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, pOpts, '', undefined) as ISchema;
     CredentialSchema.validate(schema);
 
-    super(CredentialSchema.VERSION);
+    if (overrides !== undefined && overrides.version !== undefined) {
+      super(overrides.version)
+    } else {
+      super(CredentialSchema.VERSION);
+    }
     this.schema = schema;
     // This is the schema in JSON-schema format. Kept to output in credentials or in `toJSON` without converting back from
     // internal representation; trading off memory for CPU time.
@@ -732,9 +742,7 @@ export class CredentialSchema extends Versioned {
     // Note: Passing `addMissingParsingOpts` as false to recreate the exact same object that was serialized. This is important
     // when verifying signatures.
     // @ts-ignore
-    const credSchema = new CredentialSchema(jsonSchema, parsingOptions, false);
-    credSchema.version = version;
-    return credSchema;
+    return new CredentialSchema(jsonSchema, parsingOptions, false, {version: version});
   }
 
   asEmbeddedJsonSchema(): string {
@@ -1058,7 +1066,7 @@ export class CredentialSchema extends Versioned {
     const newJsonSchema = JSON.parse(JSON.stringify(schema.jsonSchema));
     const props = newJsonSchema.properties;
     CredentialSchema.generateFromCredential(cred, props);
-    return new CredentialSchema(newJsonSchema, schema.parsingOptions);
+    return new CredentialSchema(newJsonSchema, schema.parsingOptions, false, {version: schema.version});
   }
 
   private static getTypeAndFormat(value: CredVal): [string, string|undefined] {
