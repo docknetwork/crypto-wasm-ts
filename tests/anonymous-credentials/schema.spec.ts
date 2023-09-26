@@ -64,6 +64,53 @@ describe('Credential Schema', () => {
         encryptableCompString: { type: 'string' }
       }
     });
+
+    // Make schema version older to check that schema is not generated date/date-time formats
+    const oldVersion = '0.0.2';
+    const builder1 = new CredentialBuilder();
+    builder1.schema = new CredentialSchema(CredentialSchema.essential(), { useDefaults: true }, true, {version: oldVersion});
+    builder1.subject = {
+      astring: 'John',
+      anumber: 123.123,
+      adate: '1999-01-01',
+      adatetime: '2023-09-14T19:26:40.488Z'
+    };
+
+    // Version matches older
+    expect(builder1.schema.version).toEqual(oldVersion);
+
+    const ns1 = CredentialSchema.generateAppropriateSchema(
+      builder1.serializeForSigning(),
+      builder1.schema as CredentialSchema
+    );
+    expect(ns1.jsonSchema).toEqual({
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            astring: { type: 'string' },
+            anumber: {
+              minimum: -4294967295,
+              multipleOf: 0.001,
+              type: 'number',
+            },
+            adate: { type: 'string' },
+            adatetime: { type: 'string' },
+          }
+        },
+        cryptoVersion: { type: 'string' },
+        credentialSchema: { type: 'string' },
+        proof: CredentialSchema.essential().properties.proof
+      },
+      definitions: {
+        encryptableString: { type: 'string' },
+        encryptableCompString: { type: 'string' }
+      }
+    });
+    // Version matches older
+    expect(ns1.version).toEqual(oldVersion);
   });
 
   it('JSON-schema $ref expansion with schema defined definitions', () => {

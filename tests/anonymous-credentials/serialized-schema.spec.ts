@@ -13,6 +13,7 @@ describe('Credential Schema creation from JSON', () => {
     const schemas = JSON.parse(schemasJson);
     for (let i = 0; i < schemas.length; i++) {
       const recreated = CredentialSchema.fromJSON(schemas[i]);
+      expect(recreated.version).toEqual('0.0.1');
       expect(schemas[i]).toEqual(recreated.toJSON());
     }
   })
