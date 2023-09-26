@@ -21,6 +21,7 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
       const cred = Credential.fromJSON(credentialJson);
       checkResult(cred.verify(pk));
       expect(credentialJson).toEqual(cred.toJSON());
+      expect(cred.schema.version).toEqual('0.0.1');
     }
   })
 })

@@ -15,6 +15,7 @@ import {
   TYPE_STR
 } from './types-and-consts';
 import { flattenTill2ndLastKey, isValueDate, isValueDateTime } from './util';
+import semver from 'semver/preload';
 
 /**
  * Rules
@@ -1065,11 +1066,17 @@ export class CredentialSchema extends Versioned {
   static generateAppropriateSchema(cred: object, schema: CredentialSchema): CredentialSchema {
     const newJsonSchema = JSON.parse(JSON.stringify(schema.jsonSchema));
     const props = newJsonSchema.properties;
-    CredentialSchema.generateFromCredential(cred, props);
+    CredentialSchema.generateFromCredential(cred, props, schema.version);
     return new CredentialSchema(newJsonSchema, schema.parsingOptions, false, {version: schema.version});
   }
 
-  private static getTypeAndFormat(value: CredVal): [string, string|undefined] {
+  /**
+   * Get type and format of the credential value
+   * @param value
+   * @param schemaVersion - Schema version for which the parsing rules should apply
+   * @private
+   */
+  private static getTypeAndFormat(value: CredVal, schemaVersion?: string): [string, string|undefined] {
     let typ = typeof value as string;
     let format: string|undefined = undefined;
     switch (typ) {
@@ -1088,17 +1095,26 @@ export class CredentialSchema extends Versioned {
         break;
       default:
         typ = 'string';
-        if (isValueDateTime(value as string)) {
+        // Date-time support was added in schema version '0.0.3' so for earlier versions don't return format that
+        // causes the encoding to change from string to integer
+        const skipParsingDates = schemaVersion !== undefined && semver.lt(schemaVersion, '0.0.3');
+        if (!skipParsingDates && isValueDateTime(value as string)) {
           format = 'date-time';
-        } else if (isValueDate(value as string)) {
+        } else if (!skipParsingDates && isValueDate(value as string)) {
           format = 'date';
         }
     }
     return [typ, format];
   }
 
-  private static getSubschema(value: CredVal): object {
-    const [typ, format] = CredentialSchema.getTypeAndFormat(value);
+  /**
+   * Get sub-schema for the credential value
+   * @param value
+   * @param schemaVersion - Schema version for which the parsing rules should apply
+   * @private
+   */
+  private static getSubschema(value: CredVal, schemaVersion?: string): object {
+    const [typ, format] = CredentialSchema.getTypeAndFormat(value, schemaVersion);
 
     if (typ === 'boolean') {
       return { type: typ };
@@ -1123,7 +1139,7 @@ export class CredentialSchema extends Versioned {
     if (typ === 'object') {
       const obj = { type: typ, properties: {} };
       for (const [k, v] of Object.entries(value)) {
-        obj.properties[k] = CredentialSchema.getSubschema(v);
+        obj.properties[k] = CredentialSchema.getSubschema(v, schemaVersion);
       }
       return obj;
     }
@@ -1132,7 +1148,7 @@ export class CredentialSchema extends Versioned {
     const items: object[] = [];
     // @ts-ignore
     value.forEach((v) => {
-      items.push(CredentialSchema.getSubschema(v));
+      items.push(CredentialSchema.getSubschema(v, schemaVersion));
     });
     return { type: typ, items };
   }
@@ -1141,15 +1157,16 @@ export class CredentialSchema extends Versioned {
    * Update given JSON-schema properties based on the given credential object.
    * @param cred
    * @param schemaProps
+   * @param schemaVersion - Schema version for which the schema generation logic should apply
    * @private
    */
-  private static generateFromCredential(cred: object, schemaProps: object) {
+  private static generateFromCredential(cred: object, schemaProps: object, schemaVersion?: string) {
     for (const [key, value] of Object.entries(cred)) {
-      const [typ] = CredentialSchema.getTypeAndFormat(value);
+      const [typ] = CredentialSchema.getTypeAndFormat(value, schemaVersion);
 
       if (schemaProps[key] === undefined) {
         // key not in schema
-        schemaProps[key] = CredentialSchema.getSubschema(value);
+        schemaProps[key] = CredentialSchema.getSubschema(value, schemaVersion);
       } else if ('type' in schemaProps[key]) {
         // key in schema
         if (
@@ -1165,7 +1182,7 @@ export class CredentialSchema extends Versioned {
           if (schemaProps[key]['items'].length < value.length) {
             // If cred has more items than schema, add the missing ones
             value.slice(schemaProps[key]['items'].length).forEach((v) => {
-              schemaProps[key]['items'].push(CredentialSchema.getSubschema(v));
+              schemaProps[key]['items'].push(CredentialSchema.getSubschema(v, schemaVersion));
             });
           } else if (schemaProps[key]['items'].length > value.length) {
             // If cred has less items than schema, delete those items
@@ -1175,7 +1192,7 @@ export class CredentialSchema extends Versioned {
           const schemaKeys = new Set([...Object.keys(schemaProps[key]['properties'])]);
           const valKeys = new Set([...Object.keys(value)]);
           for (const vk of valKeys) {
-            CredentialSchema.generateFromCredential(value, schemaProps[key]['properties']);
+            CredentialSchema.generateFromCredential(value, schemaProps[key]['properties'], schemaVersion);
           }
           // Delete extra keys not in cred
           for (const sk of schemaKeys) {
