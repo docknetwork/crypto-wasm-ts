@@ -417,6 +417,7 @@ export class CredentialSchema extends Versioned {
   private static readonly POSITIVE_NUM_TYPE = 'positiveDecimalNumber';
   private static readonly NUM_TYPE = 'decimalNumber';
   private static readonly DATETIME_TYPE = 'date-time';
+  private static readonly UNKNOWN_TYPE = 'unknown';
 
   // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRYPTO_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
@@ -463,7 +464,8 @@ export class CredentialSchema extends Versioned {
     this.INT_TYPE,
     this.POSITIVE_NUM_TYPE,
     this.NUM_TYPE,
-    this.DATETIME_TYPE
+    this.DATETIME_TYPE,
+    this.UNKNOWN_TYPE
   ]);
 
   readonly schema: ISchema;
@@ -956,6 +958,11 @@ export class CredentialSchema extends Versioned {
     const typ = node.type;
 
     if (typ !== undefined) {
+      // Type could be of any specified, we should guess at encoding
+      if (Array.isArray(typ)) {
+        return this.parseUnknownType(typ);
+      }
+
       switch (typ) {
         case 'string':
           if (node.format === 'date' || node.format === 'date-time') {
@@ -1024,6 +1031,10 @@ export class CredentialSchema extends Versioned {
 
   static parseBooleanType(): object {
     return { type: this.BOOLEAN_TYPE };
+  }
+
+  static parseUnknownType(possible: string[] | undefined): object {
+    return { type: this.UNKNOWN_TYPE/*, possible*/ };
   }
 
   static parseNumberType(

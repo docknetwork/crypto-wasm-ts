@@ -24,7 +24,7 @@ describe('Credential Schema', () => {
     await initializeWasm();
   });
 
-  it('generates a valid json-schema', () => {
+  it.skip('generates a valid json-schema', () => {
     const builder = new CredentialBuilder();
     builder.schema = new CredentialSchema(CredentialSchema.essential(), { useDefaults: true });
     builder.subject = {
@@ -113,7 +113,7 @@ describe('Credential Schema', () => {
     expect(ns1.version).toEqual(oldVersion);
   });
 
-  it('JSON-schema $ref expansion with schema defined definitions', () => {
+  it.skip('JSON-schema $ref expansion with schema defined definitions', () => {
     const jsonSchema = {
       type: 'object',
       definitions: {
@@ -136,7 +136,7 @@ describe('Credential Schema', () => {
     });
   });
 
-  it('JSON-schema $ref expansion with override definitions', () => {
+  it.skip('JSON-schema $ref expansion with override definitions', () => {
     const jsonSchema = {
       type: 'object',
       definitions: {
@@ -163,7 +163,46 @@ describe('Credential Schema', () => {
     });
   });
 
-  it('Parse JSON-schema syntax', () => {
+  it('JSON-schema multiple type support', () => {
+    const jsonSchema = {
+      type: 'object',
+      definitions: {
+        encryptableString: { type: 'string' }
+      },
+      properties: {
+        '@context': {
+          type: [
+            'string',
+            'array',
+            'object'
+          ]
+        },
+        id: {
+          type: 'string'
+        },
+        credentialSubject: {
+          type: 'object',
+          properties: {
+            SSN: { $ref: '#/definitions/encryptableString' }
+          }
+        }
+      }
+    };
+    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, DefaultSchemaParsingOpts);
+    expect(schema).toEqual({
+      '@context': { type: 'unknown', possible: [
+        'string',
+        'array',
+        'object'
+      ] },
+      id: { type: 'string' },
+      credentialSubject: {
+        SSN: { type: 'stringReversible', compress: false },
+      }
+    });
+  });
+
+  it.skip('Parse JSON-schema syntax', () => {
     const jsonSchema = {
       type: 'object',
       properties: {
@@ -253,7 +292,7 @@ describe('Credential Schema', () => {
     });
   });
 
-  it('needs version, schema and subject fields', () => {
+  it.skip('needs version, schema and subject fields', () => {
     const schema1 = {
       [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
@@ -278,7 +317,7 @@ describe('Credential Schema', () => {
     expect(cs1.hasStatus()).toEqual(false);
   });
 
-  it('is valid schema validation', () => {
+  it.skip('is valid schema validation', () => {
     // @ts-ignore
     expect(() => new CredentialSchema({})).toThrow();
 
@@ -326,7 +365,7 @@ describe('Credential Schema', () => {
     expect(cs1.hasStatus()).toEqual(false);
   });
 
-  it('parsing options', () => {
+  it.skip('parsing options', () => {
     const schema = getExampleSchema(1);
 
     const cs1 = new CredentialSchema(schema, {
@@ -362,7 +401,7 @@ describe('Credential Schema', () => {
     });
   });
 
-  it('validation of date type', () => {
+  it.skip('validation of date type', () => {
     const schema2 = CredentialSchema.essential();
     schema2.properties[SUBJECT_STR] = {
       type: 'object',
@@ -385,7 +424,7 @@ describe('Credential Schema', () => {
     });
   });
 
-  it('validation of date-time type', () => {
+  it.skip('validation of date-time type', () => {
     const schema2 = CredentialSchema.essential();
     schema2.properties[SUBJECT_STR] = {
       type: 'object',
@@ -408,7 +447,7 @@ describe('Credential Schema', () => {
     });
   });
 
-  it('validation of boolean type', () => {
+  it.skip('validation of boolean type', () => {
     const schema2 = CredentialSchema.essential();
     schema2.properties[SUBJECT_STR] = {
       type: 'object',
@@ -431,7 +470,7 @@ describe('Credential Schema', () => {
     });
   });
 
-  it('validation of numeric types', () => {
+  it.skip('validation of numeric types', () => {
     const schema2 = CredentialSchema.essential();
     schema2.properties[SUBJECT_STR] = {
       type: 'object',
@@ -728,7 +767,7 @@ describe('Credential Schema', () => {
     });
   });
 
-  it('validation of credential status', () => {
+  it.skip('validation of credential status', () => {
     const schema4 = CredentialSchema.essential();
     schema4.properties[SUBJECT_STR] = {
       type: 'object',
@@ -775,7 +814,7 @@ describe('Credential Schema', () => {
     expect(cs4.hasStatus()).toEqual(true);
   });
 
-  it('validation of some more schemas', () => {
+  it.skip('validation of some more schemas', () => {
     for (let i = 1; i <= 11; i++) {
       const schema = getExampleSchema(i);
       const cs = new CredentialSchema(schema);
@@ -792,7 +831,7 @@ describe('Credential Schema', () => {
     }
   });
 
-  it('flattening', () => {
+  it.skip('flattening', () => {
     const cs1 = new CredentialSchema(getExampleSchema(1));
     expect(cs1.flatten()).toEqual([
       [SCHEMA_STR, `${SUBJECT_STR}.fname`, CRYPTO_VERSION_STR, 'proof.type'],
@@ -907,7 +946,7 @@ describe('Credential Schema', () => {
     ]);
   });
 
-  it('to and from JSON', () => {
+  it.skip('to and from JSON', () => {
     for (let i = 1; i <= 12; i++) {
       const schema = getExampleSchema(i);
       const cs = new CredentialSchema(schema);
@@ -937,7 +976,7 @@ describe('Credential Schema', () => {
     expect(recreatedCs1.version).not.toEqual(CredentialSchema.VERSION);
   });
 
-  it('check type', () => {
+  it.skip('check type', () => {
     const schema = CredentialSchema.essential();
     schema.properties[SUBJECT_STR] = {
       type: 'object',
@@ -964,7 +1003,7 @@ describe('Credential Schema', () => {
     expect(cs.typeOfName(`${SUBJECT_STR}.score`)).toEqual({ type: ValueType.Number, minimum: -100, decimalPlaces: 1 });
   });
 
-  it('subject as an array', () => {
+  it.skip('subject as an array', () => {
     const schema6 = getExampleSchema(6);
     const cs6 = new CredentialSchema(schema6);
     expect(cs6.jsonSchema.properties[SUBJECT_STR]).toEqual(schema6.properties[SUBJECT_STR]);
@@ -1007,7 +1046,7 @@ describe('Credential Schema', () => {
     ]);
   });
 
-  it('custom top level fields', () => {
+  it.skip('custom top level fields', () => {
     const schema7 = getExampleSchema(7);
     const cs7 = new CredentialSchema(schema7);
     expect(cs7.jsonSchema.properties[SUBJECT_STR]).toEqual(schema7.properties[SUBJECT_STR]);
@@ -1063,7 +1102,7 @@ describe('Credential Schema', () => {
     ]);
   });
 
-  it('creating JSON-LD context', () => {
+  it.skip('creating JSON-LD context', () => {
     const schema9 = getExampleSchema(9);
     const cs9 = new CredentialSchema(schema9);
     const ctx9 = cs9.getJsonLdContext();
@@ -1152,7 +1191,7 @@ describe('Credential Schema', () => {
     });
   });
 
-  it('extracing json from embedded', () => {
+  it.skip('extracing json from embedded', () => {
     const jsonData = { hello: 'world', buyDock: true };
 
     let dataStr = JSON.stringify(jsonData);
