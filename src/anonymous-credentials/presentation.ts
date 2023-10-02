@@ -61,6 +61,15 @@ import { flattenObjectToKeyValuesList } from '../util';
 import { Pseudonym, PseudonymBases } from '../Pseudonym';
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
+import {
+  BoundCheckBppParams,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckSmcParams,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckSmcWithKVVerifierParams,
+  BoundCheckSmcWithKVVerifierParamsUncompressed
+} from '../bound-check';
+import semver from 'semver/preload';
 
 /**
  * The context passed to the proof contains the version and the presentation spec as well. This is done to bind the
@@ -517,13 +526,51 @@ export class Presentation extends Versioned {
       const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
 
       const paramId = bounds[j]['paramId'];
+      let protocol = bounds[j]['protocol'];
       const param = predicateParams?.get(paramId);
-      Presentation.addLegoVerifyingKeyToTracker(paramId, param, setupParamsTrk);
-      const statement = Statement.boundCheckVerifierFromSetupParamRefs(
-        transformedMin,
-        transformedMax,
-        setupParamsTrk.indexForParam(paramId)
-      );
+      let statement: Uint8Array;
+
+      // Older versions of presentation did not have protocol name specified
+      if (semver.lt(this.version, '0.2.0')) {
+        protocol = BoundCheckProtocols.Legogroth16;
+      }
+
+      switch (protocol) {
+        case BoundCheckProtocols.Legogroth16:
+          Presentation.addLegoVerifyingKeyToTracker(paramId, param, setupParamsTrk, statementIdx);
+          statement = Statement.boundCheckLegoVerifierFromSetupParamRefs(
+            transformedMin,
+            transformedMax,
+            setupParamsTrk.indexForParam(paramId)
+          );
+          break;
+        case BoundCheckProtocols.Bpp:
+          Presentation.addBppSetupParamsToTracker(paramId, param, setupParamsTrk, statementIdx);
+          statement = Statement.boundCheckBppFromSetupParamRefs(
+            transformedMin,
+            transformedMax,
+            setupParamsTrk.indexForParam(paramId)
+          );
+          break;
+        case BoundCheckProtocols.Smc:
+          Presentation.addSmcSetupParamsToTracker(paramId, param, setupParamsTrk, statementIdx);
+          statement = Statement.boundCheckSmcFromSetupParamRefs(
+            transformedMin,
+            transformedMax,
+            setupParamsTrk.indexForParam(paramId)
+          );
+          break;
+        case BoundCheckProtocols.SmcKV:
+          Presentation.addSmcKVVerifierParamsToTracker(paramId, param, setupParamsTrk, statementIdx);
+          statement = Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs(
+            transformedMin,
+            transformedMax,
+            setupParamsTrk.indexForParam(paramId)
+          );
+          break;
+        default:
+          throw new Error(`Unknown protocol ${protocol} for bound check`);
+      }
       const sIdx = statements.add(statement);
       const witnessEq = new WitnessEqualityMetaStatement();
       witnessEq.addWitnessRef(statementIdx, nameIdx);
@@ -551,13 +598,13 @@ export class Presentation extends Versioned {
         );
       }
       const nameIdx = witnessIndexGetter(name);
-      const commGensId = verEnc[j]['commitmentGensId'];
-      if (commGensId === undefined) {
+      const commKeyId = verEnc[j]['commitmentGensId'];
+      if (commKeyId === undefined) {
         throw new Error(`Commitment gens id not found for ${name}`);
       }
-      const commGens = predicateParams?.get(commGensId);
-      if (commGens === undefined) {
-        throw new Error(`Commitment gens not found for id ${commGensId}`);
+      const commKey = predicateParams?.get(commKeyId);
+      if (commKey === undefined) {
+        throw new Error(`Commitment gens not found for id ${commKeyId}`);
       }
       const encKeyId = verEnc[j]['encryptionKeyId'];
       if (encKeyId === undefined) {
@@ -579,10 +626,10 @@ export class Presentation extends Versioned {
       const statement = saverStatement(
         false,
         chunkBitSize,
-        commGensId,
+        commKeyId,
         encKeyId,
         snarkVkId,
-        commGens,
+        commKey,
         encKey,
         snarkVk,
         setupParamsTrk
@@ -607,7 +654,7 @@ export class Presentation extends Versioned {
   ) {
     predicates.forEach((pred, j) => {
       const param = predicateParams?.get(pred.snarkKeyId);
-      Presentation.addLegoVerifyingKeyToTracker(pred.snarkKeyId, param, setupParamsTrk);
+      Presentation.addLegoVerifyingKeyToTracker(pred.snarkKeyId, param, setupParamsTrk, statementIdx);
 
       let publicInputs = pred.publicVars.flatMap((pv) => {
         return pv.value;
@@ -764,7 +811,8 @@ export class Presentation extends Versioned {
   private static addLegoVerifyingKeyToTracker(
     paramId: string,
     param: PredicateParamType | undefined,
-    setupParamsTrk: SetupParamsTracker
+    setupParamsTrk: SetupParamsTracker,
+    statementIdx: number
   ) {
     if (param instanceof LegoVerifyingKey) {
       if (!setupParamsTrk.isTrackingParam(paramId)) {
@@ -775,7 +823,72 @@ export class Presentation extends Versioned {
         setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkVerifyingKeyUncompressed(param));
       }
     } else {
-      throw new Error(`Predicate param id ${paramId} was expected to be a Legosnark verifying key but was ${param}`);
+      throw new Error(
+        `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Legosnark verifying key but was ${param}`
+      );
+    }
+  }
+
+  static addBppSetupParamsToTracker(
+    paramId: string,
+    param: PredicateParamType | undefined,
+    setupParamsTrk: SetupParamsTracker,
+    statementIdx: number
+  ) {
+    if (param instanceof BoundCheckBppParams) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.bppSetupParams(param));
+      }
+    } else if (param instanceof BoundCheckBppParamsUncompressed) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.bppSetupParamsUncompressed(param));
+      }
+    } else {
+      throw new Error(
+        `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be Bulletproofs++ setup params but was ${param}`
+      );
+    }
+  }
+
+  static addSmcSetupParamsToTracker(
+    paramId: string,
+    param: PredicateParamType | undefined,
+    setupParamsTrk: SetupParamsTracker,
+    statementIdx: number
+  ) {
+    if (param instanceof BoundCheckSmcParams) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParams(param));
+      }
+    } else if (param instanceof BoundCheckSmcParamsUncompressed) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsUncompressed(param));
+      }
+    } else {
+      throw new Error(
+        `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be set-membership check setup params but was ${param}`
+      );
+    }
+  }
+
+  private static addSmcKVVerifierParamsToTracker(
+    paramId: string,
+    param: PredicateParamType | undefined,
+    setupParamsTrk: SetupParamsTracker,
+    statementIdx: number
+  ) {
+    if (param instanceof BoundCheckSmcWithKVVerifierParams) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsWithSk(param));
+      }
+    } else if (param instanceof BoundCheckSmcWithKVVerifierParamsUncompressed) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsWithSkUncompressed(param));
+      }
+    } else {
+      throw new Error(
+        `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Legosnark verifying key but was ${param}`
+      );
     }
   }
 

@@ -16,13 +16,21 @@ import {
   VB_ACCUMULATOR_22,
   SUBJECT_STR,
   TYPE_STR,
-  SaverChunkedCommitmentGens,
+  SaverChunkedCommitmentKey,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
   SaverEncryptionKeyUncompressed,
   SaverProvingKeyUncompressed,
   SaverSecretKey,
-  SaverVerifyingKeyUncompressed, BoundCheckProtocols, VerifiableEncryptionProtocols
+  SaverVerifyingKeyUncompressed,
+  BoundCheckProtocols,
+  VerifiableEncryptionProtocols,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckBppParams,
+  BoundCheckSmcParams,
+  BoundCheckSmcWithKVProverParamsUncompressed,
+  BoundCheckSmcWithKVVerifierParamsUncompressed, BoundCheckSmcWithKVSetup
 } from '../../src';
 import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
@@ -91,7 +99,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
   let saverEk: SaverEncryptionKeyUncompressed;
   let saverDk: SaverDecryptionKeyUncompressed;
 
-  function setupBoundCheck() {
+  let boundCheckBppParams: BoundCheckBppParamsUncompressed;
+  let boundCheckSmcParams: BoundCheckSmcParamsUncompressed;
+  let boundCheckSmcKVProverParams: BoundCheckSmcWithKVProverParamsUncompressed;
+  let boundCheckSmcKVVerifierParams: BoundCheckSmcWithKVVerifierParamsUncompressed;
+
+  function setupBoundCheckLego() {
     if (boundCheckProvingKey === undefined) {
       [boundCheckProvingKey, boundCheckVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
     }
@@ -122,6 +135,28 @@ describe(`${Scheme} Presentation creation and verification`, () => {
         saverEk = encryptionKey.decompress();
         saverDk = decryptionKey.decompress();
       }
+    }
+  }
+
+  function setupBoundCheckBpp() {
+    if (boundCheckBppParams === undefined) {
+      const p = new BoundCheckBppParams(stringToBytes('Bulletproofs++ testing'));
+      boundCheckBppParams = p.decompress();
+    }
+  }
+
+  function setupBoundCheckSmc() {
+    if (boundCheckSmcParams === undefined) {
+      const p = new BoundCheckSmcParams(stringToBytes('set-membership check based range proof testing'));
+      boundCheckSmcParams = p.decompress();
+    }
+  }
+
+  function setupBoundCheckSmcWithKV() {
+    if (boundCheckSmcKVProverParams === undefined) {
+      const p = BoundCheckSmcWithKVSetup(stringToBytes('set-membership check based range proof with keyed verification testing'));
+      boundCheckSmcKVProverParams = p[0];
+      boundCheckSmcKVVerifierParams = p[1];
     }
   }
 
@@ -966,72 +1001,9 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     checkPresentationJson(pres6, [pk1, pk2, pk3, pk4], acc);
   });
 
-  it('from credentials and proving bounds as dates on attributes', () => {
-    setupBoundCheck();
-
-    const pkId = 'random';
-
+  function checkBounds(paramId: string, provingParams, verifyingParams, protocol) {
     // ------------------- Presentation with 1 credential -----------------------------------------
-    const builder7 = new PresentationBuilder();
-    expect(builder7.addCredential(credential7, pk1)).toEqual(0);
-
-    builder7.markAttributesRevealed(0, new Set<string>(['credentialSubject.name']));
-
-    const [minDateTime, maxDateTime] = [new Date('2022-09-14T14:26:40.488Z'), new Date('2024-09-14T14:26:40.488Z')];
-    expect(minDateTime.getTime()).toBeLessThan(new Date(credential7.subject['myDateTime']).getTime());
-    expect(maxDateTime.getTime()).toBeGreaterThan(new Date(credential7.subject['myDateTime']).getTime());
-    builder7.enforceBounds(0, 'credentialSubject.myDateTime', minDateTime, maxDateTime, pkId, boundCheckProvingKey);
-
-    // This call to enforceBounds will use strings, verifying the API works with Date obj or string value
-    // we also use a negative timestamp here for testing
-    const [minDate, maxDate] = [new Date('1800-09-14'), new Date('2024-09-14')];
-    expect(minDate.getTime()).toBeLessThan(new Date(credential7.subject['myDate']).getTime());
-    expect(maxDate.getTime()).toBeGreaterThan(new Date(credential7.subject['myDate']).getTime());
-    builder7.enforceBounds(0, 'credentialSubject.myDate', minDate.toISOString(), maxDate.toISOString(), pkId);
-    
-    const pres1 = builder7.finalize();
-
-    // Enforce that the date bounds were not revealed
-    expect(pres1.spec.credentials.length).toEqual(1);
-    expect(pres1.spec.credentials[0].revealedAttributes).toEqual({
-      credentialSubject: {
-        name: 'Random'
-      }
-    });
-
-    // These checks are made by the verifier, i.e. verifier checks that the bounds (min, max) for each attribute in the
-    // presentation are what's expected and the presentation is valid.
-    expect(pres1.spec.credentials[0].bounds).toEqual({
-      credentialSubject: {
-        myDateTime: {
-          min: minDateTime.getTime(),
-          max: maxDateTime.getTime(),
-          paramId: pkId,
-          protocol: BoundCheckProtocols.Legogroth16
-        },
-        myDate: {
-          min: minDate.getTime(),
-          max: maxDate.getTime(),
-          paramId: pkId,
-          protocol: BoundCheckProtocols.Legogroth16
-        }
-      }
-    });
-
-    // Verifier passes the snark verification key for the presentation to verify
-    const pp = new Map();
-    pp.set(pkId, boundCheckVerifyingKey);
-    checkResult(pres1.verify([pk1], undefined, pp));
-
-    checkPresentationJson(pres1, [pk1], undefined, pp);
-  });
-
-  it('from credentials and proving bounds on attributes', () => {
-    setupBoundCheck();
-
-    const pkId = 'random';
-
-    // ------------------- Presentation with 1 credential -----------------------------------------
+    console.time(`Proof generation over 1 credential and 3 bound-check in total using ${protocol}`);
     const builder7 = new PresentationBuilder();
     expect(builder7.addCredential(credential1, pk1)).toEqual(0);
 
@@ -1042,23 +1014,25 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     expect(minTime).toBeLessThan(credential1.subject['timeOfBirth']);
     // @ts-ignore
     expect(maxTime).toBeGreaterThan(credential1.subject['timeOfBirth']);
-    builder7.enforceBounds(0, 'credentialSubject.timeOfBirth', minTime, maxTime, pkId, boundCheckProvingKey);
+    builder7.enforceBounds(0, 'credentialSubject.timeOfBirth', minTime, maxTime, paramId, provingParams);
 
     const [minBMI, maxBMI] = [10, 40];
     // @ts-ignore
     expect(minBMI).toBeLessThan(credential1.subject['BMI']);
     // @ts-ignore
     expect(maxBMI).toBeGreaterThan(credential1.subject['BMI']);
-    builder7.enforceBounds(0, 'credentialSubject.BMI', minBMI, maxBMI, pkId);
+    builder7.enforceBounds(0, 'credentialSubject.BMI', minBMI, maxBMI, paramId);
 
     const [minScore, maxScore] = [-40.5, 60.7];
     // @ts-ignore
     expect(minScore).toBeLessThan(credential1.subject['score']);
     // @ts-ignore
     expect(maxScore).toBeGreaterThan(credential1.subject['score']);
-    builder7.enforceBounds(0, 'credentialSubject.score', minScore, maxScore, pkId);
+    builder7.enforceBounds(0, 'credentialSubject.score', minScore, maxScore, paramId);
 
     const pres1 = builder7.finalize();
+
+    console.timeEnd(`Proof generation over 1 credential and 3 bound-check in total using ${protocol}`);
 
     expect(pres1.spec.credentials.length).toEqual(1);
     expect(pres1.spec.credentials[0].revealedAttributes).toEqual({
@@ -1075,32 +1049,36 @@ describe(`${Scheme} Presentation creation and verification`, () => {
         timeOfBirth: {
           min: minTime,
           max: maxTime,
-          paramId: pkId,
-          protocol: BoundCheckProtocols.Legogroth16
+          paramId: paramId,
+          protocol: protocol
         },
         BMI: {
           min: minBMI,
           max: maxBMI,
-          paramId: pkId,
-          protocol: BoundCheckProtocols.Legogroth16
+          paramId: paramId,
+          protocol: protocol
         },
         score: {
           min: minScore,
           max: maxScore,
-          paramId: pkId,
-          protocol: BoundCheckProtocols.Legogroth16
+          paramId: paramId,
+          protocol: protocol
         }
       }
     });
 
+    console.time(`Proof verification over 1 credential and 3 bound-check in total using ${protocol}`);
     // Verifier passes the snark verification key for the presentation to verify
     const pp = new Map();
-    pp.set(pkId, boundCheckVerifyingKey);
+    pp.set(paramId, verifyingParams);
     checkResult(pres1.verify([pk1], undefined, pp));
+    console.timeEnd(`Proof verification over 1 credential and 3 bound-check in total using ${protocol}`);
 
     checkPresentationJson(pres1, [pk1], undefined, pp);
 
     // ---------------------------------- Presentation with 3 credentials ---------------------------------
+
+    console.time(`Proof generation over 3 credential and 5 bound-check in total using ${protocol}`);
 
     const builder8 = new PresentationBuilder();
     expect(builder8.addCredential(credential1, pk1)).toEqual(0);
@@ -1134,25 +1112,27 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       blockNo: 2010334
     });
 
-    builder8.enforceBounds(0, 'credentialSubject.timeOfBirth', minTime, maxTime, pkId, boundCheckProvingKey);
-    builder8.enforceBounds(0, 'credentialSubject.BMI', minBMI, maxBMI, pkId);
-    builder8.enforceBounds(0, 'credentialSubject.score', minScore, maxScore, pkId);
+    builder8.enforceBounds(0, 'credentialSubject.timeOfBirth', minTime, maxTime, paramId, provingParams);
+    builder8.enforceBounds(0, 'credentialSubject.BMI', minBMI, maxBMI, paramId);
+    builder8.enforceBounds(0, 'credentialSubject.score', minScore, maxScore, paramId);
 
     const [minLat, maxLat] = [-30, 50];
     // @ts-ignore
     expect(minLat).toBeLessThan(credential3.subject.lessSensitive.department.location.geo.lat);
     // @ts-ignore
     expect(maxLat).toBeGreaterThan(credential3.subject.lessSensitive.department.location.geo.lat);
-    builder8.enforceBounds(2, 'credentialSubject.lessSensitive.department.location.geo.lat', minLat, maxLat, pkId);
+    builder8.enforceBounds(2, 'credentialSubject.lessSensitive.department.location.geo.lat', minLat, maxLat, paramId);
 
     const [minLong, maxLong] = [-10, 85];
     // @ts-ignore
     expect(minLong).toBeLessThan(credential3.subject.lessSensitive.department.location.geo.long);
     // @ts-ignore
     expect(maxLong).toBeGreaterThan(credential3.subject.lessSensitive.department.location.geo.long);
-    builder8.enforceBounds(2, 'credentialSubject.lessSensitive.department.location.geo.long', minLong, maxLong, pkId);
+    builder8.enforceBounds(2, 'credentialSubject.lessSensitive.department.location.geo.long', minLong, maxLong, paramId);
 
     const pres2 = builder8.finalize();
+
+    console.timeEnd(`Proof generation over 3 credential and 5 bound-check in total using ${protocol}`);
 
     // These checks are made by the verifier, i.e. verifier checks that the bounds (min, max) for each attribute of the
     // corresponding credential in the presentation are what's expected and the presentation is valid.
@@ -1161,20 +1141,20 @@ describe(`${Scheme} Presentation creation and verification`, () => {
         timeOfBirth: {
           min: minTime,
           max: maxTime,
-          paramId: pkId,
-          protocol: BoundCheckProtocols.Legogroth16
+          paramId: paramId,
+          protocol: protocol
         },
         BMI: {
           min: minBMI,
           max: maxBMI,
-          paramId: pkId,
-          protocol: BoundCheckProtocols.Legogroth16
+          paramId: paramId,
+          protocol: protocol
         },
         score: {
           min: minScore,
           max: maxScore,
-          paramId: pkId,
-          protocol: BoundCheckProtocols.Legogroth16
+          paramId: paramId,
+          protocol: protocol
         }
       }
     });
@@ -1188,14 +1168,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
                 lat: {
                   min: minLat,
                   max: maxLat,
-                  paramId: pkId,
-                  protocol: BoundCheckProtocols.Legogroth16
+                  paramId: paramId,
+                  protocol: protocol
                 },
                 long: {
                   min: minLong,
                   max: maxLong,
-                  paramId: pkId,
-                  protocol: BoundCheckProtocols.Legogroth16
+                  paramId: paramId,
+                  protocol: protocol
                 }
               }
             }
@@ -1211,14 +1191,116 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       extra: { blockNo: 2010334 }
     });
 
+    console.time(`Proof verification over 3 credential and 5 bound-check in total using ${protocol}`);
     const acc = new Map();
     acc.set(2, accumulator3Pk);
 
     const pp1 = new Map();
-    pp1.set(pkId, boundCheckVerifyingKey);
+    pp1.set(paramId, verifyingParams);
     checkResult(pres2.verify([pk1, pk2, pk3], acc, pp1));
+    console.timeEnd(`Proof verification over 3 credential and 5 bound-check in total using ${protocol}`);
 
     checkPresentationJson(pres2, [pk1, pk2, pk3], acc, pp1);
+  }
+
+  function checkBoundsOnDates(paramId: string, provingParams, verifyingParams, protocol) {
+
+    console.time(`Proof generation over 1 credential and 2 bound-check in total using ${protocol}`);
+    const builder7 = new PresentationBuilder();
+    expect(builder7.addCredential(credential7, pk1)).toEqual(0);
+
+    builder7.markAttributesRevealed(0, new Set<string>(['credentialSubject.name']));
+
+    const [minDateTime, maxDateTime] = [new Date('2022-09-14T14:26:40.488Z'), new Date('2024-09-14T14:26:40.488Z')];
+    expect(minDateTime.getTime()).toBeLessThan(new Date(credential7.subject['myDateTime']).getTime());
+    expect(maxDateTime.getTime()).toBeGreaterThan(new Date(credential7.subject['myDateTime']).getTime());
+    builder7.enforceBounds(0, 'credentialSubject.myDateTime', minDateTime, maxDateTime, paramId, provingParams);
+
+    // This call to enforceBounds will use strings, verifying the API works with Date obj or string value
+    // we also use a negative timestamp here for testing
+    const [minDate, maxDate] = [new Date('1800-09-14'), new Date('2024-09-14')];
+    expect(minDate.getTime()).toBeLessThan(new Date(credential7.subject['myDate']).getTime());
+    expect(maxDate.getTime()).toBeGreaterThan(new Date(credential7.subject['myDate']).getTime());
+    builder7.enforceBounds(0, 'credentialSubject.myDate', minDate.toISOString(), maxDate.toISOString(), paramId);
+
+    const pres1 = builder7.finalize();
+    console.timeEnd(`Proof generation over 1 credential and 2 bound-check in total using ${protocol}`);
+
+    // Enforce that the date bounds were not revealed
+    expect(pres1.spec.credentials.length).toEqual(1);
+    expect(pres1.spec.credentials[0].revealedAttributes).toEqual({
+      credentialSubject: {
+        name: 'Random'
+      }
+    });
+
+    // These checks are made by the verifier, i.e. verifier checks that the bounds (min, max) for each attribute in the
+    // presentation are what's expected and the presentation is valid.
+    expect(pres1.spec.credentials[0].bounds).toEqual({
+      credentialSubject: {
+        myDateTime: {
+          min: minDateTime.getTime(),
+          max: maxDateTime.getTime(),
+          paramId: paramId,
+          protocol: protocol
+        },
+        myDate: {
+          min: minDate.getTime(),
+          max: maxDate.getTime(),
+          paramId: paramId,
+          protocol: protocol
+        }
+      }
+    });
+
+    console.time(`Proof verification over 1 credential and 2 bound-check in total using ${protocol}`);
+    // Verifier passes the snark verification key for the presentation to verify
+    const pp = new Map();
+    pp.set(paramId, verifyingParams);
+    checkResult(pres1.verify([pk1], undefined, pp));
+    console.timeEnd(`Proof verification over 1 credential and 2 bound-check in total using ${protocol}`);
+
+    checkPresentationJson(pres1, [pk1], undefined, pp);
+  }
+
+  it('from credentials and proving bounds using LegoGroth16 on attributes as dates', () => {
+    setupBoundCheckLego();
+    checkBoundsOnDates('random', boundCheckProvingKey, boundCheckVerifyingKey, BoundCheckProtocols.Legogroth16)
+  });
+
+  it('from credentials and proving bounds using Bulletproofs++ on attributes as dates', () => {
+    setupBoundCheckBpp();
+    checkBoundsOnDates('random', boundCheckBppParams, boundCheckBppParams, BoundCheckProtocols.Bpp)
+  });
+
+  it('from credentials and proving bounds using set-membership check on attributes as dates', () => {
+    setupBoundCheckSmc();
+    checkBoundsOnDates('random', boundCheckSmcParams, boundCheckSmcParams, BoundCheckProtocols.Smc)
+  });
+
+  it('from credentials and proving bounds using set-membership check with keyed verification on attributes as dates', () => {
+    setupBoundCheckSmcWithKV();
+    checkBoundsOnDates('random', boundCheckSmcKVProverParams, boundCheckSmcKVVerifierParams, BoundCheckProtocols.SmcKV)
+  });
+
+  it('from credentials and proving bounds on attributes using LegorGroth16', () => {
+    setupBoundCheckLego();
+    checkBounds('random', boundCheckProvingKey, boundCheckVerifyingKey, BoundCheckProtocols.Legogroth16)
+  });
+
+  it('from credentials and proving bounds on attributes using Bulletproofs++', () => {
+    setupBoundCheckBpp();
+    checkBounds('random', boundCheckBppParams, boundCheckBppParams, BoundCheckProtocols.Bpp)
+  });
+
+  it('from credentials and proving bounds on attributes using set-membership check', () => {
+    setupBoundCheckSmc();
+    checkBounds('random', boundCheckSmcParams, boundCheckSmcParams, BoundCheckProtocols.Smc)
+  });
+
+  it('from credentials and proving bounds on attributes using set-membership check and keyed-verification', () => {
+    setupBoundCheckSmcWithKV();
+    checkBounds('random', boundCheckSmcKVProverParams, boundCheckSmcKVVerifierParams, BoundCheckProtocols.SmcKV)
   });
 
   it('from credentials and encryption of attributes', () => {
@@ -1227,10 +1309,10 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
     // ------------------- Presentation with 1 credential -----------------------------------------
 
-    const gens = SaverChunkedCommitmentGens.generate(stringToBytes('some nonce'));
-    const commGens = gens.decompress();
+    const ck = SaverChunkedCommitmentKey.generate(stringToBytes('some nonce'));
+    const commKey = ck.decompress();
 
-    const commGensId = 'random-1';
+    const commKeyId = 'random-1';
     const ekId = 'random-2';
     const snarkPkId = 'random-3';
 
@@ -1242,10 +1324,10 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       0,
       'credentialSubject.SSN',
       chunkBitSize,
-      commGensId,
+      commKeyId,
       ekId,
       snarkPkId,
-      commGens,
+      commKey,
       saverEk,
       saverProvingKey
     );
@@ -1257,7 +1339,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       credentialSubject: {
         SSN: {
           chunkBitSize,
-          commitmentGensId: commGensId,
+          commitmentGensId: commKeyId,
           encryptionKeyId: ekId,
           snarkKeyId: snarkPkId,
           protocol: VerifiableEncryptionProtocols.Saver
@@ -1274,7 +1356,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     expect(pres1.attributeCiphertexts.get(0)).toBeDefined();
 
     const pp = new Map();
-    pp.set(commGensId, commGens);
+    pp.set(commKeyId, commKey);
     pp.set(ekId, saverEk);
     pp.set(snarkPkId, saverVerifyingKey);
     checkResult(pres1.verify([pk1], undefined, pp));
@@ -1285,8 +1367,8 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     checkCiphertext(credential1, pres1.attributeCiphertexts?.get(0), 'SSN', saverSk, saverDk, saverVerifyingKey, chunkBitSize);
     // ---------------------------------- Presentation with 3 credentials ---------------------------------
 
-    const gensNew = SaverChunkedCommitmentGens.generate(stringToBytes('another nonce'));
-    const commGensNew = gensNew.decompress();
+    const ckNew = SaverChunkedCommitmentKey.generate(stringToBytes('another nonce'));
+    const commKeyNew = ckNew.decompress();
 
     const builder10 = new PresentationBuilder();
     expect(builder10.addCredential(credential1, pk1)).toEqual(0);
@@ -1322,14 +1404,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       0,
       'credentialSubject.SSN',
       chunkBitSize,
-      commGensId,
+      commKeyId,
       ekId,
       snarkPkId,
-      commGensNew,
+      commKeyNew,
       saverEk,
       saverProvingKey
     );
-    builder10.verifiablyEncrypt(1, 'credentialSubject.sensitive.userId', chunkBitSize, commGensId, ekId, snarkPkId);
+    builder10.verifiablyEncrypt(1, 'credentialSubject.sensitive.userId', chunkBitSize, commKeyId, ekId, snarkPkId);
 
     const pres2 = builder10.finalize();
 
@@ -1337,7 +1419,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       credentialSubject: {
         SSN: {
           chunkBitSize,
-          commitmentGensId: commGensId,
+          commitmentGensId: commKeyId,
           encryptionKeyId: ekId,
           snarkKeyId: snarkPkId,
           protocol: VerifiableEncryptionProtocols.Saver
@@ -1349,7 +1431,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
         sensitive: {
           userId: {
             chunkBitSize,
-            commitmentGensId: commGensId,
+            commitmentGensId: commKeyId,
             encryptionKeyId: ekId,
             snarkKeyId: snarkPkId,
             protocol: VerifiableEncryptionProtocols.Saver
@@ -1369,7 +1451,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     acc.set(2, accumulator3Pk);
 
     const pp1 = new Map();
-    pp1.set(commGensId, commGensNew);
+    pp1.set(commKeyId, commKeyNew);
     pp1.set(ekId, saverEk);
     pp1.set(snarkPkId, saverVerifyingKey);
 
@@ -1394,16 +1476,16 @@ describe(`${Scheme} Presentation creation and verification`, () => {
   });
 
   it('from credentials with proving bounds on attributes and encryption of some attributes', () => {
-    setupBoundCheck();
+    setupBoundCheckLego();
     setupSaver();
 
     const boundCheckSnarkId = 'random';
-    const commGensId = 'random-1';
+    const commKeyId = 'random-1';
     const ekId = 'random-2';
     const snarkPkId = 'random-3';
 
-    const gens = SaverChunkedCommitmentGens.generate(stringToBytes('a new nonce'));
-    const commGens = gens.decompress();
+    const ck = SaverChunkedCommitmentKey.generate(stringToBytes('a new nonce'));
+    const commKey = ck.decompress();
 
     const builder11 = new PresentationBuilder();
     expect(builder11.addCredential(credential1, pk1)).toEqual(0);
@@ -1496,14 +1578,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       0,
       'credentialSubject.SSN',
       chunkBitSize,
-      commGensId,
+      commKeyId,
       ekId,
       snarkPkId,
-      commGens,
+      commKey,
       saverEk,
       saverProvingKey
     );
-    builder11.verifiablyEncrypt(1, 'credentialSubject.sensitive.userId', chunkBitSize, commGensId, ekId, snarkPkId);
+    builder11.verifiablyEncrypt(1, 'credentialSubject.sensitive.userId', chunkBitSize, commKeyId, ekId, snarkPkId);
 
     const pres1 = builder11.finalize();
 
@@ -1534,7 +1616,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       credentialSubject: {
         SSN: {
           chunkBitSize,
-          commitmentGensId: commGensId,
+          commitmentGensId: commKeyId,
           encryptionKeyId: ekId,
           snarkKeyId: snarkPkId,
           protocol: VerifiableEncryptionProtocols.Saver
@@ -1572,7 +1654,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
         sensitive: {
           userId: {
             chunkBitSize,
-            commitmentGensId: commGensId,
+            commitmentGensId: commKeyId,
             encryptionKeyId: ekId,
             snarkKeyId: snarkPkId,
             protocol: VerifiableEncryptionProtocols.Saver
@@ -1593,7 +1675,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
     const pp = new Map();
     pp.set(boundCheckSnarkId, boundCheckVerifyingKey);
-    pp.set(commGensId, commGens);
+    pp.set(commKeyId, commKey);
     pp.set(ekId, saverEk);
     pp.set(snarkPkId, saverVerifyingKey);
     checkResult(pres1.verify([pk1, pk2, pk3], acc, pp));
@@ -1637,7 +1719,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
     checkResult(pres1.verify([pk1]));
 
-    setupBoundCheck();
+    setupBoundCheckLego();
 
     const boundCheckSnarkId = 'random';
 
@@ -1828,7 +1910,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
     checkResult(pres1.verify([pk1]));
 
-    setupBoundCheck();
+    setupBoundCheckLego();
 
     const boundCheckSnarkId = 'random';
 

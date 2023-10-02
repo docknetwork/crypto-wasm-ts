@@ -5,7 +5,7 @@ import {
   MetaStatement,
   MetaStatements,
   QuasiProofSpecG1,
-  SaverChunkedCommitmentGens,
+  SaverChunkedCommitmentKey,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
   SaverEncryptionGens,
@@ -173,14 +173,14 @@ describe(`${Scheme} Verifiable encryption of signed messages`, () => {
     sig: Signature,
     label: string
   ) {
-    const gens = SaverChunkedCommitmentGens.generate(stringToBytes(label));
-    const commGens = gens.decompress();
+    const ck = SaverChunkedCommitmentKey.generate(stringToBytes(label));
+    const commKey = ck.decompress();
 
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
     const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
-    const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, snarkProvingKey, chunkBitSize);
+    const statement2 = Statement.saverProver(saverEncGens, commKey, saverEk, snarkProvingKey, chunkBitSize);
 
     const proverStatements = new Statements(statement1);
     //proverStatements.add(statement1);
@@ -200,7 +200,7 @@ describe(`${Scheme} Verifiable encryption of signed messages`, () => {
     const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 
-    const statement3 = Statement.saverVerifier(saverEncGens, commGens, saverEk, snarkVerifyingKey, chunkBitSize);
+    const statement3 = Statement.saverVerifier(saverEncGens, commKey, saverEk, snarkVerifyingKey, chunkBitSize);
     const verifierStatements = new Statements(statement1);
     // verifierStatements.add(statement1);
     verifierStatements.add(statement3);
@@ -225,13 +225,13 @@ describe(`${Scheme} Verifiable encryption of signed messages`, () => {
   }, 20000);
 
   it('prove knowledge of verifiable encryption of 1 message from both signatures', () => {
-    const commGens = SaverChunkedCommitmentGens.generate(stringToBytes('public test label 3')).decompress();
+    const commKey = SaverChunkedCommitmentKey.generate(stringToBytes('public test label 3')).decompress();
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
     const [revealedMsgs2, unrevealedMsgs2] = getRevealedUnrevealed(messages2, new Set<number>());
 
     const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
-    proverSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commGens));
+    proverSetupParams.push(SetupParam.saverCommitmentKeyUncompressed(commKey));
     proverSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
     proverSetupParams.push(SetupParam.saverProvingKeyUncompressed(snarkProvingKey));
 
@@ -267,7 +267,7 @@ describe(`${Scheme} Verifiable encryption of signed messages`, () => {
 
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
-    verifierSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commGens));
+    verifierSetupParams.push(SetupParam.saverCommitmentKeyUncompressed(commKey));
     verifierSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
     verifierSetupParams.push(SetupParam.saverVerifyingKeyUncompressed(snarkVerifyingKey));
 

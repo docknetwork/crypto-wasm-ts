@@ -9,7 +9,7 @@ import {
   getRevealedAndUnrevealed,
   MetaStatements,
   QuasiProofSpecG1,
-  SaverChunkedCommitmentGens,
+  SaverChunkedCommitmentKey,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
   SaverEncryptionGens,
@@ -90,8 +90,8 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
     const timeMax = 1662011149654;
 
     // Verifier creates these parameters
-    const gens = SaverChunkedCommitmentGens.generate(stringToBytes('some label'));
-    const commGens = gens.decompress();
+    const gens = SaverChunkedCommitmentKey.generate(stringToBytes('some label'));
+    const commKey = gens.decompress();
 
     // Reveal first name ("fname" attribute), last name ("lname") and country
     // Prove that "SSN" is verifiably encrypted
@@ -114,8 +114,8 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
     expect(revealedMsgsRaw).toEqual({ fname: 'John', lname: 'Smith', country: 'USA' });
 
     const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
-    const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, saverProvingKey, chunkBitSize);
-    const statement3 = Statement.boundCheckProver(timeMin, timeMax, boundCheckProvingKey);
+    const statement2 = Statement.saverProver(saverEncGens, commKey, saverEk, saverProvingKey, chunkBitSize);
+    const statement3 = Statement.boundCheckLegoProver(timeMin, timeMax, boundCheckProvingKey);
 
     const statementsProver = new Statements();
     const sIdx1 = statementsProver.add(statement1);
@@ -151,8 +151,8 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
     const statement4 = buildStatement(sigParams, sigPk, revealedMsgsFromVerifier, false);
-    const statement5 = Statement.saverVerifier(saverEncGens, commGens, saverEk, saverVerifyingKey, chunkBitSize);
-    const statement6 = Statement.boundCheckVerifier(timeMin, timeMax, boundCheckVerifyingKey);
+    const statement5 = Statement.saverVerifier(saverEncGens, commKey, saverEk, saverVerifyingKey, chunkBitSize);
+    const statement6 = Statement.boundCheckLegoVerifier(timeMin, timeMax, boundCheckVerifyingKey);
 
     const verifierStatements = new Statements();
     const sIdx4 = verifierStatements.add(statement4);

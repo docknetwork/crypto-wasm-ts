@@ -14,8 +14,8 @@ import {
   SignatureParamsClass
 } from './types-and-consts';
 import {
-  SaverChunkedCommitmentGens,
-  SaverChunkedCommitmentGensUncompressed,
+  SaverChunkedCommitmentKey,
+  SaverChunkedCommitmentKeyUncompressed,
   SaverEncryptionKey,
   SaverEncryptionKeyUncompressed,
   SaverProvingKey,
@@ -281,16 +281,16 @@ export function accumulatorStatement(
 export function saverStatement(
   forProver: boolean,
   chunkBitSize: number,
-  commGensId: string,
+  commKeyId: string,
   encKeyId: string,
   snarkKeyId: string,
-  commGens: PredicateParamType,
+  commKeys: PredicateParamType,
   encKey: PredicateParamType,
   snarkKey: PredicateParamType,
   setupParamsTrk: SetupParamsTracker
 ): Uint8Array {
   if (
-    commGens instanceof SaverChunkedCommitmentGensUncompressed &&
+    commKeys instanceof SaverChunkedCommitmentKeyUncompressed &&
     encKey instanceof SaverEncryptionKeyUncompressed &&
     ((forProver && snarkKey instanceof SaverProvingKeyUncompressed) ||
       (!forProver && snarkKey instanceof SaverVerifyingKeyUncompressed))
@@ -298,8 +298,8 @@ export function saverStatement(
     if (!setupParamsTrk.hasEncryptionGensUncompressed()) {
       setupParamsTrk.addEncryptionGensUncompressed();
     }
-    if (!setupParamsTrk.isTrackingParam(commGensId)) {
-      setupParamsTrk.addForParamId(commGensId, SetupParam.saverCommitmentGensUncompressed(commGens));
+    if (!setupParamsTrk.isTrackingParam(commKeyId)) {
+      setupParamsTrk.addForParamId(commKeyId, SetupParam.saverCommitmentKeyUncompressed(commKeys));
     }
     if (!setupParamsTrk.isTrackingParam(encKeyId)) {
       setupParamsTrk.addForParamId(encKeyId, SetupParam.saverEncryptionKeyUncompressed(encKey));
@@ -313,15 +313,15 @@ export function saverStatement(
       );
     }
   } else if (
-    commGens instanceof SaverChunkedCommitmentGens &&
+    commKeys instanceof SaverChunkedCommitmentKey &&
     encKey instanceof SaverEncryptionKey &&
     ((forProver && snarkKey instanceof SaverProvingKey) || (!forProver && snarkKey instanceof SaverVerifyingKey))
   ) {
     if (!setupParamsTrk.hasEncryptionGensCompressed()) {
       setupParamsTrk.addEncryptionGensCompressed();
     }
-    if (!setupParamsTrk.isTrackingParam(commGensId)) {
-      setupParamsTrk.addForParamId(commGensId, SetupParam.saverCommitmentGens(commGens));
+    if (!setupParamsTrk.isTrackingParam(commKeyId)) {
+      setupParamsTrk.addForParamId(commKeyId, SetupParam.saverCommitmentKey(commKeys));
     }
     if (!setupParamsTrk.isTrackingParam(encKeyId)) {
       setupParamsTrk.addForParamId(encKeyId, SetupParam.saverEncryptionKey(encKey));
@@ -338,14 +338,14 @@ export function saverStatement(
   return forProver
     ? Statement.saverProverFromSetupParamRefs(
         setupParamsTrk.encGensIdx,
-        setupParamsTrk.indexForParam(commGensId),
+        setupParamsTrk.indexForParam(commKeyId),
         setupParamsTrk.indexForParam(encKeyId),
         setupParamsTrk.indexForParam(snarkKeyId),
         chunkBitSize
       )
     : Statement.saverVerifierFromSetupParamRefs(
         setupParamsTrk.encGensIdx,
-        setupParamsTrk.indexForParam(commGensId),
+        setupParamsTrk.indexForParam(commKeyId),
         setupParamsTrk.indexForParam(encKeyId),
         setupParamsTrk.indexForParam(snarkKeyId),
         chunkBitSize

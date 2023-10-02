@@ -24,13 +24,21 @@ import {
   generateR1CSCircomProverStatementFromParamRefs,
   generateR1CSCircomVerifierStatement,
   generateR1CSCircomVerifierStatementFromParamRefs,
-  R1CS
+  R1CS,
+  generateBoundCheckBppStatement,
+  generateBoundCheckBppStatementFromParamRefs,
+  generateBoundCheckSmcStatement,
+  generateBoundCheckSmcStatementFromParamRefs,
+  generateBoundCheckSmcWithKVProverStatement,
+  generateBoundCheckSmcWithKVProverStatementFromParamRefs,
+  generateBoundCheckSmcWithKVVerifierStatement,
+  generateBoundCheckSmcWithKVVerifierStatementFromParamRefs
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
   getChunkBitSize,
-  SaverChunkedCommitmentGens,
-  SaverChunkedCommitmentGensUncompressed,
+  SaverChunkedCommitmentKey,
+  SaverChunkedCommitmentKeyUncompressed,
   SaverEncryptionGens,
   SaverEncryptionGensUncompressed,
   SaverEncryptionKey,
@@ -52,6 +60,16 @@ import { isPositiveInteger } from '../util';
 import { BBSSignatureParams } from '../bbs';
 import { PSPublicKey, PSSignatureParams } from '../ps';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
+import {
+  BoundCheckBppParams,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckSmcParams,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckSmcWithKVProverParams,
+  BoundCheckSmcWithKVProverParamsUncompressed,
+  BoundCheckSmcWithKVVerifierParams,
+  BoundCheckSmcWithKVVerifierParamsUncompressed
+} from '../bound-check';
 
 /**
  * Relation which needs to be proven. Contains any public data that needs to be known to both prover and verifier
@@ -249,14 +267,14 @@ export class Statement {
   /**
    * Create statement for verifiable encryption of a message using SAVER, for the prover. Accepts the parameters in uncompressed form.
    * @param encGens
-   * @param commGens
+   * @param commKey
    * @param encryptionKey
    * @param snarkPk
    * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
    */
   static saverProver(
     encGens: SaverEncryptionGensUncompressed,
-    commGens: SaverChunkedCommitmentGensUncompressed,
+    commKey: SaverChunkedCommitmentKeyUncompressed,
     encryptionKey: SaverEncryptionKeyUncompressed,
     snarkPk: SaverProvingKeyUncompressed,
     chunkBitSize: number
@@ -264,7 +282,7 @@ export class Statement {
     return generateSaverProverStatement(
       getChunkBitSize(chunkBitSize),
       encGens.value,
-      commGens.value,
+      commKey.value,
       encryptionKey.value,
       snarkPk.value,
       true
@@ -274,14 +292,14 @@ export class Statement {
   /**
    * Same as `Statement.saverProver` except that it takes compressed parameters.
    * @param encGens
-   * @param commGens
+   * @param commKey
    * @param encryptionKey
    * @param snarkPk
    * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
    */
   static saverProverFromCompressedParams(
     encGens: SaverEncryptionGens,
-    commGens: SaverChunkedCommitmentGens,
+    commKey: SaverChunkedCommitmentKey,
     encryptionKey: SaverEncryptionKey,
     snarkPk: SaverProvingKey,
     chunkBitSize: number
@@ -289,7 +307,7 @@ export class Statement {
     return generateSaverProverStatement(
       getChunkBitSize(chunkBitSize),
       encGens.value,
-      commGens.value,
+      commKey.value,
       encryptionKey.value,
       snarkPk.value,
       false
@@ -300,14 +318,14 @@ export class Statement {
    * Same as `Statement.saverProver` but does not take the parameters directly but a reference to them as indices in the
    * array of `SetupParam`
    * @param encGensRef
-   * @param commGensRef
+   * @param commKeyRef
    * @param encryptionKeyRef
    * @param snarkPkRef
    * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
    */
   static saverProverFromSetupParamRefs(
     encGensRef: number,
-    commGensRef: number,
+    commKeyRef: number,
     encryptionKeyRef: number,
     snarkPkRef: number,
     chunkBitSize: number
@@ -315,7 +333,7 @@ export class Statement {
     return generateSaverProverStatementFromParamRefs(
       getChunkBitSize(chunkBitSize),
       encGensRef,
-      commGensRef,
+      commKeyRef,
       encryptionKeyRef,
       snarkPkRef
     );
@@ -324,14 +342,14 @@ export class Statement {
   /**
    * Create statement for verifiable encryption of a message using SAVER, for the verifier. Accepts the parameters in uncompressed form.
    * @param encGens
-   * @param commGens
+   * @param commKey
    * @param encryptionKey
-   * @param snarkVk,
+   * @param snarkVk
    * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters
    */
   static saverVerifier(
     encGens: SaverEncryptionGensUncompressed,
-    commGens: SaverChunkedCommitmentGensUncompressed,
+    commKey: SaverChunkedCommitmentKeyUncompressed,
     encryptionKey: SaverEncryptionKeyUncompressed,
     snarkVk: SaverVerifyingKeyUncompressed,
     chunkBitSize: number
@@ -339,7 +357,7 @@ export class Statement {
     return generateSaverVerifierStatement(
       getChunkBitSize(chunkBitSize),
       encGens.value,
-      commGens.value,
+      commKey.value,
       encryptionKey.value,
       snarkVk.value,
       true
@@ -349,14 +367,14 @@ export class Statement {
   /**
    * Same as `Statement.saverVerifier` except that it takes compressed parameters.
    * @param encGens
-   * @param commGens
+   * @param commKey
    * @param encryptionKey
    * @param snarkVk
    * @param chunkBitSize - Must be same as the one used by the decryptor to create the parameters.
    */
   static saverVerifierFromCompressedParams(
     encGens: SaverEncryptionGens,
-    commGens: SaverChunkedCommitmentGens,
+    commKey: SaverChunkedCommitmentKey,
     encryptionKey: SaverEncryptionKey,
     snarkVk: SaverVerifyingKey,
     chunkBitSize: number
@@ -364,7 +382,7 @@ export class Statement {
     return generateSaverVerifierStatement(
       getChunkBitSize(chunkBitSize),
       encGens.value,
-      commGens.value,
+      commKey.value,
       encryptionKey.value,
       snarkVk.value,
       false
@@ -375,14 +393,14 @@ export class Statement {
    * Same as `Statement.saverVerifier` but does not take the parameters directly but a reference to them as indices in the
    * array of `SetupParam`
    * @param encGensRef
-   * @param commGensRef
+   * @param commGensKey
    * @param encryptionKeyRef
    * @param snarkVkRef
    * @param chunkBitSize
    */
   static saverVerifierFromSetupParamRefs(
     encGensRef: number,
-    commGensRef: number,
+    commGensKey: number,
     encryptionKeyRef: number,
     snarkVkRef: number,
     chunkBitSize: number
@@ -390,71 +408,71 @@ export class Statement {
     return generateSaverVerifierStatementFromParamRefs(
       getChunkBitSize(chunkBitSize),
       encGensRef,
-      commGensRef,
+      commGensKey,
       encryptionKeyRef,
       snarkVkRef
     );
   }
 
   /**
-   * Create statement for proving bounds of a message using LegoGroth 16, for the prover.
+   * Create statement for proving bounds [min, max) of a message using LegoGroth16, for the prover.
    * @param min - Inclusive lower bound on the message, must be a positive integer.
-   * @param max - Inclusive upper bound on the message, must be a positive integer.
+   * @param max - Exclusive upper bound on the message, must be a positive integer.
    * @param snarkPk - Proving key for LegoGroth16
    */
-  static boundCheckProver(min: number, max: number, snarkPk: LegoProvingKeyUncompressed): Uint8Array {
+  static boundCheckLegoProver(min: number, max: number, snarkPk: LegoProvingKeyUncompressed): Uint8Array {
     return generateBoundCheckLegoProverStatement(min, max, snarkPk.value, true);
   }
 
   /**
-   * Same as `Statement.boundCheckProver` except that it takes compressed parameters.
+   * Same as `Statement.boundCheckLegoProver` except that it takes compressed parameters.
    * @param min - Inclusive lower bound on the message.
-   * @param max - Inclusive upper bound on the message.
+   * @param max - Exclusive upper bound on the message.
    * @param snarkPk - Proving key for LegoGroth16
    */
-  static boundCheckProverFromCompressedParams(min: number, max: number, snarkPk: LegoProvingKey): Uint8Array {
+  static boundCheckLegoProverFromCompressedParams(min: number, max: number, snarkPk: LegoProvingKey): Uint8Array {
     return generateBoundCheckLegoProverStatement(min, max, snarkPk.value, false);
   }
 
   /**
-   * Same as `Statement.boundCheckProver` but does not take the parameters directly but a reference to them as indices in the
+   * Same as `Statement.boundCheckLegoProver` but does not take the parameters directly but a reference to them as indices in the
    * array of `SetupParam`
    * @param min - Inclusive lower bound on the message.
-   * @param max - Inclusive upper bound on the message.
+   * @param max - Exclusive upper bound on the message.
    * @param snarkPkRef - Index of proving key in array of `SetupParam`
    */
-  static boundCheckProverFromSetupParamRefs(min: number, max: number, snarkPkRef: number): Uint8Array {
+  static boundCheckLegoProverFromSetupParamRefs(min: number, max: number, snarkPkRef: number): Uint8Array {
     return generateBoundCheckLegoProverStatementFromParamRefs(min, max, snarkPkRef);
   }
 
   /**
-   * Create statement for proving bounds of a message using LegoGroth 16, for the verifier.
+   * Create statement for verifying bounds [min, max) of a message using LegoGroth16, for the verifier.
    * @param min - Inclusive lower bound on the message, must be a positive integer.
-   * @param max - Inclusive upper bound on the message, must be a positive integer.
+   * @param max - Exclusive upper bound on the message, must be a positive integer.
    * @param snarkVk - Verifying key for LegoGroth16
    */
-  static boundCheckVerifier(min: number, max: number, snarkVk: LegoVerifyingKeyUncompressed): Uint8Array {
+  static boundCheckLegoVerifier(min: number, max: number, snarkVk: LegoVerifyingKeyUncompressed): Uint8Array {
     return generateBoundCheckLegoVerifierStatement(min, max, snarkVk.value, true);
   }
 
   /**
-   * Same as `Statement.boundCheckVerifier` except that it takes compressed parameters.
+   * Same as `Statement.boundCheckLegoVerifier` except that it takes compressed parameters.
    * @param min - Inclusive lower bound on the message.
-   * @param max - Inclusive upper bound on the message.
+   * @param max - Exclusive upper bound on the message.
    * @param snarkVk - Verifying key for LegoGroth16
    */
-  static boundCheckVerifierFromCompressedParams(min: number, max: number, snarkVk: LegoVerifyingKey): Uint8Array {
+  static boundCheckLegoVerifierFromCompressedParams(min: number, max: number, snarkVk: LegoVerifyingKey): Uint8Array {
     return generateBoundCheckLegoVerifierStatement(min, max, snarkVk.value, false);
   }
 
   /**
-   * Same as `Statement.boundCheckVerifier` but does not take the parameters directly but a reference to them as indices in the
+   * Same as `Statement.boundCheckLegoVerifier` but does not take the parameters directly but a reference to them as indices in the
    * array of `SetupParam`
    * @param min - Inclusive lower bound on the message.
-   * @param max - Inclusive upper bound on the message.
+   * @param max - Exclusive upper bound on the message.
    * @param snarkVkRef - Index of verifying key in array of `SetupParam`
    */
-  static boundCheckVerifierFromSetupParamRefs(min: number, max: number, snarkVkRef: number): Uint8Array {
+  static boundCheckLegoVerifierFromSetupParamRefs(min: number, max: number, snarkVkRef: number): Uint8Array {
     return generateBoundCheckLegoVerifierStatementFromParamRefs(min, max, snarkVkRef);
   }
 
@@ -546,6 +564,146 @@ export class Statement {
   static r1csCircomVerifierFromSetupParamRefs(publicInputsRef: number, snarkVkRef: number): Uint8Array {
     return generateR1CSCircomVerifierStatementFromParamRefs(publicInputsRef, snarkVkRef);
   }
+
+  /**
+   * Create statement for proving bounds of a message using Bulletproofs++.
+   * @param min - Inclusive lower bound on the message, must be a positive integer.
+   * @param max - Exclusive upper bound on the message, must be a positive integer.
+   * @param params - Setup params for Bulletproofs++
+   */
+  static boundCheckBpp(min: number, max: number, params: BoundCheckBppParamsUncompressed): Uint8Array {
+    return generateBoundCheckBppStatement(min, max, params.value, true);
+  }
+
+  /**
+   * Same as `Statement.boundCheckBpp` except that it takes compressed parameters.
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Exclusive upper bound on the message.
+   * @param params - Setup params for Bulletproofs++
+   */
+  static boundCheckBppFromCompressedParams(min: number, max: number, params: BoundCheckBppParams): Uint8Array {
+    return generateBoundCheckBppStatement(min, max, params.value, false);
+  }
+
+  /**
+   * Same as `Statement.boundCheckBpp` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Exclusive upper bound on the message.
+   * @param params - Index of setup params in array of `SetupParam`
+   */
+  static boundCheckBppFromSetupParamRefs(min: number, max: number, params: number): Uint8Array {
+    return generateBoundCheckBppStatementFromParamRefs(min, max, params);
+  }
+
+  /**
+   * Create statement for proving bounds of a message using set-membership check based range proof.
+   * @param min - Inclusive lower bound on the message, must be a positive integer.
+   * @param max - Exclusive upper bound on the message, must be a positive integer.
+   * @param params - Setup params for Bulletproofs++
+   */
+  static boundCheckSmc(min: number, max: number, params: BoundCheckSmcParamsUncompressed): Uint8Array {
+    return generateBoundCheckSmcStatement(min, max, params.value, true);
+  }
+
+  /**
+   * Same as `Statement.boundCheckSmc` except that it takes compressed parameters.
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Exclusive upper bound on the message.
+   * @param params - Setup params for Bulletproofs++
+   */
+  static boundCheckSmcFromCompressedParams(min: number, max: number, params: BoundCheckSmcParams): Uint8Array {
+    return generateBoundCheckSmcStatement(min, max, params.value, false);
+  }
+
+  /**
+   * Same as `Statement.boundCheckSmc` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Exclusive upper bound on the message.
+   * @param params - Index of setup params in array of `SetupParam`
+   */
+  static boundCheckSmcFromSetupParamRefs(min: number, max: number, params: number): Uint8Array {
+    return generateBoundCheckSmcStatementFromParamRefs(min, max, params);
+  }
+
+  /**
+   * Create statement for proving bounds [min, max) of a message using set-membership check based range proof and keyed verification, for the prover.
+   * @param min - Inclusive lower bound on the message, must be a positive integer.
+   * @param max - Exclusive upper bound on the message, must be a positive integer.
+   * @param params
+   */
+  static boundCheckSmcWithKVProver(
+    min: number,
+    max: number,
+    params: BoundCheckSmcWithKVProverParamsUncompressed
+  ): Uint8Array {
+    return generateBoundCheckSmcWithKVProverStatement(min, max, params.value, true);
+  }
+
+  /**
+   * Same as `Statement.boundCheckSmcWithKVProver` except that it takes compressed parameters.
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Exclusive upper bound on the message.
+   * @param params
+   */
+  static boundCheckSmcWithKVProverFromCompressedParams(
+    min: number,
+    max: number,
+    params: BoundCheckSmcWithKVProverParams
+  ): Uint8Array {
+    return generateBoundCheckSmcWithKVProverStatement(min, max, params.value, false);
+  }
+
+  /**
+   * Same as `Statement.boundCheckSmcWithKVProver` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Exclusive upper bound on the message.
+   * @param paramsRef - Index of params in array of `SetupParam`
+   */
+  static boundCheckSmcWithKVProverFromSetupParamRefs(min: number, max: number, paramsRef: number): Uint8Array {
+    return generateBoundCheckSmcWithKVProverStatementFromParamRefs(min, max, paramsRef);
+  }
+
+  /**
+   * Create statement for verifying bounds [min, max) of a message using LegoGroth16, for the verifier.
+   * @param min - Inclusive lower bound on the message, must be a positive integer.
+   * @param max - Exclusive upper bound on the message, must be a positive integer.
+   * @param params
+   */
+  static boundCheckSmcWithKVVerifier(
+    min: number,
+    max: number,
+    params: BoundCheckSmcWithKVVerifierParamsUncompressed
+  ): Uint8Array {
+    return generateBoundCheckSmcWithKVVerifierStatement(min, max, params.value, true);
+  }
+
+  /**
+   * Same as `Statement.boundCheckSmcWithKVVerifier` except that it takes compressed parameters.
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Exclusive upper bound on the message.
+   * @param params
+   */
+  static boundCheckSmcWithKVVerifierFromCompressedParams(
+    min: number,
+    max: number,
+    params: BoundCheckSmcWithKVVerifierParams
+  ): Uint8Array {
+    return generateBoundCheckSmcWithKVVerifierStatement(min, max, params.value, false);
+  }
+
+  /**
+   * Same as `Statement.boundCheckSmcWithKVVerifier` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param min - Inclusive lower bound on the message.
+   * @param max - Exclusive upper bound on the message.
+   * @param params - Index of params in array of `SetupParam`
+   */
+  static boundCheckSmcWithKVVerifierFromSetupParamRefs(min: number, max: number, params: number): Uint8Array {
+    return generateBoundCheckSmcWithKVVerifierStatementFromParamRefs(min, max, params);
+  }
 }
 
 /**
@@ -602,7 +760,7 @@ export class Statements {
 
   /**
    * Add new statements to the end of the list. Returns the indices (ids) of the added statements. These indices are part of the witness reference.
-   * @param statement
+   * @param statements
    */
   append(statements: Statements | Uint8Array[]): number[] {
     const rawStatements = statements instanceof Statements ? statements.values : statements;

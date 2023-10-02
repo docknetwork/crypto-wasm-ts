@@ -17,12 +17,15 @@ import {
   generateSetupParamForR1CS,
   R1CS,
   generateSetupParamForBytes,
-  generateSetupParamForFieldElemVec
+  generateSetupParamForFieldElemVec,
+  generateSetupParamForBppParams,
+  generateSetupParamForSmcParams,
+  generateSetupParamForSmcParamsAndSk
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
-  SaverChunkedCommitmentGens,
-  SaverChunkedCommitmentGensUncompressed,
+  SaverChunkedCommitmentKey,
+  SaverChunkedCommitmentKeyUncompressed,
   SaverEncryptionGens,
   SaverEncryptionGensUncompressed,
   SaverEncryptionKey,
@@ -45,6 +48,14 @@ import { generateSetupParamForPSSignatureParameters } from '@docknetwork/crypto-
 import { PSPublicKey, PSSignatureParams } from '../ps';
 import { generateSetupParamForPSPublicKey } from '@docknetwork/crypto-wasm';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
+import {
+  BoundCheckBppParams,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckSmcParams,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckSmcWithKVVerifierParams,
+  BoundCheckSmcWithKVVerifierParamsUncompressed
+} from '../bound-check';
 
 /**
  * Represents (public) setup parameters of different protocols. Different setup parameters can be wrapped in this and
@@ -100,12 +111,12 @@ export class SetupParam extends BytearrayWrapper {
     return new SetupParam(generateSetupParamForSaverEncryptionGens(encGens.value, true));
   }
 
-  static saverCommitmentGens(commGens: SaverChunkedCommitmentGens): SetupParam {
-    return new SetupParam(generateSetupParamForSaverCommitmentGens(commGens.value, false));
+  static saverCommitmentKey(commKey: SaverChunkedCommitmentKey): SetupParam {
+    return new SetupParam(generateSetupParamForSaverCommitmentGens(commKey.value, false));
   }
 
-  static saverCommitmentGensUncompressed(commGens: SaverChunkedCommitmentGensUncompressed): SetupParam {
-    return new SetupParam(generateSetupParamForSaverCommitmentGens(commGens.value, true));
+  static saverCommitmentKeyUncompressed(commKey: SaverChunkedCommitmentKeyUncompressed): SetupParam {
+    return new SetupParam(generateSetupParamForSaverCommitmentGens(commKey.value, true));
   }
 
   static saverEncryptionKey(key: SaverEncryptionKey): SetupParam {
@@ -166,5 +177,29 @@ export class SetupParam extends BytearrayWrapper {
 
   static fieldElementVec(arr: Uint8Array[]): SetupParam {
     return new SetupParam(generateSetupParamForFieldElemVec(arr));
+  }
+
+  static bppSetupParams(params: BoundCheckBppParams): SetupParam {
+    return new SetupParam(generateSetupParamForBppParams(params.value, false));
+  }
+
+  static bppSetupParamsUncompressed(params: BoundCheckBppParamsUncompressed): SetupParam {
+    return new SetupParam(generateSetupParamForBppParams(params.value, true));
+  }
+
+  static smcSetupParams(params: BoundCheckSmcParams): SetupParam {
+    return new SetupParam(generateSetupParamForSmcParams(params.value, false));
+  }
+
+  static smcSetupParamsUncompressed(params: BoundCheckSmcParamsUncompressed): SetupParam {
+    return new SetupParam(generateSetupParamForSmcParams(params.value, true));
+  }
+
+  static smcSetupParamsWithSk(params: BoundCheckSmcWithKVVerifierParams): SetupParam {
+    return new SetupParam(generateSetupParamForSmcParamsAndSk(params.value, false));
+  }
+
+  static smcSetupParamsWithSkUncompressed(params: BoundCheckSmcWithKVVerifierParamsUncompressed): SetupParam {
+    return new SetupParam(generateSetupParamForSmcParamsAndSk(params.value, true));
   }
 }

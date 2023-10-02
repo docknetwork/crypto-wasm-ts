@@ -7,7 +7,10 @@ import {
   generateAccumulatorNonMembershipWitness,
   generateSaverWitness,
   generateBoundCheckWitness,
-  generateR1CSCircomWitness
+  generateR1CSCircomWitness,
+  generateBoundCheckBppWitness,
+  generateBoundCheckSmcWitness,
+  generateBoundCheckSmcWithKVWitness
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusSignatureG1 } from '../bbs-plus';
 import { MembershipWitness, NonMembershipWitness } from '../accumulator';
@@ -113,6 +116,30 @@ export class Witness {
   static r1csCircomWitness(inputs: CircomInputs): Uint8Array {
     return generateR1CSCircomWitness(inputs.wires, inputs.privates, inputs.publics);
   }
+
+  /**
+   * Witness for bound check using Bulletproofs++
+   * @param message - Message whose bounds are being proven using Bulletproofs++
+   */
+  static boundCheckBpp(message: Uint8Array): Uint8Array {
+    return generateBoundCheckBppWitness(message);
+  }
+
+  /**
+   * Witness for bound check using set-membership
+   * @param message - Message whose bounds are being proven using set-membership check
+   */
+  static boundCheckSmc(message: Uint8Array): Uint8Array {
+    return generateBoundCheckSmcWitness(message);
+  }
+
+  /**
+   * Witness for bound check using set-membership and keyed verification
+   * @param message - Message whose bounds are being proven using set-membership check
+   */
+  static boundCheckSmcWithKV(message: Uint8Array): Uint8Array {
+    return generateBoundCheckSmcWithKVWitness(message);
+  }
 }
 
 /**
@@ -136,7 +163,7 @@ export class Witnesses {
 
   /**
    * Add new witnesses to the end of the list. Returns the indices (ids) of the added witnesses. These indices are part of the witness reference.
-   * @param statement
+   * @param witnesses
    */
   append(witnesses: Witnesses | Uint8Array[]): number[] {
     const rawWitnesses = witnesses instanceof Witnesses ? witnesses.values : witnesses;

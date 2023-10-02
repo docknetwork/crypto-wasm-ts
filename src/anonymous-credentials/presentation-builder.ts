@@ -18,23 +18,24 @@ import { CredentialSchema, getTransformedMinMax, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
+  BoundCheckParamType,
+  BoundCheckProtocols,
+  CircomProtocols,
   CRYPTO_VERSION_STR,
   FlattenedSchema,
   ID_STR,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
-  BoundCheckProtocols,
-  CircomProtocols,
-  RevocationStatusProtocols,
-  VerifiableEncryptionProtocols,
   PredicateParamType,
   PublicKey,
   REV_CHECK_STR,
   REV_ID_STR,
+  RevocationStatusProtocols,
   SCHEMA_STR,
   SignatureParams,
   STATUS_STR,
-  TYPE_STR
+  TYPE_STR,
+  VerifiableEncryptionProtocols
 } from './types-and-consts';
 import {
   IBlindCredentialRequest,
@@ -58,8 +59,8 @@ import {
   saverStatement
 } from './util';
 import {
-  SaverChunkedCommitmentGens,
-  SaverChunkedCommitmentGensUncompressed,
+  SaverChunkedCommitmentKey,
+  SaverChunkedCommitmentKeyUncompressed,
   SaverCiphertext,
   SaverEncryptionKey,
   SaverEncryptionKeyUncompressed,
@@ -73,6 +74,14 @@ import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
 import { convertDateToTimestamp } from '../util';
+import {
+  BoundCheckBppParams,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckSmcParams,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckSmcWithKVProverParams,
+  BoundCheckSmcWithKVProverParamsUncompressed
+} from '../bound-check';
 
 /**
  * Arguments required to generate the corresponding AttributeBoundPseudonym
@@ -98,7 +107,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.1.0';
+  static VERSION = '0.2.0';
 
   // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;
@@ -232,30 +241,23 @@ export class PresentationBuilder extends Versioned {
   }
 
   /**
-   *
+   * Enforce bounds on given attribute from given credential index
    * @param credIdx
    * @param attributeName - Nested attribute names use the "dot" separator
    * @param vmin
    * @param vmax
-   * @param provingKeyId
-   * @param provingKey
+   * @param paramId - An identifier, unique in the context of this builder that identifies a param.
+   * @param param - This is optional because if the param is already added in previous call to `enforceBounds`,
+   * then it shouldn't be passed. This is done to avoid copying/passing large objects in memory.
    */
   enforceBounds(
     credIdx: number,
     attributeName: string,
     vmin: number | Date | string,
     vmax: number | Date | string,
-    provingKeyId: string,
-    provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
+    paramId: string,
+    param?: BoundCheckParamType
   ) {
-    // TODO: This isn't clean because it's not checking if the attribute `attributeName` is of datetime type and then converting.
-    //  But finding the type is expensive (due to flattening) and I wouldn't want to do it here when its already being done in
-    //  `finalize` so we will need some caching in this object.
-    const min = typeof vmin === 'number' ? vmin : convertDateToTimestamp(vmin);
-    const max = typeof vmax === 'number' ? vmax : convertDateToTimestamp(vmax);
-    if (min >= max) {
-      throw new Error(`Invalid bounds min=${min}, max=${max}`);
-    }
     this.validateCredIndex(credIdx);
     let b = this.bounds.get(credIdx);
     if (b !== undefined) {
@@ -265,9 +267,8 @@ export class PresentationBuilder extends Versioned {
     } else {
       b = new Map();
     }
-    b.set(attributeName, { min, max, paramId: provingKeyId, protocol: BoundCheckProtocols.Legogroth16 });
+    PresentationBuilder.processBounds(this, b, attributeName, vmin, vmax, paramId, param);
     this.bounds.set(credIdx, b);
-    this.updatePredicateParams(provingKeyId, provingKey);
   }
 
   /**
@@ -275,21 +276,24 @@ export class PresentationBuilder extends Versioned {
    * @param credIdx
    * @param attributeName - Nested attribute names use the "dot" separator
    * @param chunkBitSize
-   * @param commGensId
-   * @param encryptionKeyId
-   * @param snarkPkId
-   * @param commGens
-   * @param encryptionKey
-   * @param snarkPk
+   * @param commKeyId - An identifier, unique in the context of this builder that identifies a commitment key.
+   * @param encryptionKeyId - An identifier, unique in the context of this builder that identifies an encryption key.
+   * @param snarkPkId - An identifier, unique in the context of this builder that identifies a snark proving key.
+   * @param commKey - This is optional because if the commitment key is already added in previous call to `verifiablyEncrypt`,
+   * then it shouldn't be passed. This is done to avoid copying/passing large objects in memory.
+   * @param encryptionKey - This is optional because if the encryption key is already added in previous call to `verifiablyEncrypt`,
+   * then it shouldn't be passed. This is done to avoid copying/passing large objects in memory.
+   * @param snarkPk - This is optional because if the snark proving key is already added in previous call to `verifiablyEncrypt`,
+   * then it shouldn't be passed. This is done to avoid copying/passing large objects in memory.
    */
   verifiablyEncrypt(
     credIdx: number,
     attributeName: string,
     chunkBitSize: number,
-    commGensId: string,
+    commKeyId: string,
     encryptionKeyId: string,
     snarkPkId: string,
-    commGens?: SaverChunkedCommitmentGens | SaverChunkedCommitmentGensUncompressed,
+    commKey?: SaverChunkedCommitmentKey | SaverChunkedCommitmentKeyUncompressed,
     encryptionKey?: SaverEncryptionKey | SaverEncryptionKeyUncompressed,
     snarkPk?: SaverProvingKey | SaverProvingKeyUncompressed
   ) {
@@ -310,12 +314,12 @@ export class PresentationBuilder extends Versioned {
 
     v.set(attributeName, {
       chunkBitSize,
-      commitmentGensId: commGensId,
+      commitmentGensId: commKeyId,
       encryptionKeyId: encryptionKeyId,
       snarkKeyId: snarkPkId,
       protocol: VerifiableEncryptionProtocols.Saver
     });
-    this.updatePredicateParams(commGensId, commGens);
+    this.updatePredicateParams(commKeyId, commKey);
     this.updatePredicateParams(encryptionKeyId, encryptionKey);
     this.updatePredicateParams(snarkPkId, snarkPk);
     this.verifEnc.set(credIdx, v);
@@ -1024,7 +1028,7 @@ export class PresentationBuilder extends Versioned {
     return `${circuitId}__wasm__`;
   }
 
-  private addLegoProvingKeyToTracker(
+  private static addLegoProvingKeyToTracker(
     paramId: string,
     param: PredicateParamType | undefined,
     setupParamsTrk: SetupParamsTracker,
@@ -1041,6 +1045,27 @@ export class PresentationBuilder extends Versioned {
     } else {
       throw new Error(
         `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Legosnark proving key but was ${param}`
+      );
+    }
+  }
+
+  private static addSmcKVProverParamsToTracker(
+    paramId: string,
+    param: PredicateParamType | undefined,
+    setupParamsTrk: SetupParamsTracker,
+    statementIdx: number
+  ) {
+    if (param instanceof BoundCheckSmcWithKVProverParams) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParams(param));
+      }
+    } else if (param instanceof BoundCheckSmcWithKVProverParamsUncompressed) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsUncompressed(param));
+      }
+    } else {
+      throw new Error(
+        `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a set-membership check proving params but was ${param}`
       );
     }
   }
@@ -1065,22 +1090,57 @@ export class PresentationBuilder extends Versioned {
     dataSortedByNameIdx.sort(function (a, b) {
       return a[0] - b[0];
     });
-    dataSortedByNameIdx.forEach(([nameIdx, name, { min, max, paramId }]) => {
+    dataSortedByNameIdx.forEach(([nameIdx, name, { min, max, paramId, protocol }]) => {
       const valTyp = CredentialSchema.typeOfName(name, flattenedSchema);
       const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
 
       const param = this.predicateParams.get(paramId);
-      this.addLegoProvingKeyToTracker(paramId, param, setupParamsTrk, statementIdx);
-      const statement = Statement.boundCheckProverFromSetupParamRefs(
-        transformedMin,
-        transformedMax,
-        setupParamsTrk.indexForParam(paramId)
-      );
-
       const encodedAttrVal = encodedAttrGetter(nameIdx);
-      witnesses.add(Witness.boundCheckLegoGroth16(encodedAttrVal));
+      let witness: Uint8Array, statement: Uint8Array;
+
+      switch (protocol) {
+        case BoundCheckProtocols.Legogroth16:
+          PresentationBuilder.addLegoProvingKeyToTracker(paramId, param, setupParamsTrk, statementIdx);
+          statement = Statement.boundCheckLegoProverFromSetupParamRefs(
+            transformedMin,
+            transformedMax,
+            setupParamsTrk.indexForParam(paramId)
+          );
+          witness = Witness.boundCheckLegoGroth16(encodedAttrVal);
+          break;
+        case BoundCheckProtocols.Bpp:
+          Presentation.addBppSetupParamsToTracker(paramId, param, setupParamsTrk, statementIdx);
+          statement = Statement.boundCheckBppFromSetupParamRefs(
+            transformedMin,
+            transformedMax,
+            setupParamsTrk.indexForParam(paramId)
+          );
+          witness = Witness.boundCheckBpp(encodedAttrVal);
+          break;
+        case BoundCheckProtocols.Smc:
+          Presentation.addSmcSetupParamsToTracker(paramId, param, setupParamsTrk, statementIdx);
+          statement = Statement.boundCheckSmcFromSetupParamRefs(
+            transformedMin,
+            transformedMax,
+            setupParamsTrk.indexForParam(paramId)
+          );
+          witness = Witness.boundCheckSmc(encodedAttrVal);
+          break;
+        case BoundCheckProtocols.SmcKV:
+          PresentationBuilder.addSmcKVProverParamsToTracker(paramId, param, setupParamsTrk, statementIdx);
+          statement = Statement.boundCheckSmcWithKVProverFromSetupParamRefs(
+            transformedMin,
+            transformedMax,
+            setupParamsTrk.indexForParam(paramId)
+          );
+          witness = Witness.boundCheckSmcWithKV(encodedAttrVal);
+          break;
+        default:
+          throw new Error(`Unknown protocol ${protocol} for bound check`);
+      }
 
       const sIdx = statements.add(statement);
+      witnesses.add(witness);
       const witnessEq = new WitnessEqualityMetaStatement();
       witnessEq.addWitnessRef(statementIdx, nameIdx);
       witnessEq.addWitnessRef(sIdx, 0);
@@ -1110,8 +1170,8 @@ export class PresentationBuilder extends Versioned {
     });
     const attrToSid = new Map<string, number>();
     dataSortedByNameIdx.forEach(([nameIdx, name, { chunkBitSize, commitmentGensId, encryptionKeyId, snarkKeyId }]) => {
-      const commGens = this.predicateParams.get(commitmentGensId);
-      if (commGens === undefined) {
+      const commKey = this.predicateParams.get(commitmentGensId);
+      if (commKey === undefined) {
         throw new Error(`Predicate param for id ${commitmentGensId} not found`);
       }
       const encKey = this.predicateParams.get(encryptionKeyId);
@@ -1129,7 +1189,7 @@ export class PresentationBuilder extends Versioned {
         commitmentGensId,
         encryptionKeyId,
         snarkKeyId,
-        commGens,
+        commKey,
         encKey,
         snarkPk,
         setupParamsTrk
@@ -1165,7 +1225,7 @@ export class PresentationBuilder extends Versioned {
       const r1cs = this.predicateParams.get(r1csId);
       const wasmId = PresentationBuilder.wasmParamId(circuitId);
       const wasm = this.predicateParams.get(wasmId);
-      this.addLegoProvingKeyToTracker(snarkKeyId, snarkKey, setupParamsTrk, statementIdx);
+      PresentationBuilder.addLegoProvingKeyToTracker(snarkKeyId, snarkKey, setupParamsTrk, statementIdx);
       if (r1cs === undefined || wasm === undefined) {
         throw new Error('Both WASM and R1CS should be present');
       }
@@ -1303,6 +1363,54 @@ export class PresentationBuilder extends Versioned {
       });
     }
     return [encodedAttrs, predicatesForSpec];
+  }
+
+  /**
+   * Process bounds and the corresponding params when enforcing bound check on an attribute.
+   * @param self - the object storing all the predicate params. Will be updates
+   * @param boundsMap - The map of attribute name to bounds. Will be updated.
+   * @param attributeName
+   * @param vmin
+   * @param vmax
+   * @param paramId
+   * @param param
+   */
+  static processBounds(
+    self,
+    boundsMap: Map<string, IPresentedAttributeBounds>,
+    attributeName: string,
+    vmin: number | Date | string,
+    vmax: number | Date | string,
+    paramId: string,
+    param?: BoundCheckParamType
+  ) {
+    // TODO: This isn't clean because it's not checking if the attribute `attributeName` is of datetime type and then converting.
+    //  But finding the type is expensive (due to flattening) and I wouldn't want to do it here when its already being done in
+    //  `finalize` so we will need some caching in this object.
+    const min = typeof vmin === 'number' ? vmin : convertDateToTimestamp(vmin);
+    const max = typeof vmax === 'number' ? vmax : convertDateToTimestamp(vmax);
+    if (min >= max) {
+      throw new Error(`Invalid bounds min=${min}, max=${max}`);
+    }
+    self.updatePredicateParams(paramId, param);
+    let par = self.predicateParams.get(paramId);
+    let protocol;
+    if (par instanceof LegoProvingKey || par instanceof LegoProvingKeyUncompressed) {
+      protocol = BoundCheckProtocols.Legogroth16;
+    } else if (par instanceof BoundCheckBppParams || par instanceof BoundCheckBppParamsUncompressed) {
+      protocol = BoundCheckProtocols.Bpp;
+    } else if (par instanceof BoundCheckSmcParams || par instanceof BoundCheckSmcParamsUncompressed) {
+      protocol = BoundCheckProtocols.Smc;
+    } else if (
+      par instanceof BoundCheckSmcWithKVProverParams ||
+      par instanceof BoundCheckSmcWithKVProverParamsUncompressed
+    ) {
+      protocol = BoundCheckProtocols.SmcKV;
+    } else {
+      throw new Error(`Invalid predicate param type ${par} for bound check protocol`);
+    }
+
+    boundsMap.set(attributeName, { min, max, paramId, protocol });
   }
 }
 

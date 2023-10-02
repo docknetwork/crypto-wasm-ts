@@ -175,13 +175,13 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     const statement3 = buildStatement(sigParams3, sigPk3, revealedMsgs3, false);
 
     // Construct statements for bound check
-    const statement4 = Statement.boundCheckProverFromSetupParamRefs(timeMin, timeMax, 0);
-    const statement5 = Statement.boundCheckProverFromSetupParamRefs(weightMin, weightMax, 0);
-    const statement6 = Statement.boundCheckProverFromSetupParamRefs(heightMin, heightMax, 0);
-    const statement7 = Statement.boundCheckProverFromSetupParamRefs(bmiMin, bmiMax, 0);
-    const statement8 = Statement.boundCheckProverFromSetupParamRefs(scoreMin, scoreMax, 0);
-    const statement9 = Statement.boundCheckProverFromSetupParamRefs(latMin, latMax, 0);
-    const statement10 = Statement.boundCheckProverFromSetupParamRefs(longMin, longMax, 0);
+    const statement4 = Statement.boundCheckLegoProverFromSetupParamRefs(timeMin, timeMax, 0);
+    const statement5 = Statement.boundCheckLegoProverFromSetupParamRefs(weightMin, weightMax, 0);
+    const statement6 = Statement.boundCheckLegoProverFromSetupParamRefs(heightMin, heightMax, 0);
+    const statement7 = Statement.boundCheckLegoProverFromSetupParamRefs(bmiMin, bmiMax, 0);
+    const statement8 = Statement.boundCheckLegoProverFromSetupParamRefs(scoreMin, scoreMax, 0);
+    const statement9 = Statement.boundCheckLegoProverFromSetupParamRefs(latMin, latMax, 0);
+    const statement10 = Statement.boundCheckLegoProverFromSetupParamRefs(longMin, longMax, 0);
 
     const statementsProver = new Statements();
     const sIdx1 = statementsProver.add(statement1);
@@ -318,13 +318,13 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     const statement13 = buildStatement(sigParams3, sigPk3, revealedMsgs3FromVerifier, false);
 
     // Construct statements for bound check
-    const statement14 = Statement.boundCheckVerifierFromSetupParamRefs(timeMin, timeMax, 0);
-    const statement15 = Statement.boundCheckVerifierFromSetupParamRefs(weightMin, weightMax, 0);
-    const statement16 = Statement.boundCheckVerifierFromSetupParamRefs(heightMin, heightMax, 0);
-    const statement17 = Statement.boundCheckVerifierFromSetupParamRefs(bmiMin, bmiMax, 0);
-    const statement18 = Statement.boundCheckVerifierFromSetupParamRefs(scoreMin, scoreMax, 0);
-    const statement19 = Statement.boundCheckVerifierFromSetupParamRefs(latMin, latMax, 0);
-    const statement20 = Statement.boundCheckVerifierFromSetupParamRefs(longMin, longMax, 0);
+    const statement14 = Statement.boundCheckLegoVerifierFromSetupParamRefs(timeMin, timeMax, 0);
+    const statement15 = Statement.boundCheckLegoVerifierFromSetupParamRefs(weightMin, weightMax, 0);
+    const statement16 = Statement.boundCheckLegoVerifierFromSetupParamRefs(heightMin, heightMax, 0);
+    const statement17 = Statement.boundCheckLegoVerifierFromSetupParamRefs(bmiMin, bmiMax, 0);
+    const statement18 = Statement.boundCheckLegoVerifierFromSetupParamRefs(scoreMin, scoreMax, 0);
+    const statement19 = Statement.boundCheckLegoVerifierFromSetupParamRefs(latMin, latMax, 0);
+    const statement20 = Statement.boundCheckLegoVerifierFromSetupParamRefs(longMin, longMax, 0);
 
     const statementsVerifier = new Statements();
     const sIdx11 = statementsVerifier.add(statement11);

@@ -498,7 +498,7 @@ export class CredentialSchema extends Versioned {
     CredentialSchema.validate(schema);
 
     if (overrides !== undefined && overrides.version !== undefined) {
-      super(overrides.version)
+      super(overrides.version);
     } else {
       super(CredentialSchema.VERSION);
     }
@@ -743,7 +743,7 @@ export class CredentialSchema extends Versioned {
     // Note: Passing `addMissingParsingOpts` as false to recreate the exact same object that was serialized. This is important
     // when verifying signatures.
     // @ts-ignore
-    return new CredentialSchema(jsonSchema, parsingOptions, false, {version: version});
+    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version });
   }
 
   asEmbeddedJsonSchema(): string {
@@ -1067,7 +1067,7 @@ export class CredentialSchema extends Versioned {
     const newJsonSchema = JSON.parse(JSON.stringify(schema.jsonSchema));
     const props = newJsonSchema.properties;
     CredentialSchema.generateFromCredential(cred, props, schema.version);
-    return new CredentialSchema(newJsonSchema, schema.parsingOptions, false, {version: schema.version});
+    return new CredentialSchema(newJsonSchema, schema.parsingOptions, false, { version: schema.version });
   }
 
   /**
@@ -1076,9 +1076,9 @@ export class CredentialSchema extends Versioned {
    * @param schemaVersion - Schema version for which the parsing rules should apply
    * @private
    */
-  private static getTypeAndFormat(value: CredVal, schemaVersion?: string): [string, string|undefined] {
+  private static getTypeAndFormat(value: CredVal, schemaVersion?: string): [string, string | undefined] {
     let typ = typeof value as string;
-    let format: string|undefined = undefined;
+    let format: string | undefined = undefined;
     switch (typ) {
       case 'boolean':
         typ = 'boolean';

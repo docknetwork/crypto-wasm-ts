@@ -1,7 +1,7 @@
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
 import {
-  SaverChunkedCommitmentGens,
+  SaverChunkedCommitmentKey,
   SaverCiphertext,
   SaverEncryptionGens,
   SaverEncryptionGensUncompressed,
@@ -13,6 +13,16 @@ import { R1CS } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 import { Accumulator, AccumulatorParams, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
+import {
+  BoundCheckBppParams,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckSmcParams,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckSmcWithKVProverParams,
+  BoundCheckSmcWithKVProverParamsUncompressed,
+  BoundCheckSmcWithKVVerifierParams,
+  BoundCheckSmcWithKVVerifierParamsUncompressed
+} from '../bound-check';
 
 export type StringOrObject = string | object;
 // Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation.
@@ -25,9 +35,29 @@ export type PredicateParamType =
   | SaverProvingKey
   | SaverProvingKeyUncompressed
   | SaverEncryptionKey
-  | SaverChunkedCommitmentGens
+  | SaverChunkedCommitmentKey
   | R1CS
-  | Uint8Array;
+  | Uint8Array
+  | BoundCheckBppParams
+  | BoundCheckBppParamsUncompressed
+  | BoundCheckSmcParams
+  | BoundCheckSmcParamsUncompressed
+  | BoundCheckSmcWithKVProverParams
+  | BoundCheckSmcWithKVProverParamsUncompressed
+  | BoundCheckSmcWithKVVerifierParams
+  | BoundCheckSmcWithKVVerifierParamsUncompressed;
+
+export type BoundCheckParamType =
+  | LegoProvingKey
+  | LegoProvingKeyUncompressed
+  | BoundCheckBppParams
+  | BoundCheckBppParamsUncompressed
+  | BoundCheckSmcParams
+  | BoundCheckSmcParamsUncompressed
+  | BoundCheckSmcWithKVProverParams
+  | BoundCheckSmcWithKVProverParamsUncompressed
+  | BoundCheckSmcWithKVVerifierParams
+  | BoundCheckSmcWithKVVerifierParamsUncompressed;
 
 export type BlindedAttributeEquality = [string, AttributeRef[]];
 
@@ -66,6 +96,10 @@ export const PS_CRED_PROOF_TYPE = 'Bls12381PSSignatureDock2023';
 
 export const LEGOGROTH16 = 'LegoGroth16';
 export const SAVER = 'SAVER';
+
+export const BPP = 'Bulletproofs++';
+export const SMC = 'Set-membership-check';
+export const SMC_KV = 'Set-membership-check-with-keyed-verification';
 
 const te = new TextEncoder();
 // Label used for generating BBS+ signature parameters
@@ -128,7 +162,10 @@ export enum RevocationStatusProtocols {
 }
 
 export enum BoundCheckProtocols {
-  Legogroth16 = LEGOGROTH16
+  Legogroth16 = LEGOGROTH16,
+  Bpp = BPP,
+  Smc = SMC,
+  SmcKV = SMC_KV
 }
 
 export enum VerifiableEncryptionProtocols {

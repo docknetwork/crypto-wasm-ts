@@ -26,7 +26,7 @@ export interface IPresentedAttributeBounds {
   min: number;
   max: number;
   paramId: string;
-  protocol?: BoundCheckProtocols;
+  protocol: BoundCheckProtocols;
 }
 
 export interface IPresentedAttributeVE {
@@ -34,7 +34,7 @@ export interface IPresentedAttributeVE {
   commitmentGensId: string;
   encryptionKeyId: string;
   snarkKeyId: string;
-  protocol?: VerifiableEncryptionProtocols;
+  protocol: VerifiableEncryptionProtocols;
 }
 
 /**
@@ -64,7 +64,7 @@ export interface ICircomPredicate {
   // Used to identify the circuit and associated R1CS and WASM files
   circuitId: string;
   snarkKeyId: string;
-  protocol?: CircomProtocols;
+  protocol: CircomProtocols;
 }
 
 export interface IPresentedCredential {

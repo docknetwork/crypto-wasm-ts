@@ -89,25 +89,25 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
   });
 
   it('accept positive integer bounds only', () => {
-    expect(() => Statement.boundCheckProver(-6, max1, snarkProvingKey)).toThrow();
-    expect(() => Statement.boundCheckProverFromSetupParamRefs(-6, max1, 0)).toThrow();
-    expect(() => Statement.boundCheckVerifier(-6, max1, snarkVerifyingKey)).toThrow();
-    expect(() => Statement.boundCheckVerifierFromSetupParamRefs(-6, max1, 0)).toThrow();
+    expect(() => Statement.boundCheckLegoProver(-6, max1, snarkProvingKey)).toThrow();
+    expect(() => Statement.boundCheckLegoProverFromSetupParamRefs(-6, max1, 0)).toThrow();
+    expect(() => Statement.boundCheckLegoVerifier(-6, max1, snarkVerifyingKey)).toThrow();
+    expect(() => Statement.boundCheckLegoVerifierFromSetupParamRefs(-6, max1, 0)).toThrow();
 
-    expect(() => Statement.boundCheckProver(10.1, max1, snarkProvingKey)).toThrow();
-    expect(() => Statement.boundCheckProverFromSetupParamRefs(10.1, max1, 0)).toThrow();
-    expect(() => Statement.boundCheckVerifier(10.1, max1, snarkVerifyingKey)).toThrow();
-    expect(() => Statement.boundCheckVerifierFromSetupParamRefs(10.1, max1, 0)).toThrow();
+    expect(() => Statement.boundCheckLegoProver(10.1, max1, snarkProvingKey)).toThrow();
+    expect(() => Statement.boundCheckLegoProverFromSetupParamRefs(10.1, max1, 0)).toThrow();
+    expect(() => Statement.boundCheckLegoVerifier(10.1, max1, snarkVerifyingKey)).toThrow();
+    expect(() => Statement.boundCheckLegoVerifierFromSetupParamRefs(10.1, max1, 0)).toThrow();
 
-    expect(() => Statement.boundCheckProver(10, 20.8, snarkProvingKey)).toThrow();
-    expect(() => Statement.boundCheckProverFromSetupParamRefs(10, 20.8, 0)).toThrow();
-    expect(() => Statement.boundCheckVerifier(10, 20.8, snarkVerifyingKey)).toThrow();
-    expect(() => Statement.boundCheckVerifierFromSetupParamRefs(10, 20.8, 0)).toThrow();
+    expect(() => Statement.boundCheckLegoProver(10, 20.8, snarkProvingKey)).toThrow();
+    expect(() => Statement.boundCheckLegoProverFromSetupParamRefs(10, 20.8, 0)).toThrow();
+    expect(() => Statement.boundCheckLegoVerifier(10, 20.8, snarkVerifyingKey)).toThrow();
+    expect(() => Statement.boundCheckLegoVerifierFromSetupParamRefs(10, 20.8, 0)).toThrow();
 
-    expect(() => Statement.boundCheckProver(10, -90, snarkProvingKey)).toThrow();
-    expect(() => Statement.boundCheckProverFromSetupParamRefs(10, -90, 0)).toThrow();
-    expect(() => Statement.boundCheckVerifier(10, -90, snarkVerifyingKey)).toThrow();
-    expect(() => Statement.boundCheckVerifierFromSetupParamRefs(10, -90, 0)).toThrow();
+    expect(() => Statement.boundCheckLegoProver(10, -90, snarkProvingKey)).toThrow();
+    expect(() => Statement.boundCheckLegoProverFromSetupParamRefs(10, -90, 0)).toThrow();
+    expect(() => Statement.boundCheckLegoVerifier(10, -90, snarkVerifyingKey)).toThrow();
+    expect(() => Statement.boundCheckLegoVerifierFromSetupParamRefs(10, -90, 0)).toThrow();
   });
 
   function proveAndVerifySingle(sigParams: SignatureParams, sigPk: PublicKey, messages: Uint8Array[], sig: Signature) {
@@ -115,7 +115,7 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
     const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
-    const statement2 = Statement.boundCheckProver(min1, max1, snarkProvingKey);
+    const statement2 = Statement.boundCheckLegoProver(min1, max1, snarkProvingKey);
     const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
 
@@ -136,7 +136,7 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
 
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
-    const statement3 = Statement.boundCheckVerifier(min1, max1, snarkVerifyingKey);
+    const statement3 = Statement.boundCheckLegoVerifier(min1, max1, snarkVerifyingKey);
     const verifierStatements = new Statements(statement1);
     verifierStatements.add(statement3);
 
@@ -161,10 +161,10 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
 
     const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
     const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
-    const statement3 = Statement.boundCheckProverFromSetupParamRefs(min1, max1, 0);
-    const statement4 = Statement.boundCheckProverFromSetupParamRefs(min2, max2, 0);
-    const statement5 = Statement.boundCheckProverFromSetupParamRefs(min3, max3, 0);
-    const statement6 = Statement.boundCheckProverFromSetupParamRefs(min4, max4, 0);
+    const statement3 = Statement.boundCheckLegoProverFromSetupParamRefs(min1, max1, 0);
+    const statement4 = Statement.boundCheckLegoProverFromSetupParamRefs(min2, max2, 0);
+    const statement5 = Statement.boundCheckLegoProverFromSetupParamRefs(min3, max3, 0);
+    const statement6 = Statement.boundCheckLegoProverFromSetupParamRefs(min4, max4, 0);
 
     const proverStatements = new Statements();
     proverStatements.add(statement1);
@@ -213,10 +213,10 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
 
-    const statement7 = Statement.boundCheckVerifierFromSetupParamRefs(min1, max1, 0);
-    const statement8 = Statement.boundCheckVerifierFromSetupParamRefs(min2, max2, 0);
-    const statement9 = Statement.boundCheckVerifierFromSetupParamRefs(min3, max3, 0);
-    const statement10 = Statement.boundCheckVerifierFromSetupParamRefs(min4, max4, 0);
+    const statement7 = Statement.boundCheckLegoVerifierFromSetupParamRefs(min1, max1, 0);
+    const statement8 = Statement.boundCheckLegoVerifierFromSetupParamRefs(min2, max2, 0);
+    const statement9 = Statement.boundCheckLegoVerifierFromSetupParamRefs(min3, max3, 0);
+    const statement10 = Statement.boundCheckLegoVerifierFromSetupParamRefs(min4, max4, 0);
 
     const verifierStatements = new Statements([].concat(statement1, statement2));
     verifierStatements.add(statement7);
@@ -257,11 +257,11 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(attributes, revealedIndices);
     const statement1 = buildStatement(sigParams1, sigPk1, revealedAttrs, false);
     // For proving birth date was after `bornAfter`
-    const statement2 = Statement.boundCheckProverFromSetupParamRefs(bornAfter, now, 0);
+    const statement2 = Statement.boundCheckLegoProverFromSetupParamRefs(bornAfter, now, 0);
     // For proving issuance date was between `earliestIssuance` and `latestIssuance`
-    const statement3 = Statement.boundCheckProverFromSetupParamRefs(earliestIssuance, latestIssuance, 0);
+    const statement3 = Statement.boundCheckLegoProverFromSetupParamRefs(earliestIssuance, latestIssuance, 0);
     // For proving expiration date was between `now` and `someDistantFuture`, i.e. its not expired as of now.
-    const statement4 = Statement.boundCheckProverFromSetupParamRefs(now, someDistantFuture, 0);
+    const statement4 = Statement.boundCheckLegoProverFromSetupParamRefs(now, someDistantFuture, 0);
 
     const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
@@ -304,11 +304,11 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
 
     // For verifying birth date was after `bornAfter`
-    const statement5 = Statement.boundCheckVerifierFromSetupParamRefs(bornAfter, now, 0);
+    const statement5 = Statement.boundCheckLegoVerifierFromSetupParamRefs(bornAfter, now, 0);
     // For verifying issuance date was between `earliestIssuance` and `latestIssuance`
-    const statement6 = Statement.boundCheckVerifierFromSetupParamRefs(earliestIssuance, latestIssuance, 0);
+    const statement6 = Statement.boundCheckLegoVerifierFromSetupParamRefs(earliestIssuance, latestIssuance, 0);
     // For verifying expiration date was between `now` and `someDistantFuture`, i.e. its not expired as of now.
-    const statement7 = Statement.boundCheckVerifierFromSetupParamRefs(now, someDistantFuture, 0);
+    const statement7 = Statement.boundCheckLegoVerifierFromSetupParamRefs(now, someDistantFuture, 0);
 
     const verifierStatements = new Statements();
     verifierStatements.add(statement1);
@@ -430,11 +430,11 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(encodedAttributes, new Set<number>());
     const statement1 = buildStatement(sigParams1, sigPk1, revealedAttrs, false);
 
-    const statement2 = Statement.boundCheckProverFromSetupParamRefs(transMin1, transMax1, 0);
-    const statement3 = Statement.boundCheckProverFromSetupParamRefs(transMin2, transMax2, 0);
-    const statement4 = Statement.boundCheckProverFromSetupParamRefs(transMin3, transMax3, 0);
-    const statement5 = Statement.boundCheckProverFromSetupParamRefs(transMin3, transMax3, 0);
-    const statement6 = Statement.boundCheckProverFromSetupParamRefs(transMin4, transMax4, 0);
+    const statement2 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin1, transMax1, 0);
+    const statement3 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin2, transMax2, 0);
+    const statement4 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin3, transMax3, 0);
+    const statement5 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin3, transMax3, 0);
+    const statement6 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin4, transMax4, 0);
 
     const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
@@ -466,11 +466,11 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
 
-    const statement7 = Statement.boundCheckVerifierFromSetupParamRefs(transMin1, transMax1, 0);
-    const statement8 = Statement.boundCheckVerifierFromSetupParamRefs(transMin2, transMax2, 0);
-    const statement9 = Statement.boundCheckVerifierFromSetupParamRefs(transMin3, transMax3, 0);
-    const statement10 = Statement.boundCheckVerifierFromSetupParamRefs(transMin3, transMax3, 0);
-    const statement11 = Statement.boundCheckVerifierFromSetupParamRefs(transMin4, transMax4, 0);
+    const statement7 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin1, transMax1, 0);
+    const statement8 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin2, transMax2, 0);
+    const statement9 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin3, transMax3, 0);
+    const statement10 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin3, transMax3, 0);
+    const statement11 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin4, transMax4, 0);
 
     const verifierStatements = new Statements(statement1);
     verifierStatements.add(statement7);

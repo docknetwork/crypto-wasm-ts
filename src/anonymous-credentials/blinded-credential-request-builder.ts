@@ -12,6 +12,7 @@ import {
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   BlindedAttributeEquality,
   BlindSignatureTypes,
+  BoundCheckParamType,
   BoundCheckProtocols,
   PublicKey,
   SignatureParams,
@@ -21,8 +22,8 @@ import {
 import { AccumulatorPublicKey, AccumulatorWitness } from '../accumulator';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
 import {
-  SaverChunkedCommitmentGens,
-  SaverChunkedCommitmentGensUncompressed,
+  SaverChunkedCommitmentKey,
+  SaverChunkedCommitmentKeyUncompressed,
   SaverEncryptionKey,
   SaverEncryptionKeyUncompressed,
   SaverProvingKey,
@@ -159,10 +160,10 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     credIdx: number,
     attributeName: string,
     chunkBitSize: number,
-    commGensId: string,
+    commKeyId: string,
     encryptionKeyId: string,
     snarkPkId: string,
-    commGens?: SaverChunkedCommitmentGens | SaverChunkedCommitmentGensUncompressed,
+    commKey?: SaverChunkedCommitmentKey | SaverChunkedCommitmentKeyUncompressed,
     encryptionKey?: SaverEncryptionKey | SaverEncryptionKeyUncompressed,
     snarkPk?: SaverProvingKey | SaverProvingKeyUncompressed
   ) {
@@ -170,10 +171,10 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
       credIdx,
       attributeName,
       chunkBitSize,
-      commGensId,
+      commKeyId,
       encryptionKeyId,
       snarkPkId,
-      commGens,
+      commKey,
       encryptionKey,
       snarkPk
     );
@@ -237,35 +238,29 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
    * @param attributeName - Nested attribute names use the "dot" separator
    * @param vmin
    * @param vmax
-   * @param provingKeyId
-   * @param provingKey
+   * @param paramId
+   * @param param
    */
   enforceBoundsOnBlindedAttribute(
     attributeName: string,
     vmin: number | Date | string,
     vmax: number | Date | string,
-    provingKeyId: string,
-    provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
+    paramId: string,
+    param?: BoundCheckParamType
   ) {
-    const min = typeof vmin === 'number' ? vmin : convertDateToTimestamp(vmin);
-    const max = typeof vmax === 'number' ? vmax : convertDateToTimestamp(vmax);
-    if (min >= max) {
-      throw new Error(`Invalid bounds min=${min}, max=${max}`);
-    }
     if (this.bounds.get(attributeName) !== undefined) {
       throw new Error(`Already enforced bounds on attribute ${attributeName}`);
     }
-    this.bounds.set(attributeName, { min, max, paramId: provingKeyId, protocol: BoundCheckProtocols.Legogroth16 });
-    this.presentationBuilder.updatePredicateParams(provingKeyId, provingKey);
+    PresentationBuilder.processBounds(this.presentationBuilder, this.bounds, attributeName, vmin, vmax, paramId, param);
   }
 
   verifiablyEncryptBlindedAttribute(
     attributeName: string,
     chunkBitSize: number,
-    commGensId: string,
+    commKeyId: string,
     encryptionKeyId: string,
     snarkPkId: string,
-    commGens?: SaverChunkedCommitmentGens | SaverChunkedCommitmentGensUncompressed,
+    commKey?: SaverChunkedCommitmentKey | SaverChunkedCommitmentKeyUncompressed,
     encryptionKey?: SaverEncryptionKey | SaverEncryptionKeyUncompressed,
     snarkPk?: SaverProvingKey | SaverProvingKeyUncompressed
   ) {
@@ -277,12 +272,12 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     }
     this.verifEnc.set(attributeName, {
       chunkBitSize,
-      commitmentGensId: commGensId,
+      commitmentGensId: commKeyId,
       encryptionKeyId: encryptionKeyId,
       snarkKeyId: snarkPkId,
       protocol: VerifiableEncryptionProtocols.Saver
     });
-    this.presentationBuilder.updatePredicateParams(commGensId, commGens);
+    this.presentationBuilder.updatePredicateParams(commKeyId, commKey);
     this.presentationBuilder.updatePredicateParams(encryptionKeyId, encryptionKey);
     this.presentationBuilder.updatePredicateParams(snarkPkId, snarkPk);
   }

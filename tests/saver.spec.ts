@@ -1,8 +1,8 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   getChunkBitSize,
-  SaverChunkedCommitmentGens,
-  SaverChunkedCommitmentGensUncompressed,
+  SaverChunkedCommitmentKey,
+  SaverChunkedCommitmentKeyUncompressed,
   SaverDecryptionKey,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
@@ -51,13 +51,13 @@ describe('SAVER setup', () => {
   });
 
   it('create commitment generators', () => {
-    const gens1 = SaverChunkedCommitmentGens.generate();
+    const gens1 = SaverChunkedCommitmentKey.generate();
     const gens1Uncompressed = gens1.decompress();
-    expect(gens1Uncompressed instanceof SaverChunkedCommitmentGensUncompressed).toBe(true);
+    expect(gens1Uncompressed instanceof SaverChunkedCommitmentKeyUncompressed).toBe(true);
 
     const label = stringToBytes('Some string to deterministically generate ChunkedCommitmentGens');
-    const gens2 = SaverChunkedCommitmentGens.generate(label);
-    const gens3 = SaverChunkedCommitmentGens.generate(label);
+    const gens2 = SaverChunkedCommitmentKey.generate(label);
+    const gens3 = SaverChunkedCommitmentKey.generate(label);
     const gens2Uncompressed = gens2.decompress();
     const gens3Uncompressed = gens3.decompress();
 

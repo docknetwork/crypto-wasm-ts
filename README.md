@@ -922,12 +922,12 @@ let chunkBitSize = ...;
 ...
 ...
 // The following is either created by the verifier and is shared with the prover or created by the prover using a public bytes 
-// as argument to `SaverChunkedCommitmentGens.generate`  
-const gens = SaverChunkedCommitmentGens.generate(<some public bytes>);
+// as argument to `SaverChunkedCommitmentKey.generate`  
+const gens = SaverChunkedCommitmentKey.generate(<some public bytes>);
 ...
 ...
 // Uncompressed form of `gens` created above
-const commGens = gens.decompress();
+const commKey = gens.decompress();
 // Uncompressed form of other parameters created by decryptor
 const saverEncGens = encGens.decompress();
 const saverEk = encryptionKey.decompress();
@@ -935,7 +935,7 @@ const snarkProvingKey = snarkPk.decompress();
 ...
 ...
 const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
-const statement2 = Statement.saverProver(saverEncGens, commGens, saverEk, snarkProvingKey, chunkBitSize);
+const statement2 = Statement.saverProver(saverEncGens, commKey, saverEk, snarkProvingKey, chunkBitSize);
 
 const proverStatements = new Statements();
 proverStatements.add(statement1);
@@ -991,7 +991,7 @@ Similarly, the verifier also creates 2 statements and the same meta statement to
 const snarkVerifyingKey = snarkPk.getVerifyingKeyUncompressed();
 
 const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
-const statement2 = Statement.saverVerifier(saverEncGens, commGens, saverEk, snarkVerifyingKey, chunkBitSize);
+const statement2 = Statement.saverVerifier(saverEncGens, commKey, saverEk, snarkVerifyingKey, chunkBitSize);
 const verifierStatements = new Statements();
 verifierStatements.add(statement1);
 verifierStatements.add(statement2);
@@ -1046,7 +1046,7 @@ Note: This section assumes you have read some of the previous examples on compos
 
 A complete example as a test is [here](./tests/composite-proofs/bound-check.spec.ts)
 
-Allow a verifier to check that some attribute of the credential satisfies given bounds `min` and `max`, i.e. `min <= message <= max` 
+Allow a verifier to check that some attribute of the credential satisfies given bounds `min` and `max`, i.e. `min <= message < max` 
 without learning the attribute itself. Both `min` and `max` are positive integers. This is implemented using LegoGroth16, a protocol described in the SNARK 
 framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2.
 
@@ -1066,8 +1066,8 @@ For this, the verifier needs to first create the setup parameters which he then 
 verifier does not have to create them each time a proof needs to be verifier, it can create them once and publish somewhere 
 such that all provers interacting with it can use them.  
 In the following snippet, the verifier ask to prove that certain message satisfies the lower and upper bounds `min` and `max`,
-i.e. `min <= message <= max`. Note than both bounds are positive integers and inclusive, for exclusive bounds, add or subtract 1
-from lower and upper bound respectively.
+i.e. `min <= message < max`. Note than both bounds are positive integers and lower bound is inclusive but upper bound is not,
+for changing from exclusive to inclusive bounds or vice-versa, add or subtract 1 from bounds.
 
 ```ts
 const provingKey = BoundCheckSnarkSetup();
@@ -1087,7 +1087,7 @@ let min: number, max: number;
 // Decompress the proving key 
 const snarkProvingKey = provingKey.decompress();
 const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
-const statement2 = Statement.boundCheckProver(min, max, snarkProvingKey);
+const statement2 = Statement.boundCheckLegoProver(min, max, snarkProvingKey);
 const proverStatements = new Statements();
 proverStatements.add(statement1);
 proverStatements.add(statement2);
@@ -1095,9 +1095,9 @@ proverStatements.add(statement2);
 
 `statement1` is the for proving knowledge of BBS+ signature as seen in previous examples. `statement2` is for proving the bounds of message from a BBS+ signature. Some things to note about this statement.
 
-- The statement is created using `Statement.boundCheckProver` because it is being created by a prover. A verifier would have
-  used `Statement.boundCheckVerifier` to create it and one of the arguments would be different (shown below).
-- The argument `snarkProvingKey` is the public parameter created by the verifier. However, before they are passed to `Statement.boundCheckProver`, they are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.boundCheckProverFromCompressedParams`
+- The statement is created using `Statement.boundCheckLegoProver` because it is being created by a prover. A verifier would have
+  used `Statement.boundCheckLegoVerifier` to create it and one of the arguments would be different (shown below).
+- The argument `snarkProvingKey` is the public parameter created by the verifier. However, before they are passed to `Statement.boundCheckLegoProver`, they are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.boundCheckProverFromCompressedParams`
 
 The prover then establishes the equality between the message in the BBS+ signature and the bounded message by using
 `WitnessEqualityMetaStatement` as below. `msgIdx` is the index of the bounded message in the array of signed messages 
@@ -1153,7 +1153,7 @@ metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 
 The above has a few differences from the prover's statements:
 
-- Instead of using `Statement.boundCheckProver`, verifier uses `Statement.boundCheckVerifier`.
+- Instead of using `Statement.boundCheckLegoProver`, verifier uses `Statement.boundCheckLegoVerifier`.
 - Instead of proving key, verifier uses verifying key for the snark.
 
 The verifier now creates the proof specification and verifies the proof.
@@ -1168,7 +1168,7 @@ const result = proof.verifyUsingQuasiProofSpec(verifierProofSpec);
 
 You might notice some public parameters are huge and also the statements involving them take noticeable time to create. Eg,
 `snarkProvingKey`, `snarkVerifyingKey`, `saverEk` are huge and thus creating `Statement.saverProver`, `Statement.saverVerifier`, 
-`Statement.boundCheckprover` and `Statement.boundCheckVerifier` take some time to create. This becomes a bigger problem 
+`Statement.boundCheckLegoProver` and `Statement.boundCheckLegoVerifier` take some time to create. This becomes a bigger problem 
 when several messages need to be encrypted for the same decryptor or bounds over several messages need to be proved.  
 To solve this, the public parameters don't need to be passed directly to the `Statement`s. They can be wrapped in a `SetupParam`
 and then a reference to them is passed as an argument in place of the parameter itself to the `Statement`. See the snippet 
@@ -1178,7 +1178,7 @@ below for creating 2 statements for verifiable encryption for the same setup par
 // Prover creates an array of `SetupParam`s
 const proverSetupParams = [];
 proverSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
-proverSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commGens));
+proverSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commKey));
 proverSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
 proverSetupParams.push(SetupParam.saverProvingKeyUncompressed(snarkProvingKey));
 
@@ -1213,7 +1213,7 @@ Similarly, the verifier can create his own `SetupParam`s array for his proof spe
 ```ts
 const verifierSetupParams = [];
 verifierSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
-verifierSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commGens));
+verifierSetupParams.push(SetupParam.saverCommitmentGensUncompressed(commKey));
 verifierSetupParams.push(SetupParam.saverEncryptionKeyUncompressed(saverEk));
 verifierSetupParams.push(SetupParam.saverVerifyingKeyUncompressed(snarkVerifyingKey));
 
@@ -1232,7 +1232,7 @@ const result = proof.verifyUsingQuasiProofSpec(verifierProofSpec);
 
 For a complete example, see [these tests](./tests/composite-proofs/saver.spec.ts)
 
-Similarly, for bound checks, use `Statement.boundCheckProverFromSetupParamRefs` and `Statement.boundCheckVerifierFromSetupParamRefs`.  
+Similarly, for bound checks, use `Statement.boundCheckLegoProverFromSetupParamRefs` and `Statement.boundCheckVerifierFromSetupParamRefs`.  
 For complete example, see [these tests](./tests/composite-proofs/bound-check.spec.ts)
 
 ### Working with messages as JS objects

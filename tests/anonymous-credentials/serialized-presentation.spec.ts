@@ -6,7 +6,7 @@ import { checkCiphertext } from './utils';
 import {
   AccumulatorPublicKey, getR1CS,
   LegoVerifyingKeyUncompressed,
-  SaverChunkedCommitmentGens, SaverDecryptionKeyUncompressed, SaverEncryptionKeyUncompressed, SaverSecretKey,
+  SaverChunkedCommitmentKey, SaverDecryptionKeyUncompressed, SaverEncryptionKeyUncompressed, SaverSecretKey,
   SaverVerifyingKeyUncompressed
 } from '../../src';
 
@@ -20,11 +20,11 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
 
   it('check version 0.1.0', () => {
     const boundCheckSnarkId = 'random';
-    const commGensId = 'random-1';
+    const commKeyId = 'random-1';
     const ekId = 'random-2';
     const snarkPkId = 'random-3';
-    const gens = SaverChunkedCommitmentGens.generate(stringToBytes('a new nonce'));
-    const commGens = gens.decompress();
+    const ck = SaverChunkedCommitmentKey.generate(stringToBytes('a new nonce'));
+    const commKey = ck.decompress();
 
     const pk1Bin = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk1.bin`);
     const pk2Bin = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk2.bin`);
@@ -61,7 +61,7 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
 
     const pp = new Map();
     pp.set(boundCheckSnarkId, boundCheckVk);
-    pp.set(commGensId, commGens);
+    pp.set(commKeyId, commKey);
     pp.set(ekId, saverEk);
     pp.set(snarkPkId, saverVk);
     checkResult(pres.verify([pk1, pk2, pk3], acc, pp));
