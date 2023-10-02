@@ -514,6 +514,17 @@ describe(`${Scheme} Credential signing and verification`, () => {
   it('for credential with relaxed schema validation', () => {
     // The schema does not match the credential exactly
 
+    // With bare minimum schema
+    const builder0 = new CredentialBuilder();
+    builder0.schema = new CredentialSchema(CredentialSchema.essential(), { useDefaults: true });
+    builder0.subject = {
+      fname: 'John',
+      lname: 'Smith',
+      city: 'NY',
+      education: { university: 'Example', major: 'Nothing' }
+    };
+    check(builder0, sk, pk);
+
     let builder = getExampleBuilder(1);
     const ns = CredentialSchema.generateAppropriateSchema(
       builder.serializeForSigning(),

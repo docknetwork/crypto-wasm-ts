@@ -776,7 +776,7 @@ describe('Credential Schema', () => {
   });
 
   it('validation of some more schemas', () => {
-    for (let i = 1; i <= 11; i++) {
+    for (let i = 1; i <= 12; i++) {
       const schema = getExampleSchema(i);
       const cs = new CredentialSchema(schema);
       expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual(schema.properties[SUBJECT_STR]);
