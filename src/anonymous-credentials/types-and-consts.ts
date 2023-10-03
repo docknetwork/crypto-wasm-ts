@@ -61,6 +61,9 @@ export type BoundCheckParamType =
 
 export type BlindedAttributeEquality = [string, AttributeRef[]];
 
+export type DateType = Date | string;
+export type BoundType = number | DateType;
+
 // The 1st element is an array of all attribute names as flattened and sorted and 2nd element is an array of types of those attributes
 // in the same order
 export type FlattenedSchema = [string[], object[]];

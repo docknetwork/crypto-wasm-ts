@@ -22,7 +22,8 @@ import {
   BBSPlusPublicKeyG2,
   BBSPlusSecretKey,
   BBSPlusSignatureParamsG1,
-  BBSPublicKey, BBSSecretKey,
+  BBSPublicKey,
+  BBSSecretKey,
   BBSSignatureParams
 } from '../src';
 import { ParticipantG2 } from '../src/frost-dkg';
@@ -33,7 +34,7 @@ describe('Threshold BBS+ and BBS', () => {
   const total = 5;
   const messageCount = 10;
   const sigBatchSize = 2;
-  const allSignerIds = new Set(Array.from({length: total}, (_, i) => i + 1));
+  const allSignerIds = new Set(Array.from({ length: total }, (_, i) => i + 1));
 
   let paramsBbsPlus: BBSPlusSignatureParamsG1;
   const skBbsPlus: BBSPlusSecretKey[] = [];
@@ -90,7 +91,7 @@ describe('Threshold BBS+ and BBS', () => {
     gadgetVector = GadgetVector.generate(stringToBytes('testing'));
   });
 
-  it("run base OT phase", () => {
+  it('run base OT phase', () => {
     // The base OT phase will be used for both BBS+ and BBS
     let pkBase = new PublicKeyBase(generateRandomG1Element());
     const participants: BaseOTParticipant[] = [];
@@ -113,23 +114,23 @@ describe('Threshold BBS+ and BBS', () => {
 
     for (const [senderId, pks] of senderPks) {
       for (const [receiverId, pk] of pks) {
-        const rpk = participants[receiverId-1].processSenderPublicKey(senderId, pk, pkBase);
+        const rpk = participants[receiverId - 1].processSenderPublicKey(senderId, pk, pkBase);
         receiverPks.set([receiverId, senderId], rpk);
       }
     }
 
     for (const [[senderId, receiverId], pk] of receiverPks) {
-      const chal = participants[receiverId-1].processReceiverPublicKey(senderId, pk);
+      const chal = participants[receiverId - 1].processReceiverPublicKey(senderId, pk);
       challenges.set([receiverId, senderId], chal);
     }
 
     for (const [[senderId, receiverId], chal] of challenges) {
-      const resp = participants[receiverId-1].processChallenges(senderId, chal);
+      const resp = participants[receiverId - 1].processChallenges(senderId, chal);
       responses.set([receiverId, senderId], resp);
     }
 
     for (const [[senderId, receiverId], resp] of responses) {
-      const hk = participants[receiverId-1].processResponses(senderId, resp);
+      const hk = participants[receiverId - 1].processResponses(senderId, resp);
       hashedKeys.set([receiverId, senderId], hk);
     }
 
@@ -137,14 +138,21 @@ describe('Threshold BBS+ and BBS', () => {
       expect(participants[i].hasFinished()).toEqual(false);
       participants[i].finish();
       expect(participants[i].hasFinished()).toEqual(true);
-      baseOTOutputs.push(participants[i].outputs as BaseOTOutput)
+      baseOTOutputs.push(participants[i].outputs as BaseOTOutput);
     }
   });
 
-  function checkThresholdSig(protocolId: Uint8Array, signerClass: typeof ThresholdBbsPlusSigner | typeof ThresholdBbsSigner, sigShareClass: typeof ThresholdBbsPlusSignatureShare | typeof ThresholdBbsSignatureShare, secretKeys: BBSPlusSecretKey[] | BBSSecretKey[], thresholdPk: BBSPlusPublicKeyG2 | BBSPublicKey, params: BBSPlusSignatureParamsG1 | BBSSignatureParams) {
-    const participatingSignerIds = new Set(Array.from({length: threshold}, (_, i) => i + 1));
+  function checkThresholdSig(
+    protocolId: Uint8Array,
+    signerClass: typeof ThresholdBbsPlusSigner | typeof ThresholdBbsSigner,
+    sigShareClass: typeof ThresholdBbsPlusSignatureShare | typeof ThresholdBbsSignatureShare,
+    secretKeys: BBSPlusSecretKey[] | BBSSecretKey[],
+    thresholdPk: BBSPlusPublicKeyG2 | BBSPublicKey,
+    params: BBSPlusSignatureParamsG1 | BBSSignatureParams
+  ) {
+    const participatingSignerIds = new Set(Array.from({ length: threshold }, (_, i) => i + 1));
     // @ts-ignore
-    const signers: signerClass[] = []
+    const signers: signerClass[] = [];
     for (let i = 1; i <= threshold; i++) {
       const others = new Set(participatingSignerIds);
       others.delete(i);
@@ -172,7 +180,11 @@ describe('Threshold BBS+ and BBS', () => {
       for (const [senderId, comm] of comms) {
         const receiverId = signers[i].id;
         if (receiverId !== senderId) {
-          signers[i].processReceivedCommitments(senderId, comm, commsZero.get(senderId)?.get(receiverId) as CommitmentsForZeroSharing);
+          signers[i].processReceivedCommitments(
+            senderId,
+            comm,
+            commsZero.get(senderId)?.get(receiverId) as CommitmentsForZeroSharing
+          );
         }
       }
     }
@@ -230,14 +242,14 @@ describe('Threshold BBS+ and BBS', () => {
     for (const [senderId, msgs] of msg1s) {
       for (const [receiverId, msg] of msgs) {
         if (receiverId !== senderId) {
-          const m2 = signers[receiverId-1].processReceivedMsg1(senderId, msg, gadgetVector);
+          const m2 = signers[receiverId - 1].processReceivedMsg1(senderId, msg, gadgetVector);
           msg2s.set([receiverId, senderId], m2);
         }
       }
     }
 
     for (const [[senderId, receiverId], msg] of msg2s) {
-      signers[receiverId-1].processReceivedMsg2(senderId, msg, gadgetVector);
+      signers[receiverId - 1].processReceivedMsg2(senderId, msg, gadgetVector);
     }
 
     for (let i = 0; i < threshold; i++) {
@@ -257,7 +269,7 @@ describe('Threshold BBS+ and BBS', () => {
       // @ts-ignore
       const shares: sigShareClass[] = [];
       for (let j = 0; j < threshold; j++) {
-        shares.push(signers[j].createSigShare(msgsToSign, i, params, true))
+        shares.push(signers[j].createSigShare(msgsToSign, i, params, true));
       }
 
       // Aggregate shares to form a sig
@@ -271,13 +283,20 @@ describe('Threshold BBS+ and BBS', () => {
     }
   }
 
-  it("create a threshold BBS+ signature", () => {
-    const protocolId = stringToBytes("test BBS+");
-    checkThresholdSig(protocolId, ThresholdBbsPlusSigner, ThresholdBbsPlusSignatureShare, skBbsPlus, thresholdPkBbsPlus, paramsBbsPlus)
-  })
+  it('create a threshold BBS+ signature', () => {
+    const protocolId = stringToBytes('test BBS+');
+    checkThresholdSig(
+      protocolId,
+      ThresholdBbsPlusSigner,
+      ThresholdBbsPlusSignatureShare,
+      skBbsPlus,
+      thresholdPkBbsPlus,
+      paramsBbsPlus
+    );
+  });
 
-  it("create a threshold BBS signature", () => {
-    const protocolId = stringToBytes("test BBS");
-    checkThresholdSig(protocolId, ThresholdBbsSigner, ThresholdBbsSignatureShare, skBbs, thresholdPkBbs, paramsBbs)
-  })
-})
+  it('create a threshold BBS signature', () => {
+    const protocolId = stringToBytes('test BBS');
+    checkThresholdSig(protocolId, ThresholdBbsSigner, ThresholdBbsSignatureShare, skBbs, thresholdPkBbs, paramsBbs);
+  });
+});

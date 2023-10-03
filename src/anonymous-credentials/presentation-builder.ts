@@ -19,7 +19,7 @@ import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
   BoundCheckParamType,
-  BoundCheckProtocols,
+  BoundCheckProtocols, BoundType,
   CircomProtocols,
   CRYPTO_VERSION_STR,
   FlattenedSchema,
@@ -244,8 +244,8 @@ export class PresentationBuilder extends Versioned {
    * Enforce bounds on given attribute from given credential index
    * @param credIdx
    * @param attributeName - Nested attribute names use the "dot" separator
-   * @param vmin
-   * @param vmax
+   * @param min
+   * @param max
    * @param paramId - An identifier, unique in the context of this builder that identifies a param.
    * @param param - This is optional because if the param is already added in previous call to `enforceBounds`,
    * then it shouldn't be passed. This is done to avoid copying/passing large objects in memory.
@@ -253,8 +253,8 @@ export class PresentationBuilder extends Versioned {
   enforceBounds(
     credIdx: number,
     attributeName: string,
-    vmin: number | Date | string,
-    vmax: number | Date | string,
+    min: BoundType,
+    max: BoundType,
     paramId: string,
     param?: BoundCheckParamType
   ) {
@@ -267,7 +267,7 @@ export class PresentationBuilder extends Versioned {
     } else {
       b = new Map();
     }
-    PresentationBuilder.processBounds(this, b, attributeName, vmin, vmax, paramId, param);
+    PresentationBuilder.processBounds(this, b, attributeName, min, max, paramId, param);
     this.bounds.set(credIdx, b);
   }
 
@@ -1379,8 +1379,8 @@ export class PresentationBuilder extends Versioned {
     self,
     boundsMap: Map<string, IPresentedAttributeBounds>,
     attributeName: string,
-    vmin: number | Date | string,
-    vmax: number | Date | string,
+    vmin: BoundType,
+    vmax: BoundType,
     paramId: string,
     param?: BoundCheckParamType
   ) {

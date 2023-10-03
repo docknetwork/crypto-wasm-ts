@@ -4,22 +4,19 @@ import {
   AttributeBoundPseudonym,
   BBSSignature,
   CompositeProofG1,
-  getAdaptedSignatureParamsForMessages, getIndicesForMsgNames, getRevealedAndUnrevealed,
+  getAdaptedSignatureParamsForMessages,
+  getIndicesForMsgNames,
+  getRevealedAndUnrevealed,
   MetaStatements,
   ProofSpecG1,
   PseudonymBases,
   Statement,
   Statements,
-  Witness, WitnessEqualityMetaStatement,
+  Witness,
+  WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
-import {
-  attributes1,
-  attributes1Struct,
-  attributes4,
-  attributes4Struct,
-  GlobalEncoder
-} from './data-and-encoder';
+import { attributes1, attributes1Struct, attributes4, attributes4Struct, GlobalEncoder } from './data-and-encoder';
 import {
   KeyPair,
   Signature,
@@ -29,7 +26,11 @@ import {
   isBBSPlus,
   getWitnessForBlindSigRequest,
   getStatementForBlindSigRequest,
-  Scheme, buildStatement, buildWitness, isBBS, adaptKeyForParams
+  Scheme,
+  buildStatement,
+  buildWitness,
+  isBBS,
+  adaptKeyForParams
 } from '../../scheme';
 
 const skipIfPS = isPS() ? describe.skip : describe;
@@ -87,7 +88,7 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
       fname: 'John',
       lname: 'Smith',
       sensitive: {
-        email: 'john.smith@example.com',
+        email: 'john.smith@example.com'
       },
       'poll-id': 'test-poll',
       'registration-id': '12345671209'
@@ -182,7 +183,7 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
       witnessEq.addWitnessRef(stId6, 0);
     }
 
-    verifierMetaStatements.addWitnessEquality(witnessEq1)
+    verifierMetaStatements.addWitnessEquality(witnessEq1);
 
     const proofSpecVerifier = new ProofSpecG1(verifierStatements, verifierMetaStatements);
     expect(proofSpecVerifier.isValid()).toEqual(true);
@@ -203,12 +204,12 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
 
     // User unblinds the blind signature
     const unblindedSig = isPS()
-      // @ts-ignore
-      ? blingSignature.signature.unblind(blindings, sigPk2)
+      ? // @ts-ignore
+        blingSignature.signature.unblind(blindings, sigPk2)
       : isBBSPlus()
-        // @ts-ignore
-        ? blingSignature.signature.unblind(blinding)
-        : new BBSSignature(blingSignature.signature.value);
+      ? // @ts-ignore
+        blingSignature.signature.unblind(blinding)
+      : new BBSSignature(blingSignature.signature.value);
 
     checkResult(unblindedSig.verifyMessageObject(attributes4, sigPk2, sigParams2, GlobalEncoder));
 
@@ -231,7 +232,10 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     revealedNames.add('poll-id');
 
     // The verifier can check if he has seen this pseudonym before and according approve/reject the proof
-    const pseudonymIdSk = AttributeBoundPseudonym.new(basesForPseudonym2, [signed2.encodedMessages['sensitive.user-id'], signed2.encodedMessages['sensitive.secret']]);
+    const pseudonymIdSk = AttributeBoundPseudonym.new(basesForPseudonym2, [
+      signed2.encodedMessages['sensitive.user-id'],
+      signed2.encodedMessages['sensitive.secret']
+    ]);
 
     const proverStatements = new Statements();
     const witnesses = new Witnesses();
@@ -245,7 +249,12 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     const stId3 = proverStatements.add(Statement.attributeBoundPseudonym(pseudonymIdSk, basesForPseudonym2));
     witnesses.add(buildWitness(signed1.signature, unrevealed1, false));
     witnesses.add(buildWitness(signed2.signature, unrevealed2, false));
-    witnesses.add(Witness.attributeBoundPseudonym([signed2.encodedMessages['sensitive.user-id'], signed2.encodedMessages['sensitive.secret']]));
+    witnesses.add(
+      Witness.attributeBoundPseudonym([
+        signed2.encodedMessages['sensitive.user-id'],
+        signed2.encodedMessages['sensitive.secret']
+      ])
+    );
 
     // Additional `Statement`s can be added for checking revocation status here
 
@@ -298,5 +307,5 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
-  })
+  });
 });

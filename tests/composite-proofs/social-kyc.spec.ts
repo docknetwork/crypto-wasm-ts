@@ -126,7 +126,6 @@ describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
     // proof to check user's knowledge of its opening.
     checkResult(proof.verify(proofSpec));
 
-    console.log('HERE');
     // Issuer is convinced that user knows the opening to the both commitments
     const blindSig = isPS()
       ? BlindSignature.fromRequest(request, sk, h)

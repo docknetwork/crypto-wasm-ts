@@ -40,7 +40,8 @@ import {
   BoundCheckBppParamsUncompressed,
   BoundCheckSmcParamsUncompressed,
   BoundCheckSmcWithKVProverParamsUncompressed,
-  BoundCheckSmcWithKVVerifierParamsUncompressed, BoundCheckSmcWithKVSetup
+  BoundCheckSmcWithKVVerifierParamsUncompressed,
+  BoundCheckSmcWithKVSetup
 } from '../../src';
 import {
   SignatureParams,
@@ -65,10 +66,7 @@ import {
 } from '../utils';
 import { flatten, unflatten } from 'flat';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
-import {
-  BBSBlindedCredentialRequest,
-  BBSPlusBlindedCredentialRequest, BlindedCredentialRequest
-} from '../../src';
+import { BBSBlindedCredentialRequest, BBSPlusBlindedCredentialRequest, BlindedCredentialRequest } from '../../src';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -84,10 +82,11 @@ function finalize(reqBuilder) {
   return [req, blinding];
 }
 
-function newReqBuilder(schema: CredentialSchema, subjectToBlind: object): BlindedCredentialRequestBuilder<SignatureParams> {
-  const reqBuilder = isBBS()
-    ? new BBSBlindedCredentialRequestBuilder()
-    : new BBSPlusBlindedCredentialRequestBuilder();
+function newReqBuilder(
+  schema: CredentialSchema,
+  subjectToBlind: object
+): BlindedCredentialRequestBuilder<SignatureParams> {
+  const reqBuilder = isBBS() ? new BBSBlindedCredentialRequestBuilder() : new BBSPlusBlindedCredentialRequestBuilder();
   reqBuilder.schema = schema;
   reqBuilder.subjectToBlind = subjectToBlind;
   return reqBuilder;
@@ -101,10 +100,21 @@ function checkBlindedSubject(req, blindedSubject) {
   expect(req.blindedAttributes).toEqual(unflatten(expectedBlindedAttributes));
 }
 
-function checkReqJson(req: BlindedCredentialRequest, pks: PublicKey[], accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>, predicateParams?: Map<string, PredicateParamType>, circomOutputs?: Map<number, Uint8Array[][]>, blindedAttributesCircomOutputs?: Uint8Array[][]) {
+function checkReqJson(
+  req: BlindedCredentialRequest,
+  pks: PublicKey[],
+  accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
+  predicateParams?: Map<string, PredicateParamType>,
+  circomOutputs?: Map<number, Uint8Array[][]>,
+  blindedAttributesCircomOutputs?: Uint8Array[][]
+) {
   const reqJson = req.toJSON();
-  const recreatedReq = isBBS() ? BBSBlindedCredentialRequest.fromJSON(reqJson) : BBSPlusBlindedCredentialRequest.fromJSON(reqJson);
-  checkResult(recreatedReq.verify(pks, accumulatorPublicKeys, predicateParams, circomOutputs, blindedAttributesCircomOutputs));
+  const recreatedReq = isBBS()
+    ? BBSBlindedCredentialRequest.fromJSON(reqJson)
+    : BBSPlusBlindedCredentialRequest.fromJSON(reqJson);
+  checkResult(
+    recreatedReq.verify(pks, accumulatorPublicKeys, predicateParams, circomOutputs, blindedAttributesCircomOutputs)
+  );
   expect(recreatedReq.toJSON()).toEqual(reqJson);
 }
 
@@ -113,8 +123,8 @@ function checkBlindedCredJson(blindedCred: BlindedCredential<any>, pk: PublicKey
   const recreatedCred = isBBS() ? BBSBlindedCredential.fromJSON(credJson) : BBSPlusBlindedCredential.fromJSON(credJson);
   // @ts-ignore
   const cred = isBBS()
-    // @ts-ignore
-    ? recreatedCred.toCredential(blindedSubject)
+    ? // @ts-ignore
+      recreatedCred.toCredential(blindedSubject)
     : recreatedCred.toCredential(blindedSubject, blinding);
   checkResult(cred.verify(pk));
   expect(recreatedCred.toJSON()).toEqual(credJson);
@@ -208,7 +218,9 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
 
   function setupBoundCheckSmcWithKV() {
     if (boundCheckSmcKVProverParams === undefined) {
-      const p = BoundCheckSmcWithKVSetup(stringToBytes('set-membership check based range proof with keyed verification testing'));
+      const p = BoundCheckSmcWithKVSetup(
+        stringToBytes('set-membership check based range proof with keyed verification testing')
+      );
       boundCheckSmcKVProverParams = p[0];
       boundCheckSmcKVVerifierParams = p[1];
     }
@@ -223,7 +235,10 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
     pk1 = keypair1.pk;
 
     schema1 = new CredentialSchema(getExampleSchema(10));
-    const accumKeypair1 = PositiveAccumulator.generateKeypair(dockAccumulatorParams(), stringToBytes('secret-seed-for-accum'));
+    const accumKeypair1 = PositiveAccumulator.generateKeypair(
+      dockAccumulatorParams(),
+      stringToBytes('secret-seed-for-accum')
+    );
     accumulator1Pk = accumKeypair1.publicKey;
     accumulator1Sk = accumKeypair1.secretKey;
     accumulator1 = PositiveAccumulator.initialize(dockAccumulatorParams());
@@ -542,7 +557,7 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
             rank: { min: 50, max: 200, paramId: boundCheckBppId, protocol: BoundCheckProtocols.Bpp },
             scores: {
               english: { min: 20, max: 100, paramId: boundCheckSmcId, protocol: BoundCheckProtocols.Smc },
-              science: { min: 30, max: 100, paramId: boundCheckSmcKVId, protocol: BoundCheckProtocols.SmcKV },
+              science: { min: 30, max: 100, paramId: boundCheckSmcKVId, protocol: BoundCheckProtocols.SmcKV }
             }
           }
         }
@@ -706,14 +721,19 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
       chunkBitSize,
       commKeyId,
       ekId,
-      snarkPkId,
+      snarkPkId
     );
 
     const [req, blinding] = finalize(reqBuilder);
 
     expect(req.presentation.spec.blindCredentialRequest.bounds).toEqual({
       credentialSubject: {
-        timeOfBirth: { min: 1662010849610, max: 1662010849620, paramId: boundCheckSnarkId, protocol: BoundCheckProtocols.Legogroth16 }
+        timeOfBirth: {
+          min: 1662010849610,
+          max: 1662010849620,
+          paramId: boundCheckSnarkId,
+          protocol: BoundCheckProtocols.Legogroth16
+        }
       }
     });
     expect(req.presentation.spec.credentials[0].verifiableEncryptions).toEqual({

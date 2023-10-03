@@ -1,5 +1,12 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  BoundCheckBppParams,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckSmcParams,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckSmcWithKVProverParamsUncompressed,
+  BoundCheckSmcWithKVSetup,
+  BoundCheckSmcWithKVVerifierParamsUncompressed,
   CompositeProofG1,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
@@ -39,6 +46,11 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     max4 = 365;
 
   let snarkProvingKey: LegoProvingKeyUncompressed, snarkVerifyingKey: LegoVerifyingKeyUncompressed;
+  let boundCheckBppParams: BoundCheckBppParamsUncompressed;
+  let boundCheckSmcParams: BoundCheckSmcParamsUncompressed;
+  let boundCheckSmcKVProverParams: BoundCheckSmcWithKVProverParamsUncompressed;
+  let boundCheckSmcKVVerifierParams: BoundCheckSmcWithKVVerifierParamsUncompressed;
+
   // There are 2 signers
   let sigParams1: SignatureParams,
     sigSk1: SecretKey,
@@ -57,6 +69,15 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
 
   it('do verifier setup', () => {
     [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
+    const p = new BoundCheckBppParams(stringToBytes('Bulletproofs++ testing'));
+    boundCheckBppParams = p.decompress();
+    const p1 = new BoundCheckSmcParams(stringToBytes('set-membership check based range proof testing'));
+    boundCheckSmcParams = p1.decompress();
+    const p2 = BoundCheckSmcWithKVSetup(
+      stringToBytes('set-membership check based range proof with keyed verification testing')
+    );
+    boundCheckSmcKVProverParams = p2[0].decompress();
+    boundCheckSmcKVVerifierParams = p2[1].decompress();
   });
 
   it('do signers setup', () => {
@@ -88,34 +109,80 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     expect(sig2.verify(messages2, sigPk2, sigParams2, false).verified).toEqual(true);
   });
 
-  it('accept positive integer bounds only', () => {
-    expect(() => Statement.boundCheckLegoProver(-6, max1, snarkProvingKey)).toThrow();
-    expect(() => Statement.boundCheckLegoProverFromSetupParamRefs(-6, max1, 0)).toThrow();
-    expect(() => Statement.boundCheckLegoVerifier(-6, max1, snarkVerifyingKey)).toThrow();
-    expect(() => Statement.boundCheckLegoVerifierFromSetupParamRefs(-6, max1, 0)).toThrow();
+  function validateBounds(boundCheckProver, boundCheckProverFromRefs, boundCheckVerifier, boundCheckVerifierFromRefs) {
+    expect(() => boundCheckProver(-6, max1, snarkProvingKey)).toThrow();
+    expect(() => boundCheckProverFromRefs(-6, max1, 0)).toThrow();
+    expect(() => boundCheckVerifier(-6, max1, snarkVerifyingKey)).toThrow();
+    expect(() => boundCheckVerifierFromRefs(-6, max1, 0)).toThrow();
 
-    expect(() => Statement.boundCheckLegoProver(10.1, max1, snarkProvingKey)).toThrow();
-    expect(() => Statement.boundCheckLegoProverFromSetupParamRefs(10.1, max1, 0)).toThrow();
-    expect(() => Statement.boundCheckLegoVerifier(10.1, max1, snarkVerifyingKey)).toThrow();
-    expect(() => Statement.boundCheckLegoVerifierFromSetupParamRefs(10.1, max1, 0)).toThrow();
+    expect(() => boundCheckProver(10.1, max1, snarkProvingKey)).toThrow();
+    expect(() => boundCheckProverFromRefs(10.1, max1, 0)).toThrow();
+    expect(() => boundCheckVerifier(10.1, max1, snarkVerifyingKey)).toThrow();
+    expect(() => boundCheckVerifierFromRefs(10.1, max1, 0)).toThrow();
 
-    expect(() => Statement.boundCheckLegoProver(10, 20.8, snarkProvingKey)).toThrow();
-    expect(() => Statement.boundCheckLegoProverFromSetupParamRefs(10, 20.8, 0)).toThrow();
-    expect(() => Statement.boundCheckLegoVerifier(10, 20.8, snarkVerifyingKey)).toThrow();
-    expect(() => Statement.boundCheckLegoVerifierFromSetupParamRefs(10, 20.8, 0)).toThrow();
+    expect(() => boundCheckProver(10, 20.8, snarkProvingKey)).toThrow();
+    expect(() => boundCheckProverFromRefs(10, 20.8, 0)).toThrow();
+    expect(() => boundCheckVerifier(10, 20.8, snarkVerifyingKey)).toThrow();
+    expect(() => boundCheckVerifierFromRefs(10, 20.8, 0)).toThrow();
 
-    expect(() => Statement.boundCheckLegoProver(10, -90, snarkProvingKey)).toThrow();
-    expect(() => Statement.boundCheckLegoProverFromSetupParamRefs(10, -90, 0)).toThrow();
-    expect(() => Statement.boundCheckLegoVerifier(10, -90, snarkVerifyingKey)).toThrow();
-    expect(() => Statement.boundCheckLegoVerifierFromSetupParamRefs(10, -90, 0)).toThrow();
+    expect(() => boundCheckProver(10, -90, snarkProvingKey)).toThrow();
+    expect(() => boundCheckProverFromRefs(10, -90, 0)).toThrow();
+    expect(() => boundCheckVerifier(10, -90, snarkVerifyingKey)).toThrow();
+    expect(() => boundCheckVerifierFromRefs(10, -90, 0)).toThrow();
+  }
+
+  it('accept positive integer bounds only - using LegoGroth16', () => {
+    validateBounds(
+      Statement.boundCheckLegoProver,
+      Statement.boundCheckLegoProverFromSetupParamRefs,
+      Statement.boundCheckLegoVerifier,
+      Statement.boundCheckLegoVerifierFromSetupParamRefs
+    );
   });
 
-  function proveAndVerifySingle(sigParams: SignatureParams, sigPk: PublicKey, messages: Uint8Array[], sig: Signature) {
+  it('accept positive integer bounds only - using Bulletproofs++', () => {
+    validateBounds(
+      Statement.boundCheckBpp,
+      Statement.boundCheckBppFromSetupParamRefs,
+      Statement.boundCheckBpp,
+      Statement.boundCheckBppFromSetupParamRefs
+    );
+  });
+
+  it('accept positive integer bounds only - using set membership check', () => {
+    validateBounds(
+      Statement.boundCheckSmc,
+      Statement.boundCheckSmcFromSetupParamRefs,
+      Statement.boundCheckSmc,
+      Statement.boundCheckSmcFromSetupParamRefs
+    );
+  });
+
+  it('accept positive integer bounds only - using set membership check with keyed verification', () => {
+    validateBounds(
+      Statement.boundCheckSmcWithKVProver,
+      Statement.boundCheckSmcWithKVProverFromSetupParamRefs,
+      Statement.boundCheckSmcWithKVVerifier,
+      Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs
+    );
+  });
+
+  function proveAndVerifySingle(
+    sigParams: SignatureParams,
+    sigPk: PublicKey,
+    messages: Uint8Array[],
+    sig: Signature,
+    proverStmt,
+    witnessGen,
+    verifierStmt,
+    proverParams,
+    verifierParams
+  ) {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
     const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
-    const statement2 = Statement.boundCheckLegoProver(min1, max1, snarkProvingKey);
+    const statement2 = proverStmt(min1, max1, proverParams);
     const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
 
@@ -126,7 +193,7 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 
     const witness1 = buildWitness(sig, unrevealedMsgs, false);
-    const witness2 = Witness.boundCheckLegoGroth16(messages[msgIdx]);
+    const witness2 = witnessGen(messages[msgIdx]);
     const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
@@ -136,7 +203,7 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
 
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
-    const statement3 = Statement.boundCheckLegoVerifier(min1, max1, snarkVerifyingKey);
+    const statement3 = verifierStmt(min1, max1, verifierParams);
     const verifierStatements = new Statements(statement1);
     verifierStatements.add(statement3);
 
@@ -144,27 +211,27 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
   }
 
-  it('prove knowledge of 1 bounded message from 1st signature', () => {
-    proveAndVerifySingle(sigParams1, sigPk1, messages1, sig1);
-  }, 20000);
-
-  it('prove knowledge of 1 bounded message from 2nd signature', () => {
-    proveAndVerifySingle(sigParams2, sigPk2, messages2, sig2);
-  }, 20000);
-
-  it('prove knowledge of 2 bounded messages from both signatures with different bounds for each message', () => {
+  function proveAndVerifyMultiple(
+    proverSetupParamGen,
+    verifierSetupParamGen,
+    proverStmt,
+    witnessGen,
+    verifierStmt,
+    proverParams,
+    verifierParams
+  ) {
     const proverSetupParams: SetupParam[] = [];
-    proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
+    proverSetupParams.push(proverSetupParamGen(proverParams));
 
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
     const [revealedMsgs2, unrevealedMsgs2] = getRevealedUnrevealed(messages2, new Set<number>());
 
     const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
     const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
-    const statement3 = Statement.boundCheckLegoProverFromSetupParamRefs(min1, max1, 0);
-    const statement4 = Statement.boundCheckLegoProverFromSetupParamRefs(min2, max2, 0);
-    const statement5 = Statement.boundCheckLegoProverFromSetupParamRefs(min3, max3, 0);
-    const statement6 = Statement.boundCheckLegoProverFromSetupParamRefs(min4, max4, 0);
+    const statement3 = proverStmt(min1, max1, 0);
+    const statement4 = proverStmt(min2, max2, 0);
+    const statement5 = proverStmt(min3, max3, 0);
+    const statement6 = proverStmt(min4, max4, 0);
 
     const proverStatements = new Statements();
     proverStatements.add(statement1);
@@ -199,10 +266,10 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const witnesses = new Witnesses();
     witnesses.add(buildWitness(sig1, unrevealedMsgs1, false));
     witnesses.add(buildWitness(sig2, unrevealedMsgs2, false));
-    witnesses.add(Witness.boundCheckLegoGroth16(messages1[msgIdx]));
-    witnesses.add(Witness.boundCheckLegoGroth16(messages1[msgIdx + 1]));
-    witnesses.add(Witness.boundCheckLegoGroth16(messages2[msgIdx]));
-    witnesses.add(Witness.boundCheckLegoGroth16(messages2[msgIdx + 1]));
+    witnesses.add(witnessGen(messages1[msgIdx]));
+    witnesses.add(witnessGen(messages1[msgIdx + 1]));
+    witnesses.add(witnessGen(messages2[msgIdx]));
+    witnesses.add(witnessGen(messages2[msgIdx + 1]));
 
     const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
 
@@ -211,12 +278,12 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
     const verifierSetupParams: SetupParam[] = [];
-    verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
+    verifierSetupParams.push(verifierSetupParamGen(verifierParams));
 
-    const statement7 = Statement.boundCheckLegoVerifierFromSetupParamRefs(min1, max1, 0);
-    const statement8 = Statement.boundCheckLegoVerifierFromSetupParamRefs(min2, max2, 0);
-    const statement9 = Statement.boundCheckLegoVerifierFromSetupParamRefs(min3, max3, 0);
-    const statement10 = Statement.boundCheckLegoVerifierFromSetupParamRefs(min4, max4, 0);
+    const statement7 = verifierStmt(min1, max1, 0);
+    const statement8 = verifierStmt(min2, max2, 0);
+    const statement9 = verifierStmt(min3, max3, 0);
+    const statement10 = verifierStmt(min4, max4, 0);
 
     const verifierStatements = new Statements([].concat(statement1, statement2));
     verifierStatements.add(statement7);
@@ -227,9 +294,17 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
 
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
-  });
+  }
 
-  it('use bound check for proving earlier than or later than with timestamps', () => {
+  function boundsOnTimestamps(
+    proverSetupParamGen,
+    verifierSetupParamGen,
+    proverStmt,
+    witnessGen,
+    verifierStmt,
+    proverParams,
+    verifierParams
+  ) {
     // This test shows how to use the bound check protocol to do range proofs over attributes.
 
     // Various timestamps in milliseconds. These are provided by the verifier.
@@ -250,18 +325,18 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const sig = Signature.generate(attributes, sigSk1, sigParams1, false);
 
     const proverSetupParams: SetupParam[] = [];
-    proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
+    proverSetupParams.push(proverSetupParamGen(proverParams));
 
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(attributes, revealedIndices);
     const statement1 = buildStatement(sigParams1, sigPk1, revealedAttrs, false);
     // For proving birth date was after `bornAfter`
-    const statement2 = Statement.boundCheckLegoProverFromSetupParamRefs(bornAfter, now, 0);
+    const statement2 = proverStmt(bornAfter, now, 0);
     // For proving issuance date was between `earliestIssuance` and `latestIssuance`
-    const statement3 = Statement.boundCheckLegoProverFromSetupParamRefs(earliestIssuance, latestIssuance, 0);
+    const statement3 = proverStmt(earliestIssuance, latestIssuance, 0);
     // For proving expiration date was between `now` and `someDistantFuture`, i.e. its not expired as of now.
-    const statement4 = Statement.boundCheckLegoProverFromSetupParamRefs(now, someDistantFuture, 0);
+    const statement4 = proverStmt(now, someDistantFuture, 0);
 
     const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
@@ -290,9 +365,9 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
 
     const witnesses = new Witnesses();
     witnesses.add(buildWitness(sig, unrevealedAttrs, false));
-    witnesses.add(Witness.boundCheckLegoGroth16(attributes[2]));
-    witnesses.add(Witness.boundCheckLegoGroth16(attributes[3]));
-    witnesses.add(Witness.boundCheckLegoGroth16(attributes[4]));
+    witnesses.add(witnessGen(attributes[2]));
+    witnesses.add(witnessGen(attributes[3]));
+    witnesses.add(witnessGen(attributes[4]));
 
     const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
 
@@ -301,14 +376,14 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
     const verifierSetupParams: SetupParam[] = [];
-    verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
+    verifierSetupParams.push(verifierSetupParamGen(verifierParams));
 
     // For verifying birth date was after `bornAfter`
-    const statement5 = Statement.boundCheckLegoVerifierFromSetupParamRefs(bornAfter, now, 0);
+    const statement5 = verifierStmt(bornAfter, now, 0);
     // For verifying issuance date was between `earliestIssuance` and `latestIssuance`
-    const statement6 = Statement.boundCheckLegoVerifierFromSetupParamRefs(earliestIssuance, latestIssuance, 0);
+    const statement6 = verifierStmt(earliestIssuance, latestIssuance, 0);
     // For verifying expiration date was between `now` and `someDistantFuture`, i.e. its not expired as of now.
-    const statement7 = Statement.boundCheckLegoVerifierFromSetupParamRefs(now, someDistantFuture, 0);
+    const statement7 = verifierStmt(now, someDistantFuture, 0);
 
     const verifierStatements = new Statements();
     verifierStatements.add(statement1);
@@ -319,9 +394,17 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
 
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
-  });
+  }
 
-  it('use bound check for negative or decimal bounds', () => {
+  function boundsOnNegativeAndDecimal(
+    proverSetupParamGen,
+    verifierSetupParamGen,
+    proverStmt,
+    witnessGen,
+    verifierStmt,
+    proverParams,
+    verifierParams
+  ) {
     // The protocol only works with positive integers to negative or decimal numbers must be converted. Following is an
     // example of showing how negative or decimal values for both attributes and bounds are transformed to be positive integers.
     // Note that these transformation rules should be well established between the signer, prover and verifier and the same
@@ -425,16 +508,16 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const sig = Signature.generate(encodedAttributes, sigSk1, sigParams1, false);
 
     const proverSetupParams: SetupParam[] = [];
-    proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
+    proverSetupParams.push(proverSetupParamGen(proverParams));
 
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(encodedAttributes, new Set<number>());
     const statement1 = buildStatement(sigParams1, sigPk1, revealedAttrs, false);
 
-    const statement2 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin1, transMax1, 0);
-    const statement3 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin2, transMax2, 0);
-    const statement4 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin3, transMax3, 0);
-    const statement5 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin3, transMax3, 0);
-    const statement6 = Statement.boundCheckLegoProverFromSetupParamRefs(transMin4, transMax4, 0);
+    const statement2 = proverStmt(transMin1, transMax1, 0);
+    const statement3 = proverStmt(transMin2, transMax2, 0);
+    const statement4 = proverStmt(transMin3, transMax3, 0);
+    const statement5 = proverStmt(transMin3, transMax3, 0);
+    const statement6 = proverStmt(transMin4, transMax4, 0);
 
     const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
@@ -454,7 +537,7 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const witnesses = new Witnesses();
     witnesses.add(buildWitness(sig, unrevealedAttrs, false));
     for (let i = 0; i < encodedAttributes.length; i++) {
-      witnesses.add(Witness.boundCheckLegoGroth16(encodedAttributes[i]));
+      witnesses.add(witnessGen(encodedAttributes[i]));
     }
 
     const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
@@ -464,13 +547,13 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
     const verifierSetupParams: SetupParam[] = [];
-    verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
+    verifierSetupParams.push(verifierSetupParamGen(verifierParams));
 
-    const statement7 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin1, transMax1, 0);
-    const statement8 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin2, transMax2, 0);
-    const statement9 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin3, transMax3, 0);
-    const statement10 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin3, transMax3, 0);
-    const statement11 = Statement.boundCheckLegoVerifierFromSetupParamRefs(transMin4, transMax4, 0);
+    const statement7 = verifierStmt(transMin1, transMax1, 0);
+    const statement8 = verifierStmt(transMin2, transMax2, 0);
+    const statement9 = verifierStmt(transMin3, transMax3, 0);
+    const statement10 = verifierStmt(transMin3, transMax3, 0);
+    const statement11 = verifierStmt(transMin4, transMax4, 0);
 
     const verifierStatements = new Statements(statement1);
     verifierStatements.add(statement7);
@@ -482,5 +565,261 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
 
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
+  }
+
+  it('prove knowledge of 1 bounded message from 1st signature - using LegoGroth16', () => {
+    proveAndVerifySingle(
+      sigParams1,
+      sigPk1,
+      messages1,
+      sig1,
+      Statement.boundCheckLegoProver,
+      Witness.boundCheckLegoGroth16,
+      Statement.boundCheckLegoVerifier,
+      snarkProvingKey,
+      snarkVerifyingKey
+    );
+  }, 20000);
+
+  it('prove knowledge of 1 bounded message from 2nd signature - using LegoGroth16', () => {
+    proveAndVerifySingle(
+      sigParams2,
+      sigPk2,
+      messages2,
+      sig2,
+      Statement.boundCheckLegoProver,
+      Witness.boundCheckLegoGroth16,
+      Statement.boundCheckLegoVerifier,
+      snarkProvingKey,
+      snarkVerifyingKey
+    );
+  }, 20000);
+
+  it('prove knowledge of 1 bounded message from 1st signature - using Bulletproofs++', () => {
+    proveAndVerifySingle(
+      sigParams1,
+      sigPk1,
+      messages1,
+      sig1,
+      Statement.boundCheckBpp,
+      Witness.boundCheckBpp,
+      Statement.boundCheckBpp,
+      boundCheckBppParams,
+      boundCheckBppParams
+    );
+  }, 20000);
+
+  it('prove knowledge of 1 bounded message from 2nd signature - using Bulletproofs++', () => {
+    proveAndVerifySingle(
+      sigParams2,
+      sigPk2,
+      messages2,
+      sig2,
+      Statement.boundCheckBpp,
+      Witness.boundCheckBpp,
+      Statement.boundCheckBpp,
+      boundCheckBppParams,
+      boundCheckBppParams
+    );
+  }, 20000);
+
+  it('prove knowledge of 1 bounded message from 1st signature - using set membership check', () => {
+    proveAndVerifySingle(
+      sigParams1,
+      sigPk1,
+      messages1,
+      sig1,
+      Statement.boundCheckSmc,
+      Witness.boundCheckSmc,
+      Statement.boundCheckSmc,
+      boundCheckSmcParams,
+      boundCheckSmcParams
+    );
+  }, 20000);
+
+  it('prove knowledge of 1 bounded message from 2nd signature - set membership check', () => {
+    proveAndVerifySingle(
+      sigParams2,
+      sigPk2,
+      messages2,
+      sig2,
+      Statement.boundCheckSmc,
+      Witness.boundCheckSmc,
+      Statement.boundCheckSmc,
+      boundCheckSmcParams,
+      boundCheckSmcParams
+    );
+  }, 20000);
+
+  it('prove knowledge of 1 bounded message from 1st signature - using set membership check with keyed verification', () => {
+    proveAndVerifySingle(
+      sigParams1,
+      sigPk1,
+      messages1,
+      sig1,
+      Statement.boundCheckSmcWithKVProver,
+      Witness.boundCheckSmcWithKV,
+      Statement.boundCheckSmcWithKVVerifier,
+      boundCheckSmcKVProverParams,
+      boundCheckSmcKVVerifierParams
+    );
+  }, 20000);
+
+  it('prove knowledge of 1 bounded message from 2nd signature - set membership check with keyed verification', () => {
+    proveAndVerifySingle(
+      sigParams2,
+      sigPk2,
+      messages2,
+      sig2,
+      Statement.boundCheckSmcWithKVProver,
+      Witness.boundCheckSmcWithKV,
+      Statement.boundCheckSmcWithKVVerifier,
+      boundCheckSmcKVProverParams,
+      boundCheckSmcKVVerifierParams
+    );
+  }, 20000);
+
+  it('prove knowledge of 2 bounded messages from both signatures with different bounds for each message - using LegoGroth16', () => {
+    proveAndVerifyMultiple(
+      SetupParam.legosnarkProvingKeyUncompressed,
+      SetupParam.legosnarkVerifyingKeyUncompressed,
+      Statement.boundCheckLegoProverFromSetupParamRefs,
+      Witness.boundCheckLegoGroth16,
+      Statement.boundCheckLegoVerifierFromSetupParamRefs,
+      snarkProvingKey,
+      snarkVerifyingKey
+    );
+  });
+
+  it('prove knowledge of 2 bounded messages from both signatures with different bounds for each message - using Bulletproofs++', () => {
+    proveAndVerifyMultiple(
+      SetupParam.bppSetupParamsUncompressed,
+      SetupParam.bppSetupParamsUncompressed,
+      Statement.boundCheckBppFromSetupParamRefs,
+      Witness.boundCheckBpp,
+      Statement.boundCheckBppFromSetupParamRefs,
+      boundCheckBppParams,
+      boundCheckBppParams
+    );
+  });
+
+  it('prove knowledge of 2 bounded messages from both signatures with different bounds for each message - using set membership check', () => {
+    proveAndVerifyMultiple(
+      SetupParam.smcSetupParamsUncompressed,
+      SetupParam.smcSetupParamsUncompressed,
+      Statement.boundCheckSmcFromSetupParamRefs,
+      Witness.boundCheckSmc,
+      Statement.boundCheckSmcFromSetupParamRefs,
+      boundCheckSmcParams,
+      boundCheckSmcParams
+    );
+  });
+
+  it('prove knowledge of 2 bounded messages from both signatures with different bounds for each message - using set membership check with keyed verification', () => {
+    proveAndVerifyMultiple(
+      SetupParam.smcSetupParamsUncompressed,
+      SetupParam.smcSetupParamsWithSkUncompressed,
+      Statement.boundCheckSmcWithKVProverFromSetupParamRefs,
+      Witness.boundCheckSmcWithKV,
+      Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs,
+      boundCheckSmcKVProverParams,
+      boundCheckSmcKVVerifierParams
+    );
+  });
+
+  it('use bound check for proving earlier than or later than with timestamps - using LegoGroth16', () => {
+    boundsOnTimestamps(
+      SetupParam.legosnarkProvingKeyUncompressed,
+      SetupParam.legosnarkVerifyingKeyUncompressed,
+      Statement.boundCheckLegoProverFromSetupParamRefs,
+      Witness.boundCheckLegoGroth16,
+      Statement.boundCheckLegoVerifierFromSetupParamRefs,
+      snarkProvingKey,
+      snarkVerifyingKey
+    );
+  });
+
+  it('use bound check for proving earlier than or later than with timestamps - using Bulletproofs++', () => {
+    boundsOnTimestamps(
+      SetupParam.bppSetupParamsUncompressed,
+      SetupParam.bppSetupParamsUncompressed,
+      Statement.boundCheckBppFromSetupParamRefs,
+      Witness.boundCheckBpp,
+      Statement.boundCheckBppFromSetupParamRefs,
+      boundCheckBppParams,
+      boundCheckBppParams
+    );
+  });
+
+  it('use bound check for proving earlier than or later than with timestamps - using set membership check', () => {
+    boundsOnTimestamps(
+      SetupParam.smcSetupParamsUncompressed,
+      SetupParam.smcSetupParamsUncompressed,
+      Statement.boundCheckSmcFromSetupParamRefs,
+      Witness.boundCheckSmc,
+      Statement.boundCheckSmcFromSetupParamRefs,
+      boundCheckSmcParams,
+      boundCheckSmcParams
+    );
+  });
+
+  it('use bound check for proving earlier than or later than with timestamps - using set membership check with keyed verification', () => {
+    boundsOnTimestamps(
+      SetupParam.smcSetupParamsUncompressed,
+      SetupParam.smcSetupParamsWithSkUncompressed,
+      Statement.boundCheckSmcWithKVProverFromSetupParamRefs,
+      Witness.boundCheckSmcWithKV,
+      Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs,
+      boundCheckSmcKVProverParams,
+      boundCheckSmcKVVerifierParams
+    );
+  });
+
+  it('use bound check for negative or decimal bounds - using LegoGroth16', () => {
+    boundsOnNegativeAndDecimal(
+      SetupParam.legosnarkProvingKeyUncompressed,
+      SetupParam.legosnarkVerifyingKeyUncompressed,
+      Statement.boundCheckLegoProverFromSetupParamRefs,
+      Witness.boundCheckLegoGroth16,
+      Statement.boundCheckLegoVerifierFromSetupParamRefs,
+      snarkProvingKey,
+      snarkVerifyingKey
+    );
+  });
+
+  it('use bound check for negative or decimal bounds - using Bulletproofs++', () => {
+    boundsOnNegativeAndDecimal(
+      SetupParam.bppSetupParamsUncompressed,
+      SetupParam.bppSetupParamsUncompressed,
+      Statement.boundCheckBppFromSetupParamRefs,
+      Witness.boundCheckBpp,
+      Statement.boundCheckBppFromSetupParamRefs,
+      boundCheckBppParams,
+      boundCheckBppParams
+    );
+  });
+
+  it('use bound check for negative or decimal bounds - using set membership check', () => {
+    boundsOnNegativeAndDecimal(
+      SetupParam.smcSetupParamsUncompressed,
+      SetupParam.smcSetupParamsUncompressed,
+      Statement.boundCheckSmcFromSetupParamRefs,
+      Witness.boundCheckSmc,
+      Statement.boundCheckSmcFromSetupParamRefs,
+      boundCheckSmcParams,
+      boundCheckSmcParams
+    );
+  });
+
+  it('use bound check for negative or decimal bounds - using set membership check with keyed verification', () => {
+    boundsOnNegativeAndDecimal(
+      SetupParam.smcSetupParamsUncompressed,
+      SetupParam.smcSetupParamsWithSkUncompressed,
+      Statement.boundCheckSmcWithKVProverFromSetupParamRefs,
+      Witness.boundCheckSmcWithKV,
+      Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs,
+      boundCheckSmcKVProverParams,
+      boundCheckSmcKVVerifierParams
+    );
   });
 });

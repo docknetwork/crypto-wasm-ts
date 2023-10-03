@@ -1040,15 +1040,20 @@ him the decrypted message. In this it can verify the decryption done by the decr
 const result = ciphertext.verifyDecryption(decrypted, saverDk, snarkVerifyingKey, saverEncGens, chunkBitSize);
 ```
 
-### Bound check using LegoGroth16
+### Bound check (range proof)
 
 Note: This section assumes you have read some of the previous examples on composite proof.
 
 A complete example as a test is [here](./tests/composite-proofs/bound-check.spec.ts)
 
 Allow a verifier to check that some attribute of the credential satisfies given bounds `min` and `max`, i.e. `min <= message < max` 
-without learning the attribute itself. Both `min` and `max` are positive integers. This is implemented using LegoGroth16, a protocol described in the SNARK 
-framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2.
+without learning the attribute itself. Both `min` and `max` are positive integers. This can be implemented using different protocols, 
+- LegoGroth16, a protocol described in the SNARK framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2. Requires a trusted setup, which in practice is done by the verifier. 
+- Bulletproofs++, a transparent (no trusted setup required) range proof protocol.
+- Set-membership check based range proof which require a trusted setup but offer 2 variations - one with keyed verification which has the most optimal execution 
+  and the other that performs similar to LegoGroth16 for proving but worse in verification.
+
+The above mentioned test uses all these variations. 
 
 #### Encoding for negative or decimal numbers
 
@@ -1067,7 +1072,7 @@ verifier does not have to create them each time a proof needs to be verifier, it
 such that all provers interacting with it can use them.  
 In the following snippet, the verifier ask to prove that certain message satisfies the lower and upper bounds `min` and `max`,
 i.e. `min <= message < max`. Note than both bounds are positive integers and lower bound is inclusive but upper bound is not,
-for changing from exclusive to inclusive bounds or vice-versa, add or subtract 1 from bounds.
+for changing from exclusive to inclusive bounds or vice-versa, add or subtract 1 from bounds. The snippet shows LegoGroth16.
 
 ```ts
 const provingKey = BoundCheckSnarkSetup();

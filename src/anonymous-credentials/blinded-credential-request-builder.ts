@@ -13,7 +13,7 @@ import {
   BlindedAttributeEquality,
   BlindSignatureTypes,
   BoundCheckParamType,
-  BoundCheckProtocols,
+  BoundType,
   PublicKey,
   SignatureParams,
   SUBJECT_STR,
@@ -148,12 +148,12 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   enforceBoundsOnCredentialAttribute(
     credIdx: number,
     attributeName: string,
-    min: number | Date | string,
-    max: number | Date | string,
-    provingKeyId: string,
-    provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
+    min: BoundType,
+    max: BoundType,
+    paramId: string,
+    param?: BoundCheckParamType
   ) {
-    this.presentationBuilder.enforceBounds(credIdx, attributeName, min, max, provingKeyId, provingKey);
+    this.presentationBuilder.enforceBounds(credIdx, attributeName, min, max, paramId, param);
   }
 
   verifiablyEncryptCredentialAttribute(
@@ -236,22 +236,22 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   /**
    *
    * @param attributeName - Nested attribute names use the "dot" separator
-   * @param vmin
-   * @param vmax
+   * @param min
+   * @param max
    * @param paramId
    * @param param
    */
   enforceBoundsOnBlindedAttribute(
     attributeName: string,
-    vmin: number | Date | string,
-    vmax: number | Date | string,
+    min: BoundType,
+    max: BoundType,
     paramId: string,
     param?: BoundCheckParamType
   ) {
     if (this.bounds.get(attributeName) !== undefined) {
       throw new Error(`Already enforced bounds on attribute ${attributeName}`);
     }
-    PresentationBuilder.processBounds(this.presentationBuilder, this.bounds, attributeName, vmin, vmax, paramId, param);
+    PresentationBuilder.processBounds(this.presentationBuilder, this.bounds, attributeName, min, max, paramId, param);
   }
 
   verifiablyEncryptBlindedAttribute(

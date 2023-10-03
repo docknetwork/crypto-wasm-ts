@@ -1,6 +1,13 @@
 import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { checkResult, getBoundCheckSnarkKeys, stringToBytes } from '../../utils';
 import {
+  BoundCheckBppParams,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckSmcParams,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckSmcWithKVProverParamsUncompressed,
+  BoundCheckSmcWithKVSetup,
+  BoundCheckSmcWithKVVerifierParamsUncompressed,
   CompositeProofG1,
   createWitnessEqualityMetaStatement,
   Encoder,
@@ -8,6 +15,8 @@ import {
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  LegoProvingKeyUncompressed,
+  LegoVerifyingKeyUncompressed,
   MetaStatements,
   ProofSpecG1,
   SetupParam,
@@ -27,58 +36,103 @@ import {
   GlobalEncoder
 } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { adaptKeyForParams, buildStatement, buildWitness, isPS, KeyPair, Scheme, SignatureParams, Signature } from '../../scheme';
+import {
+  adaptKeyForParams,
+  buildStatement,
+  buildWitness,
+  KeyPair,
+  Scheme,
+  SignatureParams,
+  Signature,
+  SecretKey,
+  PublicKey
+} from '../../scheme';
 
 const loadSnarkSetupFromFiles = true;
+
+let params1: SignatureParams,
+  sk1: SecretKey,
+  pk1: PublicKey,
+  params2: SignatureParams,
+  sk2: SecretKey,
+  pk2: PublicKey,
+  params3: SignatureParams,
+  sk3: SecretKey,
+  pk3: PublicKey;
+
+let snarkProvingKey: LegoProvingKeyUncompressed, snarkVerifyingKey: LegoVerifyingKeyUncompressed;
+let boundCheckBppParams: BoundCheckBppParamsUncompressed;
+let boundCheckSmcParams: BoundCheckSmcParamsUncompressed;
+let boundCheckSmcKVProverParams: BoundCheckSmcWithKVProverParamsUncompressed;
+let boundCheckSmcKVVerifierParams: BoundCheckSmcWithKVVerifierParamsUncompressed;
+
+let signed1, signed2, signed3;
 
 describe(`${Scheme} Range proof using LegoGroth16`, () => {
   beforeAll(async () => {
     // Load the WASM module
     await initializeWasm();
-  });
-
-  it('signing and proof of knowledge of signatures and range proofs', () => {
-    // This test check that a multiple signatures created by different signers can be verified and proof of knowledge of
-    // signatures can be done selective-disclosure while also proving equality between some of the hidden attributes.
-    // In addition, it checks that bounds of several attributes can be proven in zero knowledge. Some attributes have negative
-    // values, some have decimal and some both
 
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = SignatureParams.generate(100, label1);
+    params1 = SignatureParams.generate(100, label1);
     const keypair1 = KeyPair.generate(params1);
-    const sk1 = keypair1.secretKey;
-    const pk1 = keypair1.publicKey;
+    sk1 = keypair1.secretKey;
+    pk1 = keypair1.publicKey;
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = SignatureParams.generate(100, label2);
+    params2 = SignatureParams.generate(100, label2);
     const keypair2 = KeyPair.generate(params2);
-    const sk2 = keypair2.secretKey;
-    const pk2 = keypair2.publicKey;
+    sk2 = keypair2.secretKey;
+    pk2 = keypair2.publicKey;
 
     // 3rd signer's setup
     const label3 = stringToBytes('Sig params label 3');
     // Message count shouldn't matter as `label3` is known
-    let params3 = SignatureParams.generate(100, label3);
+    params3 = SignatureParams.generate(100, label3);
     const keypair3 = KeyPair.generate(params3);
-    const sk3 = keypair3.secretKey;
-    const pk3 = keypair3.publicKey;
+    sk3 = keypair3.secretKey;
+    pk3 = keypair3.publicKey;
+
+    [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
+
+    const p = new BoundCheckBppParams(stringToBytes('Bulletproofs++ testing'));
+    boundCheckBppParams = p.decompress();
+    const p1 = new BoundCheckSmcParams(stringToBytes('set-membership check based range proof testing'));
+    boundCheckSmcParams = p1.decompress();
+    const p2 = BoundCheckSmcWithKVSetup(
+      stringToBytes('set-membership check based range proof with keyed verification testing')
+    );
+    boundCheckSmcKVProverParams = p2[0].decompress();
+    boundCheckSmcKVVerifierParams = p2[1].decompress();
 
     // Sign and verify all signatures
-    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, GlobalEncoder);
+    signed1 = Signature.signMessageObject(attributes1, sk1, label1, GlobalEncoder);
     checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, GlobalEncoder));
 
-    const signed2 = Signature.signMessageObject(attributes2, sk2, label2, GlobalEncoder);
+    signed2 = Signature.signMessageObject(attributes2, sk2, label2, GlobalEncoder);
     checkResult(signed2.signature.verifyMessageObject(attributes2, pk2, label2, GlobalEncoder));
 
-    const signed3 = Signature.signMessageObject(attributes3, sk3, label3, GlobalEncoder);
+    signed3 = Signature.signMessageObject(attributes3, sk3, label3, GlobalEncoder);
     checkResult(signed3.signature.verifyMessageObject(attributes3, pk3, label3, GlobalEncoder));
+  });
 
-    // Verifier creates SNARK proving and verification key
-    const [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
+  function check(
+    proverSetupParamGen,
+    verifierSetupParamGen,
+    proverStmt,
+    witnessGen,
+    verifierStmt,
+    proverParams,
+    verifierParams
+  ) {
+    // This checks that a multiple signatures created by different signers can be verified and proof of knowledge of
+    // signatures can be done selective-disclosure while also proving equality between some of the hidden attributes.
+    // In addition, it checks that bounds of several attributes can be proven in zero knowledge. Some attributes have negative
+    // values, some have decimal and some both
 
     // The lower and upper bounds of attributes involved in the bound check
     const timeMin = 1662010819619;
@@ -135,7 +189,7 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
 
     // Prover needs to do many bound checks with the same verification key
     const proverSetupParams: SetupParam[] = [];
-    proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(snarkProvingKey));
+    proverSetupParams.push(proverSetupParamGen(proverParams));
 
     const [revealedMsgs1, unrevealedMsgs1, revealedMsgsRaw1] = getRevealedAndUnrevealed(
       attributes1,
@@ -175,13 +229,13 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     const statement3 = buildStatement(sigParams3, sigPk3, revealedMsgs3, false);
 
     // Construct statements for bound check
-    const statement4 = Statement.boundCheckLegoProverFromSetupParamRefs(timeMin, timeMax, 0);
-    const statement5 = Statement.boundCheckLegoProverFromSetupParamRefs(weightMin, weightMax, 0);
-    const statement6 = Statement.boundCheckLegoProverFromSetupParamRefs(heightMin, heightMax, 0);
-    const statement7 = Statement.boundCheckLegoProverFromSetupParamRefs(bmiMin, bmiMax, 0);
-    const statement8 = Statement.boundCheckLegoProverFromSetupParamRefs(scoreMin, scoreMax, 0);
-    const statement9 = Statement.boundCheckLegoProverFromSetupParamRefs(latMin, latMax, 0);
-    const statement10 = Statement.boundCheckLegoProverFromSetupParamRefs(longMin, longMax, 0);
+    const statement4 = proverStmt(timeMin, timeMax, 0);
+    const statement5 = proverStmt(weightMin, weightMax, 0);
+    const statement6 = proverStmt(heightMin, heightMax, 0);
+    const statement7 = proverStmt(bmiMin, bmiMax, 0);
+    const statement8 = proverStmt(scoreMin, scoreMax, 0);
+    const statement9 = proverStmt(latMin, latMax, 0);
+    const statement10 = proverStmt(longMin, longMax, 0);
 
     const statementsProver = new Statements();
     const sIdx1 = statementsProver.add(statement1);
@@ -292,18 +346,18 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
 
     const witnesses = new Witnesses([].concat(witness1, witness2, witness3));
 
-    witnesses.add(Witness.boundCheckLegoGroth16(signed1.encodedMessages['timeOfBirth']));
-    witnesses.add(Witness.boundCheckLegoGroth16(signed1.encodedMessages['weight']));
-    witnesses.add(Witness.boundCheckLegoGroth16(signed1.encodedMessages['height']));
-    witnesses.add(Witness.boundCheckLegoGroth16(signed1.encodedMessages['BMI']));
-    witnesses.add(Witness.boundCheckLegoGroth16(signed1.encodedMessages['score']));
-    witnesses.add(Witness.boundCheckLegoGroth16(signed3.encodedMessages['lessSensitive.department.location.geo.lat']));
-    witnesses.add(Witness.boundCheckLegoGroth16(signed3.encodedMessages['lessSensitive.department.location.geo.long']));
+    witnesses.add(witnessGen(signed1.encodedMessages['timeOfBirth']));
+    witnesses.add(witnessGen(signed1.encodedMessages['weight']));
+    witnesses.add(witnessGen(signed1.encodedMessages['height']));
+    witnesses.add(witnessGen(signed1.encodedMessages['BMI']));
+    witnesses.add(witnessGen(signed1.encodedMessages['score']));
+    witnesses.add(witnessGen(signed3.encodedMessages['lessSensitive.department.location.geo.lat']));
+    witnesses.add(witnessGen(signed3.encodedMessages['lessSensitive.department.location.geo.long']));
 
     const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
 
     const verifierSetupParams: SetupParam[] = [];
-    verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(snarkVerifyingKey));
+    verifierSetupParams.push(verifierSetupParamGen(verifierParams));
 
     // Verifier independently encodes revealed messages
     const revealedMsgs1FromVerifier = encodeRevealedMsgs(revealedMsgsRaw1, attributes1Struct, GlobalEncoder);
@@ -318,13 +372,13 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     const statement13 = buildStatement(sigParams3, sigPk3, revealedMsgs3FromVerifier, false);
 
     // Construct statements for bound check
-    const statement14 = Statement.boundCheckLegoVerifierFromSetupParamRefs(timeMin, timeMax, 0);
-    const statement15 = Statement.boundCheckLegoVerifierFromSetupParamRefs(weightMin, weightMax, 0);
-    const statement16 = Statement.boundCheckLegoVerifierFromSetupParamRefs(heightMin, heightMax, 0);
-    const statement17 = Statement.boundCheckLegoVerifierFromSetupParamRefs(bmiMin, bmiMax, 0);
-    const statement18 = Statement.boundCheckLegoVerifierFromSetupParamRefs(scoreMin, scoreMax, 0);
-    const statement19 = Statement.boundCheckLegoVerifierFromSetupParamRefs(latMin, latMax, 0);
-    const statement20 = Statement.boundCheckLegoVerifierFromSetupParamRefs(longMin, longMax, 0);
+    const statement14 = verifierStmt(timeMin, timeMax, 0);
+    const statement15 = verifierStmt(weightMin, weightMax, 0);
+    const statement16 = verifierStmt(heightMin, heightMax, 0);
+    const statement17 = verifierStmt(bmiMin, bmiMax, 0);
+    const statement18 = verifierStmt(scoreMin, scoreMax, 0);
+    const statement19 = verifierStmt(latMin, latMax, 0);
+    const statement20 = verifierStmt(longMin, longMax, 0);
 
     const statementsVerifier = new Statements();
     const sIdx11 = statementsVerifier.add(statement11);
@@ -429,5 +483,53 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
+  }
+
+  it('signing and proof of knowledge of signatures and range proofs - using LegoGroth16', () => {
+    check(
+      SetupParam.legosnarkProvingKeyUncompressed,
+      SetupParam.legosnarkVerifyingKeyUncompressed,
+      Statement.boundCheckLegoProverFromSetupParamRefs,
+      Witness.boundCheckLegoGroth16,
+      Statement.boundCheckLegoVerifierFromSetupParamRefs,
+      snarkProvingKey,
+      snarkVerifyingKey
+    );
+  });
+
+  it('signing and proof of knowledge of signatures and range proofs - using Bulletproofs++', () => {
+    check(
+      SetupParam.bppSetupParamsUncompressed,
+      SetupParam.bppSetupParamsUncompressed,
+      Statement.boundCheckBppFromSetupParamRefs,
+      Witness.boundCheckBpp,
+      Statement.boundCheckBppFromSetupParamRefs,
+      boundCheckBppParams,
+      boundCheckBppParams
+    );
+  });
+
+  it('signing and proof of knowledge of signatures and range proofs - using set membership check', () => {
+    check(
+      SetupParam.smcSetupParamsUncompressed,
+      SetupParam.smcSetupParamsUncompressed,
+      Statement.boundCheckSmcFromSetupParamRefs,
+      Witness.boundCheckSmc,
+      Statement.boundCheckSmcFromSetupParamRefs,
+      boundCheckSmcParams,
+      boundCheckSmcParams
+    );
+  });
+
+  it('signing and proof of knowledge of signatures and range proofs - using set membership check with keyed verification', () => {
+    check(
+      SetupParam.smcSetupParamsUncompressed,
+      SetupParam.smcSetupParamsWithSkUncompressed,
+      Statement.boundCheckSmcWithKVProverFromSetupParamRefs,
+      Witness.boundCheckSmcWithKV,
+      Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs,
+      boundCheckSmcKVProverParams,
+      boundCheckSmcKVVerifierParams
+    );
   });
 });

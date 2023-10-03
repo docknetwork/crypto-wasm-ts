@@ -17,7 +17,7 @@ import {
 import { getExampleSchema } from './utils';
 import { CredentialBuilder } from '../scheme';
 
-const INTERNAL_SCHEMA_DATETIME = { "minimum": -17592186044415, "type": "date-time" };
+const INTERNAL_SCHEMA_DATETIME = { minimum: -17592186044415, type: 'date-time' };
 
 describe('Credential Schema', () => {
   beforeAll(async () => {
@@ -49,10 +49,10 @@ describe('Credential Schema', () => {
             anumber: {
               minimum: -4294967295,
               multipleOf: 0.001,
-              type: 'number',
+              type: 'number'
             },
             adate: { type: 'string', format: 'date' },
-            adatetime: { type: 'string', format: 'date-time' },
+            adatetime: { type: 'string', format: 'date-time' }
           }
         },
         cryptoVersion: { type: 'string' },
@@ -68,7 +68,9 @@ describe('Credential Schema', () => {
     // Make schema version older to check that schema is not generated date/date-time formats
     const oldVersion = '0.0.2';
     const builder1 = new CredentialBuilder();
-    builder1.schema = new CredentialSchema(CredentialSchema.essential(), { useDefaults: true }, true, {version: oldVersion});
+    builder1.schema = new CredentialSchema(CredentialSchema.essential(), { useDefaults: true }, true, {
+      version: oldVersion
+    });
     builder1.subject = {
       astring: 'John',
       anumber: 123.123,
@@ -94,10 +96,10 @@ describe('Credential Schema', () => {
             anumber: {
               minimum: -4294967295,
               multipleOf: 0.001,
-              type: 'number',
+              type: 'number'
             },
             adate: { type: 'string' },
-            adatetime: { type: 'string' },
+            adatetime: { type: 'string' }
           }
         },
         cryptoVersion: { type: 'string' },
@@ -172,13 +174,13 @@ describe('Credential Schema', () => {
           properties: {
             SSN: { $ref: '#/definitions/encryptableString' },
             userId: { $ref: '#/definitions/encryptableCompString' },
-            bool: {type: 'boolean'},
+            bool: { type: 'boolean' },
             vision: { type: 'integer', minimum: -20 },
             longitude: { type: 'number', minimum: -180, multipleOf: 0.001 },
             time: { type: 'integer', minimum: 0 },
             weight: { type: 'number', minimum: 25, multipleOf: 0.1 },
             date: { type: 'string', format: 'date' },
-            datetime: { type: 'string', format: 'date-time' },
+            datetime: { type: 'string', format: 'date-time' }
           }
         }
       }
@@ -194,7 +196,7 @@ describe('Credential Schema', () => {
         time: { type: 'positiveInteger' },
         weight: { type: 'positiveDecimalNumber', decimalPlaces: 1 },
         date: INTERNAL_SCHEMA_DATETIME,
-        datetime: INTERNAL_SCHEMA_DATETIME,
+        datetime: INTERNAL_SCHEMA_DATETIME
       }
     });
 
@@ -335,7 +337,12 @@ describe('Credential Schema', () => {
       defaultMinimumDate: -100,
       defaultDecimalPlaces: 1
     });
-    expect(cs1.parsingOptions).toEqual({ useDefaults: true, defaultMinimumInteger: -10, defaultMinimumDate: -100, defaultDecimalPlaces: 1 });
+    expect(cs1.parsingOptions).toEqual({
+      useDefaults: true,
+      defaultMinimumInteger: -10,
+      defaultMinimumDate: -100,
+      defaultDecimalPlaces: 1
+    });
 
     const cs2 = new CredentialSchema(schema, { useDefaults: true });
     expect(cs2.parsingOptions).toEqual({
@@ -371,16 +378,16 @@ describe('Credential Schema', () => {
         isdate: { type: 'string', format: 'date' }
       }
     };
-    const cs = new CredentialSchema(schema2, {useDefaults: true});
+    const cs = new CredentialSchema(schema2, { useDefaults: true });
     expect(cs.schema[SUBJECT_STR]).toEqual({
       fname: { type: 'string' },
-      isdate: { type: 'date-time', minimum: DefaultSchemaParsingOpts.defaultMinimumDate },
+      isdate: { type: 'date-time', minimum: DefaultSchemaParsingOpts.defaultMinimumDate }
     });
     expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
       type: 'object',
       properties: {
         fname: { type: 'string' },
-        isdate: { type: 'string', format: 'date' },
+        isdate: { type: 'string', format: 'date' }
       }
     });
   });
@@ -394,16 +401,16 @@ describe('Credential Schema', () => {
         isdate: { type: 'string', format: 'date-time' }
       }
     };
-    const cs = new CredentialSchema(schema2, {useDefaults: true});
+    const cs = new CredentialSchema(schema2, { useDefaults: true });
     expect(cs.schema[SUBJECT_STR]).toEqual({
       fname: { type: 'string' },
-      isdate: { type: 'date-time', minimum: DefaultSchemaParsingOpts.defaultMinimumDate },
+      isdate: { type: 'date-time', minimum: DefaultSchemaParsingOpts.defaultMinimumDate }
     });
     expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
       type: 'object',
       properties: {
         fname: { type: 'string' },
-        isdate: { type: 'string', format: 'date-time' },
+        isdate: { type: 'string', format: 'date-time' }
       }
     });
   });
@@ -417,16 +424,16 @@ describe('Credential Schema', () => {
         isbool: { type: 'boolean' }
       }
     };
-    const cs = new CredentialSchema(schema2, {useDefaults: true});
+    const cs = new CredentialSchema(schema2, { useDefaults: true });
     expect(cs.schema[SUBJECT_STR]).toEqual({
       fname: { type: 'string' },
-      isbool: { type: 'boolean' },
+      isbool: { type: 'boolean' }
     });
     expect(cs.jsonSchema.properties[SUBJECT_STR]).toEqual({
       type: 'object',
       properties: {
         fname: { type: 'string' },
-        isbool: { type: 'boolean' },
+        isbool: { type: 'boolean' }
       }
     });
   });
@@ -796,8 +803,7 @@ describe('Credential Schema', () => {
     const cs1 = new CredentialSchema(getExampleSchema(1));
     expect(cs1.flatten()).toEqual([
       [SCHEMA_STR, `${SUBJECT_STR}.fname`, CRYPTO_VERSION_STR, 'proof.type'],
-      [{ type: 'string' }, { type: 'string' }, { type: 'string' }, 
-      { type: 'string' }]
+      [{ type: 'string' }, { type: 'string' }, { type: 'string' }, { type: 'string' }]
     ]);
 
     const cs2 = new CredentialSchema(getExampleSchema(2));

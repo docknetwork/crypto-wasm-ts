@@ -19,7 +19,7 @@ import semver from 'semver/preload';
 
 /**
  * Rules
- * 1. Schema must define a top level `credentialSubject` field for the subject, and it can be an array of object
+ * 1. Schema must define a top level `credentialSubject` field for the subject, and it can be an object or array of object
  * 2. Credential status if defined must be present as `credentialStatus` field.
  * 3. Any top level keys in the schema JSON can be created
  Some example schemas
@@ -1156,7 +1156,7 @@ export class CredentialSchema extends Versioned {
   /**
    * Update given JSON-schema properties based on the given credential object.
    * @param cred
-   * @param schemaProps
+   * @param schemaProps - These will be updated based on the credential subject.
    * @param schemaVersion - Schema version for which the schema generation logic should apply
    * @private
    */

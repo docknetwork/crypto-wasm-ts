@@ -1,10 +1,5 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import {
-  CredentialSchema,
-  ParsedR1CSFile,
-  R1CSSnarkSetup,
-  getR1CS
-} from '../../src';
+import { CredentialSchema, ParsedR1CSFile, R1CSSnarkSetup, getR1CS } from '../../src';
 import {
   SignatureParams,
   KeyPair,
@@ -15,7 +10,7 @@ import {
   PresentationBuilder,
   SignatureLabelBytes,
   Scheme
-} from '../scheme'
+} from '../scheme';
 
 import { checkPresentationJson, getExampleSchema } from './utils';
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../utils';

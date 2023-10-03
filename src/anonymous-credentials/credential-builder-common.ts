@@ -103,5 +103,10 @@ export abstract class CredentialBuilderCommon extends Versioned {
     return s;
   }
 
+  /**
+   * Update given object with proof metadata
+   * @param s - the object that be updated with the proof metadata
+   * @protected
+   */
   protected abstract applyDefaultProofMetadataIfNeeded(s: object);
 }

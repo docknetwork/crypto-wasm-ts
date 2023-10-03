@@ -117,6 +117,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
     const builder = new CredentialBuilder();
     builder.schema = credSchema;
 
+    // Subject attributes not same as schema
     builder.subject = {
       fname: 'John',
       lname: 'Smith',
