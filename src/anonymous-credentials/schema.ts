@@ -374,13 +374,26 @@ export interface IJsonSchemaProperties {
   [key: string]: object;
 }
 
-export interface IJsonSchema {
+/**
+ * JSON schema that contains the properties
+ */
+export interface IEmbeddedJsonSchema {
   [META_SCHEMA_STR]: string;
   $id?: string;
   title?: string;
   type: string;
   properties: IJsonSchemaProperties;
   definitions?: { [key: string]: object };
+}
+
+/**
+ * JSON schema that does not contain the properties but its $id property can be used to fetch the properties.
+ */
+export interface IJsonSchema {
+  [META_SCHEMA_STR]: string;
+  $id: string;
+  title?: string;
+  type: string;
 }
 
 export interface ISchemaParsingOpts {
@@ -407,7 +420,7 @@ export type CredVal = string | number | object | CredVal[];
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.0.3';
+  static VERSION = '0.1.0';
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
@@ -467,25 +480,28 @@ export class CredentialSchema extends Versioned {
   ]);
 
   readonly schema: ISchema;
-  readonly jsonSchema: IJsonSchema;
+  readonly jsonSchema: IEmbeddedJsonSchema | IJsonSchema;
   readonly parsingOptions: ISchemaParsingOpts;
   // @ts-ignore
   encoder: Encoder;
+  fullJsonSchema?: IEmbeddedJsonSchema;
 
   /**
    * Takes a schema object as per JSON-schema syntax (`IJsonSchema`), validates it and converts it to an internal
    * representation (`ISchema`) and stores both as the one with JSON-schema syntax is added to the credential representation.
-   * @param jsonSchema
+   * @param jsonSchema - Could be a JSON schema with properties or contain an $id key which is used to fetch them
    * @param parsingOpts - Options to parse the schema like whether to use defaults and what defaults to use
    * @param addMissingParsingOpts - Whether to update `parsingOpts` for any missing options with default options. Pass false
    * when deserializing to get the exact object that was serialized which is necessary when verifying signatures
    * @param overrides - Override any properties of the schema
+   * @param fullJsonSchema - When `jsonSchema` does not contain the properties, this object is expected to contain them.
    */
   constructor(
-    jsonSchema: IJsonSchema,
+    jsonSchema: IEmbeddedJsonSchema | IJsonSchema,
     parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts,
     addMissingParsingOpts = true,
-    overrides?: Partial<ISchemaOverrides>
+    overrides?: Partial<ISchemaOverrides>,
+    fullJsonSchema?: IEmbeddedJsonSchema
   ) {
     // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
     let pOpts;
@@ -494,7 +510,17 @@ export class CredentialSchema extends Versioned {
     } else {
       pOpts = { ...parsingOpts };
     }
-    const schema = CredentialSchema.convertToInternalSchemaObj(jsonSchema, pOpts, '', undefined) as ISchema;
+
+    let isEmbeddedSchema = CredentialSchema.isEmbeddedJsonSchema(jsonSchema);
+    if (!isEmbeddedSchema && fullJsonSchema === undefined) {
+      throw new Error('Either pass an embedded schema or the actual schema');
+    }
+    const schema = CredentialSchema.convertToInternalSchemaObj(
+      isEmbeddedSchema ? jsonSchema : fullJsonSchema,
+      pOpts,
+      '',
+      undefined
+    ) as ISchema;
     CredentialSchema.validate(schema);
 
     if (overrides !== undefined && overrides.version !== undefined) {
@@ -507,6 +533,7 @@ export class CredentialSchema extends Versioned {
     // internal representation; trading off memory for CPU time.
     this.jsonSchema = jsonSchema;
     this.parsingOptions = pOpts;
+    this.fullJsonSchema = fullJsonSchema;
     this.initEncoder();
   }
 
@@ -672,7 +699,7 @@ export class CredentialSchema extends Versioned {
     }
   }
 
-  static essential(withDefinitions = true): IJsonSchema {
+  static essential(withDefinitions = true): IEmbeddedJsonSchema {
     const s = {
       // Currently only assuming support for draft-07 but other might work as well
       [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
@@ -724,39 +751,50 @@ export class CredentialSchema extends Versioned {
   }
 
   toJSON(): object {
-    return {
-      [ID_STR]: this.asEmbeddedJsonSchema(),
+    const embedded = this.hasEmbeddedJsonSchema();
+    const j = {
+      [ID_STR]: CredentialSchema.convertToDataUri(this.jsonSchema),
       [TYPE_STR]: SCHEMA_TYPE_STR,
       parsingOptions: this.parsingOptions,
       version: this._version
     };
+    if (!embedded) {
+      j['fullJsonSchema'] = CredentialSchema.convertToDataUri(this.fullJsonSchema as IEmbeddedJsonSchema);
+    }
+    return j;
   }
 
   static fromJSON(j: object): CredentialSchema {
     // @ts-ignore
-    const { id, type, parsingOptions, version } = j;
+    const { id, type, parsingOptions, version, fullJsonSchema } = j;
     if (type !== SCHEMA_TYPE_STR) {
       throw new Error(`Schema type was "${type}", expected: "${SCHEMA_TYPE_STR}"`);
     }
-    const jsonSchema = this.extractJsonSchemaFromEmbedded(id);
+    const jsonSchema = this.convertFromDataUri(id);
+    let full: IEmbeddedJsonSchema | undefined;
+    if (fullJsonSchema !== undefined) {
+      if (CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+        throw new Error(`Actual schema was provided even when the given jsonSchema was an embedded one`);
+      }
+      full = this.convertFromDataUri(fullJsonSchema) as IEmbeddedJsonSchema;
+      if (!CredentialSchema.isEmbeddedJsonSchema(full)) {
+        throw new Error(`Expected actual schema to be an embedded one but got ${full}`);
+      }
+    }
     // Note: `parsingOptions` might still be in an incorrect format which can fail the next call
     // Note: Passing `addMissingParsingOpts` as false to recreate the exact same object that was serialized. This is important
     // when verifying signatures.
     // @ts-ignore
-    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version });
+    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, full);
   }
 
-  asEmbeddedJsonSchema(): string {
-    return CredentialSchema.asEmbeddedJsonSchema(this.jsonSchema);
-  }
-
-  static asEmbeddedJsonSchema(jsonSchema: IJsonSchema): string {
+  static convertToDataUri(jsonSchema: IEmbeddedJsonSchema | IJsonSchema): string {
     return `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(jsonSchema))}`;
   }
 
-  static extractJsonSchemaFromEmbedded(embedded: string): IJsonSchema {
+  static convertFromDataUri(embedded: string): IEmbeddedJsonSchema | IJsonSchema {
     if (!embedded.startsWith('data:')) {
-      throw new Error(`Embedded schema must be a data URI`);
+      throw new Error(`Embedded schema must be a data URI but was ${embedded}`);
     }
 
     // Strip new lines
@@ -869,6 +907,25 @@ export class CredentialSchema extends Versioned {
     };
   }*/
 
+  /**
+   * Same as the constructor of this class but gets the JSON schema from a callback
+   * @param jsonSchema - The JSON schema that contains the URL to fetch the full JSON schema, i.e. properties
+   * @param schemaGetter - The callback that takes the `$id` field of `jsonSchema` and returns the full JSON schema.
+   * @param parsingOpts
+   * @param addMissingParsingOpts
+   * @param overrides
+   */
+  static async newSchemaFromExternal(
+    jsonSchema: IJsonSchema,
+    schemaGetter: (url: string) => Promise<IEmbeddedJsonSchema>,
+    parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts,
+    addMissingParsingOpts = true,
+    overrides?: Partial<ISchemaOverrides>
+  ): Promise<CredentialSchema> {
+    const fullJsonSchema = await schemaGetter(jsonSchema.$id);
+    return new CredentialSchema(jsonSchema, parsingOpts, addMissingParsingOpts, overrides, fullJsonSchema);
+  }
+
   getJsonLdContext(): object {
     const terms = new Set<string>();
     terms.add(SCHEMA_STR);
@@ -907,6 +964,26 @@ export class CredentialSchema extends Versioned {
         ctx
       ]
     };
+  }
+
+  /**
+   * Returns true if the JSON schema provided during the object creation was an embedded one.
+   */
+  hasEmbeddedJsonSchema(): boolean {
+    return this.fullJsonSchema === undefined;
+  }
+
+  /**
+   * Gets the embedded JSON schema either from the one that was provided or the one that was fetched.
+   */
+  getEmbeddedJsonSchema(): IEmbeddedJsonSchema {
+    // @ts-ignore
+    return this.hasEmbeddedJsonSchema() ? this.jsonSchema : this.fullJsonSchema;
+  }
+
+  getJsonSchemaProperties(): object {
+    // @ts-ignore
+    return this.getEmbeddedJsonSchema().properties;
   }
 
   static getDummyContextValue(term: string): string {
@@ -1064,10 +1141,21 @@ export class CredentialSchema extends Versioned {
    */
   // @ts-ignore
   static generateAppropriateSchema(cred: object, schema: CredentialSchema): CredentialSchema {
-    const newJsonSchema = JSON.parse(JSON.stringify(schema.jsonSchema));
+    // This JSON parse and stringify is to make `newJsonSchema` a copy of `schema.jsonSchema` and not a reference
+    const newJsonSchema = JSON.parse(JSON.stringify(schema.getEmbeddedJsonSchema()));
     const props = newJsonSchema.properties;
     CredentialSchema.generateFromCredential(cred, props, schema.version);
-    return new CredentialSchema(newJsonSchema, schema.parsingOptions, false, { version: schema.version });
+    if (schema.hasEmbeddedJsonSchema()) {
+      return new CredentialSchema(newJsonSchema, schema.parsingOptions, false, { version: schema.version });
+    } else {
+      return new CredentialSchema(
+        schema.jsonSchema,
+        schema.parsingOptions,
+        false,
+        { version: schema.version },
+        newJsonSchema
+      );
+    }
   }
 
   /**
@@ -1223,6 +1311,14 @@ export class CredentialSchema extends Versioned {
     if (!schema[fieldName] || schema[fieldName].type !== 'string') {
       throw new Error(`Schema should contain a top level key ${fieldName} and its type must be "string"`);
     }
+  }
+
+  /**
+   * Returns true if the given object is an embedded schema, i.e. it has the properties.
+   * @param obj
+   */
+  static isEmbeddedJsonSchema(obj: IEmbeddedJsonSchema | IJsonSchema): boolean {
+    return obj['properties'] !== undefined;
   }
 }
 

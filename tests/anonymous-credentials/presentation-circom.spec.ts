@@ -1,5 +1,12 @@
 import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { CredentialSchema, ParsedR1CSFile, R1CSSnarkSetup, getR1CS } from '../../src';
+import {
+  CredentialSchema,
+  ParsedR1CSFile,
+  R1CSSnarkSetup,
+  getR1CS,
+  META_SCHEMA_STR,
+  DefaultSchemaParsingOpts
+} from '../../src';
 import {
   SignatureParams,
   KeyPair,
@@ -15,7 +22,7 @@ import {
 import { checkPresentationJson, getExampleSchema } from './utils';
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../utils';
 
-describe(`${Scheme} Presentation creation and verification with Circom predicates`, () => {
+describe.each([true, false])(`${Scheme} Presentation creation and verification with Circom predicates with withSchemaRef=%s`, (withSchemaRef) => {
   let sk: SecretKey, pk: PublicKey;
 
   let credential1: Credential;
@@ -35,6 +42,12 @@ describe(`${Scheme} Presentation creation and verification with Circom predicate
   let provingKeyLtPub;
   let verifyingKeyLtPub;
 
+  const nonEmbeddedSchema = {
+    $id: 'https://example.com?hash=abc123ff',
+    [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+  };
+
   beforeAll(async () => {
     await initializeWasm();
     const params = SignatureParams.generate(100, SignatureLabelBytes);
@@ -42,8 +55,14 @@ describe(`${Scheme} Presentation creation and verification with Circom predicate
     sk = keypair.sk;
     pk = keypair.pk;
 
+    let credSchema1: CredentialSchema, credSchema2: CredentialSchema;
     const schema1 = getExampleSchema(12);
-    const credSchema1 = new CredentialSchema(schema1);
+    if (withSchemaRef) {
+      credSchema1 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, schema1)
+    } else {
+      credSchema1 = new CredentialSchema(schema1);
+    }
+
     const builder1 = new CredentialBuilder();
     builder1.schema = credSchema1;
     builder1.subject = {

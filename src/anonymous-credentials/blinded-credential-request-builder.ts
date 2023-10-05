@@ -38,7 +38,6 @@ import { BytearrayWrapper } from '../bytearray-wrapper';
 import { IPresentedAttributeBounds, IPresentedAttributeVE } from './presentation-specification';
 import { Presentation } from './presentation';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
-import { convertDateToTimestamp } from '../util';
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 

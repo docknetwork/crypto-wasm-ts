@@ -31,7 +31,7 @@ import {
   BoundCheckSmcParams,
   BoundCheckSmcWithKVProverParamsUncompressed,
   BoundCheckSmcWithKVVerifierParamsUncompressed,
-  BoundCheckSmcWithKVSetup
+  BoundCheckSmcWithKVSetup, META_SCHEMA_STR, DefaultSchemaParsingOpts
 } from '../../src';
 import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
@@ -66,7 +66,7 @@ import {
 // Setting it to false will make the test run the SNARK setups making tests quite slow
 const loadSnarkSetupFromFiles = true;
 
-describe(`${Scheme} Presentation creation and verification`, () => {
+describe.each([true, false])(`${Scheme} Presentation creation and verification with withSchemaRef=%s`, (withSchemaRef) => {
   let sk1: SecretKey, pk1: PublicKey;
   let sk2: SecretKey, pk2: PublicKey;
   let sk3: SecretKey, pk3: PublicKey;
@@ -105,6 +105,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
   let boundCheckSmcParams: BoundCheckSmcParamsUncompressed;
   let boundCheckSmcKVProverParams: BoundCheckSmcWithKVProverParamsUncompressed;
   let boundCheckSmcKVVerifierParams: BoundCheckSmcWithKVVerifierParamsUncompressed;
+
+  const nonEmbeddedSchema = {
+    $id: 'https://example.com?hash=abc123ff',
+    [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+  };
 
   function setupBoundCheckLego() {
     if (boundCheckProvingKey === undefined) {
@@ -181,9 +187,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     pk4 = keypair4.pk;
 
     const schema1 = getExampleSchema(9);
-    const credSchema1 = new CredentialSchema(schema1);
     const builder1 = new CredentialBuilder();
-    builder1.schema = credSchema1;
+    if (withSchemaRef) {
+      builder1.schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, schema1)
+    } else {
+      builder1.schema = new CredentialSchema(schema1);
+    }
     builder1.subject = {
       fname: 'John',
       lname: 'Smith',
@@ -203,9 +212,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     checkResult(credential1.verify(pk1));
 
     const schema2 = getExampleSchema(11);
-    const credSchema2 = new CredentialSchema(schema2);
     const builder2 = new CredentialBuilder();
-    builder2.schema = credSchema2;
+    if (withSchemaRef) {
+      builder2.schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, schema2)
+    } else {
+      builder2.schema = new CredentialSchema(schema2);
+    }
     builder2.subject = {
       fname: 'John',
       lname: 'Smith',
@@ -232,8 +244,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     checkResult(credential2.verify(pk2));
 
     const schema3 = getExampleSchema(5);
-
-    const credSchema3 = new CredentialSchema(schema3);
+    let credSchema3: CredentialSchema;
+    if (withSchemaRef) {
+      credSchema3 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, schema3)
+    } else {
+      credSchema3 = new CredentialSchema(schema3);
+    }
     const builder3 = new CredentialBuilder();
     builder3.schema = credSchema3;
     builder3.subject = {
@@ -296,7 +312,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
     const schema4 = getExampleSchema(10);
 
-    const credSchema4 = new CredentialSchema(schema4);
+    let credSchema4: CredentialSchema;
+    if (withSchemaRef) {
+      credSchema4 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, schema4)
+    } else {
+      credSchema4 = new CredentialSchema(schema4);
+    }
     const builder4 = new CredentialBuilder();
     builder4.schema = credSchema4;
     builder4.subject = {
@@ -378,9 +399,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       type: 'array',
       items: [subjectItem, subjectItem, subjectItem]
     };
-    const credSchema5 = new CredentialSchema(schema5);
     const builder5 = new CredentialBuilder();
-    builder5.schema = credSchema5;
+    if (withSchemaRef) {
+      builder5.schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, schema5)
+    } else {
+      builder5.schema = new CredentialSchema(schema5);
+    }
     builder5.subject = [
       {
         name: 'Random',
@@ -451,9 +475,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     schema6.properties['issuanceDate'] = { type: 'integer', minimum: 0 };
     schema6.properties['expirationDate'] = { type: 'integer', minimum: 0 };
 
-    const credSchema6 = new CredentialSchema(schema6);
     const builder6 = new CredentialBuilder();
-    builder6.schema = credSchema6;
+    if (withSchemaRef) {
+      builder6.schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, schema6)
+    } else {
+      builder6.schema = new CredentialSchema(schema6);
+    }
     builder6.subject = [
       {
         name: 'Random',
@@ -509,9 +536,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
     schema7.properties['issuanceDate'] = { type: 'integer', minimum: 0 };
     schema7.properties['expirationDate'] = { type: 'integer', minimum: 0 };
 
-    const credSchema7 = new CredentialSchema(schema7);
     const builder7 = new CredentialBuilder();
-    builder7.schema = credSchema7;
+    if (withSchemaRef) {
+      builder7.schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, schema7)
+    } else {
+      builder7.schema = new CredentialSchema(schema7);
+    }
     builder7.subject = {
       name: 'Random',
       myDateTime: '2023-09-14T14:26:40.488Z',

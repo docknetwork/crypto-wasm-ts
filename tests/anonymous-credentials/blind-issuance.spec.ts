@@ -41,7 +41,7 @@ import {
   BoundCheckSmcParamsUncompressed,
   BoundCheckSmcWithKVProverParamsUncompressed,
   BoundCheckSmcWithKVVerifierParamsUncompressed,
-  BoundCheckSmcWithKVSetup
+  BoundCheckSmcWithKVSetup, DefaultSchemaParsingOpts, META_SCHEMA_STR
 } from '../../src';
 import {
   SignatureParams,
@@ -133,7 +133,7 @@ function checkBlindedCredJson(blindedCred: BlindedCredential<any>, pk: PublicKey
 // Skip the tests if PS signatures are used as blind sigs are not integrated yet
 const skipIfPS = isPS() ? describe.skip : describe;
 
-skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
+skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withSchemaRef=%s`, (withSchemaRef) => {
   let sk1: SecretKey, pk1: PublicKey;
   let sk2: SecretKey, pk2: PublicKey;
   let sk3: SecretKey, pk3: PublicKey;
@@ -167,6 +167,12 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
   let boundCheckSmcParams: BoundCheckSmcParamsUncompressed;
   let boundCheckSmcKVProverParams: BoundCheckSmcWithKVProverParamsUncompressed;
   let boundCheckSmcKVVerifierParams: BoundCheckSmcWithKVVerifierParamsUncompressed;
+
+  const nonEmbeddedSchema = {
+    $id: 'https://example.com?hash=abc123ff',
+    [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+  };
 
   function setupBoundCheck() {
     if (boundCheckProvingKey === undefined) {
@@ -234,7 +240,12 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
     sk1 = keypair1.sk;
     pk1 = keypair1.pk;
 
-    schema1 = new CredentialSchema(getExampleSchema(10));
+    if (withSchemaRef) {
+        schema1 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(10))
+    } else {
+      schema1 = new CredentialSchema(getExampleSchema(10));
+    }
+
     const accumKeypair1 = PositiveAccumulator.generateKeypair(
       dockAccumulatorParams(),
       stringToBytes('secret-seed-for-accum')
@@ -257,13 +268,21 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
     sk2 = keypair2.sk;
     pk2 = keypair2.pk;
 
-    schema2 = new CredentialSchema(getExampleSchema(9));
+    if (withSchemaRef) {
+      schema2 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(9))
+    } else {
+      schema2 = new CredentialSchema(getExampleSchema(9));
+    }
 
     const keypair3 = KeyPair.generate(params);
     sk3 = keypair3.sk;
     pk3 = keypair3.pk;
 
-    schema3 = new CredentialSchema(getExampleSchema(7));
+    if (withSchemaRef) {
+      schema3 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(7))
+    } else {
+      schema3 = new CredentialSchema(getExampleSchema(7));
+    }
   });
 
   it('should be able to request a credential when some attributes are blinded', async () => {
@@ -674,7 +693,12 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
     const ck = SaverChunkedCommitmentKey.generate(stringToBytes('a new nonce'));
     const commKey = ck.decompress();
 
-    const schema = new CredentialSchema(getExampleSchema(8));
+    let schema;
+    if (withSchemaRef) {
+      schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(8))
+    } else {
+      schema = new CredentialSchema(getExampleSchema(8));
+    }
     const blindedSubject = {
       sensitive: {
         phone: '810-1234567',
@@ -836,7 +860,13 @@ skipIfPS(`${Scheme} Blind issuance of credentials`, () => {
     const provingKeyLtPub = prk.decompress();
     const verifyingKeyLtPub = prk.getVerifyingKeyUncompressed();
 
-    const schema = new CredentialSchema(getExampleSchema(12));
+    let schema;
+    if (withSchemaRef) {
+      schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(12))
+    } else {
+      schema = new CredentialSchema(getExampleSchema(12));
+    }
+
     const blindedSubject = {
       education: {
         score1: 55,

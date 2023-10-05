@@ -29,4 +29,8 @@ describe('Credential Schema creation from JSON', () => {
   it('check version 0.0.3', () => {
     check('0.0.3')
   })
+
+  it('check version 0.1.0', () => {
+    check('0.1.0')
+  })
 })

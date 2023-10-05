@@ -4,7 +4,7 @@ import {
   CredentialSchema,
   dockSaverEncryptionGensUncompressed,
   IAccumulatorState,
-  IJsonSchema,
+  IEmbeddedJsonSchema,
   SaverDecryptor,
   SCHEMA_TYPE_STR,
   STATUS_STR,
@@ -14,7 +14,7 @@ import {
   PseudonymBases,
   AttributeBoundPseudonym,
   AccumulatorPublicKey,
-  PredicateParamType
+  PredicateParamType, IJsonSchema
 } from '../../src';
 import { Credential, CredentialBuilder, Presentation, PublicKey } from '../scheme';
 import * as _ from 'lodash';
@@ -22,7 +22,7 @@ import { checkResult } from '../utils';
 import fs from 'fs';
 import { BytearrayWrapper } from '../../src/bytearray-wrapper';
 
-export function getExampleSchema(num): IJsonSchema {
+export function getExampleSchema(num): IEmbeddedJsonSchema {
   const schema = CredentialSchema.essential();
   switch (num) {
     case 1:
@@ -332,7 +332,9 @@ export function getExampleSchema(num): IJsonSchema {
   return schema;
 }
 
-export function getExampleBuilder(num): CredentialBuilder {
+export function getExampleBuilder(num: number, nonEmbeddedSchemas?: IJsonSchema[]): CredentialBuilder {
+  let credSchema: CredentialSchema, credSchema1: CredentialSchema, credSchema2: CredentialSchema, credSchema3: CredentialSchema;
+
   const schema = CredentialSchema.essential();
   schema.properties[SUBJECT_STR] = {
     type: 'object',
@@ -341,7 +343,6 @@ export function getExampleBuilder(num): CredentialBuilder {
       lname: { type: 'string' }
     }
   };
-  const credSchema = new CredentialSchema(schema, { useDefaults: true });
 
   const schema1 = CredentialSchema.essential();
   schema1.properties[SUBJECT_STR] = {
@@ -357,39 +358,34 @@ export function getExampleBuilder(num): CredentialBuilder {
       }
     }
   };
-  const credSchema1 = new CredentialSchema(schema1, { useDefaults: true });
 
-  const credSchema2 = new CredentialSchema(
-    {
-      $schema: 'http://json-schema.org/draft-07/schema#',
-      $id: 'https://ld.dock.io/examples/resident-card-schema.json',
-      title: 'Resident Card Example',
-      type: 'object',
-      properties: {
-        credentialSubject: {
-          type: 'object',
-          properties: {
-            givenName: {
-              title: 'Given Name',
-              type: 'string'
-            },
-            familyName: {
-              title: 'Family Name',
-              type: 'string'
-            },
-            lprNumber: {
-              title: 'LPR Number',
-              type: 'integer',
-              minimum: 0
-            }
+  const schema2 = {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    $id: 'https://ld.dock.io/examples/resident-card-schema.json',
+    title: 'Resident Card Example',
+    type: 'object',
+    properties: {
+      credentialSubject: {
+        type: 'object',
+        properties: {
+          givenName: {
+            title: 'Given Name',
+            type: 'string'
           },
-          required: []
-        }
+          familyName: {
+            title: 'Family Name',
+            type: 'string'
+          },
+          lprNumber: {
+            title: 'LPR Number',
+            type: 'integer',
+            minimum: 0
+          }
+        },
+        required: []
       }
-    },
-    { useDefaults: true }
-  );
-
+    }
+  };
 
   const schema3 = CredentialSchema.essential();
   schema.properties[SUBJECT_STR] = {
@@ -399,7 +395,18 @@ export function getExampleBuilder(num): CredentialBuilder {
       isbool: { type: 'boolean' }
     }
   };
-  const credSchema3 = new CredentialSchema(schema3, {useDefaults: true});
+
+  if (nonEmbeddedSchemas === undefined) {
+    credSchema = new CredentialSchema(schema, { useDefaults: true });
+    credSchema1 = new CredentialSchema(schema1, { useDefaults: true });
+    credSchema2 = new CredentialSchema(schema2, { useDefaults: true });
+    credSchema3 = new CredentialSchema(schema3, { useDefaults: true });
+  } else {
+    credSchema = new CredentialSchema(nonEmbeddedSchemas[0], { useDefaults: true }, true, undefined, schema);
+    credSchema1 = new CredentialSchema(nonEmbeddedSchemas[1], { useDefaults: true }, true, undefined, schema1);
+    credSchema2 = new CredentialSchema(nonEmbeddedSchemas[2], { useDefaults: true }, true, undefined, schema2);
+    credSchema3 = new CredentialSchema(nonEmbeddedSchemas[3], { useDefaults: true }, true, undefined, schema3);
+  }
 
   const builder = new CredentialBuilder();
   switch (num) {
@@ -526,7 +533,7 @@ export function getExampleBuilder(num): CredentialBuilder {
 
 export function checkSchemaFromJson(schemaJson: string, schema: CredentialSchema) {
   let schm = JSON.parse(schemaJson);
-  expect(CredentialSchema.extractJsonSchemaFromEmbedded(schm.id)).toEqual(schema.jsonSchema);
+  expect(CredentialSchema.convertFromDataUri(schm.id)).toEqual(schema.jsonSchema);
   expect(schm.parsingOptions).toEqual(schema.parsingOptions);
   expect(schm.version).toEqual(schema.version);
   expect(schm.type).toEqual(SCHEMA_TYPE_STR);
@@ -666,4 +673,16 @@ export function assertSerializedObject(obj: any, fileName: string) {
   }
 
   return obj;
+}
+
+export function checkEmbeddedSchema(withSchemaRef: boolean, schema: CredentialSchema, fullJsonSchema: IEmbeddedJsonSchema, nonEmbeddedSchema?: IJsonSchema) {
+  if (withSchemaRef) {
+    expect(schema.fullJsonSchema).toEqual(fullJsonSchema);
+    if (nonEmbeddedSchema !== undefined) {
+      expect(schema.jsonSchema).toEqual(nonEmbeddedSchema);
+    }
+  } else {
+    expect(schema.jsonSchema).toEqual(fullJsonSchema);
+    expect(schema.fullJsonSchema).not.toBeDefined();
+  }
 }
