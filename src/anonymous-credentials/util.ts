@@ -46,16 +46,74 @@ export function flattenTill2ndLastKey(obj: object): [string[], object[]] {
   const flattened = {};
   const temp = flatten(obj) as object;
   for (const k of Object.keys(temp)) {
-    // taken from https://stackoverflow.com/a/5555607
+    // Get 2nd last key, taken from https://stackoverflow.com/a/5555607
     const pos = k.lastIndexOf('.');
-    const name = k.substring(0, pos);
-    const t = k.substring(pos + 1);
+    const secondLast = k.substring(0, pos);
+    const last = k.substring(pos + 1);
 
-    if (flattened[name] === undefined) {
-      flattened[name] = {};
+    if (flattened[secondLast] === undefined) {
+      flattened[secondLast] = {};
     }
-    flattened[name][t] = temp[k];
+    flattened[secondLast][last] = temp[k];
   }
+  const keys = Object.keys(flattened).sort();
+  // @ts-ignore
+  const values = keys.map((k) => flattened[k]);
+  return [keys, values];
+}
+
+/**
+ * flatten till 2nd last key where the last key is an array of un-nested object
+ * @param obj
+ */
+export function flattenPredicatesInSpec(obj: object): [string[], object[]] {
+  let re = /(.+)\.(\d+)\.(.+)/i;
+  const flattened = {};
+  const temp = flatten(obj) as object;
+  const tempMap: Map<string, [Map<number, Map<string, any>>, number]> = new Map();
+  for (const k of Object.keys(temp)) {
+    let matched = k.match(re);
+    if (!Array.isArray(matched)) {
+      throw new Error(`Regex couldn't match key ${k}`);
+    } else {
+      const key = matched[1];
+      const arrayIdx = parseInt(matched[2]);
+      const innerObjKey = matched[3];
+      const tempMapValue = tempMap.get(key);
+      if (tempMapValue === undefined) {
+        const m = new Map();
+        const m1 = new Map();
+        m1.set(innerObjKey, temp[k]);
+        m.set(arrayIdx, m1);
+          tempMap.set(key, [m, arrayIdx])
+      } else {
+        if (arrayIdx > tempMapValue[1]) {
+          tempMapValue[1] = arrayIdx;
+        }
+        const m1 = tempMapValue[0].get(arrayIdx);
+        if (m1 === undefined) {
+          const m1 = new Map();
+          m1.set(innerObjKey, temp[k]);
+          tempMapValue[0].set(arrayIdx, m1);
+        } else {
+          m1.set(innerObjKey, temp[k]);
+        }
+      }
+    }
+  }
+
+  for (const [key, val] of tempMap.entries()) {
+    const arr: object[] = new Array(val[1]);
+    for (const [idx, inner] of val[0].entries()) {
+      const obj = {};
+      for (const [ik, iv] of inner.entries()) {
+        obj[ik] = iv;
+      }
+      arr[idx] = obj;
+    }
+    flattened[key] = arr;
+  }
+
   const keys = Object.keys(flattened).sort();
   // @ts-ignore
   const values = keys.map((k) => flattened[k]);

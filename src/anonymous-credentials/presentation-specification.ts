@@ -9,7 +9,8 @@ import {
   SignatureTypes,
   VerifiableEncryptionProtocols,
   REV_CHECK_STR,
-  TYPE_STR
+  TYPE_STR,
+  InequalityProtocols
 } from './types-and-consts';
 import b58 from 'bs58';
 import { CredentialSchema } from './schema';
@@ -67,6 +68,12 @@ export interface ICircomPredicate {
   protocol: CircomProtocols;
 }
 
+export interface IPresentedAttributeInequality {
+  inEqualTo: any;
+  paramId: string;
+  protocol: InequalityProtocols;
+}
+
 export interface IPresentedCredential {
   sigType?: SignatureTypes;
   version: string;
@@ -81,6 +88,7 @@ export interface IPresentedCredential {
   verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE };
   // Predicates proved using Circom. Can be over any number of attributes
   circomPredicates?: ICircomPredicate[];
+  attributeInequalities?: { [key: string]: string | IPresentedAttributeInequality[] };
 }
 
 export interface IBoundedPseudonymCommitKey {
@@ -119,6 +127,7 @@ export interface IBlindCredentialRequest {
   blindedAttributes: object;
   // Commitment to the blinded attributes
   commitment: Uint8Array;
+  attributeInequalities?: { [key: string]: string | IPresentedAttributeInequality[] };
   // Bounds proved of any attribute(s)
   bounds?: { [key: string]: string | IPresentedAttributeBounds };
   // Verifiable encryption of any blinded attributes
@@ -160,7 +169,8 @@ export class PresentationSpecification {
     bounds?: { [key: string]: string | IPresentedAttributeBounds },
     verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE },
     circomPredicates?: ICircomPredicate[],
-    sigType?: SignatureTypes
+    sigType?: SignatureTypes,
+    attributeInequalities?: { [key: string]: string | IPresentedAttributeInequality[] }
   ) {
     const ps = {
       version,
@@ -181,6 +191,9 @@ export class PresentationSpecification {
     }
     if (sigType !== undefined) {
       ps['sigType'] = sigType;
+    }
+    if (attributeInequalities !== undefined) {
+      ps['attributeInequalities'] = attributeInequalities;
     }
     this.credentials.push(ps);
   }
@@ -219,6 +232,9 @@ export class PresentationSpecification {
       if (pc.status !== undefined) {
         curJ['status'] = { ...pc.status };
         curJ['status'].accumulated = b58.encode(pc.status.accumulated);
+      }
+      if (pc.attributeInequalities !== undefined) {
+        curJ['attributeInequalities'] = pc.attributeInequalities;
       }
       if (pc.bounds !== undefined) {
         curJ['bounds'] = pc.bounds;

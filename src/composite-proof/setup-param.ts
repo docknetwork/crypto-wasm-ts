@@ -46,7 +46,7 @@ import { BytearrayWrapper } from '../bytearray-wrapper';
 import { BBSSignatureParams } from '../bbs';
 import { generateSetupParamForPSSignatureParameters } from '@docknetwork/crypto-wasm';
 import { PSPublicKey, PSSignatureParams } from '../ps';
-import { generateSetupParamForPSPublicKey } from '@docknetwork/crypto-wasm';
+import { generateSetupParamForPSPublicKey, generateSetupParamForCommitmentKey } from '@docknetwork/crypto-wasm';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
 import {
   BoundCheckBppParams,
@@ -56,6 +56,7 @@ import {
   BoundCheckSmcWithKVVerifierParams,
   BoundCheckSmcWithKVVerifierParamsUncompressed
 } from '../bound-check';
+import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 
 /**
  * Represents (public) setup parameters of different protocols. Different setup parameters can be wrapped in this and
@@ -201,5 +202,13 @@ export class SetupParam extends BytearrayWrapper {
 
   static smcSetupParamsWithSkUncompressed(params: BoundCheckSmcWithKVVerifierParamsUncompressed): SetupParam {
     return new SetupParam(generateSetupParamForSmcParamsAndSk(params.value, true));
+  }
+
+  static pedCommKeyG1(commKey: PederCommKey): SetupParam {
+    return new SetupParam(generateSetupParamForCommitmentKey(commKey.value, false));
+  }
+
+  static pedCommKeyG1Uncompressed(commKey: PederCommKeyUncompressed): SetupParam {
+    return new SetupParam(generateSetupParamForCommitmentKey(commKey.value, true));
   }
 }

@@ -10,7 +10,7 @@ import {
   generateR1CSCircomWitness,
   generateBoundCheckBppWitness,
   generateBoundCheckSmcWitness,
-  generateBoundCheckSmcWithKVWitness
+  generateBoundCheckSmcWithKVWitness, generatePublicInequalityWitness
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusSignatureG1 } from '../bbs-plus';
 import { MembershipWitness, NonMembershipWitness } from '../accumulator';
@@ -139,6 +139,10 @@ export class Witness {
    */
   static boundCheckSmcWithKV(message: Uint8Array): Uint8Array {
     return generateBoundCheckSmcWithKVWitness(message);
+  }
+
+  static publicInequality(message: Uint8Array): Uint8Array {
+    return generatePublicInequalityWitness(message);
   }
 }
 

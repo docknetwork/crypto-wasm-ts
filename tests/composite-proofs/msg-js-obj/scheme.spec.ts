@@ -10,8 +10,8 @@ import {
   getRevealedAndUnrevealed,
   isValidMsgStructure,
   MetaStatements,
-  ProofSpecG1,
-  Statements,
+  ProofSpecG1, Statement,
+  Statements, Witness,
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
@@ -26,8 +26,9 @@ import {
 } from './data-and-encoder';
 import { SignatureParams, KeyPair, isPS, buildStatement, buildWitness, Scheme, adaptKeyForParams, Signature } from '../../scheme';
 import { checkMapsEqual, signedToHex } from './index';
+import { PederCommKey } from '../../../src/ped-com';
 
-describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
+describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
   // NOTE: The following tests contain a lot of duplicated code but that is intentional as this code is for illustration purpose.
 
   beforeAll(async () => {
@@ -642,5 +643,77 @@ describe(`${Scheme} Signing and proof of knowledge of PS signature`, () => {
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
+  });
+
+  it('signing and proof of knowledge of a signature and attribute inequality with a public value', () => {
+    const commKey = new PederCommKey(stringToBytes('test'));
+    const label1 = stringToBytes('Sig params label 1');
+    // Message count shouldn't matter as `label1` is known
+    let params1 = SignatureParams.generate(100, label1);
+    const keypair1 = KeyPair.generate(params1);
+    const sk1 = keypair1.secretKey;
+    const pk1 = keypair1.publicKey;
+
+    const encoder = new Encoder(undefined, defaultEncoder);
+
+    // Sign and verify all signatures
+    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, encoder);
+    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, encoder));
+
+    const revealedNames1 = new Set<string>();
+    revealedNames1.add('fname');
+
+    // Both prover and verifier can independently create this struct
+    const sigParams1 = getAdaptedSignatureParamsForMessages(params1, attributes1Struct);
+    const [revealedMsgs1, unrevealedMsgs1, revealedMsgsRaw1] = getRevealedAndUnrevealed(
+      attributes1,
+      revealedNames1,
+      encoder
+    );
+
+    const wrongEmail1 = 'alice@example.com';
+    const wrongEmail2 = 'bob@example.com';
+
+    expect(attributes1.email).not.toEqual(wrongEmail1);
+    expect(attributes1.email).not.toEqual(wrongEmail2);
+    const wrongEmail1Encoded = encoder.encodeMessage('email', wrongEmail1);
+    const wrongEmail2Encoded = encoder.encodeMessage('email', wrongEmail2);
+
+    const statement1 = buildStatement(
+      sigParams1,
+      adaptKeyForParams(pk1, sigParams1),
+      revealedMsgs1,
+      false
+    );
+
+    const statement2 = Statement.publicInequalityG1FromCompressedParams(wrongEmail1Encoded, commKey);
+    const statement3 = Statement.publicInequalityG1FromCompressedParams(wrongEmail2Encoded, commKey);
+
+    const statementsProver = new Statements();
+    const sIdx1 = statementsProver.add(statement1);
+    const sIdx2 = statementsProver.add(statement2);
+    const sIdx3 = statementsProver.add(statement3);
+    const witnessEq1 = new WitnessEqualityMetaStatement();
+    witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['email'], attributes1Struct)[0]);
+    witnessEq1.addWitnessRef(sIdx2, 0);
+    witnessEq1.addWitnessRef(sIdx3, 0);
+
+    const metaStmtsProver = new MetaStatements();
+    metaStmtsProver.addWitnessEquality(witnessEq1);
+
+    const proofSpec = new ProofSpecG1(statementsProver, metaStmtsProver);
+    expect(proofSpec.isValid()).toEqual(true);
+
+    const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
+    const witness2 = Witness.publicInequality(encoder.encodeMessage('email', attributes1['email']));
+    const witness3 = Witness.publicInequality(encoder.encodeMessage('email', attributes1['email']));
+
+    const witnesses = new Witnesses();
+    witnesses.add(witness1);
+    witnesses.add(witness2);
+    witnesses.add(witness3);
+
+    const proof = CompositeProofG1.generate(proofSpec, witnesses);
+    checkResult(proof.verify(proofSpec));
   });
 });

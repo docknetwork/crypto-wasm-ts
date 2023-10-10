@@ -41,7 +41,10 @@ import {
   BoundCheckSmcParamsUncompressed,
   BoundCheckSmcWithKVProverParamsUncompressed,
   BoundCheckSmcWithKVVerifierParamsUncompressed,
-  BoundCheckSmcWithKVSetup, DefaultSchemaParsingOpts, META_SCHEMA_STR
+  BoundCheckSmcWithKVSetup,
+  DefaultSchemaParsingOpts,
+  META_SCHEMA_STR,
+  InequalityProtocols
 } from '../../src';
 import {
   SignatureParams,
@@ -67,6 +70,7 @@ import {
 import { flatten, unflatten } from 'flat';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 import { BBSBlindedCredentialRequest, BBSPlusBlindedCredentialRequest, BlindedCredentialRequest } from '../../src';
+import { PederCommKey } from '../../src/ped-com';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -171,7 +175,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
   const nonEmbeddedSchema = {
     $id: 'https://example.com?hash=abc123ff',
     [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
-    type: 'object',
+    type: 'object'
   };
 
   function setupBoundCheck() {
@@ -241,7 +245,13 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     pk1 = keypair1.pk;
 
     if (withSchemaRef) {
-        schema1 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(10))
+      schema1 = new CredentialSchema(
+        nonEmbeddedSchema,
+        DefaultSchemaParsingOpts,
+        true,
+        undefined,
+        getExampleSchema(10)
+      );
     } else {
       schema1 = new CredentialSchema(getExampleSchema(10));
     }
@@ -269,7 +279,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     pk2 = keypair2.pk;
 
     if (withSchemaRef) {
-      schema2 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(9))
+      schema2 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(9));
     } else {
       schema2 = new CredentialSchema(getExampleSchema(9));
     }
@@ -279,13 +289,16 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     pk3 = keypair3.pk;
 
     if (withSchemaRef) {
-      schema3 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(7))
+      schema3 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(7));
     } else {
       schema3 = new CredentialSchema(getExampleSchema(7));
     }
   });
 
   it('should be able to request a credential when some attributes are blinded', async () => {
+    const commKeyId = 'commKeyId';
+    const commKey = new PederCommKey(stringToBytes('test'));
+
     const blindedSubject = {
       sensitive: {
         email: 'john.smith@example.com',
@@ -300,10 +313,38 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     };
     const reqBuilder = newReqBuilder(schema1, blindedSubject);
 
-    const [req, blinding] = finalize(reqBuilder);
-    checkResult(req.verify([]));
+    const inEqualEmail = 'alice@example.com';
+    const inEqualEmail2 = 'bob@example.com';
+    const inEqualSsn = '1234';
+    reqBuilder.enforceInequalityOnBlindedAttribute(
+      'credentialSubject.sensitive.email',
+      inEqualEmail,
+      commKeyId,
+      commKey
+    );
+    reqBuilder.enforceInequalityOnBlindedAttribute('credentialSubject.sensitive.email', inEqualEmail2, commKeyId);
+    reqBuilder.enforceInequalityOnBlindedAttribute('credentialSubject.sensitive.SSN', inEqualSsn, commKeyId);
 
-    checkReqJson(req, []);
+    const [req, blinding] = finalize(reqBuilder);
+
+    expect(req.presentation.spec.blindCredentialRequest.attributeInequalities).toEqual({
+      credentialSubject: {
+        sensitive: {
+          email: [
+            { inEqualTo: inEqualEmail, paramId: commKeyId, protocol: InequalityProtocols.Uprove },
+            { inEqualTo: inEqualEmail2, paramId: commKeyId, protocol: InequalityProtocols.Uprove }
+          ],
+          SSN: [{ inEqualTo: inEqualSsn, paramId: commKeyId, protocol: InequalityProtocols.Uprove }]
+        }
+      }
+    });
+
+    const pp = new Map();
+    pp.set(commKeyId, commKey);
+
+    checkResult(req.verify([], undefined, pp));
+
+    checkReqJson(req, [], undefined, pp);
 
     checkBlindedSubject(req, blindedSubject);
 
@@ -695,7 +736,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     let schema;
     if (withSchemaRef) {
-      schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(8))
+      schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(8));
     } else {
       schema = new CredentialSchema(getExampleSchema(8));
     }
@@ -862,7 +903,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     let schema;
     if (withSchemaRef) {
-      schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(12))
+      schema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(12));
     } else {
       schema = new CredentialSchema(getExampleSchema(12));
     }

@@ -3,6 +3,7 @@ import {
   IBoundedPseudonymCommitKey,
   ICircomPredicate,
   IPresentedAttributeBounds,
+  IPresentedAttributeInequality,
   IPresentedAttributeVE,
   IPresentedCredential,
   PresentationSpecification
@@ -39,7 +40,8 @@ import {
   STATUS_STR,
   BoundCheckProtocols,
   VerifiableEncryptionProtocols,
-  CircomProtocols
+  CircomProtocols,
+  InequalityProtocols
 } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
 import {
@@ -48,6 +50,7 @@ import {
   createWitEq,
   createWitEqForBlindedCred,
   deepClone,
+  flattenPredicatesInSpec,
   flattenTill2ndLastKey,
   getSignatureParamsForMsgCount,
   paramsClassByPublicKey,
@@ -70,6 +73,7 @@ import {
   BoundCheckSmcWithKVVerifierParamsUncompressed
 } from '../bound-check';
 import semver from 'semver/preload';
+import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 
 /**
  * The context passed to the proof contains the version and the presentation spec as well. This is done to bind the
@@ -158,6 +162,9 @@ export class Presentation extends Versioned {
     // For credentials with status, i.e. using accumulators, type is [credIndex, revCheckType, accumulator]
     const credStatusAux: [number, string, Uint8Array][] = [];
 
+    // For inequality checks on credential attributes
+    const ineqsAux: [number, { [key: string]: [IPresentedAttributeInequality, Uint8Array][] }][] = [];
+
     // For bound check on credential attributes
     const boundsAux: [number, { [key: string]: string | IPresentedAttributeBounds }][] = [];
 
@@ -199,6 +206,19 @@ export class Presentation extends Versioned {
         credStatusAux.push([i, presentedCred.status[REV_CHECK_STR], presentedCred.status.accumulated]);
       }
 
+      if (presentedCred.attributeInequalities !== undefined) {
+        let [names, ineqs] = flattenPredicatesInSpec(presentedCred.attributeInequalities);
+        const obj = {};
+        for (let j = 0; j < names.length; j++) {
+          // @ts-ignore
+          obj[names[j]] = ineqs[j].map((ineqs_j) => [
+            ineqs_j,
+            presentedCredSchema.encoder.encodeMessage(names[j], ineqs_j.inEqualTo)
+          ]);
+        }
+        ineqsAux.push([i, obj]);
+      }
+
       if (presentedCred.bounds !== undefined) {
         boundsAux.push([i, presentedCred.bounds]);
       }
@@ -229,6 +249,20 @@ export class Presentation extends Versioned {
         metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
       }
     }
+
+    ineqsAux.forEach(([i, ineq]) => {
+      this.processAttributeInequalities(
+        i,
+        (n: string) => {
+          return flattenedSchemas[i][0].indexOf(n);
+        },
+        ineq,
+        statements,
+        metaStatements,
+        setupParamsTrk,
+        predicateParams
+      );
+    });
 
     boundsAux.forEach(([i, b]) => {
       this.processBoundChecks(
@@ -392,6 +426,28 @@ export class Presentation extends Versioned {
         }
       }
 
+      if (this.spec.blindCredentialRequest.attributeInequalities !== undefined) {
+        let [names, ineqs] = flattenPredicatesInSpec(this.spec.blindCredentialRequest.attributeInequalities);
+        const obj = {};
+        for (let j = 0; j < names.length; j++) {
+          // @ts-ignore
+          obj[names[j]] = ineqs[j].map((ineqs_j) => [
+            ineqs_j,
+            // @ts-ignore
+            this.spec.blindCredentialRequest.schema.encoder.encodeMessage(names[j], ineqs_j.inEqualTo)
+          ]);
+        }
+        this.processAttributeInequalities(
+          pedCommStId,
+          getAttrIndexInPedComm,
+          obj,
+          statements,
+          metaStatements,
+          setupParamsTrk,
+          predicateParams
+        );
+      }
+
       if (this.spec.blindCredentialRequest.bounds !== undefined) {
         this.processBoundChecks(
           pedCommStId,
@@ -506,6 +562,34 @@ export class Presentation extends Versioned {
       encoded.set(i, presentedCredSchema.encoder.encodeMessage(k, v));
     });
     return encoded;
+  }
+
+  private processAttributeInequalities(
+    statementIdx: number,
+    witnessIndexGetter: (string) => number,
+    ineqs: { [key: string]: [IPresentedAttributeInequality, Uint8Array][] },
+    statements: Statements,
+    metaStatements: MetaStatements,
+    setupParamsTrk: SetupParamsTracker,
+    predicateParams?: Map<string, PredicateParamType>
+  ) {
+    Object.keys(ineqs).forEach((name) => {
+      const nameIdx = witnessIndexGetter(name);
+      ineqs[name].forEach(([ineq, inequalTo]) => {
+        const paramId = ineq['paramId'];
+        const param = predicateParams?.get(paramId);
+        Presentation.addPedCommG1ToTracker(paramId, param, setupParamsTrk, statementIdx);
+        let statement = Statement.publicInequalityG1FromSetupParamRefs(
+          inequalTo,
+          setupParamsTrk.indexForParam(paramId)
+        );
+        const sIdx = statements.add(statement);
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(statementIdx, nameIdx);
+        witnessEq.addWitnessRef(sIdx, 0);
+        metaStatements.addWitnessEquality(witnessEq);
+      });
+    });
   }
 
   private processBoundChecks(
@@ -850,6 +934,27 @@ export class Presentation extends Versioned {
     }
   }
 
+  static addPedCommG1ToTracker(
+    paramId: string,
+    param: PredicateParamType | undefined,
+    setupParamsTrk: SetupParamsTracker,
+    statementIdx: number
+  ) {
+    if (param instanceof PederCommKey) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.pedCommKeyG1(param));
+      }
+    } else if (param instanceof PederCommKeyUncompressed) {
+      if (!setupParamsTrk.isTrackingParam(paramId)) {
+        setupParamsTrk.addForParamId(paramId, SetupParam.pedCommKeyG1Uncompressed(param));
+      }
+    } else {
+      throw new Error(
+        `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Pedersen commitment key but was ${param}`
+      );
+    }
+  }
+
   static addSmcSetupParamsToTracker(
     paramId: string,
     param: PredicateParamType | undefined,
@@ -916,6 +1021,20 @@ export class Presentation extends Versioned {
 
     const presSpec = new PresentationSpecification();
     for (const cred of spec['credentials']) {
+      if (typeof cred['attributeInequalities'] === 'object') {
+        const ineqs = flattenPredicatesInSpec(cred['attributeInequalities']);
+        for (let i = 0; i < ineqs[0].length; i++) {
+          // @ts-ignore
+          ineqs[1][i].forEach((ineq) => {
+            if (!Object.values(InequalityProtocols).includes(ineq['protocol'])) {
+              throw new Error(
+                `Unrecognized protocol ${ineq['protocol']} for public inequality for attribute ${ineqs[0][i]} with value ${ineq['inEqualTo']}`
+              );
+            }
+          });
+        }
+      }
+
       if (typeof cred['bounds'] === 'object') {
         const bounds = flattenTill2ndLastKey(cred['bounds']);
         for (let i = 0; i < bounds[0].length; i++) {
@@ -973,9 +1092,11 @@ export class Presentation extends Versioned {
         cred['bounds'],
         cred['verifiableEncryptions'],
         circomPredicates,
-        sigType
+        sigType,
+        cred['attributeInequalities']
       );
     }
+
     presSpec.attributeEqualities = spec['attributeEqualities'];
     presSpec.boundedPseudonyms = spec['boundedPseudonyms'];
     presSpec.unboundedPseudonyms = spec['unboundedPseudonyms'];

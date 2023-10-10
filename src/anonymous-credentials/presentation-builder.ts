@@ -19,11 +19,13 @@ import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
   AttributeEquality,
   BoundCheckParamType,
-  BoundCheckProtocols, BoundType,
+  BoundCheckProtocols,
+  BoundType,
   CircomProtocols,
   CRYPTO_VERSION_STR,
   FlattenedSchema,
   ID_STR,
+  InequalityProtocols,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
@@ -42,6 +44,7 @@ import {
   ICircomPredicate,
   ICircuitPrivateVars,
   IPresentedAttributeBounds,
+  IPresentedAttributeInequality,
   IPresentedAttributeVE,
   IPresentedStatus,
   PresentationSpecification
@@ -82,6 +85,7 @@ import {
   BoundCheckSmcWithKVProverParams,
   BoundCheckSmcWithKVProverParamsUncompressed
 } from '../bound-check';
+import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 
 /**
  * Arguments required to generate the corresponding AttributeBoundPseudonym
@@ -107,7 +111,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.2.0';
+  static VERSION = '0.3.0';
 
   // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;
@@ -132,6 +136,10 @@ export class PresentationBuilder extends Versioned {
 
   // Attributes proved equal in zero knowledge
   attributeEqualities: AttributeEquality[];
+
+  // Attributes proved inequal to a public value in zero knowledge. An attribute can be proven inequal to any number of values
+  // The 2nd item, i.e. Uint8Array in the pair is the encoded value of the public value with which inequality is proved
+  attributeInequalities: Map<number, Map<string, [IPresentedAttributeInequality, Uint8Array][]>>;
 
   // Each credential has only one accumulator for status
   credStatuses: Map<number, [AccumulatorWitness, Uint8Array, AccumulatorPublicKey, object]>;
@@ -158,6 +166,8 @@ export class PresentationBuilder extends Versioned {
     attrNameToIndex: Map<string, number>;
     flattenedSchema: FlattenedSchema;
     blinding?: Uint8Array;
+    // The 2nd item, i.e. Uint8Array in the pair is the encoded value of the public value with which inequality is proved
+    attributeInequalities: Map<string, [IPresentedAttributeInequality, Uint8Array][]>;
     bounds: Map<string, IPresentedAttributeBounds>;
     verifEnc: Map<string, IPresentedAttributeVE>;
     circPred: IProverCircomPredicate[];
@@ -169,6 +179,7 @@ export class PresentationBuilder extends Versioned {
     this.credentials = [];
     this.revealedAttributes = new Map();
     this.attributeEqualities = [];
+    this.attributeInequalities = new Map();
     this.boundedPseudonyms = [];
     this.unboundedPseudonyms = [];
     this.credStatuses = new Map();
@@ -238,6 +249,30 @@ export class PresentationBuilder extends Versioned {
   ) {
     this.validateCredIndex(credIdx);
     this.credStatuses.set(credIdx, [accumWitness, accumulated, accumPublicKey, extra]);
+  }
+
+  /**
+   * Enforce inequality with a public value on a credential attribute
+   * @param credIdx
+   * @param attributeName
+   * @param inEqualTo - The public value that the attribute should be unequal to, i.e. value of attribute `attributeName` != `inEqualTo`
+   * @param paramId
+   * @param param
+   */
+  enforceAttributeInequality(
+    credIdx: number,
+    attributeName: string,
+    inEqualTo: any,
+    paramId: string,
+    param?: PederCommKey | PederCommKeyUncompressed
+  ) {
+    this.validateCredIndex(credIdx);
+    let ineqForThisCred = this.attributeInequalities.get(credIdx);
+    if (ineqForThisCred === undefined) {
+      ineqForThisCred = new Map();
+    }
+    PresentationBuilder.enforceAttributeInequalities(this, ineqForThisCred, attributeName, inEqualTo, paramId, param);
+    this.attributeInequalities.set(credIdx, ineqForThisCred);
   }
 
   /**
@@ -505,6 +540,26 @@ export class PresentationBuilder extends Versioned {
         encodedAttrs.set(nameIdx, val);
       }
 
+      // Get encoded attributes which are used in inequality check
+      const ineqs = this.attributeInequalities.get(i);
+      let attributeIneqs: { [key: string]: string | IPresentedAttributeInequality[] } | undefined;
+      if (ineqs !== undefined && ineqs.size > 0) {
+        attributeIneqs = {};
+        const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
+        for (const [name, ineq] of ineqs.entries()) {
+          attributeIneqs[name] = [];
+          ineq.forEach((ineq_j) => {
+            // @ts-ignore
+            attributeIneqs[name].push(ineq_j[0]);
+            // Encode the public value
+            ineq_j[1] = schema.encoder.encodeMessage(name, ineq_j[0].inEqualTo);
+          });
+          updateEncodedAttrs(name, encodedAttrs);
+        }
+        attributeIneqs = unflatten(attributeIneqs);
+        unrevealedMsgsEncoded.set(i, encodedAttrs);
+      }
+
       // Get encoded attributes which are used in bound check
       const bounds = this.bounds.get(i);
       let attributeBounds: { [key: string]: string | IPresentedAttributeBounds } | undefined;
@@ -593,7 +648,8 @@ export class PresentationBuilder extends Versioned {
         attributeEncs,
         predicatesForSpec,
         // @ts-ignore
-        cred.constructor.getSigType()
+        cred.constructor.getSigType(),
+        attributeIneqs
       );
 
       flattenedSchemas.push(flattenedSchema);
@@ -730,6 +786,24 @@ export class PresentationBuilder extends Versioned {
       this.spec.addAttributeEquality(eql);
     }
 
+    // For enforcing attribute inequalities, add statement and witness
+    for (const [cId, ineqs] of this.attributeInequalities.entries()) {
+      this.processAttributeInequalities(
+        cId,
+        (n: string) => {
+          return flattenedSchemas[cId][0].indexOf(n);
+        },
+        ineqs,
+        (i: number) => {
+          return unrevealedMsgsEncoded.get(cId)?.get(i) as Uint8Array;
+        },
+        statements,
+        witnesses,
+        metaStatements,
+        setupParamsTrk
+      );
+    }
+
     // For enforcing attribute bounds, add statement and witness
     for (const [cId, bounds] of this.bounds.entries()) {
       this.processBoundChecks(
@@ -851,6 +925,31 @@ export class PresentationBuilder extends Versioned {
       }
 
       this.spec.blindCredentialRequest = this.blindCredReq.req;
+
+      // Create statements, witnesses and meta-statements for enforcing inequalities on blinded attributes
+      if (this.blindCredReq.attributeInequalities.size > 0) {
+        let m = new Map();
+        for (const [k, v] of this.blindCredReq.attributeInequalities.entries()) {
+          const arr: IPresentedAttributeInequality[] = [];
+          v.forEach((v_j) => {
+            arr.push(v_j[0]);
+            // @ts-ignore
+            v_j[1] = this.blindCredReq?.req?.schema.encoder.encodeMessage(k, v_j[0].inEqualTo);
+          });
+          m.set(k, arr);
+        }
+        this.processAttributeInequalities(
+          pedCommStId,
+          getAttrIndexInPedComm,
+          this.blindCredReq.attributeInequalities,
+          getAttrValue,
+          statements,
+          witnesses,
+          metaStatements,
+          setupParamsTrk
+        );
+        this.spec.blindCredentialRequest.attributeInequalities = this.formatAttributesForSpec(m);
+      }
 
       // Create statements, witnesses and meta-statements for enforcing bounds on blinded attributes
       if (this.blindCredReq.bounds.size > 0) {
@@ -1068,6 +1167,46 @@ export class PresentationBuilder extends Versioned {
         `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a set-membership check proving params but was ${param}`
       );
     }
+  }
+
+  private processAttributeInequalities(
+    statementIdx: number,
+    witnessIndexGetter: (string) => number,
+    ineqs: Map<string, [IPresentedAttributeInequality, Uint8Array][]>,
+    encodedAttrGetter: (number) => Uint8Array,
+    statements: Statements,
+    witnesses: Witnesses,
+    metaStatements: MetaStatements,
+    setupParamsTrk: SetupParamsTracker
+  ) {
+    const dataSortedByNameIdx: [number, string, [IPresentedAttributeInequality, Uint8Array][]][] = [];
+    for (const [name, b] of ineqs.entries()) {
+      const nameIdx = witnessIndexGetter(name);
+      dataSortedByNameIdx.push([nameIdx, name, b]);
+    }
+    // Sort by attribute index so that both prover and verifier create statements and witnesses in the same order
+    dataSortedByNameIdx.sort(function (a, b) {
+      return a[0] - b[0];
+    });
+
+    dataSortedByNameIdx.forEach(([nameIdx, name, ineqs]) => {
+      ineqs.forEach(([{ inEqualTo, paramId, protocol }, ineq]) => {
+        const param = this.predicateParams.get(paramId);
+        const encodedAttrVal = encodedAttrGetter(nameIdx);
+
+        Presentation.addPedCommG1ToTracker(paramId, param, setupParamsTrk, statementIdx);
+
+        const statement = Statement.publicInequalityG1FromSetupParamRefs(ineq, setupParamsTrk.indexForParam(paramId));
+        const witness = Witness.publicInequality(encodedAttrVal);
+
+        const sIdx = statements.add(statement);
+        witnesses.add(witness);
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(statementIdx, nameIdx);
+        witnessEq.addWitnessRef(sIdx, 0);
+        metaStatements.addWitnessEquality(witnessEq);
+      });
+    });
   }
 
   private processBoundChecks(
@@ -1363,6 +1502,24 @@ export class PresentationBuilder extends Versioned {
       });
     }
     return [encodedAttrs, predicatesForSpec];
+  }
+
+  static enforceAttributeInequalities(
+    self,
+    ineqs: Map<string, [IPresentedAttributeInequality, Uint8Array][]>,
+    attributeName: string,
+    inEqualTo: any,
+    paramId: string,
+    param?: PederCommKey | PederCommKeyUncompressed
+  ) {
+    let attrIneq = ineqs.get(attributeName);
+    if (attrIneq === undefined) {
+      attrIneq = [];
+      ineqs.set(attributeName, attrIneq);
+    }
+    // setting the encoded value (Uint8Array) as a dummy for now, this is later set to the correct value
+    attrIneq?.push([{ inEqualTo, paramId, protocol: InequalityProtocols.Uprove }, new Uint8Array()]);
+    self.updatePredicateParams(paramId, param);
   }
 
   /**

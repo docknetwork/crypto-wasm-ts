@@ -32,7 +32,9 @@ import {
   generateBoundCheckSmcWithKVProverStatement,
   generateBoundCheckSmcWithKVProverStatementFromParamRefs,
   generateBoundCheckSmcWithKVVerifierStatement,
-  generateBoundCheckSmcWithKVVerifierStatementFromParamRefs
+  generateBoundCheckSmcWithKVVerifierStatementFromParamRefs,
+  generatePublicInequalityG1Statement,
+  generatePublicInequalityG1StatementFromParamRefs
 } from '@docknetwork/crypto-wasm';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
@@ -70,6 +72,7 @@ import {
   BoundCheckSmcWithKVVerifierParams,
   BoundCheckSmcWithKVVerifierParamsUncompressed
 } from '../bound-check';
+import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 
 /**
  * Relation which needs to be proven. Contains any public data that needs to be known to both prover and verifier
@@ -703,6 +706,23 @@ export class Statement {
    */
   static boundCheckSmcWithKVVerifierFromSetupParamRefs(min: number, max: number, params: number): Uint8Array {
     return generateBoundCheckSmcWithKVVerifierStatementFromParamRefs(min, max, params);
+  }
+
+  /**
+   * Create statement for proving inequality of a credential
+   * @param inequalTo
+   * @param commKey
+   */
+  static publicInequalityG1(inequalTo: Uint8Array, commKey: PederCommKeyUncompressed): Uint8Array {
+    return generatePublicInequalityG1Statement(inequalTo, commKey.value, true);
+  }
+
+  static publicInequalityG1FromCompressedParams(inequalTo: Uint8Array, commKey: PederCommKey): Uint8Array {
+    return generatePublicInequalityG1Statement(inequalTo, commKey.value, false);
+  }
+
+  static publicInequalityG1FromSetupParamRefs(inequalTo: Uint8Array, commKey: number): Uint8Array {
+    return generatePublicInequalityG1StatementFromParamRefs(inequalTo, commKey);
   }
 }
 

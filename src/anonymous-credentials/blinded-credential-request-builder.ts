@@ -35,9 +35,14 @@ import { unflatten } from 'flat';
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import { IPresentedAttributeBounds, IPresentedAttributeVE } from './presentation-specification';
+import {
+  IPresentedAttributeBounds,
+  IPresentedAttributeInequality,
+  IPresentedAttributeVE
+} from './presentation-specification';
 import { Presentation } from './presentation';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
+import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 
@@ -47,7 +52,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 export abstract class BlindedCredentialRequestBuilder<SigParams> extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.1.0';
+  static VERSION = '0.2.0';
 
   // The schema of the whole (unblinded credential). This should include all attributes, i.e. blinded and unblinded
   _schema?: CredentialSchema;
@@ -62,6 +67,9 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
 
   // Equalities between blinded and credential attributes
   attributeEqualities: BlindedAttributeEquality[];
+
+  // Attributes proved inequal to a public value in zero knowledge. An attribute can be proven inequal to any number of values
+  attributeInequalities: Map<string, [IPresentedAttributeInequality, Uint8Array][]>;
 
   // Bounds on blinded attributes
   bounds: Map<string, IPresentedAttributeBounds>;
@@ -79,6 +87,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     super(BlindedCredentialRequestBuilder.VERSION);
     this.presentationBuilder = new PresentationBuilder();
     this.attributeEqualities = [];
+    this.attributeInequalities = new Map();
     this.bounds = new Map();
     this.verifEnc = new Map();
     this.circomPredicates = [];
@@ -142,6 +151,16 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     extra: object = {}
   ) {
     this.presentationBuilder.addAccumInfoForCredStatus(credIdx, accumWitness, accumulated, accumPublicKey, extra);
+  }
+
+  enforceInequalityOnCredentialAttribute(
+    credIdx: number,
+    attributeName: string,
+    inEqualTo: any,
+    paramId: string,
+    param?: PederCommKey | PederCommKeyUncompressed
+  ) {
+    this.presentationBuilder.enforceAttributeInequality(credIdx, attributeName, inEqualTo, paramId, param);
   }
 
   enforceBoundsOnCredentialAttribute(
@@ -230,6 +249,22 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
    */
   markBlindedAttributesEqual(equality: BlindedAttributeEquality) {
     this.attributeEqualities.push(equality);
+  }
+
+  enforceInequalityOnBlindedAttribute(
+    attributeName: string,
+    inEqualTo: any,
+    paramId: string,
+    param?: PederCommKey | PederCommKeyUncompressed
+  ) {
+    PresentationBuilder.enforceAttributeInequalities(
+      this.presentationBuilder,
+      this.attributeInequalities,
+      attributeName,
+      inEqualTo,
+      paramId,
+      param
+    );
   }
 
   /**
@@ -382,6 +417,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
       attrNameToIndex,
       flattenedSchema,
       blinding: this.getBlinding(),
+      attributeInequalities: this.attributeInequalities,
       bounds: this.bounds,
       verifEnc: this.verifEnc,
       circPred: this.circomPredicates,

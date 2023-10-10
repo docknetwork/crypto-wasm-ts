@@ -104,6 +104,8 @@ export const BPP = 'Bulletproofs++';
 export const SMC = 'Set-membership-check';
 export const SMC_KV = 'Set-membership-check-with-keyed-verification';
 
+export const UPROVE = 'UProve';
+
 const te = new TextEncoder();
 // Label used for generating BBS+ signature parameters
 export const BBS_SIGNATURE_PARAMS_LABEL = 'DockBBSSignature2023';
@@ -177,4 +179,8 @@ export enum VerifiableEncryptionProtocols {
 
 export enum CircomProtocols {
   Legogroth16 = LEGOGROTH16
+}
+
+export enum InequalityProtocols {
+  Uprove = UPROVE
 }
