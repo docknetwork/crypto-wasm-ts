@@ -42,7 +42,7 @@ export abstract class CredentialCommon<Sig> extends Versioned {
   toJSON(): object {
     const j = {};
     j['cryptoVersion'] = this._version;
-    j['credentialSchema'] = JSON.stringify(this.schema.toJSON());
+    j['credentialSchema'] = this.schema.toJsonString();
     j['credentialSubject'] = this.subject;
     if (this.credentialStatus !== undefined) {
       j['credentialStatus'] = this.credentialStatus;

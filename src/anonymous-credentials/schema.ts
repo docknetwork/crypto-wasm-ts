@@ -1,20 +1,23 @@
 import pointer from 'json-pointer';
+import stringify from 'json-stringify-deterministic';
 import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../encoder';
 import { isPositiveInteger } from '../util';
 import {
   CRYPTO_VERSION_STR,
   FlattenedSchema,
+  FULL_SCHEMA_STR,
   ID_STR,
   REV_CHECK_STR,
   REV_ID_STR,
+  SCHEMA_PROPS_STR,
   SCHEMA_STR,
   SCHEMA_TYPE_STR,
   STATUS_STR,
   SUBJECT_STR,
   TYPE_STR
 } from './types-and-consts';
-import { flattenTill2ndLastKey, isValueDate, isValueDateTime } from './util';
+import { deepClone, flattenTill2ndLastKey, isValueDate, isValueDateTime } from './util';
 import semver from 'semver/preload';
 
 /**
@@ -382,12 +385,13 @@ export interface IEmbeddedJsonSchema {
   $id?: string;
   title?: string;
   type: string;
-  properties: IJsonSchemaProperties;
+  [SCHEMA_PROPS_STR]: IJsonSchemaProperties;
   definitions?: { [key: string]: object };
 }
 
 /**
  * JSON schema that does not contain the properties but its $id property can be used to fetch the properties.
+ * Intentionally not allowing `properties` key as reconciliation will be needed in case of conflict with fetched properties 
  */
 export interface IJsonSchema {
   [META_SCHEMA_STR]: string;
@@ -420,7 +424,7 @@ export type CredVal = string | number | object | CredVal[];
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.1.0';
+  static VERSION = '0.2.0';
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
@@ -704,7 +708,7 @@ export class CredentialSchema extends Versioned {
       // Currently only assuming support for draft-07 but other might work as well
       [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
       type: 'object',
-      properties: {
+      [SCHEMA_PROPS_STR]: {
         [SUBJECT_STR]: {
           type: 'object',
           properties: {
@@ -753,13 +757,13 @@ export class CredentialSchema extends Versioned {
   toJSON(): object {
     const embedded = this.hasEmbeddedJsonSchema();
     const j = {
-      [ID_STR]: CredentialSchema.convertToDataUri(this.jsonSchema),
+      [ID_STR]: CredentialSchema.convertToDataUri(this.jsonSchema, this.version),
       [TYPE_STR]: SCHEMA_TYPE_STR,
       parsingOptions: this.parsingOptions,
       version: this._version
     };
     if (!embedded) {
-      j['fullJsonSchema'] = CredentialSchema.convertToDataUri(this.fullJsonSchema as IEmbeddedJsonSchema);
+      j[FULL_SCHEMA_STR] = CredentialSchema.convertToDataUri(this.fullJsonSchema as IEmbeddedJsonSchema, this.version);
     }
     return j;
   }
@@ -780,6 +784,10 @@ export class CredentialSchema extends Versioned {
       if (!CredentialSchema.isEmbeddedJsonSchema(full)) {
         throw new Error(`Expected actual schema to be an embedded one but got ${full}`);
       }
+    } else {
+      if (!CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+        throw new Error(`Full json schema wasn't provided when a non-embedded schema was provided ${jsonSchema}`);
+      }
     }
     // Note: `parsingOptions` might still be in an incorrect format which can fail the next call
     // Note: Passing `addMissingParsingOpts` as false to recreate the exact same object that was serialized. This is important
@@ -788,8 +796,53 @@ export class CredentialSchema extends Versioned {
     return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, full);
   }
 
-  static convertToDataUri(jsonSchema: IEmbeddedJsonSchema | IJsonSchema): string {
-    return `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(jsonSchema))}`;
+  /**
+   * Similar to this.fromJSON but can load an externally referenced schema if the given schema is not an embedded one.
+   * @param j
+   * @param schemaGetter
+   */
+  static async fromJSONWithPotentiallyExternalSchema(
+    j: object,
+    schemaGetter: (url: string) => Promise<IEmbeddedJsonSchema>
+  ): Promise<CredentialSchema> {
+    // @ts-ignore
+    const { id, type, parsingOptions, version } = j;
+    if (type !== SCHEMA_TYPE_STR) {
+      throw new Error(`Schema type was "${type}", expected: "${SCHEMA_TYPE_STR}"`);
+    }
+    const jsonSchema = this.convertFromDataUri(id);
+    let fullJsonSchema: IEmbeddedJsonSchema | undefined;
+    if (!CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+      // @ts-ignore
+      fullJsonSchema = await schemaGetter(jsonSchema.$id);
+      if (!(fullJsonSchema[SCHEMA_PROPS_STR] instanceof Object)) {
+        throw new Error(
+          `Expected the fetched schema to have key ${SCHEMA_PROPS_STR} set and as an Object but was ${fullJsonSchema[SCHEMA_PROPS_STR]}`
+        );
+      }
+    }
+    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, fullJsonSchema);
+  }
+
+  /**
+   * Convert to a JSON string and the string is deterministic. This is important for signing
+   */
+  toJsonString(): string {
+    // Version < 0.2.0 used JSON.stringify to create a JSON string
+    return semver.lt(this.version, '0.2.0') ? JSON.stringify(this.toJSON()) : stringify(this.toJSON());
+  }
+
+  /**
+   * Convert schema JSON to a data URI
+   * @param jsonSchema
+   * @param version - The schema version. This is needed as a different conversion to JSON function was used in
+   * older version and backward compatibility is needed.
+   */
+  static convertToDataUri(jsonSchema: IEmbeddedJsonSchema | IJsonSchema, version?: string): string {
+    // Old version used JSON.stringify
+    const newVersion = version === undefined || semver.gte(version, '0.2.0');
+    const jsonStr = newVersion ? stringify(jsonSchema) : JSON.stringify(jsonSchema);
+    return `data:application/json;charset=utf-8,${encodeURIComponent(jsonStr)}`;
   }
 
   static convertFromDataUri(embedded: string): IEmbeddedJsonSchema | IJsonSchema {
@@ -1142,7 +1195,7 @@ export class CredentialSchema extends Versioned {
   // @ts-ignore
   static generateAppropriateSchema(cred: object, schema: CredentialSchema): CredentialSchema {
     // This JSON parse and stringify is to make `newJsonSchema` a copy of `schema.jsonSchema` and not a reference
-    const newJsonSchema = JSON.parse(JSON.stringify(schema.getEmbeddedJsonSchema()));
+    const newJsonSchema = deepClone(schema.getEmbeddedJsonSchema()) as IEmbeddedJsonSchema;
     const props = newJsonSchema.properties;
     CredentialSchema.generateFromCredential(cred, props, schema.version);
     if (schema.hasEmbeddedJsonSchema()) {
@@ -1264,7 +1317,9 @@ export class CredentialSchema extends Versioned {
           schemaProps[key]['type'] == 'number'
         ) {
           if (schemaProps[key]['type'] !== typ) {
-            throw new Error(`Mismatch in credential and given schema type: ${schemaProps[key]['type']} !== ${typ}`);
+            throw new Error(
+              `Mismatch in credential and given schema type for key ${key}: ${schemaProps[key]['type']} !== ${typ}`
+            );
           }
         } else if (schemaProps[key]['type'] === 'array' && typ === 'array') {
           if (schemaProps[key]['items'].length < value.length) {
@@ -1277,10 +1332,10 @@ export class CredentialSchema extends Versioned {
             schemaProps[key]['items'] = schemaProps[key]['items'].slice(0, value.length);
           }
         } else if (schemaProps[key]['type'] === 'object' && typ === 'object') {
-          const schemaKeys = new Set([...Object.keys(schemaProps[key]['properties'])]);
+          const schemaKeys = new Set([...Object.keys(schemaProps[key][SCHEMA_PROPS_STR])]);
           const valKeys = new Set([...Object.keys(value)]);
           for (const vk of valKeys) {
-            CredentialSchema.generateFromCredential(value, schemaProps[key]['properties'], schemaVersion);
+            CredentialSchema.generateFromCredential(value, schemaProps[key][SCHEMA_PROPS_STR], schemaVersion);
           }
           // Delete extra keys not in cred
           for (const sk of schemaKeys) {
@@ -1314,11 +1369,11 @@ export class CredentialSchema extends Versioned {
   }
 
   /**
-   * Returns true if the given object is an embedded schema, i.e. it has the properties.
+   * Returns true if the given object is an embedded schema, i.e. it has the `properties` key set.
    * @param obj
    */
   static isEmbeddedJsonSchema(obj: IEmbeddedJsonSchema | IJsonSchema): boolean {
-    return obj['properties'] !== undefined;
+    return obj[SCHEMA_PROPS_STR] !== undefined;
   }
 }
 

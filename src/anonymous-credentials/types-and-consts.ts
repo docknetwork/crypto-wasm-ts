@@ -80,7 +80,12 @@ export type SignatureParamsClass =
 export const VERSION_STR = 'version';
 export const CRYPTO_VERSION_STR = 'cryptoVersion';
 export const SCHEMA_STR = 'credentialSchema';
+
+export const FULL_SCHEMA_STR = 'fullJsonSchema';
 export const SCHEMA_TYPE_STR = 'JsonSchemaValidator2018';
+
+export const SCHEMA_PROPS_STR = 'properties';
+
 export const SUBJECT_STR = 'credentialSubject';
 export const STATUS_STR = 'credentialStatus';
 export const TYPE_STR = 'type';

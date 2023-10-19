@@ -111,7 +111,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.3.0';
+  static VERSION = '0.4.0';
 
   // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;
@@ -1551,7 +1551,7 @@ export class PresentationBuilder extends Versioned {
     }
     self.updatePredicateParams(paramId, param);
     let par = self.predicateParams.get(paramId);
-    let protocol;
+    let protocol: BoundCheckProtocols;
     if (par instanceof LegoProvingKey || par instanceof LegoProvingKeyUncompressed) {
       protocol = BoundCheckProtocols.Legogroth16;
     } else if (par instanceof BoundCheckBppParams || par instanceof BoundCheckBppParamsUncompressed) {

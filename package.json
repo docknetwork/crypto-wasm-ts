@@ -1,6 +1,6 @@
 {
   "name": "@docknetwork/crypto-wasm-ts",
-  "version": "0.47.0",
+  "version": "0.48.0",
   "description": "Typescript abstractions over Dock's Rust crypto library's WASM wrapper",
   "homepage": "https://github.com/docknetwork/crypto-wasm-ts",
   "main": "lib/index.js",
@@ -33,6 +33,7 @@
     "bs58": "5.0.0",
     "flat": "^5.0.2",
     "json-pointer": "^0.6.2",
+    "json-stringify-deterministic": "^1.0.11",
     "lodash": "^4.17.21",
     "lzutf8": "0.6.3",
     "semver": "^7.5.4"

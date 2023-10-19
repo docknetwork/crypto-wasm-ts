@@ -74,6 +74,7 @@ import {
 } from '../bound-check';
 import semver from 'semver/preload';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
+import stringify from 'json-stringify-deterministic';
 
 /**
  * The context passed to the proof contains the version and the presentation spec as well. This is done to bind the
@@ -96,7 +97,9 @@ export function buildContextForProof(
       ctx = ctx.concat(Array.from(context));
     }
   }
-  ctx = ctx.concat(Array.from(te.encode(JSON.stringify(presSpec.toJSON()))));
+  // Old version used JSON.stringify
+  const specJsonStr = semver.lt(version, '0.4.0') ? JSON.stringify(presSpec.toJSON()) : stringify(presSpec.toJSON());
+  ctx = ctx.concat(Array.from(te.encode(specJsonStr)));
   return new Uint8Array(ctx);
 }
 
@@ -818,7 +821,7 @@ export class Presentation extends Versioned {
     let blindCredentialRequest, blindedAttributeCiphertexts;
     if (this.spec.blindCredentialRequest !== undefined) {
       blindCredentialRequest = deepClone(this.spec.blindCredentialRequest) as object;
-      blindCredentialRequest.schema = JSON.stringify(this.spec.blindCredentialRequest.schema.toJSON());
+      blindCredentialRequest.schema = this.spec.blindCredentialRequest.schema.toJsonString();
       blindCredentialRequest.commitment = b58.encode(this.spec.blindCredentialRequest.commitment);
       if (this.blindedAttributeCiphertexts !== undefined) {
         blindedAttributeCiphertexts = {};

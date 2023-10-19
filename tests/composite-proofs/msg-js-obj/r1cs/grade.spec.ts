@@ -125,7 +125,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     const sIdx2 = statementsProver.add(statement2);
 
     const witnessEq1 = new WitnessEqualityMetaStatement();
-    //witnessEq1.addWitnessRef(sIdx1, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
+    witnessEq1.addWitnessRef(0, getIndicesForMsgNames(['grade'], attributesStruct)[0]);
     witnessEq1.addWitnessRef(sIdx2, 0);
 
     const metaStmtsProver = new MetaStatements();

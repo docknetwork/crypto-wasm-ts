@@ -12,7 +12,7 @@ import {
   SUBJECT_STR,
   ValueType,
   VERSION_STR,
-  TYPE_STR, IEmbeddedJsonSchema
+  TYPE_STR, IEmbeddedJsonSchema, FULL_SCHEMA_STR, SCHEMA_PROPS_STR, deepClone
 } from '../../src';
 import { getExampleSchema } from './utils';
 import { CredentialBuilder } from '../scheme';
@@ -27,9 +27,12 @@ describe('Credential Schema', () => {
   it('generates a valid json-schema', async () => {
 
     const schemaRef = 'https://example.com?hash=abc123ff';
+
+    // Function that returns a schema given a reference to it. In practice, this would likely involve a network call
     async function schemaGetter(ref: string): Promise<IEmbeddedJsonSchema> {
       return CredentialSchema.essential();
     }
+
     const nonEmbeddedSchema = {
       $id: schemaRef,
       [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
@@ -808,12 +811,12 @@ describe('Credential Schema', () => {
 
     expect(() => new CredentialSchema(schema4)).toThrow();
 
-    schema4.properties[STATUS_STR]['properties'][ID_STR] = { type: 'string' };
-    schema4.properties[STATUS_STR]['properties'][REV_CHECK_STR] = { type: 'string' };
+    schema4.properties[STATUS_STR][SCHEMA_PROPS_STR][ID_STR] = { type: 'string' };
+    schema4.properties[STATUS_STR][SCHEMA_PROPS_STR][REV_CHECK_STR] = { type: 'string' };
     expect(() => new CredentialSchema(schema4)).toThrow();
 
-    schema4.properties[STATUS_STR]['properties'][REV_ID_STR] = { type: 'string' };
-    schema4.properties[STATUS_STR]['properties'][TYPE_STR] = { type: 'string' };
+    schema4.properties[STATUS_STR][SCHEMA_PROPS_STR][REV_ID_STR] = { type: 'string' };
+    schema4.properties[STATUS_STR][SCHEMA_PROPS_STR][TYPE_STR] = { type: 'string' };
     const cs4 = new CredentialSchema(schema4);
     // @ts-ignore
     expect(cs4.schema[STATUS_STR][ID_STR]).toEqual({ type: 'string' });
@@ -837,7 +840,7 @@ describe('Credential Schema', () => {
   });
 
   it('validation of some more schemas', () => {
-    function nonEmbeddedSchema(id) {
+    function nonEmbeddedSchema(id: number) {
       return {
         $id: `https://example.com?hash=abcfe${id}`,
         [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
@@ -985,10 +988,13 @@ describe('Credential Schema', () => {
   it('to and from JSON', async () => {
     for (let i = 1; i <= 12; i++) {
       const schema = getExampleSchema(i);
-      const schemaRef = 'https://example.com?hash=abc123ff';
+      const schemaRef = `https://example.com?hash=abc123ff${i}`;
+
+      // Function that returns a schema given a reference to it. In practice, this would likely involve a network call
       async function schemaGetter(ref: string): Promise<IEmbeddedJsonSchema> {
         return schema;
       }
+
       const nonEmbeddedSchema = {
         $id: schemaRef,
         [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
@@ -1009,24 +1015,54 @@ describe('Credential Schema', () => {
           expect(cs.fullJsonSchema).toEqual(schema);
           expect(cs.jsonSchema).toEqual(nonEmbeddedSchema);
           // @ts-ignore
-          expect(CredentialSchema.convertToDataUri(cs.fullJsonSchema)).toEqual(j['fullJsonSchema']);
-          expect(CredentialSchema.convertFromDataUri(j['fullJsonSchema'])).toEqual(cs.fullJsonSchema);
+          expect(CredentialSchema.convertToDataUri(cs.fullJsonSchema)).toEqual(j[FULL_SCHEMA_STR]);
+          expect(CredentialSchema.convertFromDataUri(j[FULL_SCHEMA_STR])).toEqual(cs.fullJsonSchema);
         } else {
           expect(cs.jsonSchema).toEqual(schema);
           expect(cs.fullJsonSchema).not.toBeDefined();
         }
-        const recreatedCs = CredentialSchema.fromJSON(j);
-        expect(j).toEqual(recreatedCs.toJSON());
-        expect(cs.version).toEqual(recreatedCs.version);
-        expect(cs.jsonSchema).toEqual(recreatedCs.jsonSchema);
-        expect(cs.fullJsonSchema).toEqual(recreatedCs.fullJsonSchema);
-        expect(cs.schema).toEqual(recreatedCs.schema);
-        expect(
-          // @ts-ignore
-          JSON.stringify(Array.from(cs.encoder.encoders?.keys())) ===
-          // @ts-ignore
-          JSON.stringify(Array.from(recreatedCs.encoder.encoders?.keys()))
-        ).toEqual(true);
+
+        // Check schema recreated from JSON
+        async function checkRecreated(recreatedSchema: CredentialSchema) {
+          expect(j).toEqual(recreatedSchema.toJSON());
+          expect(cs.version).toEqual(recreatedSchema.version);
+          expect(cs.jsonSchema).toEqual(recreatedSchema.jsonSchema);
+          expect(cs.fullJsonSchema).toEqual(recreatedSchema.fullJsonSchema);
+          expect(cs.schema).toEqual(recreatedSchema.schema);
+          expect(
+            // @ts-ignore
+            JSON.stringify(Array.from(cs.encoder.encoders?.keys())) ===
+            // @ts-ignore
+            JSON.stringify(Array.from(recreatedSchema.encoder.encoders?.keys()))
+          ).toEqual(true);
+        }
+
+        await checkRecreated(CredentialSchema.fromJSON(j));
+
+        // Remove full json schema from the given schema json and load full schema from elsewhere
+        const schemaJsonWithoutFullSchema = deepClone(j);
+        // @ts-ignore
+        delete schemaJsonWithoutFullSchema[FULL_SCHEMA_STR];
+        // @ts-ignore
+        await checkRecreated((await CredentialSchema.fromJSONWithPotentiallyExternalSchema(schemaJsonWithoutFullSchema, schemaGetter)));
+
+        if (withSchemaRef) {
+          // For schemas containing a reference to the full schema, the full schema must be passed also
+          j[FULL_SCHEMA_STR] = nonEmbeddedSchema;
+          expect(() => CredentialSchema.fromJSON(j)).toThrow();
+          // For schemas containing a reference to the full schema, fromJSON must be passed the actual schema
+          delete j[FULL_SCHEMA_STR];
+          expect(() => CredentialSchema.fromJSON(j)).toThrow();
+        } else {
+          // For schemas containing an embedded JSON-schema already, passing full JSON schema additionally should fail
+          j[FULL_SCHEMA_STR] = {
+            $id: schemaRef,
+            [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
+            type: 'object',
+            [SCHEMA_PROPS_STR]: cs.getJsonSchemaProperties()
+          };
+          expect(() => CredentialSchema.fromJSON(j)).toThrow();
+        }
       }
 
       await check(false);
@@ -1300,6 +1336,8 @@ describe('Credential Schema', () => {
         }
       }
     };
+
+    // Function that returns a schema given a reference to it. In practice, this would likely involve a network call
     async function schemaGetter(ref: string): Promise<IEmbeddedJsonSchema> {
       return fullSchema;
     }

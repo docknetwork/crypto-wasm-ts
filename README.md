@@ -1302,7 +1302,7 @@ See some of the following tests for Circom usage:
 1. [The yearly income, calculate from monthly payslips is less/greater than certain amount.](./tests/composite-proofs/msg-js-obj/r1cs/yearly-income.spec.ts).
 2. [The sum of assets is greater than the sum of liabilities where are assets and liabilities are calculated from several credentials.](./tests/composite-proofs/msg-js-obj/r1cs/assets-liabilities.spec.ts)
 3. [The blood group is not AB-](./tests/composite-proofs/msg-js-obj/r1cs/blood-group.spec.ts)
-4. [The grade is either A+, A, B+, B or C but nothing else.](./tests/composite-proofs/msg-js-obj/r1cs/grade.ts)
+4. [The grade is either A+, A, B+, B or C but nothing else.](./tests/composite-proofs/msg-js-obj/r1cs/grade.spec.ts)
 5. [Either vaccinated less than 30 days ago OR last checked negative less than 2 days ago](./tests/composite-proofs/msg-js-obj/r1cs/vaccination.spec.ts)
 6. [All receipts (used as credentials) have different receipt (credential) ids](./tests/composite-proofs/msg-js-obj/r1cs/all_receipts_different.spec.ts). This test shows using multiple circuits in a single proof.
 7. [Certain attribute is the preimage of an MiMC hash](./tests/composite-proofs/msg-js-obj/r1cs/mimc-hash.spec.ts)

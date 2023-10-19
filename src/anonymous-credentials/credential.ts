@@ -28,7 +28,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
       [CRYPTO_VERSION_STR]: this.version,
       // Converting the schema to a JSON string rather than keeping it JSO object to avoid creating extra fields while
       // signing which makes the implementation more expensive as one sig param is needed for each field.
-      [SCHEMA_STR]: JSON.stringify(this.schema?.toJSON()),
+      [SCHEMA_STR]: this.schema?.toJsonString(),
       [SUBJECT_STR]: this.subject
     };
     for (const [k, v] of this.topLevelFields.entries()) {

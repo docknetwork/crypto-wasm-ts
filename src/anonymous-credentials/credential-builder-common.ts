@@ -89,7 +89,7 @@ export abstract class CredentialBuilderCommon extends Versioned {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
       [CRYPTO_VERSION_STR]: this._version,
-      [SCHEMA_STR]: JSON.stringify(this.schema?.toJSON()),
+      [SCHEMA_STR]: this.schema?.toJsonString(),
       [SUBJECT_STR]: this._subject
     };
     for (const [k, v] of this._topLevelFields.entries()) {

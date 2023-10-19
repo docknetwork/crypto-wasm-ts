@@ -42,7 +42,7 @@ export abstract class CredentialBuilder<
 > extends CredentialBuilderCommon {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.3.0';
+  static VERSION = '0.4.0';
 
   _encodedAttributes?: { [key: string]: Uint8Array };
   _sig?: Signature;
@@ -107,7 +107,7 @@ export abstract class CredentialBuilder<
       } else {
         // Generate new schema
         this.schema = CredentialSchema.generateAppropriateSchema(cred, schema);
-        cred[SCHEMA_STR] = JSON.stringify(this.schema?.toJSON());
+        cred[SCHEMA_STR] = this.schema?.toJsonString();
       }
     }
     return cred;

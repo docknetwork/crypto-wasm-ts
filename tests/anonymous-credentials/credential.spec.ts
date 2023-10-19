@@ -144,9 +144,12 @@ describe(`${Scheme} Credential signing and verification`, () => {
     };
 
     const schemaRef = 'https://example.com?hash=abc123ff';
+
+    // Function that returns a schema given a reference to it. In practice, this would likely involve a network call
     async function schemaGetter(ref: string): Promise<IEmbeddedJsonSchema> {
       return schema;
     }
+
     const nonEmbeddedSchema = {
       $id: schemaRef,
       [META_SCHEMA_STR]: 'http://json-schema.org/draft-07/schema#',
