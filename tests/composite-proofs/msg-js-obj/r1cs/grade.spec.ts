@@ -22,7 +22,16 @@ import {
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';
-import { SignatureParams, KeyPair, PublicKey, Signature, buildStatement, buildWitness, Scheme } from '../../../scheme';
+import {
+  SignatureParams,
+  KeyPair,
+  PublicKey,
+  Signature,
+  buildStatement,
+  buildWitness,
+  Scheme,
+  adaptKeyForParams
+} from '../../../scheme';
 
 // Test for scenario where the user wants to prove that his grade belongs/does not belong to the given set.
 // Similar test can be written for other "set-membership" relations like user is not resident of certain cities
@@ -92,7 +101,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
 
   it('signers signs attributes', () => {
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(1, label);
+    let params = SignatureParams.generate(20, label);
     const keypair = KeyPair.generate(params);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
@@ -111,6 +120,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     revealedNames.add('fname');
 
     const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
+    sigPk = adaptKeyForParams(sigPk, sigParams);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames,

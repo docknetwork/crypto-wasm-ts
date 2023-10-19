@@ -19,7 +19,16 @@ import {
 } from '../../../src';
 import { checkMapsEqual } from './index';
 import { defaultEncoder } from './data-and-encoder';
-import { SignatureParams, KeyPair, PublicKey, Signature, buildStatement, buildWitness, Scheme } from '../../scheme';
+import {
+  SignatureParams,
+  KeyPair,
+  PublicKey,
+  Signature,
+  buildStatement,
+  buildWitness,
+  Scheme,
+  adaptKeyForParams
+} from '../../scheme';
 import { PederCommKey } from '../../../src/ped-com';
 
 // Test for scenario where the user wants to prove that he is not resident of certain cities.
@@ -65,7 +74,7 @@ describe(`${Scheme} Proving that not resident of certain cities`, () => {
 
   it('signers signs attributes', () => {
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(1, label);
+    let params = SignatureParams.generate(20, label);
     const keypair = KeyPair.generate(params);
     const sk = keypair.secretKey;
     sigPk = keypair.publicKey;
@@ -81,6 +90,7 @@ describe(`${Scheme} Proving that not resident of certain cities`, () => {
     revealedNames.add('fname');
 
     const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
+    sigPk = adaptKeyForParams(sigPk, sigParams);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes,
       revealedNames,
