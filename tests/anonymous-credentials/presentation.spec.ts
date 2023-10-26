@@ -34,7 +34,7 @@ import {
   BoundCheckSmcWithKVSetup,
   META_SCHEMA_STR,
   DefaultSchemaParsingOpts,
-  InequalityProtocols
+  InequalityProtocols, BoundCheckParamType
 } from '../../src';
 import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
@@ -65,7 +65,6 @@ import {
   SignatureLabelBytes,
   SignatureParams
 } from '../scheme';
-import { PederCommKey } from '../../src/ped-com';
 
 // Setting it to false will make the test run the SNARK setups making tests quite slow
 const loadSnarkSetupFromFiles = true;
@@ -1056,12 +1055,11 @@ describe.each([true, false])(
     });
 
     it('from credential `credential1` and proving some attributes inequal to public values', () => {
-      const commKeyId = 'commKeyId';
-      const commKey = new PederCommKey(stringToBytes('test'));
 
       const builder = new PresentationBuilder();
       expect(builder.addCredential(credential1, pk1)).toEqual(0);
       expect(builder.addCredential(credential2, pk2)).toEqual(1);
+      expect(builder.addCredential(credential7, pk1)).toEqual(2);
 
       builder.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
 
@@ -1074,35 +1072,38 @@ describe.each([true, false])(
       const score2 = -10.1;
       const ssn = 'abcdf';
       const city = 'NYC';
-      builder.enforceAttributeInequality(0, 'credentialSubject.email', inEqualEmail, commKeyId, commKey);
-      builder.enforceAttributeInequality(0, 'credentialSubject.email', inEqualEmail2, commKeyId);
-      builder.enforceAttributeInequality(0, 'credentialSubject.timeOfBirth', inequalTob, commKeyId);
-      builder.enforceAttributeInequality(0, 'credentialSubject.timeOfBirth', inequalTob2, commKeyId);
-      builder.enforceAttributeInequality(0, 'credentialSubject.timeOfBirth', inequalTob3, commKeyId);
-      builder.enforceAttributeInequality(0, 'credentialSubject.score', score, commKeyId);
-      builder.enforceAttributeInequality(0, 'credentialSubject.score', score2, commKeyId);
-      builder.enforceAttributeInequality(0, 'credentialSubject.SSN', ssn, commKeyId);
-      builder.enforceAttributeInequality(1, 'credentialSubject.sensitive.email', inEqualEmail, commKeyId);
-      builder.enforceAttributeInequality(1, 'credentialSubject.sensitive.email', inEqualEmail2, commKeyId);
-      builder.enforceAttributeInequality(1, 'credentialSubject.location.city', city, commKeyId);
+      builder.enforceAttributeInequality(0, 'credentialSubject.email', inEqualEmail);
+      builder.enforceAttributeInequality(0, 'credentialSubject.email', inEqualEmail2);
+      builder.enforceAttributeInequality(0, 'credentialSubject.timeOfBirth', inequalTob);
+      builder.enforceAttributeInequality(0, 'credentialSubject.timeOfBirth', inequalTob2);
+      builder.enforceAttributeInequality(0, 'credentialSubject.timeOfBirth', inequalTob3);
+      builder.enforceAttributeInequality(0, 'credentialSubject.score', score);
+      builder.enforceAttributeInequality(0, 'credentialSubject.score', score2);
+      builder.enforceAttributeInequality(0, 'credentialSubject.SSN', ssn);
+      builder.enforceAttributeInequality(1, 'credentialSubject.sensitive.email', inEqualEmail);
+      builder.enforceAttributeInequality(1, 'credentialSubject.sensitive.email', inEqualEmail2);
+      builder.enforceAttributeInequality(1, 'credentialSubject.location.city', city);
+      builder.enforceAttributeInequality(1, 'credentialSubject.isbool', false);
+      builder.enforceAttributeInequality(2, 'credentialSubject.myDate', '2023-10-15');
+      builder.enforceAttributeInequality(2, 'credentialSubject.myDate', new Date('2023-10-16'));
 
       const pres = builder.finalize();
       expect(pres.spec.credentials[0].attributeInequalities).toEqual({
         credentialSubject: {
           email: [
-            { inEqualTo: inEqualEmail, paramId: commKeyId, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: inEqualEmail2, paramId: commKeyId, protocol: InequalityProtocols.Uprove }
+            { inEqualTo: inEqualEmail, protocol: InequalityProtocols.Uprove },
+            { inEqualTo: inEqualEmail2, protocol: InequalityProtocols.Uprove }
           ],
           timeOfBirth: [
-            { inEqualTo: inequalTob, paramId: commKeyId, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: inequalTob2, paramId: commKeyId, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: inequalTob3, paramId: commKeyId, protocol: InequalityProtocols.Uprove }
+            { inEqualTo: inequalTob, protocol: InequalityProtocols.Uprove },
+            { inEqualTo: inequalTob2, protocol: InequalityProtocols.Uprove },
+            { inEqualTo: inequalTob3, protocol: InequalityProtocols.Uprove }
           ],
           score: [
-            { inEqualTo: score, paramId: commKeyId, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: score2, paramId: commKeyId, protocol: InequalityProtocols.Uprove }
+            { inEqualTo: score, protocol: InequalityProtocols.Uprove },
+            { inEqualTo: score2, protocol: InequalityProtocols.Uprove }
           ],
-          SSN: [{ inEqualTo: ssn, paramId: commKeyId, protocol: InequalityProtocols.Uprove }]
+          SSN: [{ inEqualTo: ssn, protocol: InequalityProtocols.Uprove }]
         }
       });
 
@@ -1110,25 +1111,32 @@ describe.each([true, false])(
         credentialSubject: {
           sensitive: {
             email: [
-              { inEqualTo: inEqualEmail, paramId: commKeyId, protocol: InequalityProtocols.Uprove },
-              { inEqualTo: inEqualEmail2, paramId: commKeyId, protocol: InequalityProtocols.Uprove }
+              { inEqualTo: inEqualEmail, protocol: InequalityProtocols.Uprove },
+              { inEqualTo: inEqualEmail2, protocol: InequalityProtocols.Uprove }
             ]
           },
           location: {
-            city: [{ inEqualTo: city, paramId: commKeyId, protocol: InequalityProtocols.Uprove }]
-          }
+            city: [{ inEqualTo: city, protocol: InequalityProtocols.Uprove }]
+          },
+          isbool: [{ inEqualTo: false, protocol: InequalityProtocols.Uprove }]
         }
       });
 
-      const pp = new Map();
-      pp.set(commKeyId, commKey);
+      expect(pres.spec.credentials[2].attributeInequalities).toEqual({
+        credentialSubject: {
+          myDate: [
+            { inEqualTo: '2023-10-15', protocol: InequalityProtocols.Uprove },
+            { inEqualTo: new Date('2023-10-16'), protocol: InequalityProtocols.Uprove }
+          ],
+        }
+      });
 
-      checkResult(pres.verify([pk1, pk2], undefined, pp));
+      checkResult(pres.verify([pk1, pk2, pk1]));
 
-      checkPresentationJson(pres, [pk1, pk2], undefined, pp);
+      checkPresentationJson(pres, [pk1, pk2, pk1]);
     });
 
-    function checkBounds(paramId: string, provingParams, verifyingParams, protocol) {
+    function checkBounds(protocol: BoundCheckProtocols, paramId?: string, provingParams?: BoundCheckParamType, verifyingParams?: BoundCheckParamType) {
       // ------------------- Presentation with 1 credential -----------------------------------------
       console.time(`Proof generation over 1 credential and 3 bound-check in total using ${protocol}`);
       const builder7 = new PresentationBuilder();
@@ -1173,24 +1181,24 @@ describe.each([true, false])(
       // presentation are what's expected and the presentation is valid.
       expect(pres1.spec.credentials[0].bounds).toEqual({
         credentialSubject: {
-          timeOfBirth: {
+          timeOfBirth: [{
             min: minTime,
             max: maxTime,
             paramId: paramId,
             protocol: protocol
-          },
-          BMI: {
+          }],
+          BMI: [{
             min: minBMI,
             max: maxBMI,
             paramId: paramId,
             protocol: protocol
-          },
-          score: {
+          }],
+          score: [{
             min: minScore,
             max: maxScore,
             paramId: paramId,
             protocol: protocol
-          }
+          }]
         }
       });
 
@@ -1271,24 +1279,24 @@ describe.each([true, false])(
       // corresponding credential in the presentation are what's expected and the presentation is valid.
       expect(pres2.spec.credentials[0].bounds).toEqual({
         credentialSubject: {
-          timeOfBirth: {
+          timeOfBirth: [{
             min: minTime,
             max: maxTime,
             paramId: paramId,
             protocol: protocol
-          },
-          BMI: {
+          }],
+          BMI: [{
             min: minBMI,
             max: maxBMI,
             paramId: paramId,
             protocol: protocol
-          },
-          score: {
+          }],
+          score: [{
             min: minScore,
             max: maxScore,
             paramId: paramId,
             protocol: protocol
-          }
+          }]
         }
       });
 
@@ -1298,18 +1306,18 @@ describe.each([true, false])(
             department: {
               location: {
                 geo: {
-                  lat: {
+                  lat: [{
                     min: minLat,
                     max: maxLat,
                     paramId: paramId,
                     protocol: protocol
-                  },
-                  long: {
+                  }],
+                  long: [{
                     min: minLong,
                     max: maxLong,
                     paramId: paramId,
                     protocol: protocol
-                  }
+                  }]
                 }
               }
             }
@@ -1336,7 +1344,7 @@ describe.each([true, false])(
       checkPresentationJson(pres2, [pk1, pk2, pk3], acc, pp1);
     }
 
-    function checkBoundsOnDates(paramId: string, provingParams, verifyingParams, protocol) {
+    function checkBoundsOnDates(protocol: BoundCheckProtocols, paramId?: string, provingParams?: BoundCheckParamType, verifyingParams?: BoundCheckParamType) {
       console.time(`Proof generation over 1 credential and 2 bound-check in total using ${protocol}`);
       const builder7 = new PresentationBuilder();
       expect(builder7.addCredential(credential7, pk1)).toEqual(0);
@@ -1370,18 +1378,18 @@ describe.each([true, false])(
       // presentation are what's expected and the presentation is valid.
       expect(pres1.spec.credentials[0].bounds).toEqual({
         credentialSubject: {
-          myDateTime: {
+          myDateTime: [{
             min: minDateTime.getTime(),
             max: maxDateTime.getTime(),
             paramId: paramId,
             protocol: protocol
-          },
-          myDate: {
+          }],
+          myDate: [{
             min: minDate.getTime(),
             max: maxDate.getTime(),
             paramId: paramId,
             protocol: protocol
-          }
+          }]
         }
       });
 
@@ -1397,47 +1405,55 @@ describe.each([true, false])(
 
     it('from credentials and proving bounds using LegoGroth16 on attributes as dates', () => {
       setupBoundCheckLego();
-      checkBoundsOnDates('random', boundCheckProvingKey, boundCheckVerifyingKey, BoundCheckProtocols.Legogroth16);
+      checkBoundsOnDates(BoundCheckProtocols.Legogroth16, 'random', boundCheckProvingKey, boundCheckVerifyingKey);
     });
 
     it('from credentials and proving bounds using Bulletproofs++ on attributes as dates', () => {
       setupBoundCheckBpp();
-      checkBoundsOnDates('random', boundCheckBppParams, boundCheckBppParams, BoundCheckProtocols.Bpp);
+      checkBoundsOnDates(BoundCheckProtocols.Bpp, 'random', boundCheckBppParams, boundCheckBppParams);
+    });
+
+    it('from credentials and proving bounds using Bulletproofs++ on attributes as dates and using default setup', () => {
+      checkBoundsOnDates(BoundCheckProtocols.Bpp);
     });
 
     it('from credentials and proving bounds using set-membership check on attributes as dates', () => {
       setupBoundCheckSmc();
-      checkBoundsOnDates('random', boundCheckSmcParams, boundCheckSmcParams, BoundCheckProtocols.Smc);
+      checkBoundsOnDates(BoundCheckProtocols.Smc, 'random', boundCheckSmcParams, boundCheckSmcParams);
     });
 
     it('from credentials and proving bounds using set-membership check with keyed verification on attributes as dates', () => {
       setupBoundCheckSmcWithKV();
       checkBoundsOnDates(
+        BoundCheckProtocols.SmcKV,
         'random',
         boundCheckSmcKVProverParams,
         boundCheckSmcKVVerifierParams,
-        BoundCheckProtocols.SmcKV
       );
     });
 
     it('from credentials and proving bounds on attributes using LegorGroth16', () => {
       setupBoundCheckLego();
-      checkBounds('random', boundCheckProvingKey, boundCheckVerifyingKey, BoundCheckProtocols.Legogroth16);
+      checkBounds(BoundCheckProtocols.Legogroth16, 'random', boundCheckProvingKey, boundCheckVerifyingKey);
     });
 
     it('from credentials and proving bounds on attributes using Bulletproofs++', () => {
       setupBoundCheckBpp();
-      checkBounds('random', boundCheckBppParams, boundCheckBppParams, BoundCheckProtocols.Bpp);
+      checkBounds(BoundCheckProtocols.Bpp, 'random', boundCheckBppParams, boundCheckBppParams);
+    });
+
+    it('from credentials and proving bounds on attributes using Bulletproofs++ and using default setup', () => {
+      checkBounds(BoundCheckProtocols.Bpp);
     });
 
     it('from credentials and proving bounds on attributes using set-membership check', () => {
       setupBoundCheckSmc();
-      checkBounds('random', boundCheckSmcParams, boundCheckSmcParams, BoundCheckProtocols.Smc);
+      checkBounds(BoundCheckProtocols.Smc, 'random', boundCheckSmcParams, boundCheckSmcParams);
     });
 
     it('from credentials and proving bounds on attributes using set-membership check and keyed-verification', () => {
       setupBoundCheckSmcWithKV();
-      checkBounds('random', boundCheckSmcKVProverParams, boundCheckSmcKVVerifierParams, BoundCheckProtocols.SmcKV);
+      checkBounds(BoundCheckProtocols.SmcKV, 'random', boundCheckSmcKVProverParams, boundCheckSmcKVVerifierParams);
     });
 
     it('from credentials and encryption of attributes', () => {
@@ -1474,13 +1490,13 @@ describe.each([true, false])(
       // Verifier checks that the correct encryption key and other parameters were used by the prover
       expect(pres1.spec.credentials[0].verifiableEncryptions).toEqual({
         credentialSubject: {
-          SSN: {
+          SSN: [{
             chunkBitSize,
             commitmentGensId: commKeyId,
             encryptionKeyId: ekId,
             snarkKeyId: snarkPkId,
             protocol: VerifiableEncryptionProtocols.Saver
-          }
+          }]
         }
       });
 
@@ -1500,7 +1516,7 @@ describe.each([true, false])(
 
       checkPresentationJson(pres1, [pk1], undefined, pp);
 
-      checkCiphertext(
+      expect(checkCiphertext(
         credential1,
         // @ts-ignore
         pres1.attributeCiphertexts?.get(0),
@@ -1509,7 +1525,7 @@ describe.each([true, false])(
         saverDk,
         saverVerifyingKey,
         chunkBitSize
-      );
+      )).toEqual(1);
       // ---------------------------------- Presentation with 3 credentials ---------------------------------
 
       const ckNew = SaverChunkedCommitmentKey.generate(stringToBytes('another nonce'));
@@ -1562,25 +1578,25 @@ describe.each([true, false])(
 
       expect(pres2.spec.credentials[0].verifiableEncryptions).toEqual({
         credentialSubject: {
-          SSN: {
+          SSN: [{
             chunkBitSize,
             commitmentGensId: commKeyId,
             encryptionKeyId: ekId,
             snarkKeyId: snarkPkId,
             protocol: VerifiableEncryptionProtocols.Saver
-          }
+          }]
         }
       });
       expect(pres2.spec.credentials[1].verifiableEncryptions).toEqual({
         credentialSubject: {
           sensitive: {
-            userId: {
+            userId: [{
               chunkBitSize,
               commitmentGensId: commKeyId,
               encryptionKeyId: ekId,
               snarkKeyId: snarkPkId,
               protocol: VerifiableEncryptionProtocols.Saver
-            }
+            }]
           }
         }
       });
@@ -1613,7 +1629,7 @@ describe.each([true, false])(
       // @ts-ignore
       expect(pres2.attributeCiphertexts.get(1)).toBeDefined();
 
-      checkCiphertext(
+      expect(checkCiphertext(
         credential1,
         // @ts-ignore
         pres2.attributeCiphertexts?.get(0),
@@ -1622,9 +1638,9 @@ describe.each([true, false])(
         saverDk,
         saverVerifyingKey,
         chunkBitSize
-      );
+      )).toEqual(1);
 
-      checkCiphertext(
+      expect(checkCiphertext(
         credential2,
         // @ts-ignore
         pres2.attributeCiphertexts?.get(1),
@@ -1633,7 +1649,7 @@ describe.each([true, false])(
         saverDk,
         saverVerifyingKey,
         chunkBitSize
-      );
+      )).toEqual(1);
     });
 
     it('from credentials with proving bounds on attributes and encryption of some attributes', () => {
@@ -1753,35 +1769,35 @@ describe.each([true, false])(
       // Verifier checks that for the first credential, the bounds are satisfied and the attribute ciphertext is present
       expect(pres1.spec.credentials[0].bounds).toEqual({
         credentialSubject: {
-          timeOfBirth: {
+          timeOfBirth: [{
             min: minTime,
             max: maxTime,
             paramId: boundCheckSnarkId,
             protocol: BoundCheckProtocols.Legogroth16
-          },
-          BMI: {
+          }],
+          BMI: [{
             min: minBMI,
             max: maxBMI,
             paramId: boundCheckSnarkId,
             protocol: BoundCheckProtocols.Legogroth16
-          },
-          score: {
+          }],
+          score: [{
             min: minScore,
             max: maxScore,
             paramId: boundCheckSnarkId,
             protocol: BoundCheckProtocols.Legogroth16
-          }
+          }]
         }
       });
       expect(pres1.spec.credentials[0].verifiableEncryptions).toEqual({
         credentialSubject: {
-          SSN: {
+          SSN: [{
             chunkBitSize,
             commitmentGensId: commKeyId,
             encryptionKeyId: ekId,
             snarkKeyId: snarkPkId,
             protocol: VerifiableEncryptionProtocols.Saver
-          }
+          }]
         }
       });
 
@@ -1792,18 +1808,18 @@ describe.each([true, false])(
             department: {
               location: {
                 geo: {
-                  lat: {
+                  lat: [{
                     min: minLat,
                     max: maxLat,
                     paramId: boundCheckSnarkId,
                     protocol: BoundCheckProtocols.Legogroth16
-                  },
-                  long: {
+                  }],
+                  long: [{
                     min: minLong,
                     max: maxLong,
                     paramId: boundCheckSnarkId,
                     protocol: BoundCheckProtocols.Legogroth16
-                  }
+                  }]
                 }
               }
             }
@@ -1813,13 +1829,13 @@ describe.each([true, false])(
       expect(pres1.spec.credentials[1].verifiableEncryptions).toEqual({
         credentialSubject: {
           sensitive: {
-            userId: {
+            userId: [{
               chunkBitSize,
               commitmentGensId: commKeyId,
               encryptionKeyId: ekId,
               snarkKeyId: snarkPkId,
               protocol: VerifiableEncryptionProtocols.Saver
-            }
+            }]
           }
         }
       });
@@ -1850,7 +1866,7 @@ describe.each([true, false])(
       builder1.markAttributesRevealed(
         0,
         new Set<string>([
-          'credentialSubject.0.name',
+          // 'credentialSubject.0.name',
           'credentialSubject.1.name',
           'credentialSubject.1.location.name',
           'credentialSubject.2.location.name'
@@ -1861,9 +1877,7 @@ describe.each([true, false])(
       expect(pres1.spec.credentials.length).toEqual(1);
       expect(pres1.spec.credentials[0].revealedAttributes).toEqual({
         credentialSubject: [
-          {
-            name: 'Random'
-          },
+          undefined,
           {
             name: 'Random-1',
             location: {
@@ -1889,40 +1903,16 @@ describe.each([true, false])(
       builder2.markAttributesRevealed(
         0,
         new Set<string>([
-          'credentialSubject.0.name',
-          'credentialSubject.1.name',
-          'credentialSubject.1.location.name',
           'credentialSubject.2.location.name'
         ])
       );
-
-      const [minLat0, maxLat0] = [-30, 50];
-      // @ts-ignore
-      expect(minLat0).toBeLessThan(credential5.subject[0].location.geo.lat);
-      // @ts-ignore
-      expect(maxLat0).toBeGreaterThan(credential5.subject[0].location.geo.lat);
-      builder2.enforceBounds(
-        0,
-        'credentialSubject.0.location.geo.lat',
-        minLat0,
-        maxLat0,
-        boundCheckSnarkId,
-        boundCheckProvingKey
-      );
-
-      const [minLong0, maxLong0] = [1, 10.5];
-      // @ts-ignore
-      expect(minLong0).toBeLessThan(credential5.subject[0].location.geo.long);
-      // @ts-ignore
-      expect(maxLong0).toBeGreaterThan(credential5.subject[0].location.geo.long);
-      builder2.enforceBounds(0, 'credentialSubject.0.location.geo.long', minLong0, maxLong0, boundCheckSnarkId);
 
       const [minLat1, maxLat1] = [25.6, 50];
       // @ts-ignore
       expect(minLat1).toBeLessThan(credential5.subject[1].location.geo.lat);
       // @ts-ignore
       expect(maxLat1).toBeGreaterThan(credential5.subject[1].location.geo.lat);
-      builder2.enforceBounds(0, 'credentialSubject.1.location.geo.lat', minLat1, maxLat1, boundCheckSnarkId);
+      builder2.enforceBounds(0, 'credentialSubject.1.location.geo.lat', minLat1, maxLat1, boundCheckSnarkId, boundCheckProvingKey);
 
       const [minLong1, maxLong1] = [-50.1, 0];
       // @ts-ignore
@@ -1949,15 +1939,9 @@ describe.each([true, false])(
 
       expect(pres2.spec.credentials[0].revealedAttributes).toEqual({
         credentialSubject: [
-          {
-            name: 'Random'
-          },
-          {
-            name: 'Random-1',
-            location: {
-              name: 'Somewhere-1'
-            }
-          },
+          // Since there are no revealed attributes in the first 2 items of this array attribute
+          undefined,
+          undefined,
           {
             location: {
               name: 'Somewhere-2'
@@ -1967,57 +1951,41 @@ describe.each([true, false])(
       });
       expect(pres2.spec.credentials[0].bounds).toEqual({
         credentialSubject: [
+          // Since there is no bound check predicate for the first item of this array attribute
+          undefined,
           {
             location: {
               geo: {
-                lat: {
-                  min: minLat0,
-                  max: maxLat0,
-                  paramId: boundCheckSnarkId,
-                  protocol: BoundCheckProtocols.Legogroth16
-                },
-                long: {
-                  min: minLong0,
-                  max: maxLong0,
-                  paramId: boundCheckSnarkId,
-                  protocol: BoundCheckProtocols.Legogroth16
-                }
-              }
-            }
-          },
-          {
-            location: {
-              geo: {
-                lat: {
+                lat: [{
                   min: minLat1,
                   max: maxLat1,
                   paramId: boundCheckSnarkId,
                   protocol: BoundCheckProtocols.Legogroth16
-                },
-                long: {
+                }],
+                long: [{
                   min: minLong1,
                   max: maxLong1,
                   paramId: boundCheckSnarkId,
                   protocol: BoundCheckProtocols.Legogroth16
-                }
+                }]
               }
             }
           },
           {
             location: {
               geo: {
-                lat: {
+                lat: [{
                   min: minLat2,
                   max: maxLat2,
                   paramId: boundCheckSnarkId,
                   protocol: BoundCheckProtocols.Legogroth16
-                },
-                long: {
+                }],
+                long: [{
                   min: minLong2,
                   max: maxLong2,
                   paramId: boundCheckSnarkId,
                   protocol: BoundCheckProtocols.Legogroth16
-                }
+                }]
               }
             }
           }
@@ -2132,18 +2100,18 @@ describe.each([true, false])(
         }
       });
       expect(pres2.spec.credentials[0].bounds).toEqual({
-        issuanceDate: {
+        issuanceDate: [{
           min: minIssuanceDate,
           max: maxIssuanceDate,
           paramId: boundCheckSnarkId,
           protocol: BoundCheckProtocols.Legogroth16
-        },
-        expirationDate: {
+        }],
+        expirationDate: [{
           min: minExpDate,
           max: maxExpDate,
           paramId: boundCheckSnarkId,
           protocol: BoundCheckProtocols.Legogroth16
-        }
+        }]
       });
 
       const pp = new Map();

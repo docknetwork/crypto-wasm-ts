@@ -70,7 +70,6 @@ import {
 import { flatten, unflatten } from 'flat';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 import { BBSBlindedCredentialRequest, BBSPlusBlindedCredentialRequest, BlindedCredentialRequest } from '../../src';
-import { PederCommKey } from '../../src/ped-com';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -296,9 +295,6 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
   });
 
   it('should be able to request a credential when some attributes are blinded', async () => {
-    const commKeyId = 'commKeyId';
-    const commKey = new PederCommKey(stringToBytes('test'));
-
     const blindedSubject = {
       sensitive: {
         email: 'john.smith@example.com',
@@ -316,14 +312,9 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     const inEqualEmail = 'alice@example.com';
     const inEqualEmail2 = 'bob@example.com';
     const inEqualSsn = '1234';
-    reqBuilder.enforceInequalityOnBlindedAttribute(
-      'credentialSubject.sensitive.email',
-      inEqualEmail,
-      commKeyId,
-      commKey
-    );
-    reqBuilder.enforceInequalityOnBlindedAttribute('credentialSubject.sensitive.email', inEqualEmail2, commKeyId);
-    reqBuilder.enforceInequalityOnBlindedAttribute('credentialSubject.sensitive.SSN', inEqualSsn, commKeyId);
+    reqBuilder.enforceInequalityOnBlindedAttribute('credentialSubject.sensitive.email', inEqualEmail);
+    reqBuilder.enforceInequalityOnBlindedAttribute('credentialSubject.sensitive.email', inEqualEmail2);
+    reqBuilder.enforceInequalityOnBlindedAttribute('credentialSubject.sensitive.SSN', inEqualSsn);
 
     const [req, blinding] = finalize(reqBuilder);
 
@@ -331,20 +322,17 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       credentialSubject: {
         sensitive: {
           email: [
-            { inEqualTo: inEqualEmail, paramId: commKeyId, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: inEqualEmail2, paramId: commKeyId, protocol: InequalityProtocols.Uprove }
+            { inEqualTo: inEqualEmail, protocol: InequalityProtocols.Uprove },
+            { inEqualTo: inEqualEmail2, protocol: InequalityProtocols.Uprove }
           ],
-          SSN: [{ inEqualTo: inEqualSsn, paramId: commKeyId, protocol: InequalityProtocols.Uprove }]
+          SSN: [{ inEqualTo: inEqualSsn, protocol: InequalityProtocols.Uprove }]
         }
       }
     });
 
-    const pp = new Map();
-    pp.set(commKeyId, commKey);
+    checkResult(req.verify([]));
 
-    checkResult(req.verify([], undefined, pp));
-
-    checkReqJson(req, [], undefined, pp);
+    checkReqJson(req, []);
 
     checkBlindedSubject(req, blindedSubject);
 
@@ -468,15 +456,20 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     setupSaver();
 
     const boundCheckSnarkId = 'random';
-    const commKeyId = 'random-1';
-    const ekId = 'random-2';
-    const snarkPkId = 'random-3';
+    const commKeyId1 = 'random-1';
+    const commKeyId2 = 'random-10';
+    const ekId1 = 'random-2';
+    const ekId2 = 'random-20';
+    const snarkPkId1 = 'random-3';
+    const snarkPkId2 = 'random-30';
     const boundCheckBppId = 'random-4';
     const boundCheckSmcId = 'random-5';
     const boundCheckSmcKVId = 'random-6';
 
-    const ck = SaverChunkedCommitmentKey.generate(stringToBytes('a new nonce'));
-    const commKey = ck.decompress();
+    const ck1 = SaverChunkedCommitmentKey.generate(stringToBytes('a new nonce'));
+    const commKey1 = ck1.decompress();
+    const ck2 = SaverChunkedCommitmentKey.generate(stringToBytes('a new nonce - 1'));
+    const commKey2 = ck2.decompress();
 
     const blindedSubject = [
       {
@@ -559,6 +552,18 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       boundCheckBppParams
     );
 
+    const [minHist, maxHist] = [20, 60];
+    // @ts-ignore
+    expect(minHist).toBeLessThan(credential1.subject.education.transcript.scores.history);
+    // @ts-ignore
+    expect(maxHist).toBeGreaterThan(credential1.subject.education.transcript.scores.history);
+    reqBuilder.enforceBoundsOnCredentialAttribute(
+      0,
+      'credentialSubject.education.transcript.scores.history',
+      minHist,
+      maxHist
+    );
+
     const [minEng, maxEng] = [20, 100];
     // @ts-ignore
     expect(minEng).toBeLessThan(credential1.subject.education.transcript.scores.english);
@@ -591,10 +596,10 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       0,
       'credentialSubject.sensitive.SSN',
       chunkBitSize,
-      commKeyId,
-      ekId,
-      snarkPkId,
-      commKey,
+      commKeyId1,
+      ekId1,
+      snarkPkId1,
+      commKey1,
       saverEk,
       saverProvingKey
     );
@@ -602,9 +607,22 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       1,
       'credentialSubject.SSN',
       chunkBitSize,
-      commKeyId,
-      ekId,
-      snarkPkId
+      commKeyId1,
+      ekId1,
+      snarkPkId1
+    );
+    // The same snark setup is repeated here but this is only for testing. In practice, different snark setup will be used
+    // as the encryption if being done for different parties.
+    reqBuilder.verifiablyEncryptCredentialAttribute(
+      1,
+      'credentialSubject.SSN',
+      chunkBitSize,
+      commKeyId2,
+      ekId2,
+      snarkPkId2,
+      commKey2,
+      saverEk,
+      saverProvingKey
     );
 
     const [req, blinding] = finalize(reqBuilder);
@@ -613,11 +631,12 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       credentialSubject: {
         education: {
           transcript: {
-            CGPA: { min: 2.5, max: 3.5, paramId: boundCheckSnarkId, protocol: BoundCheckProtocols.Legogroth16 },
-            rank: { min: 50, max: 200, paramId: boundCheckBppId, protocol: BoundCheckProtocols.Bpp },
+            CGPA: [{ min: 2.5, max: 3.5, paramId: boundCheckSnarkId, protocol: BoundCheckProtocols.Legogroth16 }],
+            rank: [{ min: 50, max: 200, paramId: boundCheckBppId, protocol: BoundCheckProtocols.Bpp }],
             scores: {
-              english: { min: 20, max: 100, paramId: boundCheckSmcId, protocol: BoundCheckProtocols.Smc },
-              science: { min: 30, max: 100, paramId: boundCheckSmcKVId, protocol: BoundCheckProtocols.SmcKV }
+              english: [{ min: 20, max: 100, paramId: boundCheckSmcId, protocol: BoundCheckProtocols.Smc }],
+              science: [{ min: 30, max: 100, paramId: boundCheckSmcKVId, protocol: BoundCheckProtocols.SmcKV }],
+              history: [{ min: 20, max: 60, paramId: undefined, protocol: BoundCheckProtocols.Bpp }]
             }
           }
         }
@@ -626,25 +645,36 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     expect(req.presentation.spec.credentials[0].verifiableEncryptions).toEqual({
       credentialSubject: {
         sensitive: {
-          SSN: {
-            chunkBitSize,
-            commitmentGensId: commKeyId,
-            encryptionKeyId: ekId,
-            snarkKeyId: snarkPkId,
-            protocol: VerifiableEncryptionProtocols.Saver
-          }
+          SSN: [
+            {
+              chunkBitSize,
+              commitmentGensId: commKeyId1,
+              encryptionKeyId: ekId1,
+              snarkKeyId: snarkPkId1,
+              protocol: VerifiableEncryptionProtocols.Saver
+            }
+          ]
         }
       }
     });
     expect(req.presentation.spec.credentials[1].verifiableEncryptions).toEqual({
       credentialSubject: {
-        SSN: {
-          chunkBitSize,
-          commitmentGensId: commKeyId,
-          encryptionKeyId: ekId,
-          snarkKeyId: snarkPkId,
-          protocol: VerifiableEncryptionProtocols.Saver
-        }
+        SSN: [
+          {
+            chunkBitSize,
+            commitmentGensId: commKeyId1,
+            encryptionKeyId: ekId1,
+            snarkKeyId: snarkPkId1,
+            protocol: VerifiableEncryptionProtocols.Saver
+          },
+          {
+            chunkBitSize,
+            commitmentGensId: commKeyId2,
+            encryptionKeyId: ekId2,
+            snarkKeyId: snarkPkId2,
+            protocol: VerifiableEncryptionProtocols.Saver
+          }
+        ]
       }
     });
     expect(req.presentation.attributeCiphertexts.size).toEqual(2);
@@ -655,9 +685,12 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     acc.set(0, accumulator1Pk);
     const pp = new Map();
     pp.set(boundCheckSnarkId, boundCheckVerifyingKey);
-    pp.set(commKeyId, commKey);
-    pp.set(ekId, saverEk);
-    pp.set(snarkPkId, saverVerifyingKey);
+    pp.set(commKeyId1, commKey1);
+    pp.set(commKeyId2, commKey2);
+    pp.set(ekId1, saverEk);
+    pp.set(ekId2, saverEk);
+    pp.set(snarkPkId1, saverVerifyingKey);
+    pp.set(snarkPkId2, saverVerifyingKey);
     pp.set(boundCheckBppId, boundCheckBppParams);
     pp.set(boundCheckSmcId, boundCheckSmcParams);
     pp.set(boundCheckSmcKVId, boundCheckSmcKVVerifierParams);
@@ -665,25 +698,29 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     checkReqJson(req, [pk1, pk2], acc, pp);
 
-    checkCiphertext(
-      credential1,
-      req.presentation.attributeCiphertexts?.get(0),
-      'sensitive.SSN',
-      saverSk,
-      saverDk,
-      saverVerifyingKey,
-      chunkBitSize
-    );
+    expect(
+      checkCiphertext(
+        credential1,
+        req.presentation.attributeCiphertexts?.get(0),
+        'sensitive.SSN',
+        saverSk,
+        saverDk,
+        saverVerifyingKey,
+        chunkBitSize
+      )
+    ).toEqual(1);
 
-    checkCiphertext(
-      credential2,
-      req.presentation.attributeCiphertexts?.get(1),
-      'SSN',
-      saverSk,
-      saverDk,
-      saverVerifyingKey,
-      chunkBitSize
-    );
+    expect(
+      checkCiphertext(
+        credential2,
+        req.presentation.attributeCiphertexts?.get(1),
+        'SSN',
+        saverSk,
+        saverDk,
+        saverVerifyingKey,
+        chunkBitSize
+      )
+    ).toEqual(2);
 
     checkBlindedSubject(req, blindedSubject);
 
@@ -793,24 +830,28 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     expect(req.presentation.spec.blindCredentialRequest.bounds).toEqual({
       credentialSubject: {
-        timeOfBirth: {
-          min: 1662010849610,
-          max: 1662010849620,
-          paramId: boundCheckSnarkId,
-          protocol: BoundCheckProtocols.Legogroth16
-        }
+        timeOfBirth: [
+          {
+            min: 1662010849610,
+            max: 1662010849620,
+            paramId: boundCheckSnarkId,
+            protocol: BoundCheckProtocols.Legogroth16
+          }
+        ]
       }
     });
     expect(req.presentation.spec.credentials[0].verifiableEncryptions).toEqual({
       credentialSubject: {
         sensitive: {
-          SSN: {
-            chunkBitSize,
-            commitmentGensId: commKeyId,
-            encryptionKeyId: ekId,
-            snarkKeyId: snarkPkId,
-            protocol: VerifiableEncryptionProtocols.Saver
-          }
+          SSN: [
+            {
+              chunkBitSize,
+              commitmentGensId: commKeyId,
+              encryptionKeyId: ekId,
+              snarkKeyId: snarkPkId,
+              protocol: VerifiableEncryptionProtocols.Saver
+            }
+          ]
         }
       }
     });
@@ -818,13 +859,15 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     expect(req.presentation.spec.blindCredentialRequest.verifiableEncryptions).toEqual({
       credentialSubject: {
         sensitive: {
-          SSN: {
-            chunkBitSize,
-            commitmentGensId: commKeyId,
-            encryptionKeyId: ekId,
-            snarkKeyId: snarkPkId,
-            protocol: VerifiableEncryptionProtocols.Saver
-          }
+          SSN: [
+            {
+              chunkBitSize,
+              commitmentGensId: commKeyId,
+              encryptionKeyId: ekId,
+              snarkKeyId: snarkPkId,
+              protocol: VerifiableEncryptionProtocols.Saver
+            }
+          ]
         }
       }
     });
@@ -841,25 +884,29 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     checkReqJson(req, [pk1], acc, pp);
 
-    checkCiphertext(
-      credential1,
-      req.presentation.attributeCiphertexts?.get(0),
-      'sensitive.SSN',
-      saverSk,
-      saverDk,
-      saverVerifyingKey,
-      chunkBitSize
-    );
+    expect(
+      checkCiphertext(
+        credential1,
+        req.presentation.attributeCiphertexts?.get(0),
+        'sensitive.SSN',
+        saverSk,
+        saverDk,
+        saverVerifyingKey,
+        chunkBitSize
+      )
+    ).toEqual(1);
 
-    checkCiphertext(
-      { schema, subject: blindedSubject },
-      req.presentation.blindedAttributeCiphertexts,
-      'sensitive.SSN',
-      saverSk,
-      saverDk,
-      saverVerifyingKey,
-      chunkBitSize
-    );
+    expect(
+      checkCiphertext(
+        { schema, subject: blindedSubject },
+        req.presentation.blindedAttributeCiphertexts,
+        'sensitive.SSN',
+        saverSk,
+        saverDk,
+        saverVerifyingKey,
+        chunkBitSize
+      )
+    ).toEqual(1);
 
     checkBlindedSubject(req, blindedSubject);
 

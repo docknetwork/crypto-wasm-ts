@@ -17,6 +17,7 @@ import { R1CS } from '@docknetwork/crypto-wasm';
 import { CredentialSchema, getTransformedMinMax, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
+  AttributeCiphertexts,
   AttributeEquality,
   BoundCheckParamType,
   BoundCheckProtocols,
@@ -111,7 +112,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.4.0';
+  static VERSION = '0.5.0';
 
   // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;
@@ -145,11 +146,13 @@ export class PresentationBuilder extends Versioned {
   credStatuses: Map<number, [AccumulatorWitness, Uint8Array, AccumulatorPublicKey, object]>;
 
   // Bounds on attribute. The key of the map is the credential index and for the inner map is the attribute and value of map
-  // denotes min, max, an identifier of the snark proving key which the verifier knows as well to use corresponding verifying key
-  bounds: Map<number, Map<string, IPresentedAttributeBounds>>;
+  // denotes min, max, an identifier of the setup parameters for the protocol and the protocol name.
+  // An attribute can have many bound checks.
+  bounds: Map<number, Map<string, IPresentedAttributeBounds[]>>;
 
-  // Verifiable encryption of attributes
-  verifEnc: Map<number, Map<string, IPresentedAttributeVE>>;
+  // Verifiable encryption of attributes. The key of the map is the credential index and for the inner map is the attribute and value of map
+  // denotes the setup parameters for the protocol and the protocol name. An attribute can have many verifiable encryptions.
+  verifEnc: Map<number, Map<string, IPresentedAttributeVE[]>>;
 
   // Predicates expressed as Circom programs. For each credential, store a public, private variables, circuit id (used to fetch R1CS, WASM bytes) and attributes used in circuit
   circomPredicates: Map<number, IProverCircomPredicate[]>;
@@ -168,8 +171,8 @@ export class PresentationBuilder extends Versioned {
     blinding?: Uint8Array;
     // The 2nd item, i.e. Uint8Array in the pair is the encoded value of the public value with which inequality is proved
     attributeInequalities: Map<string, [IPresentedAttributeInequality, Uint8Array][]>;
-    bounds: Map<string, IPresentedAttributeBounds>;
-    verifEnc: Map<string, IPresentedAttributeVE>;
+    bounds: Map<string, IPresentedAttributeBounds[]>;
+    verifEnc: Map<string, IPresentedAttributeVE[]>;
     circPred: IProverCircomPredicate[];
     pseudonyms: IProverBoundedPseudonymInBlindedCredReq[];
   };
@@ -256,14 +259,14 @@ export class PresentationBuilder extends Versioned {
    * @param credIdx
    * @param attributeName
    * @param inEqualTo - The public value that the attribute should be unequal to, i.e. value of attribute `attributeName` != `inEqualTo`
-   * @param paramId
+   * @param paramId - If absent, the default commitment key is used
    * @param param
    */
   enforceAttributeInequality(
     credIdx: number,
     attributeName: string,
     inEqualTo: any,
-    paramId: string,
+    paramId?: string,
     param?: PederCommKey | PederCommKeyUncompressed
   ) {
     this.validateCredIndex(credIdx);
@@ -281,7 +284,7 @@ export class PresentationBuilder extends Versioned {
    * @param attributeName - Nested attribute names use the "dot" separator
    * @param min
    * @param max
-   * @param paramId - An identifier, unique in the context of this builder that identifies a param.
+   * @param paramId - An identifier, unique in the context of this builder that identifies a param. If absent, transparent range proof (Bulletproofs++) is used
    * @param param - This is optional because if the param is already added in previous call to `enforceBounds`,
    * then it shouldn't be passed. This is done to avoid copying/passing large objects in memory.
    */
@@ -290,16 +293,12 @@ export class PresentationBuilder extends Versioned {
     attributeName: string,
     min: BoundType,
     max: BoundType,
-    paramId: string,
+    paramId?: string,
     param?: BoundCheckParamType
   ) {
     this.validateCredIndex(credIdx);
     let b = this.bounds.get(credIdx);
-    if (b !== undefined) {
-      if (b.get(attributeName) !== undefined) {
-        throw new Error(`Already enforced bounds on credential index ${credIdx} and attribute name ${attributeName}`);
-      }
-    } else {
+    if (b === undefined) {
       b = new Map();
     }
     PresentationBuilder.processBounds(this, b, attributeName, min, max, paramId, param);
@@ -337,26 +336,12 @@ export class PresentationBuilder extends Versioned {
     }
     this.validateCredIndex(credIdx);
     let v = this.verifEnc.get(credIdx);
-    if (v !== undefined) {
-      if (v.get(attributeName) !== undefined) {
-        throw new Error(
-          `Already enforced verifiable encryption on credential index ${credIdx} and attribute name ${attributeName}`
-        );
-      }
-    } else {
+    if (v === undefined) {
       v = new Map();
     }
 
-    v.set(attributeName, {
-      chunkBitSize,
-      commitmentGensId: commKeyId,
-      encryptionKeyId: encryptionKeyId,
-      snarkKeyId: snarkPkId,
-      protocol: VerifiableEncryptionProtocols.Saver
-    });
-    this.updatePredicateParams(commKeyId, commKey);
-    this.updatePredicateParams(encryptionKeyId, encryptionKey);
-    this.updatePredicateParams(snarkPkId, snarkPk);
+    PresentationBuilder.processVerifiableEncs(this, v, attributeName, chunkBitSize, commKeyId, encryptionKeyId, snarkPkId, commKey, encryptionKey, snarkPk);
+
     this.verifEnc.set(credIdx, v);
   }
 
@@ -438,9 +423,6 @@ export class PresentationBuilder extends Versioned {
    */
   finalize(): Presentation {
     const numCreds = this.credentials.length;
-    // Tracking maximum attributes across all credentials so that new values for signatures
-    // params are only created when the need be. Check definition of `adapt` for more details.
-
     const statements = new Statements();
     const metaStatements = new MetaStatements();
     const witnesses = new Witnesses();
@@ -562,7 +544,7 @@ export class PresentationBuilder extends Versioned {
 
       // Get encoded attributes which are used in bound check
       const bounds = this.bounds.get(i);
-      let attributeBounds: { [key: string]: string | IPresentedAttributeBounds } | undefined;
+      let attributeBounds: { [key: string]: string | IPresentedAttributeBounds[] } | undefined;
       if (bounds !== undefined && bounds.size > 0) {
         attributeBounds = {};
         const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
@@ -575,7 +557,7 @@ export class PresentationBuilder extends Versioned {
       }
 
       // Get encoded attributes which are used in verifiable encryption
-      let attributeEncs: { [key: string]: string | IPresentedAttributeVE } | undefined;
+      let attributeEncs: { [key: string]: string | IPresentedAttributeVE[] } | undefined;
       const encs = this.verifEnc.get(i);
       if (encs !== undefined && encs.size > 0) {
         attributeEncs = {};
@@ -825,8 +807,8 @@ export class PresentationBuilder extends Versioned {
 
     // For adding ciphertexts corresponding to verifiably encrypted attributes in the presentation.
     // The key of the outer map is the credential index, and key of the inner map is the name of the attribute that
-    // is encrypted and value is the  index of statement created for encryption
-    const credAttrToSId = new Map<number, Map<string, number>>();
+    // is encrypted and value is the array of indices of statements created for encryption
+    const credAttrToSId = new Map<number, Map<string, number[]>>();
 
     // For enforcing attribute encryption, add statement and witness
     for (const [cId, verEnc] of this.verifEnc.entries()) {
@@ -866,7 +848,7 @@ export class PresentationBuilder extends Versioned {
     }
 
     // For blinded credential request
-    let blindAttrToSId = new Map<string, number>();
+    let blindAttrToSId = new Map<string, number[]>();
     if (this.blindCredReq !== undefined) {
       const sigParams = this.blindCredReq.sigParams;
       const encodedSubject = this.blindCredReq.encodedSubject;
@@ -1041,23 +1023,26 @@ export class PresentationBuilder extends Versioned {
     this.proof = CompositeProofG1.generateUsingQuasiProofSpec(this._proofSpec, witnesses, this._nonce);
 
     // Ciphertexts of credential attributes
-    let attributeCiphertexts;
+    let attributeCiphertexts: Map<number, AttributeCiphertexts[]> | undefined;
     // Ciphertexts of blinded attributes
-    let blindedAttributeCiphertexts;
+    let blindedAttributeCiphertexts: AttributeCiphertexts[] | undefined;
     // Statements which correspond to encryption of attributes and thus will have corresponding ciphertexts
     const encryptionStatementIndices: number[] = [];
     // Get statement indices which correspond to encryption of credential attributes
     if (credAttrToSId.size > 0) {
       for (const v of credAttrToSId.values()) {
-        for (const sId of v.values()) {
-          encryptionStatementIndices.push(sId);
+        for (const ids of v.values()) {
+          encryptionStatementIndices.push(...ids);
         }
       }
     }
 
     // Get statement indices which correspond to encryption of blinded attributes
     if (blindAttrToSId.size > 0) {
-      encryptionStatementIndices.push(...blindAttrToSId.values());
+      for (const ids of blindAttrToSId.values()) {
+        encryptionStatementIndices.push(...ids);
+      }
+
     }
 
     // Get all encryption statement indices and get their corresponding ciphertexts
@@ -1066,10 +1051,12 @@ export class PresentationBuilder extends Versioned {
     if (credAttrToSId.size > 0) {
       attributeCiphertexts = new Map();
       for (const [i, v] of credAttrToSId.entries()) {
+        // @ts-ignore
         attributeCiphertexts.set(i, this.formatAttributeCiphertexts(v, encryptionStatementIndices, ciphertexts));
       }
     }
     if (blindAttrToSId.size > 0) {
+      // @ts-ignore
       blindedAttributeCiphertexts = this.formatAttributeCiphertexts(
         blindAttrToSId,
         encryptionStatementIndices,
@@ -1170,7 +1157,7 @@ export class PresentationBuilder extends Versioned {
   }
 
   private processAttributeInequalities(
-    statementIdx: number,
+    credIdx: number,
     witnessIndexGetter: (string) => number,
     ineqs: Map<string, [IPresentedAttributeInequality, Uint8Array][]>,
     encodedAttrGetter: (number) => Uint8Array,
@@ -1179,30 +1166,28 @@ export class PresentationBuilder extends Versioned {
     metaStatements: MetaStatements,
     setupParamsTrk: SetupParamsTracker
   ) {
-    const dataSortedByNameIdx: [number, string, [IPresentedAttributeInequality, Uint8Array][]][] = [];
+    const dataSortedByNameIdx: [number, [IPresentedAttributeInequality, Uint8Array][]][] = [];
     for (const [name, b] of ineqs.entries()) {
       const nameIdx = witnessIndexGetter(name);
-      dataSortedByNameIdx.push([nameIdx, name, b]);
+      dataSortedByNameIdx.push([nameIdx, b]);
     }
     // Sort by attribute index so that both prover and verifier create statements and witnesses in the same order
     dataSortedByNameIdx.sort(function (a, b) {
       return a[0] - b[0];
     });
 
-    dataSortedByNameIdx.forEach(([nameIdx, name, ineqs]) => {
-      ineqs.forEach(([{ inEqualTo, paramId, protocol }, ineq]) => {
-        const param = this.predicateParams.get(paramId);
+    dataSortedByNameIdx.forEach(([nameIdx, ineqs]) => {
+      ineqs.forEach(([{ inEqualTo: _, paramId, protocol }, ineq]) => {
+        const param = paramId !== undefined ? this.predicateParams.get(paramId) : undefined;
+        const statement = Presentation.publicInequalityStatement(ineq, setupParamsTrk, credIdx, paramId, param);
+
         const encodedAttrVal = encodedAttrGetter(nameIdx);
-
-        Presentation.addPedCommG1ToTracker(paramId, param, setupParamsTrk, statementIdx);
-
-        const statement = Statement.publicInequalityG1FromSetupParamRefs(ineq, setupParamsTrk.indexForParam(paramId));
         const witness = Witness.publicInequality(encodedAttrVal);
 
         const sIdx = statements.add(statement);
         witnesses.add(witness);
         const witnessEq = new WitnessEqualityMetaStatement();
-        witnessEq.addWitnessRef(statementIdx, nameIdx);
+        witnessEq.addWitnessRef(credIdx, nameIdx);
         witnessEq.addWitnessRef(sIdx, 0);
         metaStatements.addWitnessEquality(witnessEq);
       });
@@ -1210,9 +1195,9 @@ export class PresentationBuilder extends Versioned {
   }
 
   private processBoundChecks(
-    statementIdx: number,
+    credIdx: number,
     witnessIndexGetter: (string) => number,
-    bounds: Map<string, IPresentedAttributeBounds>,
+    bounds: Map<string, IPresentedAttributeBounds[]>,
     flattenedSchema: FlattenedSchema,
     encodedAttrGetter: (number) => Uint8Array,
     statements: Statements,
@@ -1220,7 +1205,7 @@ export class PresentationBuilder extends Versioned {
     metaStatements: MetaStatements,
     setupParamsTrk: SetupParamsTracker
   ) {
-    const dataSortedByNameIdx: [number, string, IPresentedAttributeBounds][] = [];
+    const dataSortedByNameIdx: [number, string, IPresentedAttributeBounds[]][] = [];
     for (const [name, b] of bounds.entries()) {
       const nameIdx = witnessIndexGetter(name);
       dataSortedByNameIdx.push([nameIdx, name, b]);
@@ -1229,77 +1214,97 @@ export class PresentationBuilder extends Versioned {
     dataSortedByNameIdx.sort(function (a, b) {
       return a[0] - b[0];
     });
-    dataSortedByNameIdx.forEach(([nameIdx, name, { min, max, paramId, protocol }]) => {
+    dataSortedByNameIdx.forEach(([nameIdx, name, bounds]) => {
       const valTyp = CredentialSchema.typeOfName(name, flattenedSchema);
-      const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
+      bounds.forEach(({ min, max, paramId, protocol }) => {
+        const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
+        let witness: Uint8Array, statement: Uint8Array;
+        const encodedAttrVal = encodedAttrGetter(nameIdx);
+        if (paramId === undefined) {
+          // paramId is undefined means no setup param was passed and thus the default setup of Bulletproofs++ can be used.
+          if (protocol !== BoundCheckProtocols.Bpp) {
+            throw new Error(
+              `paramId was undefined but protocol was not Bulletproofs++ but ${protocol}. This shouldn't have happened and is a bug in the code.`
+            );
+          } else {
+            if (!setupParamsTrk.hasBoundCheckBppSetup()) {
+              setupParamsTrk.addBoundCheckBppSetup();
+            }
+            statement = Statement.boundCheckBppFromSetupParamRefs(
+              transformedMin,
+              transformedMax,
+              setupParamsTrk.boundCheckBppSetupIdx
+            );
+            witness = Witness.boundCheckBpp(encodedAttrVal);
+          }
+        } else {
+          const param = this.predicateParams.get(paramId);
 
-      const param = this.predicateParams.get(paramId);
-      const encodedAttrVal = encodedAttrGetter(nameIdx);
-      let witness: Uint8Array, statement: Uint8Array;
+          switch (protocol) {
+            case BoundCheckProtocols.Legogroth16:
+              PresentationBuilder.addLegoProvingKeyToTracker(paramId, param, setupParamsTrk, credIdx);
+              statement = Statement.boundCheckLegoProverFromSetupParamRefs(
+                transformedMin,
+                transformedMax,
+                setupParamsTrk.indexForParam(paramId)
+              );
+              witness = Witness.boundCheckLegoGroth16(encodedAttrVal);
+              break;
+            case BoundCheckProtocols.Bpp:
+              Presentation.addBppSetupParamsToTracker(paramId, param, setupParamsTrk, credIdx);
+              statement = Statement.boundCheckBppFromSetupParamRefs(
+                transformedMin,
+                transformedMax,
+                setupParamsTrk.indexForParam(paramId)
+              );
+              witness = Witness.boundCheckBpp(encodedAttrVal);
+              break;
+            case BoundCheckProtocols.Smc:
+              Presentation.addSmcSetupParamsToTracker(paramId, param, setupParamsTrk, credIdx);
+              statement = Statement.boundCheckSmcFromSetupParamRefs(
+                transformedMin,
+                transformedMax,
+                setupParamsTrk.indexForParam(paramId)
+              );
+              witness = Witness.boundCheckSmc(encodedAttrVal);
+              break;
+            case BoundCheckProtocols.SmcKV:
+              PresentationBuilder.addSmcKVProverParamsToTracker(paramId, param, setupParamsTrk, credIdx);
+              statement = Statement.boundCheckSmcWithKVProverFromSetupParamRefs(
+                transformedMin,
+                transformedMax,
+                setupParamsTrk.indexForParam(paramId)
+              );
+              witness = Witness.boundCheckSmcWithKV(encodedAttrVal);
+              break;
+            default:
+              throw new Error(`Unknown protocol ${protocol} for bound check`);
+          }
+        }
 
-      switch (protocol) {
-        case BoundCheckProtocols.Legogroth16:
-          PresentationBuilder.addLegoProvingKeyToTracker(paramId, param, setupParamsTrk, statementIdx);
-          statement = Statement.boundCheckLegoProverFromSetupParamRefs(
-            transformedMin,
-            transformedMax,
-            setupParamsTrk.indexForParam(paramId)
-          );
-          witness = Witness.boundCheckLegoGroth16(encodedAttrVal);
-          break;
-        case BoundCheckProtocols.Bpp:
-          Presentation.addBppSetupParamsToTracker(paramId, param, setupParamsTrk, statementIdx);
-          statement = Statement.boundCheckBppFromSetupParamRefs(
-            transformedMin,
-            transformedMax,
-            setupParamsTrk.indexForParam(paramId)
-          );
-          witness = Witness.boundCheckBpp(encodedAttrVal);
-          break;
-        case BoundCheckProtocols.Smc:
-          Presentation.addSmcSetupParamsToTracker(paramId, param, setupParamsTrk, statementIdx);
-          statement = Statement.boundCheckSmcFromSetupParamRefs(
-            transformedMin,
-            transformedMax,
-            setupParamsTrk.indexForParam(paramId)
-          );
-          witness = Witness.boundCheckSmc(encodedAttrVal);
-          break;
-        case BoundCheckProtocols.SmcKV:
-          PresentationBuilder.addSmcKVProverParamsToTracker(paramId, param, setupParamsTrk, statementIdx);
-          statement = Statement.boundCheckSmcWithKVProverFromSetupParamRefs(
-            transformedMin,
-            transformedMax,
-            setupParamsTrk.indexForParam(paramId)
-          );
-          witness = Witness.boundCheckSmcWithKV(encodedAttrVal);
-          break;
-        default:
-          throw new Error(`Unknown protocol ${protocol} for bound check`);
-      }
-
-      const sIdx = statements.add(statement);
-      witnesses.add(witness);
-      const witnessEq = new WitnessEqualityMetaStatement();
-      witnessEq.addWitnessRef(statementIdx, nameIdx);
-      witnessEq.addWitnessRef(sIdx, 0);
-      metaStatements.addWitnessEquality(witnessEq);
+        const sIdx = statements.add(statement);
+        witnesses.add(witness);
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(credIdx, nameIdx);
+        witnessEq.addWitnessRef(sIdx, 0);
+        metaStatements.addWitnessEquality(witnessEq);
+      });
     });
   }
 
   private processVerifiableEncs(
-    statementIdx: number,
+    credIdx: number,
     witnessIndexGetter: (string) => number,
-    verEnc: Map<string, IPresentedAttributeVE>,
+    verEncs: Map<string, IPresentedAttributeVE[]>,
     encodedAttrGetter: (number) => Uint8Array,
-    credAttrToSId: Map<number, Map<string, number>>,
+    credAttrToSId: Map<number, Map<string, number[]>>,
     statements: Statements,
     witnesses: Witnesses,
     metaStatements: MetaStatements,
     setupParamsTrk: SetupParamsTracker
   ) {
-    const dataSortedByNameIdx: [number, string, IPresentedAttributeVE][] = [];
-    for (const [name, ve] of verEnc.entries()) {
+    const dataSortedByNameIdx: [number, string, IPresentedAttributeVE[]][] = [];
+    for (const [name, ve] of verEncs.entries()) {
       const nameIdx = witnessIndexGetter(name);
       dataSortedByNameIdx.push([nameIdx, name, ve]);
     }
@@ -1307,44 +1312,49 @@ export class PresentationBuilder extends Versioned {
     dataSortedByNameIdx.sort(function (a, b) {
       return a[0] - b[0];
     });
-    const attrToSid = new Map<string, number>();
-    dataSortedByNameIdx.forEach(([nameIdx, name, { chunkBitSize, commitmentGensId, encryptionKeyId, snarkKeyId }]) => {
-      const commKey = this.predicateParams.get(commitmentGensId);
-      if (commKey === undefined) {
-        throw new Error(`Predicate param for id ${commitmentGensId} not found`);
-      }
-      const encKey = this.predicateParams.get(encryptionKeyId);
-      if (encKey === undefined) {
-        throw new Error(`Predicate param for id ${encryptionKeyId} not found`);
-      }
-      const snarkPk = this.predicateParams.get(snarkKeyId);
-      if (snarkPk === undefined) {
-        throw new Error(`Predicate param for id ${snarkKeyId} not found`);
-      }
+    const attrToSid = new Map<string, number[]>();
+    dataSortedByNameIdx.forEach(([nameIdx, name, ve]) => {
+      ve.forEach(({ chunkBitSize, commitmentGensId, encryptionKeyId, snarkKeyId }) => {
+        const commKey = this.predicateParams.get(commitmentGensId);
+        if (commKey === undefined) {
+          throw new Error(`Predicate param for id ${commitmentGensId} not found`);
+        }
+        const encKey = this.predicateParams.get(encryptionKeyId);
+        if (encKey === undefined) {
+          throw new Error(`Predicate param for id ${encryptionKeyId} not found`);
+        }
+        const snarkPk = this.predicateParams.get(snarkKeyId);
+        if (snarkPk === undefined) {
+          throw new Error(`Predicate param for id ${snarkKeyId} not found`);
+        }
 
-      const statement = saverStatement(
-        true,
-        chunkBitSize,
-        commitmentGensId,
-        encryptionKeyId,
-        snarkKeyId,
-        commKey,
-        encKey,
-        snarkPk,
-        setupParamsTrk
-      );
-      const encodedAttrVal = encodedAttrGetter(nameIdx);
-      witnesses.add(Witness.saver(encodedAttrVal));
+        const statement = saverStatement(
+          true,
+          chunkBitSize,
+          commitmentGensId,
+          encryptionKeyId,
+          snarkKeyId,
+          commKey,
+          encKey,
+          snarkPk,
+          setupParamsTrk
+        );
+        const encodedAttrVal = encodedAttrGetter(nameIdx);
+        witnesses.add(Witness.saver(encodedAttrVal));
 
-      const sIdx = statements.add(statement);
-      const witnessEq = new WitnessEqualityMetaStatement();
-      witnessEq.addWitnessRef(statementIdx, nameIdx);
-      witnessEq.addWitnessRef(sIdx, 0);
-      metaStatements.addWitnessEquality(witnessEq);
-      attrToSid.set(name, sIdx);
+        const sIdx = statements.add(statement);
+        const witnessEq = new WitnessEqualityMetaStatement();
+        witnessEq.addWitnessRef(credIdx, nameIdx);
+        witnessEq.addWitnessRef(sIdx, 0);
+        metaStatements.addWitnessEquality(witnessEq);
+        if (attrToSid.get(name) === undefined) {
+          attrToSid.set(name, []);
+        }
+        attrToSid.get(name)?.push(sIdx);
+      })
     });
     if (attrToSid.size > 0) {
-      credAttrToSId.set(statementIdx, attrToSid);
+      credAttrToSId.set(credIdx, attrToSid);
     }
   }
 
@@ -1427,12 +1437,12 @@ export class PresentationBuilder extends Versioned {
   }
 
   private formatAttributeCiphertexts(
-    attrToStIdx: Map<string, number>,
+    attrToStIdx: Map<string, number[]>,
     allEncStIds: number[],
     ciphertexts: SaverCiphertext[]
-  ): object {
+  ): { [key: string]: string | SaverCiphertext[] } {
     const m = {};
-    for (const [name, sId] of attrToStIdx.entries()) {
+    for (const [name, ids] of attrToStIdx.entries()) {
       let curM = m;
       // name is a flattened name, like credentialSubject.nesting1.nesting2.name
       const nameParts = name.split('.');
@@ -1443,7 +1453,7 @@ export class PresentationBuilder extends Versioned {
         // `curM` refers to this inner object of `m`
         curM = curM[nameParts[j]];
       }
-      curM[nameParts[nameParts.length - 1]] = ciphertexts[allEncStIds.indexOf(sId)];
+      curM[nameParts[nameParts.length - 1]] = ids.map((id) => ciphertexts[allEncStIds.indexOf(id)]);
     }
     return m;
   }
@@ -1509,7 +1519,7 @@ export class PresentationBuilder extends Versioned {
     ineqs: Map<string, [IPresentedAttributeInequality, Uint8Array][]>,
     attributeName: string,
     inEqualTo: any,
-    paramId: string,
+    paramId?: string,
     param?: PederCommKey | PederCommKeyUncompressed
   ) {
     let attrIneq = ineqs.get(attributeName);
@@ -1519,7 +1529,9 @@ export class PresentationBuilder extends Versioned {
     }
     // setting the encoded value (Uint8Array) as a dummy for now, this is later set to the correct value
     attrIneq?.push([{ inEqualTo, paramId, protocol: InequalityProtocols.Uprove }, new Uint8Array()]);
-    self.updatePredicateParams(paramId, param);
+    if (paramId !== undefined) {
+      self.updatePredicateParams(paramId, param);
+    }
   }
 
   /**
@@ -1534,11 +1546,11 @@ export class PresentationBuilder extends Versioned {
    */
   static processBounds(
     self,
-    boundsMap: Map<string, IPresentedAttributeBounds>,
+    boundsMap: Map<string, IPresentedAttributeBounds[]>,
     attributeName: string,
     vmin: BoundType,
     vmax: BoundType,
-    paramId: string,
+    paramId?: string,
     param?: BoundCheckParamType
   ) {
     // TODO: This isn't clean because it's not checking if the attribute `attributeName` is of datetime type and then converting.
@@ -1549,25 +1561,71 @@ export class PresentationBuilder extends Versioned {
     if (min >= max) {
       throw new Error(`Invalid bounds min=${min}, max=${max}`);
     }
-    self.updatePredicateParams(paramId, param);
-    let par = self.predicateParams.get(paramId);
     let protocol: BoundCheckProtocols;
-    if (par instanceof LegoProvingKey || par instanceof LegoProvingKeyUncompressed) {
-      protocol = BoundCheckProtocols.Legogroth16;
-    } else if (par instanceof BoundCheckBppParams || par instanceof BoundCheckBppParamsUncompressed) {
-      protocol = BoundCheckProtocols.Bpp;
-    } else if (par instanceof BoundCheckSmcParams || par instanceof BoundCheckSmcParamsUncompressed) {
-      protocol = BoundCheckProtocols.Smc;
-    } else if (
-      par instanceof BoundCheckSmcWithKVProverParams ||
-      par instanceof BoundCheckSmcWithKVProverParamsUncompressed
-    ) {
-      protocol = BoundCheckProtocols.SmcKV;
+    if (paramId !== undefined) {
+      self.updatePredicateParams(paramId, param);
+      let par = self.predicateParams.get(paramId);
+      if (par instanceof LegoProvingKey || par instanceof LegoProvingKeyUncompressed) {
+        protocol = BoundCheckProtocols.Legogroth16;
+      } else if (par instanceof BoundCheckBppParams || par instanceof BoundCheckBppParamsUncompressed) {
+        protocol = BoundCheckProtocols.Bpp;
+      } else if (par instanceof BoundCheckSmcParams || par instanceof BoundCheckSmcParamsUncompressed) {
+        protocol = BoundCheckProtocols.Smc;
+      } else if (
+        par instanceof BoundCheckSmcWithKVProverParams ||
+        par instanceof BoundCheckSmcWithKVProverParamsUncompressed
+      ) {
+        protocol = BoundCheckProtocols.SmcKV;
+      } else {
+        throw new Error(`Invalid predicate param type ${par} for bound check protocol`);
+      }
     } else {
-      throw new Error(`Invalid predicate param type ${par} for bound check protocol`);
+      protocol = BoundCheckProtocols.Bpp;
     }
 
-    boundsMap.set(attributeName, { min, max, paramId, protocol });
+    const existingBounds = boundsMap.get(attributeName);
+    if (existingBounds === undefined) {
+      boundsMap.set(attributeName, [{ min, max, paramId, protocol }]);
+    } else {
+      existingBounds.push({ min, max, paramId, protocol });
+      boundsMap.set(attributeName, existingBounds);
+    }
+  }
+
+  static processVerifiableEncs(
+    self,
+    verEncsMap: Map<string, IPresentedAttributeVE[]>,
+    attributeName: string,
+    chunkBitSize: number,
+    commKeyId: string,
+    encryptionKeyId: string,
+    snarkPkId: string,
+    commKey?: SaverChunkedCommitmentKey | SaverChunkedCommitmentKeyUncompressed,
+    encryptionKey?: SaverEncryptionKey | SaverEncryptionKeyUncompressed,
+    snarkPk?: SaverProvingKey | SaverProvingKeyUncompressed
+  ) {
+    const existingVE = verEncsMap.get(attributeName);
+    if (existingVE === undefined) {
+      verEncsMap.set(attributeName, [{
+        chunkBitSize,
+        commitmentGensId: commKeyId,
+        encryptionKeyId: encryptionKeyId,
+        snarkKeyId: snarkPkId,
+        protocol: VerifiableEncryptionProtocols.Saver
+      }]);
+    } else {
+      existingVE.push({
+        chunkBitSize,
+        commitmentGensId: commKeyId,
+        encryptionKeyId: encryptionKeyId,
+        snarkKeyId: snarkPkId,
+        protocol: VerifiableEncryptionProtocols.Saver
+      });
+      verEncsMap.set(attributeName, existingVE);
+    }
+    self.updatePredicateParams(commKeyId, commKey);
+    self.updatePredicateParams(encryptionKeyId, encryptionKey);
+    self.updatePredicateParams(snarkPkId, snarkPk);
   }
 }
 

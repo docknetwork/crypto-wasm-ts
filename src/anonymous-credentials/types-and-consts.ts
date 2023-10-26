@@ -23,6 +23,7 @@ import {
   BoundCheckSmcWithKVVerifierParams,
   BoundCheckSmcWithKVVerifierParamsUncompressed
 } from '../bound-check';
+import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 
 export type StringOrObject = string | object;
 // Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation.
@@ -67,7 +68,7 @@ export type BoundType = number | DateType;
 // The 1st element is an array of all attribute names as flattened and sorted and 2nd element is an array of types of those attributes
 // in the same order
 export type FlattenedSchema = [string[], object[]];
-export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext };
+export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext | SaverCiphertext[] };
 
 export type PublicKey = BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
 export type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature;
@@ -134,7 +135,15 @@ export const ACCUMULATOR_PROVING_KEY_LABEL_BYTES = te.encode(ACCUMULATOR_PROVING
 
 // Label used for generating SAVER encryption generators
 export const SAVER_ENCRYPTION_GENS_LABEL = 'DockSAVEREncryptionGens2022';
-export const SAVER_ENCRYPTION_GENS_BYTES = te.encode(SAVER_ENCRYPTION_GENS_LABEL);
+export const SAVER_ENCRYPTION_GENS_LABEL_BYTES = te.encode(SAVER_ENCRYPTION_GENS_LABEL);
+
+// Label used for generating Bulletproofs++ generators
+export const BPP_GENS_LABEL = 'DockBulletproofs++2023';
+export const BPP_GENS_LABEL_BYTES = te.encode(BPP_GENS_LABEL);
+
+// Label used for generating commitment key for proving inequality
+export const INEQUALITY_COMM_KEY_LABEL = 'DockInequalityDiscreteLog2023';
+export const INEQUALITY_COMM_KEY_LABEL_BYTES = te.encode(INEQUALITY_COMM_KEY_LABEL);
 
 export function dockAccumulatorParams(): AccumulatorParams {
   return Accumulator.generateParams(ACCUMULATOR_PARAMS_LABEL_BYTES);
@@ -149,11 +158,27 @@ export function dockAccumulatorNonMemProvingKey(): NonMembershipProvingKey {
 }
 
 export function dockSaverEncryptionGens(): SaverEncryptionGens {
-  return SaverEncryptionGens.generate(SAVER_ENCRYPTION_GENS_BYTES);
+  return SaverEncryptionGens.generate(SAVER_ENCRYPTION_GENS_LABEL_BYTES);
 }
 
 export function dockSaverEncryptionGensUncompressed(): SaverEncryptionGensUncompressed {
-  return SaverEncryptionGens.generate(SAVER_ENCRYPTION_GENS_BYTES).decompress();
+  return SaverEncryptionGens.generate(SAVER_ENCRYPTION_GENS_LABEL_BYTES).decompress();
+}
+
+export function dockBoundCheckBppSetup(): BoundCheckBppParams {
+  return new BoundCheckBppParams(BPP_GENS_LABEL_BYTES);
+}
+
+export function dockBoundCheckBppSetupUncompressed(): BoundCheckBppParamsUncompressed {
+  return new BoundCheckBppParams(BPP_GENS_LABEL_BYTES).decompress();
+}
+
+export function dockInequalityCommKey(): PederCommKey {
+  return new PederCommKey(INEQUALITY_COMM_KEY_LABEL_BYTES);
+}
+
+export function dockInequalityCommKeyUncompressed(): PederCommKeyUncompressed {
+  return new PederCommKey(INEQUALITY_COMM_KEY_LABEL_BYTES).decompress();
 }
 
 export enum SignatureTypes {

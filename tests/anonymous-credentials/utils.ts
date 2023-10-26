@@ -561,7 +561,16 @@ export async function prefillAccumulator(
   return members;
 }
 
-// Check if the ciphertext of attributes included in the presentation can be decrypted correctly
+/**
+ * Check if the ciphertexts of the given attribute included in the presentation can be decrypted correctly. Returns the number of ciphertexts checked
+ * @param credential
+ * @param ciphertexts
+ * @param attrName
+ * @param saverSk
+ * @param saverDk
+ * @param saverVerifyingKey
+ * @param chunkBitSize
+ */
 export function checkCiphertext(
   credential: Credential | { schema: CredentialSchema; subject: object | object[] },
   ciphertexts: AttributeCiphertexts,
@@ -570,25 +579,31 @@ export function checkCiphertext(
   saverDk,
   saverVerifyingKey,
   chunkBitSize
-) {
+): number {
   // Decryptor gets the ciphertext from the verifier and decrypts it
   // @ts-ignore
-  let ciphertext = _.get(ciphertexts, `${SUBJECT_STR}.${attrName}`) as SaverCiphertext;
-  let decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, saverVerifyingKey, chunkBitSize);
-  expect(decrypted.message).toEqual(
-    credential.schema?.encoder.encodeMessage(`${SUBJECT_STR}.${attrName}`, _.get(credential.subject, attrName))
-  );
+  let cts = _.get(ciphertexts, `${SUBJECT_STR}.${attrName}`) as (SaverCiphertext | SaverCiphertext[]);
+  if (!Array.isArray(cts)) {
+    cts = [cts];
+  }
+  cts.forEach((ciphertext) => {
+    let decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, saverVerifyingKey, chunkBitSize);
+    expect(decrypted.message).toEqual(
+      credential.schema?.encoder.encodeMessage(`${SUBJECT_STR}.${attrName}`, _.get(credential.subject, attrName))
+    );
 
-  // Decryptor shares the decryption result with verifier which the verifier can check for correctness.
-  expect(
-    ciphertext.verifyDecryption(
-      decrypted,
-      saverDk,
-      saverVerifyingKey,
-      dockSaverEncryptionGensUncompressed(),
-      chunkBitSize
-    ).verified
-  ).toEqual(true);
+    // Decryptor shares the decryption result with verifier which the verifier can check for correctness.
+    expect(
+      ciphertext.verifyDecryption(
+        decrypted,
+        saverDk,
+        saverVerifyingKey,
+        dockSaverEncryptionGensUncompressed(),
+        chunkBitSize
+      ).verified
+    ).toEqual(true);
+  });
+  return cts.length
 }
 
 export function getDecodedBoundedPseudonym(
@@ -627,17 +642,28 @@ export function getDecodedBoundedPseudonym(
   return [decodedBoundedPseudonym, basesForAttributesDecoded, baseForSecretKeyDecoded];
 }
 
+/**
+ * Converts the given presentation to JSON and then creates a new presentation by parsing that JSON and checks that the
+ * new presentation can be verified and the JSON representation of old and new presentation is same. Returns the new
+ * presentation
+ * @param pres - Presentation to be converted to JSON
+ * @param pks
+ * @param accumulatorPublicKeys
+ * @param predicateParams
+ * @param circomOutputs
+ */
 export function checkPresentationJson(
   pres: Presentation,
   pks: PublicKey[],
   accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
   predicateParams?: Map<string, PredicateParamType>,
   circomOutputs?: Map<number, Uint8Array[][]>
-) {
+): Presentation {
   const presJson = pres.toJSON();
   const recreatedPres = Presentation.fromJSON(presJson);
   checkResult(recreatedPres.verify(pks, accumulatorPublicKeys, predicateParams, circomOutputs));
   expect(presJson).toEqual(recreatedPres.toJSON());
+  return recreatedPres;
 }
 
 export function writeSerializedObject(obj: any, fileName: string) {

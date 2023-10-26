@@ -4,9 +4,13 @@ import { Credential, Presentation, PresentationBuilder, PublicKey, Scheme } from
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../utils';
 import { checkCiphertext } from './utils';
 import {
-  AccumulatorPublicKey, getR1CS,
+  AccumulatorPublicKey,
+  getR1CS,
   LegoVerifyingKeyUncompressed,
-  SaverChunkedCommitmentKey, SaverDecryptionKeyUncompressed, SaverEncryptionKeyUncompressed, SaverSecretKey,
+  SaverChunkedCommitmentKey,
+  SaverDecryptionKeyUncompressed,
+  SaverEncryptionKeyUncompressed,
+  SaverSecretKey,
   SaverVerifyingKeyUncompressed
 } from '../../src';
 
@@ -18,7 +22,7 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     await initializeWasm();
   });
 
-  it('check version 0.1.0', () => {
+  function check(credVersion: string, presVersion: string, boundCheckVkName: string) {
     const boundCheckSnarkId = 'random';
     const commKeyId = 'random-1';
     const ekId = 'random-2';
@@ -30,15 +34,24 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     const pk2Bin = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk2.bin`);
     const pk3Bin = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk3.bin`);
     const accPkBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_pk.bin`);
-    const boundCheckVkBin = fs.readFileSync(`${__dirname}/serialized-objects/bound-check-legogroth16-vk.bin`);
+    const boundCheckVkBin = fs.readFileSync(`${__dirname}/serialized-objects/${boundCheckVkName}.bin`);
     const saverVkBin = fs.readFileSync(`${__dirname}/serialized-objects/saver-vk.bin`);
     const saverEkBin = fs.readFileSync(`${__dirname}/serialized-objects/saver-ek.bin`);
     const saverDkBin = fs.readFileSync(`${__dirname}/serialized-objects/saver-dk.bin`);
     const saverSkBin = fs.readFileSync(`${__dirname}/serialized-objects/saver-sk.bin`);
-    let credential1Json = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_credential1-0.0.2.json`, 'utf8');
-    let credential2Json = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_credential2-0.0.2.json`, 'utf8');
+    let credential1Json = fs.readFileSync(
+      `${__dirname}/serialized-objects/${fileNamePrefix}_credential1-${credVersion}.json`,
+      'utf8'
+    );
+    let credential2Json = fs.readFileSync(
+      `${__dirname}/serialized-objects/${fileNamePrefix}_credential2-${credVersion}.json`,
+      'utf8'
+    );
 
-    let presJson = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}-presentation-0.1.0.json`, 'utf8');
+    let presJson = fs.readFileSync(
+      `${__dirname}/serialized-objects/${fileNamePrefix}-presentation-${presVersion}.json`,
+      'utf8'
+    );
     const pk1 = PublicKey.fromBytes(pk1Bin);
     const pk2 = PublicKey.fromBytes(pk2Bin);
     const pk3 = PublicKey.fromBytes(pk3Bin);
@@ -74,22 +87,39 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     // @ts-ignore
     expect(pres.attributeCiphertexts.get(1)).toBeDefined();
 
-    // @ts-ignore
-    checkCiphertext(cred1, pres.attributeCiphertexts?.get(0), 'SSN', saverSk, saverDk, saverVk, chunkBitSize);
+    expect(
+      // @ts-ignore
+      checkCiphertext(cred1, pres.attributeCiphertexts?.get(0), 'SSN', saverSk, saverDk, saverVk, chunkBitSize)
+    ).toEqual(1);
 
-    // @ts-ignore
-    checkCiphertext(cred2, pres.attributeCiphertexts?.get(1), 'sensitive.userId', saverSk, saverDk, saverVk, chunkBitSize);
-  })
+    expect(
+      checkCiphertext(
+        cred2,
+        // @ts-ignore
+        pres.attributeCiphertexts?.get(1),
+        'sensitive.userId',
+        saverSk,
+        saverDk,
+        saverVk,
+        chunkBitSize
+      )
+    ).toEqual(1);
+  }
 
-  it('check version 0.1.0 with circom predicates', async () => {
-    const requiredGrades = ['A+', 'A', 'B+', 'B', 'C'];
+  async function checkCircom(presVersion: string, circomVkName: string) {
     const r1csGrade = await parseR1CSFile('set_membership_5_public.r1cs');
     const wasmGrade = getWasmBytes('set_membership_5_public.wasm');
 
     const pk1Bin = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk1.bin`);
-    const circomVkBin = fs.readFileSync(`${__dirname}/serialized-objects/circom-set_membership_5_public-vk.bin`);
-    let pres1Json = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}-circom-presentation1-0.1.0.json`, 'utf8');
-    let pres2Json = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}-circom-presentation2-0.1.0.json`, 'utf8');
+    const circomVkBin = fs.readFileSync(`${__dirname}/serialized-objects/${circomVkName}.bin`);
+    let pres1Json = fs.readFileSync(
+      `${__dirname}/serialized-objects/${fileNamePrefix}-circom-presentation1-${presVersion}.json`,
+      'utf8'
+    );
+    let pres2Json = fs.readFileSync(
+      `${__dirname}/serialized-objects/${fileNamePrefix}-circom-presentation2-${presVersion}.json`,
+      'utf8'
+    );
 
     const pk1 = PublicKey.fromBytes(pk1Bin);
     const circomVk = LegoVerifyingKeyUncompressed.fromBytes(circomVkBin);
@@ -121,5 +151,22 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     circomOutputs1.set(0, [[generateFieldElementFromNumber(0)]]);
     checkResult(pres2.verify([pk1], undefined, pp1, circomOutputs1));
     expect(pres2Json).toEqual(pres2.toJSON());
-  })
-})
+  }
+
+  it('check version 0.1.0', () => {
+    check('0.0.2', '0.1.0', 'bound-check-legogroth16-vk');
+  });
+
+  it('check version 0.1.0 with circom predicates', async () => {
+    await checkCircom('0.1.0', 'circom-set_membership_5_public-vk');
+  });
+
+  it('check version 0.4.0', () => {
+    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
+    check('0.4.0', '0.4.0', 'bound-check-legogroth16-vk2');
+  });
+
+  it('check version 0.4.0 with circom predicates', async () => {
+    await checkCircom('0.4.0', 'circom-set_membership_5_public-2-vk');
+  });
+});

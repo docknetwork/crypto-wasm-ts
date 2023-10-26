@@ -2,7 +2,7 @@ import { SetupParam } from '../composite-proof';
 import {
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
-  dockAccumulatorParams,
+  dockAccumulatorParams, dockBoundCheckBppSetup, dockInequalityCommKey,
   dockSaverEncryptionGens,
   dockSaverEncryptionGensUncompressed
 } from './types-and-consts';
@@ -22,6 +22,8 @@ export class SetupParamsTracker {
   _nonMemPrkIdx?: number;
   _encGensIdx?: number;
   _encGensCompIdx?: number;
+  _boundCheckBppSetupIdx?: number;
+  _ineqlCommKeyIdx?: number;
 
   constructor() {
     this.setupParams = [];
@@ -81,6 +83,14 @@ export class SetupParamsTracker {
     return this._encGensIdx !== undefined;
   }
 
+  hasBoundCheckBppSetup(): boolean {
+    return this._boundCheckBppSetupIdx !== undefined;
+  }
+
+  hasInequalityCommKey(): boolean {
+    return this._ineqlCommKeyIdx !== undefined;
+  }
+
   isTrackingParam(paramId: string): boolean {
     return this.paramIdToSetupParamIdx.get(paramId) !== undefined;
   }
@@ -130,6 +140,24 @@ export class SetupParamsTracker {
     return this._encGensIdx;
   }
 
+  addBoundCheckBppSetup(): number {
+    if (this.hasBoundCheckBppSetup()) {
+      throw new Error('Already present');
+    }
+    this.setupParams.push(SetupParam.bppSetupParams(dockBoundCheckBppSetup()));
+    this._boundCheckBppSetupIdx = this.lastIndex();
+    return this._boundCheckBppSetupIdx;
+  }
+
+  addInequalityCommKey(): number {
+    if (this.hasInequalityCommKey()) {
+      throw new Error('Already present');
+    }
+    this.setupParams.push(SetupParam.pedCommKeyG1(dockInequalityCommKey()));
+    this._ineqlCommKeyIdx = this.lastIndex();
+    return this._ineqlCommKeyIdx;
+  }
+
   get accumParamsIdx(): number {
     if (this._accumParamsIdx === undefined) {
       throw new Error('Not set yet');
@@ -163,5 +191,19 @@ export class SetupParamsTracker {
       throw new Error('Not set yet');
     }
     return this._encGensCompIdx;
+  }
+
+  get inqlCommKeyIdx(): number {
+    if (this._ineqlCommKeyIdx === undefined) {
+      throw new Error('Not set yet');
+    }
+    return this._ineqlCommKeyIdx;
+  }
+
+  get boundCheckBppSetupIdx(): number {
+    if (this._boundCheckBppSetupIdx === undefined) {
+      throw new Error('Not set yet');
+    }
+    return this._boundCheckBppSetupIdx;
   }
 }

@@ -26,7 +26,8 @@ export interface IPresentedStatus {
 export interface IPresentedAttributeBounds {
   min: number;
   max: number;
-  paramId: string;
+  // paramId will be absent when Bulletproofs++ with default setup is used
+  paramId?: string;
   protocol: BoundCheckProtocols;
 }
 
@@ -70,7 +71,8 @@ export interface ICircomPredicate {
 
 export interface IPresentedAttributeInequality {
   inEqualTo: any;
-  paramId: string;
+  // paramId will be absent when default commitment key is used
+  paramId?: string;
   protocol: InequalityProtocols;
 }
 
@@ -83,9 +85,9 @@ export interface IPresentedCredential {
   // Credential status used for checking revocation
   status?: IPresentedStatus;
   // Bounds proved of any attribute(s)
-  bounds?: { [key: string]: string | IPresentedAttributeBounds };
+  bounds?: { [key: string]: string | IPresentedAttributeBounds | IPresentedAttributeBounds[] };
   // Verifiable encryption of any attributes
-  verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE };
+  verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE | IPresentedAttributeVE[] };
   // Predicates proved using Circom. Can be over any number of attributes
   circomPredicates?: ICircomPredicate[];
   attributeInequalities?: { [key: string]: string | IPresentedAttributeInequality[] };
@@ -129,9 +131,9 @@ export interface IBlindCredentialRequest {
   commitment: Uint8Array;
   attributeInequalities?: { [key: string]: string | IPresentedAttributeInequality[] };
   // Bounds proved of any attribute(s)
-  bounds?: { [key: string]: string | IPresentedAttributeBounds };
+  bounds?: { [key: string]: string | IPresentedAttributeBounds[] };
   // Verifiable encryption of any blinded attributes
-  verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE };
+  verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE[] };
   // Predicates proved using Circom. Can be over any number of blinded attributes
   circomPredicates?: ICircomPredicate[];
   // Equalities between the blinded attributes and credential attributes
@@ -166,8 +168,8 @@ export class PresentationSpecification {
     schema: string,
     revealedAttributes: object,
     status?: IPresentedStatus,
-    bounds?: { [key: string]: string | IPresentedAttributeBounds },
-    verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE },
+    bounds?: { [key: string]: string | IPresentedAttributeBounds[] },
+    verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE[] },
     circomPredicates?: ICircomPredicate[],
     sigType?: SignatureTypes,
     attributeInequalities?: { [key: string]: string | IPresentedAttributeInequality[] }

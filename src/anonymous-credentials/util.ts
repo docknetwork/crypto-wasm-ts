@@ -66,15 +66,19 @@ export function flattenTill2ndLastKey(obj: object): [string[], object[]] {
  * flatten till 2nd last key where the last key is an array of un-nested object
  * @param obj
  */
-export function flattenPredicatesInSpec(obj: object): [string[], object[]] {
-  let re = /(.+)\.(\d+)\.(.+)/i;
+export function flattenPredicatesInSpec(obj: object): [string[], object[][]] {
+  // matches text of form `<string>.<number>.<string>`
+  const re = /(.+)\.(\d+)\.(.+)/i;
   const flattened = {};
   const temp = flatten(obj) as object;
   const tempMap: Map<string, [Map<number, Map<string, any>>, number]> = new Map();
   for (const k of Object.keys(temp)) {
     let matched = k.match(re);
     if (!Array.isArray(matched)) {
-      throw new Error(`Regex couldn't match key ${k}`);
+      if (temp[k] !== null) {
+        // If temp[k] == null then encountered an array item which had no predicate
+        throw new Error(`Regex couldn't match key ${k}`);
+      }
     } else {
       const key = matched[1];
       const arrayIdx = parseInt(matched[2]);

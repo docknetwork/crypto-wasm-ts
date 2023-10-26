@@ -72,10 +72,10 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   attributeInequalities: Map<string, [IPresentedAttributeInequality, Uint8Array][]>;
 
   // Bounds on blinded attributes
-  bounds: Map<string, IPresentedAttributeBounds>;
+  bounds: Map<string, IPresentedAttributeBounds[]>;
 
   // Encryption of blinded attributes
-  verifEnc: Map<string, IPresentedAttributeVE>;
+  verifEnc: Map<string, IPresentedAttributeVE[]>;
 
   // Circom predicates on blinded attributes
   circomPredicates: IProverCircomPredicate[];
@@ -157,7 +157,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     credIdx: number,
     attributeName: string,
     inEqualTo: any,
-    paramId: string,
+    paramId?: string,
     param?: PederCommKey | PederCommKeyUncompressed
   ) {
     this.presentationBuilder.enforceAttributeInequality(credIdx, attributeName, inEqualTo, paramId, param);
@@ -168,7 +168,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     attributeName: string,
     min: BoundType,
     max: BoundType,
-    paramId: string,
+    paramId?: string,
     param?: BoundCheckParamType
   ) {
     this.presentationBuilder.enforceBounds(credIdx, attributeName, min, max, paramId, param);
@@ -254,7 +254,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   enforceInequalityOnBlindedAttribute(
     attributeName: string,
     inEqualTo: any,
-    paramId: string,
+    paramId?: string,
     param?: PederCommKey | PederCommKeyUncompressed
   ) {
     PresentationBuilder.enforceAttributeInequalities(
@@ -279,12 +279,9 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     attributeName: string,
     min: BoundType,
     max: BoundType,
-    paramId: string,
+    paramId?: string,
     param?: BoundCheckParamType
   ) {
-    if (this.bounds.get(attributeName) !== undefined) {
-      throw new Error(`Already enforced bounds on attribute ${attributeName}`);
-    }
     PresentationBuilder.processBounds(this.presentationBuilder, this.bounds, attributeName, min, max, paramId, param);
   }
 
@@ -301,19 +298,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     if (chunkBitSize !== 8 && chunkBitSize !== 16) {
       throw new Error(`Only 8 and 16 supported for chunkBitSize but given ${chunkBitSize}`);
     }
-    if (this.verifEnc.get(attributeName) !== undefined) {
-      throw new Error(`Already enforced verifiable encryption on attribute ${attributeName}`);
-    }
-    this.verifEnc.set(attributeName, {
-      chunkBitSize,
-      commitmentGensId: commKeyId,
-      encryptionKeyId: encryptionKeyId,
-      snarkKeyId: snarkPkId,
-      protocol: VerifiableEncryptionProtocols.Saver
-    });
-    this.presentationBuilder.updatePredicateParams(commKeyId, commKey);
-    this.presentationBuilder.updatePredicateParams(encryptionKeyId, encryptionKey);
-    this.presentationBuilder.updatePredicateParams(snarkPkId, snarkPk);
+    PresentationBuilder.processVerifiableEncs(this.presentationBuilder, this.verifEnc, attributeName, chunkBitSize, commKeyId, encryptionKeyId, snarkPkId, commKey, encryptionKey, snarkPk);
   }
 
   enforceCircomPredicateOnBlindedAttribute(
