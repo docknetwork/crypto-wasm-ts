@@ -2,33 +2,33 @@ import {
   AttributeEquality,
   BlindedAttributeEquality,
   ID_STR,
-  BlindSignatureTypes,
-  BoundCheckProtocols,
-  CircomProtocols,
-  RevocationStatusProtocols,
-  SignatureTypes,
-  VerifiableEncryptionProtocols,
+  BlindSignatureType,
+  BoundCheckProtocol,
+  CircomProtocol,
+  RevocationStatusProtocol,
+  SignatureType,
+  VerifiableEncryptionProtocol,
   REV_CHECK_STR,
   TYPE_STR,
-  InequalityProtocols
+  InequalityProtocol
 } from './types-and-consts';
 import b58 from 'bs58';
 import { CredentialSchema } from './schema';
 
 export interface IPresentedStatus {
   [ID_STR]: string;
-  [TYPE_STR]: RevocationStatusProtocols;
+  [TYPE_STR]: RevocationStatusProtocol;
   [REV_CHECK_STR]: string;
   accumulated: Uint8Array;
   extra: object;
 }
 
-export interface IPresentedAttributeBounds {
+export interface IPresentedAttributeBound {
   min: number;
   max: number;
   // paramId will be absent when Bulletproofs++ with default setup is used
   paramId?: string;
-  protocol: BoundCheckProtocols;
+  protocol: BoundCheckProtocol;
 }
 
 export interface IPresentedAttributeVE {
@@ -36,22 +36,33 @@ export interface IPresentedAttributeVE {
   commitmentGensId: string;
   encryptionKeyId: string;
   snarkKeyId: string;
-  protocol: VerifiableEncryptionProtocols;
+  protocol: VerifiableEncryptionProtocol;
 }
 
 /**
  * A mapping of one private variable of the Circom circuit to one or more attributes
  */
-export interface ICircuitPrivateVars {
+export interface ICircuitPrivateVar {
   varName: string;
   // A circuit variable can be a single value or an array and thus map to one or more attributes
   attributeName: { [key: string]: null | object } | { [key: string]: null | object }[];
 }
 
 /**
+ * A mapping of one private variable of the Circom circuit to one or more (credential, attribute) pairs
+ */
+export interface ICircuitPrivateVarMultiCred {
+  varName: string;
+  // A circuit variable can be reference to a single attribute or an array and thus map to one
+  // or more attribute references. Each attribute reference is a pair with 1st item is the credential
+  // index and 2nd is the attribute name
+  attributeRef: [number, { [key: string]: null | object }] | [number, { [key: string]: null | object }][];
+}
+
+/**
  * A mapping of one public variable of the Circom circuit to one or more values
  */
-export interface ICircuitPublicVars {
+export interface ICircuitPublicVar {
   varName: string;
   // A circuit variable can be a single value or an array and thus map to one or more values
   value: Uint8Array | Uint8Array[];
@@ -60,24 +71,24 @@ export interface ICircuitPublicVars {
 /**
  * R1CS public inputs, private attribute names involved in circuit.
  */
-export interface ICircomPredicate {
-  privateVars: ICircuitPrivateVars[];
-  publicVars: ICircuitPublicVars[];
+export interface ICircomPredicate<PV> {
+  privateVars: PV[];
+  publicVars: ICircuitPublicVar[];
   // Used to identify the circuit and associated R1CS and WASM files
   circuitId: string;
   snarkKeyId: string;
-  protocol: CircomProtocols;
+  protocol: CircomProtocol;
 }
 
 export interface IPresentedAttributeInequality {
   inEqualTo: any;
   // paramId will be absent when default commitment key is used
   paramId?: string;
-  protocol: InequalityProtocols;
+  protocol: InequalityProtocol;
 }
 
 export interface IPresentedCredential {
-  sigType?: SignatureTypes;
+  sigType?: SignatureType;
   version: string;
   schema: string;
   // Attributes being revealed to the verifier
@@ -85,11 +96,11 @@ export interface IPresentedCredential {
   // Credential status used for checking revocation
   status?: IPresentedStatus;
   // Bounds proved of any attribute(s)
-  bounds?: { [key: string]: string | IPresentedAttributeBounds | IPresentedAttributeBounds[] };
+  bounds?: { [key: string]: string | IPresentedAttributeBound | IPresentedAttributeBound[] };
   // Verifiable encryption of any attributes
   verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE | IPresentedAttributeVE[] };
   // Predicates proved using Circom. Can be over any number of attributes
-  circomPredicates?: ICircomPredicate[];
+  circomPredicates?: ICircomPredicate<ICircuitPrivateVar>[];
   attributeInequalities?: { [key: string]: string | IPresentedAttributeInequality[] };
 }
 
@@ -122,7 +133,7 @@ export interface IPresentedBoundedPseudonymInBlindedCredReq {
 
 export interface IBlindCredentialRequest {
   // Type of the signature requested, like BBS, BBS+
-  sigType: BlindSignatureTypes;
+  sigType: BlindSignatureType;
   version: string;
   // The schema of the whole (unblinded credential). This should include all attributes, i.e. blinded and unblinded
   schema: CredentialSchema;
@@ -131,11 +142,11 @@ export interface IBlindCredentialRequest {
   commitment: Uint8Array;
   attributeInequalities?: { [key: string]: string | IPresentedAttributeInequality[] };
   // Bounds proved of any attribute(s)
-  bounds?: { [key: string]: string | IPresentedAttributeBounds[] };
+  bounds?: { [key: string]: string | IPresentedAttributeBound[] };
   // Verifiable encryption of any blinded attributes
   verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE[] };
   // Predicates proved using Circom. Can be over any number of blinded attributes
-  circomPredicates?: ICircomPredicate[];
+  circomPredicates?: ICircomPredicate<ICircuitPrivateVar>[];
   // Equalities between the blinded attributes and credential attributes
   blindedAttributeEqualities?: BlindedAttributeEquality[];
   pseudonyms?: { [key: string]: IPresentedBoundedPseudonymInBlindedCredReq };
@@ -155,6 +166,7 @@ export class PresentationSpecification {
   // key == pseudonym
   unboundedPseudonyms?: { [key: string]: IPresentedUnboundedPseudonym };
   blindCredentialRequest?: IBlindCredentialRequest;
+  circomPredicatesMultiCred?: ICircomPredicate<ICircuitPrivateVarMultiCred>[]
 
   constructor() {
     this.credentials = [];
@@ -168,10 +180,10 @@ export class PresentationSpecification {
     schema: string,
     revealedAttributes: object,
     status?: IPresentedStatus,
-    bounds?: { [key: string]: string | IPresentedAttributeBounds[] },
+    bounds?: { [key: string]: string | IPresentedAttributeBound[] },
     verifiableEncryptions?: { [key: string]: string | IPresentedAttributeVE[] },
-    circomPredicates?: ICircomPredicate[],
-    sigType?: SignatureTypes,
+    circomPredicates?: ICircomPredicate<ICircuitPrivateVar>[],
+    sigType?: SignatureType,
     attributeInequalities?: { [key: string]: string | IPresentedAttributeInequality[] }
   ) {
     const ps = {
@@ -219,7 +231,9 @@ export class PresentationSpecification {
       credentials: [],
       attributeEqualities: this.attributeEqualities,
       boundedPseudonyms: this.boundedPseudonyms,
-      unboundedPseudonyms: this.unboundedPseudonyms
+      unboundedPseudonyms: this.unboundedPseudonyms,
+      blindCredentialRequest: this.blindCredentialRequest,
+      circomPredicatesMultiCred: this.circomPredicatesMultiCred
     };
 
     for (const pc of this.credentials) {

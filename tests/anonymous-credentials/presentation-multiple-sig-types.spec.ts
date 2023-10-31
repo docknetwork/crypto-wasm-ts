@@ -16,7 +16,7 @@ import {
   BBSSignatureParams,
   CredentialSchema,
   DefaultSchemaParsingOpts,
-  InequalityProtocols,
+  InequalityProtocol,
   META_SCHEMA_STR,
   PresentationBuilder,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
@@ -25,7 +25,7 @@ import {
   PSKeypair,
   PSPublicKey,
   PSSecretKey,
-  PSSignatureParams, SignatureTypes
+  PSSignatureParams, SignatureType
 } from '../../src';
 import { checkResult, stringToBytes } from '../utils';
 import { checkPresentationJson, getExampleSchema } from './utils';
@@ -145,9 +145,9 @@ describe.each([true, false])(
 
       expect(pres.spec.credentials.length).toEqual(3);
 
-      expect(pres.spec.credentials[0].sigType).toEqual(SignatureTypes.Bbs);
-      expect(pres.spec.credentials[1].sigType).toEqual(SignatureTypes.BbsPlus);
-      expect(pres.spec.credentials[2].sigType).toEqual(SignatureTypes.Ps);
+      expect(pres.spec.credentials[0].sigType).toEqual(SignatureType.Bbs);
+      expect(pres.spec.credentials[1].sigType).toEqual(SignatureType.BbsPlus);
+      expect(pres.spec.credentials[2].sigType).toEqual(SignatureType.Ps);
 
       expect(pres.spec.credentials[0].revealedAttributes).toEqual({
         credentialSubject: {
@@ -170,7 +170,7 @@ describe.each([true, false])(
         expect(pres.spec.credentials[i].attributeInequalities).toEqual({
           credentialSubject: {
             sensitive: {
-              email: [{ inEqualTo: inEqualEmail, paramId: commKeyId, protocol: InequalityProtocols.Uprove }]
+              email: [{ inEqualTo: inEqualEmail, paramId: commKeyId, protocol: InequalityProtocol.Uprove }]
             }
           }
         });

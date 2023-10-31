@@ -181,36 +181,36 @@ export function dockInequalityCommKeyUncompressed(): PederCommKeyUncompressed {
   return new PederCommKey(INEQUALITY_COMM_KEY_LABEL_BYTES).decompress();
 }
 
-export enum SignatureTypes {
+export enum SignatureType {
   Bbs = BBS_CRED_PROOF_TYPE,
   BbsPlus = BBS_PLUS_CRED_PROOF_TYPE,
   Ps = PS_CRED_PROOF_TYPE
 }
 
-export enum BlindSignatureTypes {
+export enum BlindSignatureType {
   Bbs = BBS_BLINDED_CRED_PROOF_TYPE,
   BbsPlus = BBS_PLUS_BLINDED_CRED_PROOF_TYPE
 }
 
-export enum RevocationStatusProtocols {
+export enum RevocationStatusProtocol {
   Vb22 = VB_ACCUMULATOR_22
 }
 
-export enum BoundCheckProtocols {
+export enum BoundCheckProtocol {
   Legogroth16 = LEGOGROTH16,
   Bpp = BPP,
   Smc = SMC,
   SmcKV = SMC_KV
 }
 
-export enum VerifiableEncryptionProtocols {
+export enum VerifiableEncryptionProtocol {
   Saver = SAVER
 }
 
-export enum CircomProtocols {
+export enum CircomProtocol {
   Legogroth16 = LEGOGROTH16
 }
 
-export enum InequalityProtocols {
+export enum InequalityProtocol {
   Uprove = UPROVE
 }

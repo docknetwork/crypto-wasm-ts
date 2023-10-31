@@ -23,8 +23,8 @@ import {
   SaverProvingKeyUncompressed,
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
-  BoundCheckProtocols,
-  VerifiableEncryptionProtocols,
+  BoundCheckProtocol,
+  VerifiableEncryptionProtocol,
   BoundCheckBppParamsUncompressed,
   BoundCheckSmcParamsUncompressed,
   BoundCheckBppParams,
@@ -34,7 +34,7 @@ import {
   BoundCheckSmcWithKVSetup,
   META_SCHEMA_STR,
   DefaultSchemaParsingOpts,
-  InequalityProtocols, BoundCheckParamType
+  InequalityProtocol, BoundCheckParamType
 } from '../../src';
 import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
 import {
@@ -1091,19 +1091,19 @@ describe.each([true, false])(
       expect(pres.spec.credentials[0].attributeInequalities).toEqual({
         credentialSubject: {
           email: [
-            { inEqualTo: inEqualEmail, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: inEqualEmail2, protocol: InequalityProtocols.Uprove }
+            { inEqualTo: inEqualEmail, protocol: InequalityProtocol.Uprove },
+            { inEqualTo: inEqualEmail2, protocol: InequalityProtocol.Uprove }
           ],
           timeOfBirth: [
-            { inEqualTo: inequalTob, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: inequalTob2, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: inequalTob3, protocol: InequalityProtocols.Uprove }
+            { inEqualTo: inequalTob, protocol: InequalityProtocol.Uprove },
+            { inEqualTo: inequalTob2, protocol: InequalityProtocol.Uprove },
+            { inEqualTo: inequalTob3, protocol: InequalityProtocol.Uprove }
           ],
           score: [
-            { inEqualTo: score, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: score2, protocol: InequalityProtocols.Uprove }
+            { inEqualTo: score, protocol: InequalityProtocol.Uprove },
+            { inEqualTo: score2, protocol: InequalityProtocol.Uprove }
           ],
-          SSN: [{ inEqualTo: ssn, protocol: InequalityProtocols.Uprove }]
+          SSN: [{ inEqualTo: ssn, protocol: InequalityProtocol.Uprove }]
         }
       });
 
@@ -1111,22 +1111,22 @@ describe.each([true, false])(
         credentialSubject: {
           sensitive: {
             email: [
-              { inEqualTo: inEqualEmail, protocol: InequalityProtocols.Uprove },
-              { inEqualTo: inEqualEmail2, protocol: InequalityProtocols.Uprove }
+              { inEqualTo: inEqualEmail, protocol: InequalityProtocol.Uprove },
+              { inEqualTo: inEqualEmail2, protocol: InequalityProtocol.Uprove }
             ]
           },
           location: {
-            city: [{ inEqualTo: city, protocol: InequalityProtocols.Uprove }]
+            city: [{ inEqualTo: city, protocol: InequalityProtocol.Uprove }]
           },
-          isbool: [{ inEqualTo: false, protocol: InequalityProtocols.Uprove }]
+          isbool: [{ inEqualTo: false, protocol: InequalityProtocol.Uprove }]
         }
       });
 
       expect(pres.spec.credentials[2].attributeInequalities).toEqual({
         credentialSubject: {
           myDate: [
-            { inEqualTo: '2023-10-15', protocol: InequalityProtocols.Uprove },
-            { inEqualTo: new Date('2023-10-16'), protocol: InequalityProtocols.Uprove }
+            { inEqualTo: '2023-10-15', protocol: InequalityProtocol.Uprove },
+            { inEqualTo: new Date('2023-10-16'), protocol: InequalityProtocol.Uprove }
           ],
         }
       });
@@ -1136,7 +1136,7 @@ describe.each([true, false])(
       checkPresentationJson(pres, [pk1, pk2, pk1]);
     });
 
-    function checkBounds(protocol: BoundCheckProtocols, paramId?: string, provingParams?: BoundCheckParamType, verifyingParams?: BoundCheckParamType) {
+    function checkBounds(protocol: BoundCheckProtocol, paramId?: string, provingParams?: BoundCheckParamType, verifyingParams?: BoundCheckParamType) {
       // ------------------- Presentation with 1 credential -----------------------------------------
       console.time(`Proof generation over 1 credential and 3 bound-check in total using ${protocol}`);
       const builder7 = new PresentationBuilder();
@@ -1344,7 +1344,7 @@ describe.each([true, false])(
       checkPresentationJson(pres2, [pk1, pk2, pk3], acc, pp1);
     }
 
-    function checkBoundsOnDates(protocol: BoundCheckProtocols, paramId?: string, provingParams?: BoundCheckParamType, verifyingParams?: BoundCheckParamType) {
+    function checkBoundsOnDates(protocol: BoundCheckProtocol, paramId?: string, provingParams?: BoundCheckParamType, verifyingParams?: BoundCheckParamType) {
       console.time(`Proof generation over 1 credential and 2 bound-check in total using ${protocol}`);
       const builder7 = new PresentationBuilder();
       expect(builder7.addCredential(credential7, pk1)).toEqual(0);
@@ -1405,27 +1405,27 @@ describe.each([true, false])(
 
     it('from credentials and proving bounds using LegoGroth16 on attributes as dates', () => {
       setupBoundCheckLego();
-      checkBoundsOnDates(BoundCheckProtocols.Legogroth16, 'random', boundCheckProvingKey, boundCheckVerifyingKey);
+      checkBoundsOnDates(BoundCheckProtocol.Legogroth16, 'random', boundCheckProvingKey, boundCheckVerifyingKey);
     });
 
     it('from credentials and proving bounds using Bulletproofs++ on attributes as dates', () => {
       setupBoundCheckBpp();
-      checkBoundsOnDates(BoundCheckProtocols.Bpp, 'random', boundCheckBppParams, boundCheckBppParams);
+      checkBoundsOnDates(BoundCheckProtocol.Bpp, 'random', boundCheckBppParams, boundCheckBppParams);
     });
 
     it('from credentials and proving bounds using Bulletproofs++ on attributes as dates and using default setup', () => {
-      checkBoundsOnDates(BoundCheckProtocols.Bpp);
+      checkBoundsOnDates(BoundCheckProtocol.Bpp);
     });
 
     it('from credentials and proving bounds using set-membership check on attributes as dates', () => {
       setupBoundCheckSmc();
-      checkBoundsOnDates(BoundCheckProtocols.Smc, 'random', boundCheckSmcParams, boundCheckSmcParams);
+      checkBoundsOnDates(BoundCheckProtocol.Smc, 'random', boundCheckSmcParams, boundCheckSmcParams);
     });
 
     it('from credentials and proving bounds using set-membership check with keyed verification on attributes as dates', () => {
       setupBoundCheckSmcWithKV();
       checkBoundsOnDates(
-        BoundCheckProtocols.SmcKV,
+        BoundCheckProtocol.SmcKV,
         'random',
         boundCheckSmcKVProverParams,
         boundCheckSmcKVVerifierParams,
@@ -1434,26 +1434,26 @@ describe.each([true, false])(
 
     it('from credentials and proving bounds on attributes using LegorGroth16', () => {
       setupBoundCheckLego();
-      checkBounds(BoundCheckProtocols.Legogroth16, 'random', boundCheckProvingKey, boundCheckVerifyingKey);
+      checkBounds(BoundCheckProtocol.Legogroth16, 'random', boundCheckProvingKey, boundCheckVerifyingKey);
     });
 
     it('from credentials and proving bounds on attributes using Bulletproofs++', () => {
       setupBoundCheckBpp();
-      checkBounds(BoundCheckProtocols.Bpp, 'random', boundCheckBppParams, boundCheckBppParams);
+      checkBounds(BoundCheckProtocol.Bpp, 'random', boundCheckBppParams, boundCheckBppParams);
     });
 
     it('from credentials and proving bounds on attributes using Bulletproofs++ and using default setup', () => {
-      checkBounds(BoundCheckProtocols.Bpp);
+      checkBounds(BoundCheckProtocol.Bpp);
     });
 
     it('from credentials and proving bounds on attributes using set-membership check', () => {
       setupBoundCheckSmc();
-      checkBounds(BoundCheckProtocols.Smc, 'random', boundCheckSmcParams, boundCheckSmcParams);
+      checkBounds(BoundCheckProtocol.Smc, 'random', boundCheckSmcParams, boundCheckSmcParams);
     });
 
     it('from credentials and proving bounds on attributes using set-membership check and keyed-verification', () => {
       setupBoundCheckSmcWithKV();
-      checkBounds(BoundCheckProtocols.SmcKV, 'random', boundCheckSmcKVProverParams, boundCheckSmcKVVerifierParams);
+      checkBounds(BoundCheckProtocol.SmcKV, 'random', boundCheckSmcKVProverParams, boundCheckSmcKVVerifierParams);
     });
 
     it('from credentials and encryption of attributes', () => {
@@ -1495,7 +1495,7 @@ describe.each([true, false])(
             commitmentGensId: commKeyId,
             encryptionKeyId: ekId,
             snarkKeyId: snarkPkId,
-            protocol: VerifiableEncryptionProtocols.Saver
+            protocol: VerifiableEncryptionProtocol.Saver
           }]
         }
       });
@@ -1583,7 +1583,7 @@ describe.each([true, false])(
             commitmentGensId: commKeyId,
             encryptionKeyId: ekId,
             snarkKeyId: snarkPkId,
-            protocol: VerifiableEncryptionProtocols.Saver
+            protocol: VerifiableEncryptionProtocol.Saver
           }]
         }
       });
@@ -1595,7 +1595,7 @@ describe.each([true, false])(
               commitmentGensId: commKeyId,
               encryptionKeyId: ekId,
               snarkKeyId: snarkPkId,
-              protocol: VerifiableEncryptionProtocols.Saver
+              protocol: VerifiableEncryptionProtocol.Saver
             }]
           }
         }
@@ -1773,19 +1773,19 @@ describe.each([true, false])(
             min: minTime,
             max: maxTime,
             paramId: boundCheckSnarkId,
-            protocol: BoundCheckProtocols.Legogroth16
+            protocol: BoundCheckProtocol.Legogroth16
           }],
           BMI: [{
             min: minBMI,
             max: maxBMI,
             paramId: boundCheckSnarkId,
-            protocol: BoundCheckProtocols.Legogroth16
+            protocol: BoundCheckProtocol.Legogroth16
           }],
           score: [{
             min: minScore,
             max: maxScore,
             paramId: boundCheckSnarkId,
-            protocol: BoundCheckProtocols.Legogroth16
+            protocol: BoundCheckProtocol.Legogroth16
           }]
         }
       });
@@ -1796,7 +1796,7 @@ describe.each([true, false])(
             commitmentGensId: commKeyId,
             encryptionKeyId: ekId,
             snarkKeyId: snarkPkId,
-            protocol: VerifiableEncryptionProtocols.Saver
+            protocol: VerifiableEncryptionProtocol.Saver
           }]
         }
       });
@@ -1812,13 +1812,13 @@ describe.each([true, false])(
                     min: minLat,
                     max: maxLat,
                     paramId: boundCheckSnarkId,
-                    protocol: BoundCheckProtocols.Legogroth16
+                    protocol: BoundCheckProtocol.Legogroth16
                   }],
                   long: [{
                     min: minLong,
                     max: maxLong,
                     paramId: boundCheckSnarkId,
-                    protocol: BoundCheckProtocols.Legogroth16
+                    protocol: BoundCheckProtocol.Legogroth16
                   }]
                 }
               }
@@ -1834,7 +1834,7 @@ describe.each([true, false])(
               commitmentGensId: commKeyId,
               encryptionKeyId: ekId,
               snarkKeyId: snarkPkId,
-              protocol: VerifiableEncryptionProtocols.Saver
+              protocol: VerifiableEncryptionProtocol.Saver
             }]
           }
         }
@@ -1960,13 +1960,13 @@ describe.each([true, false])(
                   min: minLat1,
                   max: maxLat1,
                   paramId: boundCheckSnarkId,
-                  protocol: BoundCheckProtocols.Legogroth16
+                  protocol: BoundCheckProtocol.Legogroth16
                 }],
                 long: [{
                   min: minLong1,
                   max: maxLong1,
                   paramId: boundCheckSnarkId,
-                  protocol: BoundCheckProtocols.Legogroth16
+                  protocol: BoundCheckProtocol.Legogroth16
                 }]
               }
             }
@@ -1978,13 +1978,13 @@ describe.each([true, false])(
                   min: minLat2,
                   max: maxLat2,
                   paramId: boundCheckSnarkId,
-                  protocol: BoundCheckProtocols.Legogroth16
+                  protocol: BoundCheckProtocol.Legogroth16
                 }],
                 long: [{
                   min: minLong2,
                   max: maxLong2,
                   paramId: boundCheckSnarkId,
-                  protocol: BoundCheckProtocols.Legogroth16
+                  protocol: BoundCheckProtocol.Legogroth16
                 }]
               }
             }
@@ -2104,13 +2104,13 @@ describe.each([true, false])(
           min: minIssuanceDate,
           max: maxIssuanceDate,
           paramId: boundCheckSnarkId,
-          protocol: BoundCheckProtocols.Legogroth16
+          protocol: BoundCheckProtocol.Legogroth16
         }],
         expirationDate: [{
           min: minExpDate,
           max: maxExpDate,
           paramId: boundCheckSnarkId,
-          protocol: BoundCheckProtocols.Legogroth16
+          protocol: BoundCheckProtocol.Legogroth16
         }]
       });
 

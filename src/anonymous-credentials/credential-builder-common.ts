@@ -5,7 +5,7 @@ import {
   ID_STR,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
-  RevocationStatusProtocols,
+  RevocationStatusProtocol,
   REV_CHECK_STR,
   REV_ID_STR,
   SCHEMA_STR,
@@ -64,7 +64,7 @@ export abstract class CredentialBuilderCommon extends Versioned {
       throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} but was ${revCheck}`);
     }
     this._credStatus = {
-      [TYPE_STR]: RevocationStatusProtocols.Vb22,
+      [TYPE_STR]: RevocationStatusProtocol.Vb22,
       [ID_STR]: registryId,
       [REV_CHECK_STR]: revCheck,
       [REV_ID_STR]: memberValue

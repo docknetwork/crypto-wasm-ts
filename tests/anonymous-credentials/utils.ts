@@ -651,17 +651,20 @@ export function getDecodedBoundedPseudonym(
  * @param accumulatorPublicKeys
  * @param predicateParams
  * @param circomOutputs
+ * @param circomOutputsMultiCred
  */
 export function checkPresentationJson(
   pres: Presentation,
   pks: PublicKey[],
   accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
   predicateParams?: Map<string, PredicateParamType>,
-  circomOutputs?: Map<number, Uint8Array[][]>
+  circomOutputs?: Map<number, Uint8Array[][]>,
+  // TODO: Rename
+  circomOutputsMultiCred?: Uint8Array[][]
 ): Presentation {
   const presJson = pres.toJSON();
   const recreatedPres = Presentation.fromJSON(presJson);
-  checkResult(recreatedPres.verify(pks, accumulatorPublicKeys, predicateParams, circomOutputs));
+  checkResult(recreatedPres.verify(pks, accumulatorPublicKeys, predicateParams, circomOutputs, undefined, circomOutputsMultiCred));
   expect(presJson).toEqual(recreatedPres.toJSON());
   return recreatedPres;
 }

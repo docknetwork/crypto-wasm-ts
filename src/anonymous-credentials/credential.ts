@@ -5,7 +5,7 @@ import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   CRYPTO_VERSION_STR,
-  SignatureTypes,
+  SignatureType,
   PROOF_STR,
   PS_CRED_PROOF_TYPE,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
@@ -71,7 +71,7 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
     }
   }
 
-  static getSigType(): SignatureTypes {
+  static getSigType(): SignatureType {
     throw new Error('This method should be implemented by extending class');
   }
 }
@@ -116,8 +116,8 @@ export class BBSCredential extends Credential<BBSPublicKey, BBSSignature, BBSSig
     );
   }
 
-  static getSigType(): SignatureTypes {
-    return SignatureTypes.Bbs;
+  static getSigType(): SignatureType {
+    return SignatureType.Bbs;
   }
 }
 
@@ -161,8 +161,8 @@ export class BBSPlusCredential extends Credential<BBSPlusPublicKeyG2, BBSPlusSig
     );
   }
 
-  static getSigType(): SignatureTypes {
-    return SignatureTypes.BbsPlus;
+  static getSigType(): SignatureType {
+    return SignatureType.BbsPlus;
   }
 }
 
@@ -206,7 +206,7 @@ export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatu
     );
   }
 
-  static getSigType(): SignatureTypes {
-    return SignatureTypes.Ps;
+  static getSigType(): SignatureType {
+    return SignatureType.Ps;
   }
 }

@@ -11,13 +11,13 @@ import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   BlindedAttributeEquality,
-  BlindSignatureTypes,
+  BlindSignatureType,
   BoundCheckParamType,
   BoundType,
   PublicKey,
   SignatureParams,
   SUBJECT_STR,
-  VerifiableEncryptionProtocols
+  VerifiableEncryptionProtocol
 } from './types-and-consts';
 import { AccumulatorPublicKey, AccumulatorWitness } from '../accumulator';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
@@ -36,7 +36,7 @@ import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import {
-  IPresentedAttributeBounds,
+  IPresentedAttributeBound,
   IPresentedAttributeInequality,
   IPresentedAttributeVE
 } from './presentation-specification';
@@ -72,7 +72,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   attributeInequalities: Map<string, [IPresentedAttributeInequality, Uint8Array][]>;
 
   // Bounds on blinded attributes
-  bounds: Map<string, IPresentedAttributeBounds[]>;
+  bounds: Map<string, IPresentedAttributeBound[]>;
 
   // Encryption of blinded attributes
   verifEnc: Map<string, IPresentedAttributeVE[]>;
@@ -127,7 +127,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
 
   abstract getBlinding(): Uint8Array | undefined;
 
-  static getSigType(): BlindSignatureTypes {
+  static getSigType(): BlindSignatureType {
     throw new Error('This method should be implemented by extending class');
   }
 
@@ -212,6 +212,28 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   ) {
     this.presentationBuilder.enforceCircomPredicate(
       credIdx,
+      circuitPrivateVars,
+      circuitPublicVars,
+      circuitId,
+      provingKeyId,
+      r1cs,
+      wasmBytes,
+      provingKey
+    );
+  }
+
+  enforceCircomPredicateAcrossMultipleCredentials(
+    // For each circuit private variable name, give its corresponding credential index and attribute name
+    circuitPrivateVars: [string, [number, string] | [number, string][]][],
+    // For each circuit public variable name, give its corresponding values
+    circuitPublicVars: [string, Uint8Array | Uint8Array[]][],
+    circuitId: string,
+    provingKeyId: string,
+    r1cs?: R1CS | ParsedR1CSFile,
+    wasmBytes?: Uint8Array,
+    provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
+  ) {
+    this.presentationBuilder.enforceCircomPredicateAcrossMultipleCredentials(
       circuitPrivateVars,
       circuitPublicVars,
       circuitId,
@@ -440,8 +462,8 @@ export class BBSBlindedCredentialRequestBuilder extends BlindedCredentialRequest
     return undefined;
   }
 
-  static getSigType(): BlindSignatureTypes {
-    return BlindSignatureTypes.Bbs;
+  static getSigType(): BlindSignatureType {
+    return BlindSignatureType.Bbs;
   }
 }
 
@@ -482,8 +504,8 @@ export class BBSPlusBlindedCredentialRequestBuilder extends BlindedCredentialReq
     return commitment;
   }
 
-  static getSigType(): BlindSignatureTypes {
-    return BlindSignatureTypes.BbsPlus;
+  static getSigType(): BlindSignatureType {
+    return BlindSignatureType.BbsPlus;
   }
 }
 

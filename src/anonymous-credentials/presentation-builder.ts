@@ -20,31 +20,31 @@ import {
   AttributeCiphertexts,
   AttributeEquality,
   BoundCheckParamType,
-  BoundCheckProtocols,
+  BoundCheckProtocol,
   BoundType,
-  CircomProtocols,
+  CircomProtocol,
   CRYPTO_VERSION_STR,
   FlattenedSchema,
   ID_STR,
-  InequalityProtocols,
+  InequalityProtocol,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
   PublicKey,
   REV_CHECK_STR,
   REV_ID_STR,
-  RevocationStatusProtocols,
+  RevocationStatusProtocol,
   SCHEMA_STR,
   SignatureParams,
   STATUS_STR,
   TYPE_STR,
-  VerifiableEncryptionProtocols
+  VerifiableEncryptionProtocol
 } from './types-and-consts';
 import {
   IBlindCredentialRequest,
   ICircomPredicate,
-  ICircuitPrivateVars,
-  IPresentedAttributeBounds,
+  ICircuitPrivateVar, ICircuitPrivateVarMultiCred,
+  IPresentedAttributeBound,
   IPresentedAttributeInequality,
   IPresentedAttributeVE,
   IPresentedStatus,
@@ -148,14 +148,17 @@ export class PresentationBuilder extends Versioned {
   // Bounds on attribute. The key of the map is the credential index and for the inner map is the attribute and value of map
   // denotes min, max, an identifier of the setup parameters for the protocol and the protocol name.
   // An attribute can have many bound checks.
-  bounds: Map<number, Map<string, IPresentedAttributeBounds[]>>;
+  bounds: Map<number, Map<string, IPresentedAttributeBound[]>>;
 
   // Verifiable encryption of attributes. The key of the map is the credential index and for the inner map is the attribute and value of map
   // denotes the setup parameters for the protocol and the protocol name. An attribute can have many verifiable encryptions.
   verifEnc: Map<number, Map<string, IPresentedAttributeVE[]>>;
 
-  // Predicates expressed as Circom programs. For each credential, store a public, private variables, circuit id (used to fetch R1CS, WASM bytes) and attributes used in circuit
+  // Predicates expressed as Circom programs over attributes of a single credential. For each credential, store a public, private variables, circuit id (used to fetch R1CS, WASM bytes) and attributes used in circuit
   circomPredicates: Map<number, IProverCircomPredicate[]>;
+
+  // Predicates expressed as Circom programs over attributes of multiple credentials.
+  circomPredicatesMultiCred: IProverCircomPredicateMultiCred[];
 
   // Parameters for predicates like snark proving key for bound check, verifiable encryption, Circom program
   predicateParams: Map<string, PredicateParamType>;
@@ -171,7 +174,7 @@ export class PresentationBuilder extends Versioned {
     blinding?: Uint8Array;
     // The 2nd item, i.e. Uint8Array in the pair is the encoded value of the public value with which inequality is proved
     attributeInequalities: Map<string, [IPresentedAttributeInequality, Uint8Array][]>;
-    bounds: Map<string, IPresentedAttributeBounds[]>;
+    bounds: Map<string, IPresentedAttributeBound[]>;
     verifEnc: Map<string, IPresentedAttributeVE[]>;
     circPred: IProverCircomPredicate[];
     pseudonyms: IProverBoundedPseudonymInBlindedCredReq[];
@@ -190,10 +193,17 @@ export class PresentationBuilder extends Versioned {
     this.verifEnc = new Map();
     this.predicateParams = new Map();
     this.circomPredicates = new Map();
+    this.circomPredicatesMultiCred = [];
     this.spec = new PresentationSpecification();
   }
 
+  /**
+   * Add a credential to this presentation. This will result in a proof of possession of this credential being created
+   * @param credential
+   * @param pk
+   */
   addCredential(credential: Credential, pk: PublicKey): number {
+    // TODO: Accept reference to public keys in case of same key for many credentials
     this.credentials.push([credential, pk]);
     return this.credentials.length - 1;
   }
@@ -345,6 +355,18 @@ export class PresentationBuilder extends Versioned {
     this.verifEnc.set(credIdx, v);
   }
 
+  /**
+   * Enforce a predicate written as a Circom program over a credential's attributes
+   * @param credIdx - The credential index whose attributes are used as witness in the Circom program
+   * @param circuitPrivateVars - Mapping of private variables from Circom program to attribute names. A variable can be a single value
+   * or an array and thus can correspond to a single attribute or array of attributes
+   * @param circuitPublicVars
+   * @param circuitId
+   * @param provingKeyId
+   * @param r1cs
+   * @param wasmBytes
+   * @param provingKey
+   */
   enforceCircomPredicate(
     credIdx: number,
     // For each circuit private variable name, give its corresponding attribute names
@@ -373,6 +395,40 @@ export class PresentationBuilder extends Versioned {
     }
     predicates.push({ privateVars: circuitPrivateVars, publicVars: circuitPublicVars, circuitId, provingKeyId });
     this.circomPredicates.set(credIdx, predicates);
+  }
+
+  /**
+   * Enforce a predicate written as a Circom program over a many credentials' attributes
+   * @param circuitPrivateVars - Mapping of private variables from Circom program to pairs where each pair corresponds to a credential attribute.
+   * The 1st item of the pair is the credential index and 2nd item is the attribute name in that credential
+   * @param circuitPublicVars
+   * @param circuitId
+   * @param provingKeyId
+   * @param r1cs
+   * @param wasmBytes
+   * @param provingKey
+   */
+  enforceCircomPredicateAcrossMultipleCredentials(
+    // For each circuit private variable name, give its corresponding credential index and attribute name
+    circuitPrivateVars: [string, [number, string] | [number, string][]][],
+    // For each circuit public variable name, give its corresponding values
+    circuitPublicVars: [string, Uint8Array | Uint8Array[]][],
+    circuitId: string,
+    provingKeyId: string,
+    r1cs?: R1CS | ParsedR1CSFile,
+    wasmBytes?: Uint8Array,
+    provingKey?: LegoProvingKey | LegoProvingKeyUncompressed
+  ) {
+    if (circuitPrivateVars.length === 0) {
+      throw new Error('Provide at least one private variable mapping');
+    }
+    this.updatePredicateParams(provingKeyId, provingKey);
+    this.updatePredicateParams(
+      PresentationBuilder.r1csParamId(circuitId),
+      r1cs !== undefined ? getR1CS(r1cs) : undefined
+    );
+    this.updatePredicateParams(PresentationBuilder.wasmParamId(circuitId), wasmBytes);
+    this.circomPredicatesMultiCred.push({ privateVars: circuitPrivateVars, publicVars: circuitPublicVars, circuitId, provingKeyId })
   }
 
   addBoundedPseudonym(
@@ -441,13 +497,13 @@ export class PresentationBuilder extends Versioned {
 
     // Create statements and witnesses for proving possession of each credential, i.e. proof of knowledge of the sigs.
     // Also collect encoded attributes used in any predicate
-    for (let i = 0; i < numCreds; i++) {
-      const cred = this.credentials[i][0];
+    for (let credIndex = 0; credIndex < numCreds; credIndex++) {
+      const cred = this.credentials[credIndex][0];
       const schema = cred.schema;
       const flattenedSchema = schema.flatten();
 
       const numAttribs = flattenedSchema[0].length;
-      let revealedNames = this.revealedAttributes.get(i);
+      let revealedNames = this.revealedAttributes.get(credIndex);
       if (revealedNames === undefined) {
         revealedNames = new Set();
       }
@@ -467,7 +523,7 @@ export class PresentationBuilder extends Versioned {
           (cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_STR &&
             cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_STR)
         ) {
-          throw new Error(`Credential for ${i} has invalid status ${cred.credentialStatus}`);
+          throw new Error(`Credential for ${credIndex} has invalid status ${cred.credentialStatus}`);
         }
         revealedNames.add(`${STATUS_STR}.${ID_STR}`);
         revealedNames.add(`${STATUS_STR}.${REV_CHECK_STR}`);
@@ -481,7 +537,7 @@ export class PresentationBuilder extends Versioned {
       const statement = buildSignatureStatementFromParamsRef(
         setupParamsTrk,
         sigParams,
-        this.credentials[i][1],
+        this.credentials[credIndex][1],
         numAttribs,
         revealedAttrsEncoded
       );
@@ -491,19 +547,19 @@ export class PresentationBuilder extends Versioned {
 
       let presentedStatus: IPresentedStatus | undefined;
       if (cred.credentialStatus !== undefined) {
-        const s = this.credStatuses.get(i);
+        const s = this.credStatuses.get(credIndex);
         if (s === undefined) {
-          throw new Error(`No status details found for credential index ${i}`);
+          throw new Error(`No status details found for credential index ${credIndex}`);
         }
         presentedStatus = {
           [ID_STR]: cred.credentialStatus[ID_STR],
-          [TYPE_STR]: RevocationStatusProtocols.Vb22,
+          [TYPE_STR]: RevocationStatusProtocol.Vb22,
           [REV_CHECK_STR]: cred.credentialStatus[REV_CHECK_STR],
           accumulated: s[1],
           extra: s[3]
         };
         credStatusAux.push([
-          i,
+          credIndex,
           cred.credentialStatus[REV_CHECK_STR],
           schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR])
         ]);
@@ -523,11 +579,11 @@ export class PresentationBuilder extends Versioned {
       }
 
       // Get encoded attributes which are used in inequality check
-      const ineqs = this.attributeInequalities.get(i);
+      const ineqs = this.attributeInequalities.get(credIndex);
       let attributeIneqs: { [key: string]: string | IPresentedAttributeInequality[] } | undefined;
       if (ineqs !== undefined && ineqs.size > 0) {
         attributeIneqs = {};
-        const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
+        const encodedAttrs = unrevealedMsgsEncoded.get(credIndex) || new Map<number, Uint8Array>();
         for (const [name, ineq] of ineqs.entries()) {
           attributeIneqs[name] = [];
           ineq.forEach((ineq_j) => {
@@ -539,79 +595,98 @@ export class PresentationBuilder extends Versioned {
           updateEncodedAttrs(name, encodedAttrs);
         }
         attributeIneqs = unflatten(attributeIneqs);
-        unrevealedMsgsEncoded.set(i, encodedAttrs);
+        unrevealedMsgsEncoded.set(credIndex, encodedAttrs);
       }
 
       // Get encoded attributes which are used in bound check
-      const bounds = this.bounds.get(i);
-      let attributeBounds: { [key: string]: string | IPresentedAttributeBounds[] } | undefined;
+      const bounds = this.bounds.get(credIndex);
+      let attributeBounds: { [key: string]: string | IPresentedAttributeBound[] } | undefined;
       if (bounds !== undefined && bounds.size > 0) {
         attributeBounds = {};
-        const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
+        const encodedAttrs = unrevealedMsgsEncoded.get(credIndex) || new Map<number, Uint8Array>();
         for (const [name, b] of bounds.entries()) {
           attributeBounds[name] = b;
           updateEncodedAttrs(name, encodedAttrs);
         }
         attributeBounds = unflatten(attributeBounds);
-        unrevealedMsgsEncoded.set(i, encodedAttrs);
+        unrevealedMsgsEncoded.set(credIndex, encodedAttrs);
       }
 
       // Get encoded attributes which are used in verifiable encryption
       let attributeEncs: { [key: string]: string | IPresentedAttributeVE[] } | undefined;
-      const encs = this.verifEnc.get(i);
+      const encs = this.verifEnc.get(credIndex);
       if (encs !== undefined && encs.size > 0) {
         attributeEncs = {};
-        const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
+        const encodedAttrs = unrevealedMsgsEncoded.get(credIndex) || new Map<number, Uint8Array>();
         for (const [name, ve] of encs.entries()) {
           const valTyp = schema.typeOfName(name, flattenedSchema);
           if (valTyp.type !== ValueType.RevStr) {
             throw new Error(
-              `Attribute name ${name} of credential index ${i} should be a reversible string type but was ${valTyp}`
+              `Attribute name ${name} of credential index ${credIndex} should be a reversible string type but was ${valTyp}`
             );
           }
           attributeEncs[name] = ve;
           updateEncodedAttrs(name, encodedAttrs);
         }
         attributeEncs = unflatten(attributeEncs);
-        unrevealedMsgsEncoded.set(i, encodedAttrs);
+        unrevealedMsgsEncoded.set(credIndex, encodedAttrs);
       }
 
       // Get encoded attributes used in predicates expressed as Circom programs
-      const predicates = this.circomPredicates.get(i);
+      const predicates = this.circomPredicates.get(credIndex);
       const [encodedAttrs, predicatesForSpec] = this.encodeCircomAttrsAndFormatPredicatesForSpec(
         predicates,
         () => {
-          return unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
+          return unrevealedMsgsEncoded.get(credIndex) || new Map<number, Uint8Array>();
         },
         (a: string, m: Map<number, Uint8Array>) => {
           return updateEncodedAttrs(a, m);
         }
       );
       if (encodedAttrs !== undefined) {
-        unrevealedMsgsEncoded.set(i, encodedAttrs);
+        unrevealedMsgsEncoded.set(credIndex, encodedAttrs);
       }
+
+      const encodedAttrsMultiCred: Map<number, Uint8Array> = unrevealedMsgsEncoded.get(credIndex) || new Map<number, Uint8Array>();
+      this.circomPredicatesMultiCred.forEach((pred) => {
+        pred.privateVars.forEach(([name, val]) => {
+          if (Array.isArray(val)) {
+            // @ts-ignore
+            val.forEach(([i, s]) => {
+              if (i == credIndex) {
+                updateEncodedAttrs(s, encodedAttrsMultiCred);
+              }
+            })
+          } else {
+            if (val[0] == credIndex) {
+              updateEncodedAttrs(val[1], encodedAttrsMultiCred);
+            }
+          }
+        })
+      });
+      unrevealedMsgsEncoded.set(credIndex, encodedAttrsMultiCred);
 
       function updateUnrevealedMsgsEncoded(attributeNames?: string[]) {
         if (attributeNames !== undefined) {
           // this bounded pseudonym does not use any attributes from credential indexed `i`
-          const encodedAttrs = unrevealedMsgsEncoded.get(i) || new Map<number, Uint8Array>();
+          const encodedAttrs = unrevealedMsgsEncoded.get(credIndex) || new Map<number, Uint8Array>();
           for (const attributeName of attributeNames) {
             updateEncodedAttrs(attributeName, encodedAttrs);
           }
-          unrevealedMsgsEncoded.set(i, encodedAttrs);
+          unrevealedMsgsEncoded.set(credIndex, encodedAttrs);
         }
       }
 
       // Get encoded attributes which are used in bounded pseudonyms
       for (let j = 0; j < this.boundedPseudonyms.length; j++) {
-        const attributeNames = this.boundedPseudonyms[j].attributeNames.get(i);
+        const attributeNames = this.boundedPseudonyms[j].attributeNames.get(credIndex);
         updateUnrevealedMsgsEncoded(attributeNames);
       }
 
       // Get encoded attributes which are used in bounded pseudonyms for the blinded credential request
       if (this.blindCredReq !== undefined && this.blindCredReq.pseudonyms.length > 0) {
         for (let j = 0; j < this.blindCredReq.pseudonyms.length; j++) {
-          const attributeNames = this.blindCredReq.pseudonyms[j].credentialAttributes.get(i);
+          const attributeNames = this.blindCredReq.pseudonyms[j].credentialAttributes.get(credIndex);
           updateUnrevealedMsgsEncoded(attributeNames);
         }
       }
@@ -845,6 +920,75 @@ export class PresentationBuilder extends Versioned {
         metaStatements,
         setupParamsTrk
       );
+    }
+
+    let circomPredMultiCred: ICircomPredicate<ICircuitPrivateVarMultiCred>[] | undefined;
+    if (this.circomPredicatesMultiCred.length > 0) {
+      circomPredMultiCred = [];
+      this.circomPredicatesMultiCred.forEach(({ privateVars, publicVars, circuitId, provingKeyId: snarkKeyId }) => {
+        const privateVarsForSpec: ICircuitPrivateVarMultiCred[] = [];
+        const statement = this.createCircomStatement(circuitId, snarkKeyId, setupParamsTrk);
+        const sIdx = statements.add(statement);
+
+        function addWitnessEqualityAndReturnEncodedAttr(cId: number, name: string): Uint8Array {
+          const nameIdx = flattenedSchemas[cId][0].indexOf(name);
+          const witnessEq = new WitnessEqualityMetaStatement();
+          witnessEq.addWitnessRef(cId, nameIdx);
+          witnessEq.addWitnessRef(sIdx, predicateWitnessIdx++);
+          metaStatements.addWitnessEquality(witnessEq);
+          return unrevealedMsgsEncoded.get(cId)?.get(nameIdx) as Uint8Array;
+        }
+
+        let predicateWitnessIdx = 0;
+        const circuitInputs = new CircomInputs();
+        // For each private input, set its value as the corresponding attribute and set the witness equality
+        privateVars.forEach(([varName, attrRef]) => {
+          if (Array.isArray(attrRef)) {
+            circuitInputs.setPrivateArrayInput(
+              varName,
+              attrRef.map((n) => {
+                return addWitnessEqualityAndReturnEncodedAttr(n[0], n[1]);
+              })
+            );
+            privateVarsForSpec.push({
+              varName,
+              // @ts-ignore
+              attributeRef: attrRef.map(([i, n]) => [i, unflatten({ [n]: null })])
+            });
+          } else {
+            circuitInputs.setPrivateInput(varName, addWitnessEqualityAndReturnEncodedAttr(attrRef[0], attrRef[1]));
+            privateVarsForSpec.push({
+              varName,
+              // @ts-ignore
+              attributeRef: [attrRef[0], unflatten({ [attrRef[1]]: null })]
+            });
+          }
+        });
+
+        publicVars.forEach(([varName, value]) => {
+          if (Array.isArray(value)) {
+            circuitInputs.setPublicArrayInput(varName, value);
+          } else {
+            circuitInputs.setPublicInput(varName, value);
+          }
+        });
+        witnesses.add(Witness.r1csCircomWitness(circuitInputs));
+
+        // @ts-ignore
+        circomPredMultiCred.push({
+          privateVars: privateVarsForSpec,
+          publicVars: publicVars.map(([n, v]) => {
+            return {
+              varName: n,
+              value: v
+            };
+          }),
+          circuitId,
+          snarkKeyId,
+          protocol: CircomProtocol.Legogroth16
+        });
+      });
+      this.spec.circomPredicatesMultiCred = circomPredMultiCred;
     }
 
     // For blinded credential request
@@ -1118,7 +1262,7 @@ export class PresentationBuilder extends Versioned {
     paramId: string,
     param: PredicateParamType | undefined,
     setupParamsTrk: SetupParamsTracker,
-    statementIdx: number
+    statementIdx?: number
   ) {
     if (param instanceof LegoProvingKey) {
       if (!setupParamsTrk.isTrackingParam(paramId)) {
@@ -1129,9 +1273,13 @@ export class PresentationBuilder extends Versioned {
         setupParamsTrk.addForParamId(paramId, SetupParam.legosnarkProvingKeyUncompressed(param));
       }
     } else {
-      throw new Error(
-        `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Legosnark proving key but was ${param}`
-      );
+      let errorMsg: string;
+      if (statementIdx !== undefined) {
+        errorMsg =  `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Legosnark proving key but was ${param}`;
+      } else {
+        errorMsg =  `Predicate param id ${paramId} was expected to be a Legosnark proving key but was ${param}`;
+      }
+      throw new Error(errorMsg);
     }
   }
 
@@ -1197,7 +1345,7 @@ export class PresentationBuilder extends Versioned {
   private processBoundChecks(
     credIdx: number,
     witnessIndexGetter: (string) => number,
-    bounds: Map<string, IPresentedAttributeBounds[]>,
+    bounds: Map<string, IPresentedAttributeBound[]>,
     flattenedSchema: FlattenedSchema,
     encodedAttrGetter: (number) => Uint8Array,
     statements: Statements,
@@ -1205,7 +1353,7 @@ export class PresentationBuilder extends Versioned {
     metaStatements: MetaStatements,
     setupParamsTrk: SetupParamsTracker
   ) {
-    const dataSortedByNameIdx: [number, string, IPresentedAttributeBounds[]][] = [];
+    const dataSortedByNameIdx: [number, string, IPresentedAttributeBound[]][] = [];
     for (const [name, b] of bounds.entries()) {
       const nameIdx = witnessIndexGetter(name);
       dataSortedByNameIdx.push([nameIdx, name, b]);
@@ -1222,7 +1370,7 @@ export class PresentationBuilder extends Versioned {
         const encodedAttrVal = encodedAttrGetter(nameIdx);
         if (paramId === undefined) {
           // paramId is undefined means no setup param was passed and thus the default setup of Bulletproofs++ can be used.
-          if (protocol !== BoundCheckProtocols.Bpp) {
+          if (protocol !== BoundCheckProtocol.Bpp) {
             throw new Error(
               `paramId was undefined but protocol was not Bulletproofs++ but ${protocol}. This shouldn't have happened and is a bug in the code.`
             );
@@ -1241,7 +1389,7 @@ export class PresentationBuilder extends Versioned {
           const param = this.predicateParams.get(paramId);
 
           switch (protocol) {
-            case BoundCheckProtocols.Legogroth16:
+            case BoundCheckProtocol.Legogroth16:
               PresentationBuilder.addLegoProvingKeyToTracker(paramId, param, setupParamsTrk, credIdx);
               statement = Statement.boundCheckLegoProverFromSetupParamRefs(
                 transformedMin,
@@ -1250,7 +1398,7 @@ export class PresentationBuilder extends Versioned {
               );
               witness = Witness.boundCheckLegoGroth16(encodedAttrVal);
               break;
-            case BoundCheckProtocols.Bpp:
+            case BoundCheckProtocol.Bpp:
               Presentation.addBppSetupParamsToTracker(paramId, param, setupParamsTrk, credIdx);
               statement = Statement.boundCheckBppFromSetupParamRefs(
                 transformedMin,
@@ -1259,7 +1407,7 @@ export class PresentationBuilder extends Versioned {
               );
               witness = Witness.boundCheckBpp(encodedAttrVal);
               break;
-            case BoundCheckProtocols.Smc:
+            case BoundCheckProtocol.Smc:
               Presentation.addSmcSetupParamsToTracker(paramId, param, setupParamsTrk, credIdx);
               statement = Statement.boundCheckSmcFromSetupParamRefs(
                 transformedMin,
@@ -1268,7 +1416,7 @@ export class PresentationBuilder extends Versioned {
               );
               witness = Witness.boundCheckSmc(encodedAttrVal);
               break;
-            case BoundCheckProtocols.SmcKV:
+            case BoundCheckProtocol.SmcKV:
               PresentationBuilder.addSmcKVProverParamsToTracker(paramId, param, setupParamsTrk, credIdx);
               statement = Statement.boundCheckSmcWithKVProverFromSetupParamRefs(
                 transformedMin,
@@ -1369,27 +1517,7 @@ export class PresentationBuilder extends Versioned {
     setupParamsTrk: SetupParamsTracker
   ) {
     predicates.forEach(({ privateVars, publicVars, circuitId, provingKeyId: snarkKeyId }) => {
-      const snarkKey = this.predicateParams.get(snarkKeyId);
-      const r1csId = PresentationBuilder.r1csParamId(circuitId);
-      const r1cs = this.predicateParams.get(r1csId);
-      const wasmId = PresentationBuilder.wasmParamId(circuitId);
-      const wasm = this.predicateParams.get(wasmId);
-      PresentationBuilder.addLegoProvingKeyToTracker(snarkKeyId, snarkKey, setupParamsTrk, statementIdx);
-      if (r1cs === undefined || wasm === undefined) {
-        throw new Error('Both WASM and R1CS should be present');
-      }
-      if (!setupParamsTrk.isTrackingParam(r1csId)) {
-        setupParamsTrk.addForParamId(r1csId, SetupParam.r1cs(r1cs as R1CS));
-      }
-      if (!setupParamsTrk.isTrackingParam(wasmId)) {
-        setupParamsTrk.addForParamId(wasmId, SetupParam.bytes(wasm as Uint8Array));
-      }
-
-      const statement = Statement.r1csCircomProverFromSetupParamRefs(
-        setupParamsTrk.indexForParam(r1csId),
-        setupParamsTrk.indexForParam(wasmId),
-        setupParamsTrk.indexForParam(snarkKeyId)
-      );
+      const statement = this.createCircomStatement(circuitId, snarkKeyId, setupParamsTrk, statementIdx);
       const sIdx = statements.add(statement);
 
       function addWitnessEqualityAndReturnEncodedAttr(name: string): Uint8Array {
@@ -1458,12 +1586,12 @@ export class PresentationBuilder extends Versioned {
     return m;
   }
 
-  private encodeCircomAttrsAndFormatPredicatesForSpec<T>(
+  private encodeCircomAttrsAndFormatPredicatesForSpec(
     predicates?: IProverCircomPredicate[],
     encodedAttrsGetter?: () => Map<number, Uint8Array>,
     encodedAttrsUpdater?: (string, Map) => void
-  ): [Map<number, Uint8Array> | undefined, ICircomPredicate[] | undefined] {
-    let predicatesForSpec: ICircomPredicate[] | undefined;
+  ): [Map<number, Uint8Array> | undefined, ICircomPredicate<ICircuitPrivateVar>[] | undefined] {
+    let predicatesForSpec: ICircomPredicate<ICircuitPrivateVar>[] | undefined;
     let encodedAttrs: Map<number, Uint8Array> | undefined;
     if (predicates !== undefined && predicates.length > 0) {
       predicatesForSpec = [];
@@ -1472,9 +1600,10 @@ export class PresentationBuilder extends Versioned {
       }
       predicates.forEach((predicate) => {
         const privateVars = predicate.privateVars;
-        const privateVarsForSpec: ICircuitPrivateVars[] = [];
+        const privateVarsForSpec: ICircuitPrivateVar[] = [];
         privateVars.forEach(([varName, attrName]) => {
           if (Array.isArray(attrName)) {
+            // The circuit variable is an array so will correspond to an array of attributes
             const attributeName = [];
             attrName.forEach((a) => {
               if (encodedAttrsUpdater !== undefined) {
@@ -1487,6 +1616,7 @@ export class PresentationBuilder extends Versioned {
               attributeName
             });
           } else {
+            // The circuit variable is a single value so will correspond to a single attribute
             if (encodedAttrsUpdater !== undefined) {
               encodedAttrsUpdater(attrName, encodedAttrs);
             }
@@ -1507,11 +1637,35 @@ export class PresentationBuilder extends Versioned {
           }),
           circuitId: predicate.circuitId,
           snarkKeyId: predicate.provingKeyId,
-          protocol: CircomProtocols.Legogroth16
+          protocol: CircomProtocol.Legogroth16
         });
       });
     }
     return [encodedAttrs, predicatesForSpec];
+  }
+
+  private createCircomStatement(circuitId: string, snarkKeyId: string, setupParamsTrk: SetupParamsTracker, statementIdx?: number): Uint8Array {
+    const snarkKey = this.predicateParams.get(snarkKeyId);
+    const r1csId = PresentationBuilder.r1csParamId(circuitId);
+    const r1cs = this.predicateParams.get(r1csId);
+    const wasmId = PresentationBuilder.wasmParamId(circuitId);
+    const wasm = this.predicateParams.get(wasmId);
+    PresentationBuilder.addLegoProvingKeyToTracker(snarkKeyId, snarkKey, setupParamsTrk, statementIdx);
+    if (r1cs === undefined || wasm === undefined) {
+      throw new Error('Both WASM and R1CS should be present');
+    }
+    if (!setupParamsTrk.isTrackingParam(r1csId)) {
+      setupParamsTrk.addForParamId(r1csId, SetupParam.r1cs(r1cs as R1CS));
+    }
+    if (!setupParamsTrk.isTrackingParam(wasmId)) {
+      setupParamsTrk.addForParamId(wasmId, SetupParam.bytes(wasm as Uint8Array));
+    }
+
+    return Statement.r1csCircomProverFromSetupParamRefs(
+      setupParamsTrk.indexForParam(r1csId),
+      setupParamsTrk.indexForParam(wasmId),
+      setupParamsTrk.indexForParam(snarkKeyId)
+    );
   }
 
   static enforceAttributeInequalities(
@@ -1528,7 +1682,7 @@ export class PresentationBuilder extends Versioned {
       ineqs.set(attributeName, attrIneq);
     }
     // setting the encoded value (Uint8Array) as a dummy for now, this is later set to the correct value
-    attrIneq?.push([{ inEqualTo, paramId, protocol: InequalityProtocols.Uprove }, new Uint8Array()]);
+    attrIneq?.push([{ inEqualTo, paramId, protocol: InequalityProtocol.Uprove }, new Uint8Array()]);
     if (paramId !== undefined) {
       self.updatePredicateParams(paramId, param);
     }
@@ -1546,7 +1700,7 @@ export class PresentationBuilder extends Versioned {
    */
   static processBounds(
     self,
-    boundsMap: Map<string, IPresentedAttributeBounds[]>,
+    boundsMap: Map<string, IPresentedAttributeBound[]>,
     attributeName: string,
     vmin: BoundType,
     vmax: BoundType,
@@ -1561,26 +1715,26 @@ export class PresentationBuilder extends Versioned {
     if (min >= max) {
       throw new Error(`Invalid bounds min=${min}, max=${max}`);
     }
-    let protocol: BoundCheckProtocols;
+    let protocol: BoundCheckProtocol;
     if (paramId !== undefined) {
       self.updatePredicateParams(paramId, param);
       let par = self.predicateParams.get(paramId);
       if (par instanceof LegoProvingKey || par instanceof LegoProvingKeyUncompressed) {
-        protocol = BoundCheckProtocols.Legogroth16;
+        protocol = BoundCheckProtocol.Legogroth16;
       } else if (par instanceof BoundCheckBppParams || par instanceof BoundCheckBppParamsUncompressed) {
-        protocol = BoundCheckProtocols.Bpp;
+        protocol = BoundCheckProtocol.Bpp;
       } else if (par instanceof BoundCheckSmcParams || par instanceof BoundCheckSmcParamsUncompressed) {
-        protocol = BoundCheckProtocols.Smc;
+        protocol = BoundCheckProtocol.Smc;
       } else if (
         par instanceof BoundCheckSmcWithKVProverParams ||
         par instanceof BoundCheckSmcWithKVProverParamsUncompressed
       ) {
-        protocol = BoundCheckProtocols.SmcKV;
+        protocol = BoundCheckProtocol.SmcKV;
       } else {
         throw new Error(`Invalid predicate param type ${par} for bound check protocol`);
       }
     } else {
-      protocol = BoundCheckProtocols.Bpp;
+      protocol = BoundCheckProtocol.Bpp;
     }
 
     const existingBounds = boundsMap.get(attributeName);
@@ -1611,7 +1765,7 @@ export class PresentationBuilder extends Versioned {
         commitmentGensId: commKeyId,
         encryptionKeyId: encryptionKeyId,
         snarkKeyId: snarkPkId,
-        protocol: VerifiableEncryptionProtocols.Saver
+        protocol: VerifiableEncryptionProtocol.Saver
       }]);
     } else {
       existingVE.push({
@@ -1619,7 +1773,7 @@ export class PresentationBuilder extends Versioned {
         commitmentGensId: commKeyId,
         encryptionKeyId: encryptionKeyId,
         snarkKeyId: snarkPkId,
-        protocol: VerifiableEncryptionProtocols.Saver
+        protocol: VerifiableEncryptionProtocol.Saver
       });
       verEncsMap.set(attributeName, existingVE);
     }
@@ -1631,6 +1785,13 @@ export class PresentationBuilder extends Versioned {
 
 export interface IProverCircomPredicate {
   privateVars: [string, string | string[]][];
+  publicVars: [string, Uint8Array | Uint8Array[]][];
+  circuitId: string;
+  provingKeyId: string;
+}
+
+export interface IProverCircomPredicateMultiCred {
+  privateVars: [string, [number, string] | [number, string][]][];
   publicVars: [string, Uint8Array | Uint8Array[]][];
   circuitId: string;
   provingKeyId: string;

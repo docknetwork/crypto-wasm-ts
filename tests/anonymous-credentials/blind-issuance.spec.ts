@@ -33,8 +33,8 @@ import {
   VB_ACCUMULATOR_22,
   SUBJECT_STR,
   TYPE_STR,
-  BoundCheckProtocols,
-  VerifiableEncryptionProtocols,
+  BoundCheckProtocol,
+  VerifiableEncryptionProtocol,
   BoundCheckBppParams,
   BoundCheckSmcParams,
   BoundCheckBppParamsUncompressed,
@@ -44,7 +44,7 @@ import {
   BoundCheckSmcWithKVSetup,
   DefaultSchemaParsingOpts,
   META_SCHEMA_STR,
-  InequalityProtocols
+  InequalityProtocol
 } from '../../src';
 import {
   SignatureParams,
@@ -322,10 +322,10 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       credentialSubject: {
         sensitive: {
           email: [
-            { inEqualTo: inEqualEmail, protocol: InequalityProtocols.Uprove },
-            { inEqualTo: inEqualEmail2, protocol: InequalityProtocols.Uprove }
+            { inEqualTo: inEqualEmail, protocol: InequalityProtocol.Uprove },
+            { inEqualTo: inEqualEmail2, protocol: InequalityProtocol.Uprove }
           ],
-          SSN: [{ inEqualTo: inEqualSsn, protocol: InequalityProtocols.Uprove }]
+          SSN: [{ inEqualTo: inEqualSsn, protocol: InequalityProtocol.Uprove }]
         }
       }
     });
@@ -631,12 +631,12 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       credentialSubject: {
         education: {
           transcript: {
-            CGPA: [{ min: 2.5, max: 3.5, paramId: boundCheckSnarkId, protocol: BoundCheckProtocols.Legogroth16 }],
-            rank: [{ min: 50, max: 200, paramId: boundCheckBppId, protocol: BoundCheckProtocols.Bpp }],
+            CGPA: [{ min: 2.5, max: 3.5, paramId: boundCheckSnarkId, protocol: BoundCheckProtocol.Legogroth16 }],
+            rank: [{ min: 50, max: 200, paramId: boundCheckBppId, protocol: BoundCheckProtocol.Bpp }],
             scores: {
-              english: [{ min: 20, max: 100, paramId: boundCheckSmcId, protocol: BoundCheckProtocols.Smc }],
-              science: [{ min: 30, max: 100, paramId: boundCheckSmcKVId, protocol: BoundCheckProtocols.SmcKV }],
-              history: [{ min: 20, max: 60, paramId: undefined, protocol: BoundCheckProtocols.Bpp }]
+              english: [{ min: 20, max: 100, paramId: boundCheckSmcId, protocol: BoundCheckProtocol.Smc }],
+              science: [{ min: 30, max: 100, paramId: boundCheckSmcKVId, protocol: BoundCheckProtocol.SmcKV }],
+              history: [{ min: 20, max: 60, paramId: undefined, protocol: BoundCheckProtocol.Bpp }]
             }
           }
         }
@@ -651,7 +651,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
               commitmentGensId: commKeyId1,
               encryptionKeyId: ekId1,
               snarkKeyId: snarkPkId1,
-              protocol: VerifiableEncryptionProtocols.Saver
+              protocol: VerifiableEncryptionProtocol.Saver
             }
           ]
         }
@@ -665,14 +665,14 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
             commitmentGensId: commKeyId1,
             encryptionKeyId: ekId1,
             snarkKeyId: snarkPkId1,
-            protocol: VerifiableEncryptionProtocols.Saver
+            protocol: VerifiableEncryptionProtocol.Saver
           },
           {
             chunkBitSize,
             commitmentGensId: commKeyId2,
             encryptionKeyId: ekId2,
             snarkKeyId: snarkPkId2,
-            protocol: VerifiableEncryptionProtocols.Saver
+            protocol: VerifiableEncryptionProtocol.Saver
           }
         ]
       }
@@ -835,7 +835,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
             min: 1662010849610,
             max: 1662010849620,
             paramId: boundCheckSnarkId,
-            protocol: BoundCheckProtocols.Legogroth16
+            protocol: BoundCheckProtocol.Legogroth16
           }
         ]
       }
@@ -849,7 +849,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
               commitmentGensId: commKeyId,
               encryptionKeyId: ekId,
               snarkKeyId: snarkPkId,
-              protocol: VerifiableEncryptionProtocols.Saver
+              protocol: VerifiableEncryptionProtocol.Saver
             }
           ]
         }
@@ -865,7 +865,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
               commitmentGensId: commKeyId,
               encryptionKeyId: ekId,
               snarkKeyId: snarkPkId,
-              protocol: VerifiableEncryptionProtocols.Saver
+              protocol: VerifiableEncryptionProtocol.Saver
             }
           ]
         }

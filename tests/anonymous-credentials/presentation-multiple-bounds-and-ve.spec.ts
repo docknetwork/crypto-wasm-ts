@@ -10,7 +10,7 @@ import {
   SignatureParams
 } from '../scheme';
 import {
-  BoundCheckProtocols,
+  BoundCheckProtocol,
   CredentialSchema,
   dockSaverEncryptionGens,
   LegoProvingKeyUncompressed,
@@ -23,7 +23,7 @@ import {
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
   SUBJECT_STR,
-  VerifiableEncryptionProtocols
+  VerifiableEncryptionProtocol
 } from '../../src';
 import { checkResult, getBoundCheckSnarkKeys, readByteArrayFromFile, stringToBytes } from '../utils';
 import { initializeWasm } from '@docknetwork/crypto-wasm';
@@ -235,12 +235,12 @@ describe(`${Scheme} Presentation creation and verification`, () => {
                 {
                   min: minLat0,
                   max: maxLat0,
-                  protocol: BoundCheckProtocols.Bpp
+                  protocol: BoundCheckProtocol.Bpp
                 },
                 {
                   min: minLat1,
                   max: maxLat1,
-                  protocol: BoundCheckProtocols.Bpp
+                  protocol: BoundCheckProtocol.Bpp
                 }
               ],
               long: [
@@ -248,18 +248,18 @@ describe(`${Scheme} Presentation creation and verification`, () => {
                   min: minLong0,
                   max: maxLong0,
                   paramId: boundCheckSnarkId1,
-                  protocol: BoundCheckProtocols.Legogroth16
+                  protocol: BoundCheckProtocol.Legogroth16
                 },
                 {
                   min: minLong1,
                   max: maxLong1,
                   paramId: boundCheckSnarkId2,
-                  protocol: BoundCheckProtocols.Legogroth16
+                  protocol: BoundCheckProtocol.Legogroth16
                 },
                 {
                   min: minLong2,
                   max: maxLong2,
-                  protocol: BoundCheckProtocols.Bpp
+                  protocol: BoundCheckProtocol.Bpp
                 }
               ]
             }
@@ -335,14 +335,14 @@ describe(`${Scheme} Presentation creation and verification`, () => {
               commitmentGensId: commKeyId1,
               encryptionKeyId: ekId1,
               snarkKeyId: snarkPkId1,
-              protocol: VerifiableEncryptionProtocols.Saver
+              protocol: VerifiableEncryptionProtocol.Saver
             },
             {
               chunkBitSize,
               commitmentGensId: commKeyId2,
               encryptionKeyId: ekId2,
               snarkKeyId: snarkPkId2,
-              protocol: VerifiableEncryptionProtocols.Saver
+              protocol: VerifiableEncryptionProtocol.Saver
             }
           ]
         }
