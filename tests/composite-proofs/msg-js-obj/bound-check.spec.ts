@@ -1,5 +1,3 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getBoundCheckSnarkKeys, stringToBytes } from '../../utils';
 import {
   BoundCheckBppParams,
   BoundCheckBppParamsUncompressed,
@@ -8,17 +6,18 @@ import {
   BoundCheckSmcWithKVProverParamsUncompressed,
   BoundCheckSmcWithKVSetup,
   BoundCheckSmcWithKVVerifierParamsUncompressed,
-  CompositeProofG1,
+  CompositeProof,
   createWitnessEqualityMetaStatement,
   Encoder,
   encodeRevealedMsgs,
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
-  ProofSpecG1,
+  ProofSpec,
   SetupParam,
   Statement,
   Statements,
@@ -26,6 +25,8 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
+import { buildWitness, PublicKey, Scheme, SecretKey, SignatureParams } from '../../scheme';
+import { checkResult, getBoundCheckSnarkKeys, getParamsAndKeys, stringToBytes } from '../../utils';
 import {
   attributes1,
   attributes1Struct,
@@ -36,17 +37,7 @@ import {
   GlobalEncoder
 } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import {
-  adaptKeyForParams,
-  buildStatement,
-  buildWitness,
-  KeyPair,
-  Scheme,
-  SignatureParams,
-  Signature,
-  SecretKey,
-  PublicKey
-} from '../../scheme';
+import { proverStmt, signAndVerify, verifierStmt } from './util';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -76,26 +67,17 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    params1 = SignatureParams.generate(100, label1);
-    const keypair1 = KeyPair.generate(params1);
-    sk1 = keypair1.secretKey;
-    pk1 = keypair1.publicKey;
+    [params1, sk1, pk1] = getParamsAndKeys(100, label1);
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    params2 = SignatureParams.generate(100, label2);
-    const keypair2 = KeyPair.generate(params2);
-    sk2 = keypair2.secretKey;
-    pk2 = keypair2.publicKey;
+    [params2, sk2, pk2] = getParamsAndKeys(100, label2);
 
     // 3rd signer's setup
     const label3 = stringToBytes('Sig params label 3');
     // Message count shouldn't matter as `label3` is known
-    params3 = SignatureParams.generate(100, label3);
-    const keypair3 = KeyPair.generate(params3);
-    sk3 = keypair3.secretKey;
-    pk3 = keypair3.publicKey;
+    [params3, sk3, pk3] = getParamsAndKeys(100, label3);
 
     [snarkProvingKey, snarkVerifyingKey] = getBoundCheckSnarkKeys(loadSnarkSetupFromFiles);
 
@@ -110,22 +92,17 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     boundCheckSmcKVVerifierParams = p2[1].decompress();
 
     // Sign and verify all signatures
-    signed1 = Signature.signMessageObject(attributes1, sk1, label1, GlobalEncoder);
-    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, GlobalEncoder));
-
-    signed2 = Signature.signMessageObject(attributes2, sk2, label2, GlobalEncoder);
-    checkResult(signed2.signature.verifyMessageObject(attributes2, pk2, label2, GlobalEncoder));
-
-    signed3 = Signature.signMessageObject(attributes3, sk3, label3, GlobalEncoder);
-    checkResult(signed3.signature.verifyMessageObject(attributes3, pk3, label3, GlobalEncoder));
+    signed1 = signAndVerify(attributes1, GlobalEncoder, label1, sk1, pk1);
+    signed2 = signAndVerify(attributes2, GlobalEncoder, label2, sk2, pk2);
+    signed3 = signAndVerify(attributes3, GlobalEncoder, label3, sk3, pk3);
   });
 
   function check(
     proverSetupParamGen,
     verifierSetupParamGen,
-    proverStmt,
+    pStmt,
     witnessGen,
-    verifierStmt,
+    vStmt,
     proverParams,
     verifierParams
   ) {
@@ -183,10 +160,6 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     const sigParams2 = getAdaptedSignatureParamsForMessages(params2, attributes2Struct);
     const sigParams3 = getAdaptedSignatureParamsForMessages(params3, attributes3Struct);
 
-    const sigPk1 = adaptKeyForParams(pk1, sigParams1);
-    const sigPk2 = adaptKeyForParams(pk2, sigParams2);
-    const sigPk3 = adaptKeyForParams(pk3, sigParams3);
-
     // Prover needs to do many bound checks with the same verification key
     const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(proverSetupParamGen(proverParams));
@@ -198,7 +171,11 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     );
     expect(revealedMsgsRaw1).toEqual({ fname: 'John', country: 'USA' });
 
-    const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
+    const statement1 = proverStmt(
+      sigParams1,
+      revealedMsgs1,
+      pk1,
+    );
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
@@ -207,7 +184,11 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     );
     expect(revealedMsgsRaw2).toEqual({ fname: 'John', location: { country: 'USA' } });
 
-    const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
+    const statement2 = proverStmt(
+      sigParams2,
+      revealedMsgs2,
+      pk2,
+    );
 
     const [revealedMsgs3, unrevealedMsgs3, revealedMsgsRaw3] = getRevealedAndUnrevealed(
       attributes3,
@@ -226,16 +207,20 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
       }
     });
 
-    const statement3 = buildStatement(sigParams3, sigPk3, revealedMsgs3, false);
+    const statement3 = proverStmt(
+      sigParams3,
+      revealedMsgs3,
+      pk3,
+    );
 
     // Construct statements for bound check
-    const statement4 = proverStmt(timeMin, timeMax, 0);
-    const statement5 = proverStmt(weightMin, weightMax, 0);
-    const statement6 = proverStmt(heightMin, heightMax, 0);
-    const statement7 = proverStmt(bmiMin, bmiMax, 0);
-    const statement8 = proverStmt(scoreMin, scoreMax, 0);
-    const statement9 = proverStmt(latMin, latMax, 0);
-    const statement10 = proverStmt(longMin, longMax, 0);
+    const statement4 = pStmt(timeMin, timeMax, 0);
+    const statement5 = pStmt(weightMin, weightMax, 0);
+    const statement6 = pStmt(heightMin, heightMax, 0);
+    const statement7 = pStmt(bmiMin, bmiMax, 0);
+    const statement8 = pStmt(scoreMin, scoreMax, 0);
+    const statement9 = pStmt(latMin, latMax, 0);
+    const statement10 = pStmt(longMin, longMax, 0);
 
     const statementsProver = new Statements();
     const sIdx1 = statementsProver.add(statement1);
@@ -337,7 +322,7 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     metaStmtsProver.addWitnessEquality(witnessEq11);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver, proverSetupParams);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver, proverSetupParams);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
@@ -354,7 +339,7 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     witnesses.add(witnessGen(signed3.encodedMessages['lessSensitive.department.location.geo.lat']));
     witnesses.add(witnessGen(signed3.encodedMessages['lessSensitive.department.location.geo.long']));
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(verifierSetupParamGen(verifierParams));
@@ -367,18 +352,18 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     const revealedMsgs3FromVerifier = encodeRevealedMsgs(revealedMsgsRaw3, attributes3Struct, GlobalEncoder);
     checkMapsEqual(revealedMsgs3, revealedMsgs3FromVerifier);
 
-    const statement11 = buildStatement(sigParams1, sigPk1, revealedMsgs1FromVerifier, false);
-    const statement12 = buildStatement(sigParams2, sigPk2, revealedMsgs2FromVerifier, false);
-    const statement13 = buildStatement(sigParams3, sigPk3, revealedMsgs3FromVerifier, false);
+    const statement11 = verifierStmt(sigParams1, revealedMsgs1FromVerifier, pk1);
+    const statement12 = verifierStmt(sigParams2, revealedMsgs2FromVerifier, pk2);
+    const statement13 = verifierStmt(sigParams3, revealedMsgs3FromVerifier, pk3);
 
     // Construct statements for bound check
-    const statement14 = verifierStmt(timeMin, timeMax, 0);
-    const statement15 = verifierStmt(weightMin, weightMax, 0);
-    const statement16 = verifierStmt(heightMin, heightMax, 0);
-    const statement17 = verifierStmt(bmiMin, bmiMax, 0);
-    const statement18 = verifierStmt(scoreMin, scoreMax, 0);
-    const statement19 = verifierStmt(latMin, latMax, 0);
-    const statement20 = verifierStmt(longMin, longMax, 0);
+    const statement14 = vStmt(timeMin, timeMax, 0);
+    const statement15 = vStmt(weightMin, weightMax, 0);
+    const statement16 = vStmt(heightMin, heightMax, 0);
+    const statement17 = vStmt(bmiMin, bmiMax, 0);
+    const statement18 = vStmt(scoreMin, scoreMax, 0);
+    const statement19 = vStmt(latMin, latMax, 0);
+    const statement20 = vStmt(longMin, longMax, 0);
 
     const statementsVerifier = new Statements();
     const sIdx11 = statementsVerifier.add(statement11);
@@ -479,7 +464,7 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
     metaStmtsVerifier.addWitnessEquality(witnessEq22);
 
     // The verifier should independently construct this `ProofSpec`
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier, verifierSetupParams);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier, verifierSetupParams);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));

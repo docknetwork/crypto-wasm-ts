@@ -1,14 +1,14 @@
-import { generateRandomG1Element, initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../../utils';
+import { generateRandomG1Element } from 'crypto-wasm-new';
 import {
   AttributeBoundPseudonym,
   BBSSignature,
-  CompositeProofG1,
+  CompositeProof,
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   MetaStatements,
-  ProofSpecG1,
+  ProofSpec,
   PseudonymBases,
   Statement,
   Statements,
@@ -16,23 +16,23 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
-import { attributes1, attributes1Struct, attributes4, attributes4Struct, GlobalEncoder } from './data-and-encoder';
 import {
-  KeyPair,
-  Signature,
+  adaptKeyForParams,
   BlindSignature,
-  SignatureParams,
-  isPS,
-  isBBSPlus,
-  getWitnessForBlindSigRequest,
-  getStatementForBlindSigRequest,
-  Scheme,
-  buildStatement,
   buildWitness,
+  getStatementForBlindSigRequest,
+  getWitnessForBlindSigRequest,
   isBBS,
-  adaptKeyForParams
+  isBBSPlus,
+  isKvac,
+  isPS,
+  Scheme
 } from '../../scheme';
+import { checkResult, getParamsAndKeys, stringToBytes } from '../../utils';
+import { attributes1, attributes1Struct, attributes4, attributes4Struct, GlobalEncoder } from './data-and-encoder';
+import { proverStmt, signAndVerify, verifierStmt } from './util';
 
+// TODO: Fix me - This test should work with PS sig as well.
 const skipIfPS = isPS() ? describe.skip : describe;
 
 skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid proof and pseudonym`, () => {
@@ -53,18 +53,12 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
   beforeAll(async () => {
     // Load the WASM module
     await initializeWasm();
-    params = SignatureParams.generate(100, label);
+    [params, sk1, pk1] = getParamsAndKeys(100, label);
+    [params, sk2, pk2] = getParamsAndKeys(100, label);
     h = generateRandomG1Element();
-    const keypair1 = KeyPair.generate(params);
-    sk1 = keypair1.secretKey;
-    pk1 = keypair1.publicKey;
-    const keypair2 = KeyPair.generate(params);
-    sk2 = keypair2.secretKey;
-    pk2 = keypair2.publicKey;
 
     // User requests `signature1` and verifies it
-    signed1 = Signature.signMessageObject(attributes1, sk1, label, GlobalEncoder);
-    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label, GlobalEncoder));
+    signed1 = signAndVerify(attributes1, GlobalEncoder, label, sk1, pk1);
 
     // pseudonym1 is for attribute `user-id` only
     basesForPseudonym1 = PseudonymBases.generateBasesForAttributes(1, scope1);
@@ -95,7 +89,6 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     };
 
     const sigParams1 = getAdaptedSignatureParamsForMessages(params, attributes1Struct);
-    const sigPk1 = adaptKeyForParams(pk1, sigParams1);
 
     const sigParams2 = getAdaptedSignatureParamsForMessages(params, attributes4Struct);
     const sigPk2 = adaptKeyForParams(pk2, sigParams2);
@@ -125,7 +118,11 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
 
     const [revealed, unrevealed] = getRevealedAndUnrevealed(attributes1, new Set(), GlobalEncoder);
 
-    const stId1 = proverStatements.add(buildStatement(sigParams1, sigPk1, revealed, false));
+    const stId1 = proverStatements.add(proverStmt(
+      sigParams1,
+      revealed,
+      pk1
+    ));
     const stId2 = proverStatements.add(Statement.attributeBoundPseudonym(pseudonymId, basesForPseudonym1));
     witnesses.add(buildWitness(signed1.signature, unrevealed, false));
     witnesses.add(Witness.attributeBoundPseudonym([signed1.encodedMessages['user-id']]));
@@ -135,14 +132,15 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     if (isPS()) {
       // @ts-ignore
       [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, sigParams2, h, blindings);
-    } else if (isBBSPlus()) {
-      // @ts-ignore
-      [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, sigParams2, false);
-    } else {
+    } else if (isBBS()) {
       // @ts-ignore
       request = BlindSignature.generateRequest(hiddenMsgs, sigParams2, false);
+    } else {
+      // @ts-ignore
+      [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, sigParams2, false);
     }
 
+    // Fix me: This isn't correct for PS sigs as there will be multiple statements
     const stId3 = proverStatements.add(getStatementForBlindSigRequest(request, sigParams2, h));
     witnesses.add(getWitnessForBlindSigRequest(hiddenMsgs, blinding, blindings));
 
@@ -150,25 +148,25 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     const witnessEq = new WitnessEqualityMetaStatement();
     witnessEq.addWitnessRef(stId1, getIndicesForMsgNames(['user-id'], attributes1Struct)[0]);
     witnessEq.addWitnessRef(stId2, 0);
-    if (isBBSPlus()) {
-      witnessEq.addWitnessRef(stId3, 1);
-    } else if (isBBS()) {
+    if (isBBS()) {
       witnessEq.addWitnessRef(stId3, 0);
+    } else {
+      witnessEq.addWitnessRef(stId3, 1);
     }
 
     proverMetaStatements.addWitnessEquality(witnessEq);
 
-    const proofSpecProver = new ProofSpecG1(proverStatements, proverMetaStatements);
+    const proofSpecProver = new ProofSpec(proverStatements, proverMetaStatements);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     // The signer is the verifier of the user's proof here. Uses the blind signature request to create the statement
     // and proof spec independently.
     const verifierStatements = new Statements();
     const verifierMetaStatements = new MetaStatements();
 
-    const stId4 = verifierStatements.add(buildStatement(sigParams1, sigPk1, revealed, false));
+    const stId4 = verifierStatements.add(verifierStmt(sigParams1, revealed, pk1, false));
     const stId5 = verifierStatements.add(Statement.attributeBoundPseudonym(pseudonymId, basesForPseudonym1));
 
     const stId6 = verifierStatements.add(getStatementForBlindSigRequest(request, sigParams2, h));
@@ -185,7 +183,7 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
 
     verifierMetaStatements.addWitnessEquality(witnessEq1);
 
-    const proofSpecVerifier = new ProofSpecG1(verifierStatements, verifierMetaStatements);
+    const proofSpecVerifier = new ProofSpec(verifierStatements, verifierMetaStatements);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     // Signer/verifier verifies the proof
@@ -206,12 +204,12 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     const unblindedSig = isPS()
       ? // @ts-ignore
         blingSignature.signature.unblind(blindings, sigPk2)
-      : isBBSPlus()
-      ? // @ts-ignore
-        blingSignature.signature.unblind(blinding)
-      : new BBSSignature(blingSignature.signature.value);
+      : isBBS()
+      ? new BBSSignature(blingSignature.signature.value)
+      : // @ts-ignore
+        blingSignature.signature.unblind(blinding);
 
-    checkResult(unblindedSig.verifyMessageObject(attributes4, sigPk2, sigParams2, GlobalEncoder));
+    checkResult(isKvac() ? unblindedSig.verifyMessageObject(attributes4, sigSk2, sigParams2, GlobalEncoder) : unblindedSig.verifyMessageObject(attributes4, sigPk2, sigParams2, GlobalEncoder));
 
     signed2 = {
       encodedMessages: GlobalEncoder.encodeMessageObjectAsObject(attributes4),
@@ -223,10 +221,8 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     // Prove knowledge of both signatures and share a pseudonym from 2 attributes of 2nd signature
 
     const sigParams1 = getAdaptedSignatureParamsForMessages(params, attributes1Struct);
-    const sigPk1 = adaptKeyForParams(pk1, sigParams1);
 
     const sigParams2 = getAdaptedSignatureParamsForMessages(params, attributes4Struct);
-    const sigPk2 = adaptKeyForParams(pk2, sigParams2);
 
     const revealedNames = new Set<string>();
     revealedNames.add('poll-id');
@@ -244,8 +240,16 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     const [revealed1, unrevealed1] = getRevealedAndUnrevealed(attributes1, new Set(), GlobalEncoder);
     const [revealed2, unrevealed2] = getRevealedAndUnrevealed(attributes4, revealedNames, GlobalEncoder);
 
-    const stId1 = proverStatements.add(buildStatement(sigParams1, sigPk1, revealed1, false));
-    const stId2 = proverStatements.add(buildStatement(sigParams2, sigPk2, revealed2, false));
+    const stId1 = proverStatements.add(proverStmt(
+      sigParams1,
+      revealed1,
+      pk1
+    ));
+    const stId2 = proverStatements.add(proverStmt(
+      sigParams2,
+      revealed2,
+      pk2
+    ));
     const stId3 = proverStatements.add(Statement.attributeBoundPseudonym(pseudonymIdSk, basesForPseudonym2));
     witnesses.add(buildWitness(signed1.signature, unrevealed1, false));
     witnesses.add(buildWitness(signed2.signature, unrevealed2, false));
@@ -276,16 +280,16 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     witnessEq3.addWitnessRef(stId3, 1);
     proverMetaStatements.addWitnessEquality(witnessEq3);
 
-    const proofSpecProver = new ProofSpecG1(proverStatements, proverMetaStatements);
+    const proofSpecProver = new ProofSpec(proverStatements, proverMetaStatements);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     const verifierStatements = new Statements();
     const verifierMetaStatements = new MetaStatements();
 
-    const stId4 = verifierStatements.add(buildStatement(sigParams1, sigPk1, revealed1, false));
-    const stId5 = verifierStatements.add(buildStatement(sigParams2, sigPk2, revealed2, false));
+    const stId4 = verifierStatements.add(verifierStmt(sigParams1, revealed1, pk1, false));
+    const stId5 = verifierStatements.add(verifierStmt(sigParams2, revealed2, pk2, false));
     const stId6 = verifierStatements.add(Statement.attributeBoundPseudonym(pseudonymIdSk, basesForPseudonym2));
 
     const witnessEq4 = new WitnessEqualityMetaStatement();
@@ -303,7 +307,7 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     witnessEq6.addWitnessRef(stId6, 1);
     verifierMetaStatements.addWitnessEquality(witnessEq6);
 
-    const proofSpecVerifier = new ProofSpecG1(verifierStatements, verifierMetaStatements);
+    const proofSpecVerifier = new ProofSpec(verifierStatements, verifierMetaStatements);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));

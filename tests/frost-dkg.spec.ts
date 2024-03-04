@@ -1,7 +1,8 @@
-import { generateRandomG1Element, generateRandomG2Element, initializeWasm } from '@docknetwork/crypto-wasm';
+import { generateRandomG1Element, generateRandomG2Element } from 'crypto-wasm-new';
 import { runFrostKeygen, stringToBytes } from './utils';
 import { ParticipantG1, ParticipantG2 } from '../src/frost-dkg';
 import { PublicKeyBase } from '../src/types';
+import { initializeWasm } from '../src';
 
 describe('Frost DKG', () => {
   let pkBaseG1: PublicKeyBase;

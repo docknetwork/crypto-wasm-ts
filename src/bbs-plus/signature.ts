@@ -6,7 +6,7 @@ import {
   bbsPlusVerifyG1,
   generateRandomFieldElement,
   VerifyResult
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { BBSPlusPublicKeyG1, BBSPlusPublicKeyG2, BBSPlusSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { encodeRevealedMessageObject, getBlindedIndicesAndRevealedMessages } from '../sign-verify-js-objs';

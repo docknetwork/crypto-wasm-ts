@@ -1,4 +1,5 @@
 import {
+  initializeWasm,
   BoundCheckSnarkSetup,
   BoundCheckBppParams,
   BoundCheckBppParamsUncompressed,
@@ -10,7 +11,6 @@ import {
   BoundCheckSmcWithKVVerifierParamsUncompressed,
   BoundCheckSmcWithKVVerifierParams
 } from '../src';
-import { initializeWasm } from '@docknetwork/crypto-wasm';
 import { areUint8ArraysEqual, checkLegoProvingKey, stringToBytes } from './utils';
 
 describe('Bound check snark setup', () => {

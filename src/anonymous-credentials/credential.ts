@@ -11,13 +11,15 @@ import {
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
   SCHEMA_STR,
   STATUS_STR,
-  SUBJECT_STR
+  SUBJECT_STR, BDDT16_CRED_PROOF_TYPE, BDDT16_MAC_PARAMS_LABEL_BYTES
 } from './types-and-consts';
-import { VerifyResult } from '@docknetwork/crypto-wasm';
+import { VerifyResult } from 'crypto-wasm-new';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { CredentialCommon } from './credential-common';
+import { BDDT16CredentialBuilder } from './credential-builder';
+import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
 
 export abstract class Credential<PublicKey, Signature, SignatureParams> extends CredentialCommon<Signature> {
   abstract verify(publicKey: PublicKey, signatureParams?: SignatureParams): VerifyResult;
@@ -208,5 +210,59 @@ export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatu
 
   static getSigType(): SignatureType {
     return SignatureType.Ps;
+  }
+}
+
+export class BDDT16Credential extends Credential<undefined, BDDT16Mac, BDDT16MacParams> {
+  verify(publicKey: undefined, signatureParams?: BDDT16MacParams): VerifyResult {
+    throw new Error(`Not applicable`)
+  }
+
+  /**
+   * This is just done for testing. In practice a credential holder will never have the secret key
+   * @param secretKey
+   * @param signatureParams
+   */
+  verifyUsingSecretKey(secretKey: BDDT16MacSecretKey, signatureParams?: BDDT16MacParams): VerifyResult {
+    const cred = this.serializeForSigning();
+    return this.signature.verifyMessageObject(
+      cred,
+      secretKey,
+      signatureParams ?? BDDT16_MAC_PARAMS_LABEL_BYTES,
+      this.schema.encoder
+    );
+  }
+
+  /**
+   * A credential will have at least some proof metadata like the type or purpose. This adds those defaults to the
+   * given object.
+   * @param s
+   */
+  static applyDefaultProofMetadataIfNeeded(s: object) {
+    if (!s[PROOF_STR]) {
+      s[PROOF_STR] = {
+        type: BDDT16_CRED_PROOF_TYPE
+      };
+    }
+  }
+
+  static fromJSON(j: object, proofValue?: string): BDDT16Credential {
+    const [cryptoVersion, credentialSchema, credentialSubject, topLevelFields, sig, credentialStatus] = this.parseJSON(
+      j,
+      proofValue
+    );
+
+    return new this(
+      cryptoVersion,
+      credentialSchema,
+      credentialSubject,
+      topLevelFields,
+      new BDDT16Mac(sig),
+      credentialStatus
+    );
+  }
+
+  static getSigType(): SignatureType {
+    return SignatureType.Bddt16;
   }
 }

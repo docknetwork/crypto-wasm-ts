@@ -12,7 +12,7 @@ import {
   thresholdBbsPlusPhase2Finish,
   thresholdBbsPlusCreateSignatureShare,
   thresholdBbsPlusAggregateSignatureShares
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { BBSPlusSecretKey, BBSPlusSignatureParamsG1, BBSPlusSignatureG1 } from '../bbs-plus';
 
 export class ThresholdBbsPlusSigner extends ThresholdSigner {

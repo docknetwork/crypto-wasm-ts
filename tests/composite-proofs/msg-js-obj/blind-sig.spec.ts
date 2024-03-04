@@ -1,14 +1,25 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../../utils';
+import { generateRandomG1Element } from 'crypto-wasm-new';
 import {
   BBSSignature,
-  CompositeProofG1,
+  CompositeProof,
   getAdaptedSignatureParamsForMessages,
+  initializeWasm,
   MetaStatements,
-  ProofSpecG1,
+  ProofSpec,
   Statements,
   Witnesses
 } from '../../../src';
+import {
+  adaptKeyForParams,
+  BlindSignature,
+  getStatementForBlindSigRequest,
+  getWitnessForBlindSigRequest,
+  isBBS,
+  isKvac,
+  isPS,
+  Scheme
+} from '../../scheme';
+import { checkResult, getParamsAndKeys, stringToBytes } from '../../utils';
 import {
   attributes1,
   attributes1Struct,
@@ -18,18 +29,6 @@ import {
   attributes3Struct,
   GlobalEncoder
 } from './data-and-encoder';
-import {
-  KeyPair,
-  BlindSignature,
-  SignatureParams,
-  isPS,
-  isBBSPlus,
-  getWitnessForBlindSigRequest,
-  getStatementForBlindSigRequest,
-  Scheme,
-  adaptKeyForParams
-} from '../../scheme';
-import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
 
 describe(`${Scheme} Requesting blind signatures`, () => {
   beforeAll(async () => {
@@ -44,11 +43,8 @@ describe(`${Scheme} Requesting blind signatures`, () => {
 
     const label = stringToBytes('Sig params label - this is public');
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(100, label);
-    const keypair = KeyPair.generate(params);
+    const [params, sk, pk] = getParamsAndKeys(100, label);
     const h = generateRandomG1Element();
-    const sk = keypair.secretKey;
-    const pk = keypair.publicKey;
 
     // The user will hide the "user-id" and "secret" attributes from the signer for the 1st signature
     const hiddenAttrNames1 = new Set<string>();
@@ -161,10 +157,10 @@ describe(`${Scheme} Requesting blind signatures`, () => {
       let blinding, request;
       if (isPS()) {
         [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, sigParams, h, blindings);
-      } else if (isBBSPlus()) {
-        [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, sigParams, false);
-      } else {
+      } else if (isBBS()) {
         request = BlindSignature.generateRequest(hiddenMsgs, sigParams, false);
+      } else {
+        [blinding, request] = BlindSignature.generateRequest(hiddenMsgs, sigParams, false);
       }
 
       const witnesses = new Witnesses(getWitnessForBlindSigRequest(hiddenMsgs, blinding, blindings));
@@ -172,16 +168,16 @@ describe(`${Scheme} Requesting blind signatures`, () => {
       // The user creates a proof of knowledge of the blinded attributes.
       const proverStatements = new Statements(getStatementForBlindSigRequest(request, sigParams, h));
 
-      const proofSpecProver = new ProofSpecG1(proverStatements, new MetaStatements());
+      const proofSpecProver = new ProofSpec(proverStatements, new MetaStatements());
       expect(proofSpecProver.isValid()).toEqual(true);
 
-      const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+      const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
       // The signer is the verifier of the user's proof here. Uses the blind signature request to create the statement
       // and proof spec independently.
       const verifierStatements = new Statements(getStatementForBlindSigRequest(request, sigParams, h));
 
-      const proofSpecVerifier = new ProofSpecG1(verifierStatements, new MetaStatements());
+      const proofSpecVerifier = new ProofSpec(verifierStatements, new MetaStatements());
       expect(proofSpecVerifier.isValid()).toEqual(true);
 
       // Signer/verifier verifies the proof
@@ -201,12 +197,12 @@ describe(`${Scheme} Requesting blind signatures`, () => {
       // User unblinds the blind signature
       const revealedSig = isPS()
         ? blindSignature.signature.unblind(blindings, sigPk)
-        : isBBSPlus()
-        ? blindSignature.signature.unblind(blinding)
-        : new BBSSignature(blindSignature.signature.value);
+        : isBBS()
+        ? new BBSSignature(blindSignature.signature.value)
+        : blindSignature.signature.unblind(blinding);
 
       // The revealed signature can now be used in the usual verification process
-      checkResult(revealedSig.verifyMessageObject(attributes, sigPk, sigParams, GlobalEncoder));
+      checkResult(isKvac() ? revealedSig.verifyMessageObject(attributes, sigSk, sigParams, GlobalEncoder) : revealedSig.verifyMessageObject(attributes, sigPk, sigParams, GlobalEncoder));
 
       // Proof of knowledge of signature can be created and verified as usual.
     }

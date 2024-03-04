@@ -1,6 +1,6 @@
 import {
   Credential,
-  CredentialBuilder,
+  CredentialBuilder, isKvac,
   KeyPair,
   PresentationBuilder,
   PublicKey,
@@ -10,6 +10,7 @@ import {
   SignatureParams
 } from '../scheme';
 import {
+  initializeWasm,
   BoundCheckProtocol,
   CredentialSchema,
   dockSaverEncryptionGens,
@@ -26,8 +27,8 @@ import {
   VerifiableEncryptionProtocol
 } from '../../src';
 import { checkResult, getBoundCheckSnarkKeys, readByteArrayFromFile, stringToBytes } from '../utils';
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkCiphertext, checkPresentationJson } from './utils';
+import { checkCiphertext, checkPresentationJson, getKeys, verifyCred } from './utils';
+import { BDDT16MacSecretKey } from '../../src/bddt16-mac';
 
 // Setting it to false will make the test run the SNARK setups making tests quite slow
 const loadSnarkSetupFromFiles = true;
@@ -83,10 +84,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParams.generate(100, SignatureLabelBytes);
-    const keypair = KeyPair.generate(params, stringToBytes('seed1'));
-    sk = keypair.sk;
-    pk = keypair.pk;
+    [sk, pk] = getKeys('seed1');
 
     const schema = CredentialSchema.essential();
     const subjectItem = {
@@ -148,7 +146,7 @@ describe(`${Scheme} Presentation creation and verification`, () => {
       }
     ];
     credential = builder.sign(sk);
-    checkResult(credential.verify(pk));
+    verifyCred(credential, pk, sk);
   });
 
   it('with proving multiple bounds on a single attribute', () => {

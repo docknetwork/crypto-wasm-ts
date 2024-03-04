@@ -1,4 +1,4 @@
-import { bbsGenerateKeyPair, bbsGeneratePublicKey, bbsGenerateSigningKey } from '@docknetwork/crypto-wasm';
+import { bbsGenerateKeyPair, bbsGeneratePublicKey, bbsGenerateSigningKey } from 'crypto-wasm-new';
 import { BBSPlusPublicKeyG2 } from '../bbs-plus';
 import { BBSSignatureParams } from './params';
 import { BytearrayWrapper } from '../bytearray-wrapper';

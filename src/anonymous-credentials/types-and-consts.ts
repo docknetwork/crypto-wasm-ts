@@ -1,4 +1,4 @@
-import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
+import { BBSPublicKey, BBSSecretKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
 import {
   SaverChunkedCommitmentKey,
@@ -9,10 +9,16 @@ import {
   SaverProvingKey,
   SaverProvingKeyUncompressed
 } from '../saver';
-import { R1CS } from '@docknetwork/crypto-wasm';
-import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
-import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
-import { Accumulator, AccumulatorParams, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
+import { R1CS } from 'crypto-wasm-new';
+import { BBSPlusPublicKeyG2, BBSPlusSecretKey, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
+import { PSPublicKey, PSSecretKey, PSSignature, PSSignatureParams } from '../ps';
+import {
+  Accumulator,
+  AccumulatorParams,
+  AccumulatorPublicKey, AccumulatorSecretKey,
+  MembershipProvingKey,
+  NonMembershipProvingKey
+} from '../accumulator';
 import {
   BoundCheckBppParams,
   BoundCheckBppParamsUncompressed,
@@ -24,6 +30,7 @@ import {
   BoundCheckSmcWithKVVerifierParamsUncompressed
 } from '../bound-check';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
+import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
 
 export type StringOrObject = string | object;
 // Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation.
@@ -70,13 +77,19 @@ export type BoundType = number | DateType;
 export type FlattenedSchema = [string[], object[]];
 export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext | SaverCiphertext[] };
 
+export type SecretKey = BBSSecretKey | BBSPlusSecretKey | PSSecretKey | BDDT16MacSecretKey;
 export type PublicKey = BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
-export type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature;
-export type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG1 | PSSignatureParams;
+export type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature | BDDT16Mac;
+export type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG1 | PSSignatureParams | BDDT16MacParams;
 export type SignatureParamsClass =
   | typeof BBSSignatureParams
   | typeof BBSPlusSignatureParamsG1
-  | typeof PSSignatureParams;
+  | typeof PSSignatureParams
+  | typeof BDDT16MacParams;
+// TODO: Find a better name
+export type CredentialVerificationParam = PublicKey | BDDT16MacSecretKey;
+// TODO: Find a better name
+export type AccumulatorVerificationParam = AccumulatorPublicKey | AccumulatorSecretKey;
 
 export const VERSION_STR = 'version';
 export const CRYPTO_VERSION_STR = 'cryptoVersion';
@@ -95,14 +108,16 @@ export const ID_STR = 'id';
 export const REV_CHECK_STR = 'revocationCheck';
 export const REV_ID_STR = 'revocationId';
 export const MEM_CHECK_STR = 'membership';
-export const PROOF_STR = 'proof';
 export const NON_MEM_CHECK_STR = 'non-membership';
+export const MEM_CHECK_KV_STR = 'membership-kv';
+export const PROOF_STR = 'proof';
 export const BBS_CRED_PROOF_TYPE = 'Bls12381BBSSignatureDock2023';
 export const BBS_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBSSignatureDock2023';
 export const BBS_PLUS_CRED_PROOF_TYPE = 'Bls12381BBS+SignatureDock2022';
 export const BBS_PLUS_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBS+SignatureDock2023';
 export const PS_CRED_PROOF_TYPE = 'Bls12381PSSignatureDock2023';
-
+export const BDDT16_CRED_PROOF_TYPE = 'Bls12381BDDT16Dock2024';
+export const BDDT16_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBDDT16Dock2024';
 export const LEGOGROTH16 = 'LegoGroth16';
 export const SAVER = 'SAVER';
 
@@ -120,6 +135,10 @@ export const BBS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(BBS_SIGNATURE_PARAMS_L
 // Label used for generating BBS+ signature parameters
 export const BBS_PLUS_SIGNATURE_PARAMS_LABEL = 'DockBBS+Signature2022';
 export const BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(BBS_PLUS_SIGNATURE_PARAMS_LABEL);
+
+// Label used for generating BDDT16 MAC parameters
+export const BDDT16_MAC_PARAMS_LABEL = 'DockBDDT16MAC';
+export const BDDT16_MAC_PARAMS_LABEL_BYTES = te.encode(BDDT16_MAC_PARAMS_LABEL);
 
 // Label used for generating PS signature parameters
 export const PS_SIGNATURE_PARAMS_LABEL = 'DockPSSignature2023';
@@ -184,12 +203,14 @@ export function dockInequalityCommKeyUncompressed(): PederCommKeyUncompressed {
 export enum SignatureType {
   Bbs = BBS_CRED_PROOF_TYPE,
   BbsPlus = BBS_PLUS_CRED_PROOF_TYPE,
-  Ps = PS_CRED_PROOF_TYPE
+  Ps = PS_CRED_PROOF_TYPE,
+  Bddt16 = BDDT16_CRED_PROOF_TYPE
 }
 
 export enum BlindSignatureType {
   Bbs = BBS_BLINDED_CRED_PROOF_TYPE,
-  BbsPlus = BBS_PLUS_BLINDED_CRED_PROOF_TYPE
+  BbsPlus = BBS_PLUS_BLINDED_CRED_PROOF_TYPE,
+  Bddt16 = BDDT16_BLINDED_CRED_PROOF_TYPE
 }
 
 export enum RevocationStatusProtocol {

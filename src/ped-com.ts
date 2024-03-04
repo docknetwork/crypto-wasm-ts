@@ -1,6 +1,6 @@
 import { BytearrayWrapper } from './bytearray-wrapper';
 import { ICompressed, IUncompressed } from './ICompressed';
-import { generatePedersenCommKeyG1, decompressPedersenCommKeyG1 } from '@docknetwork/crypto-wasm';
+import { generatePedersenCommKeyG1, decompressPedersenCommKeyG1 } from 'crypto-wasm-new';
 
 export class PederCommKeyUncompressed extends BytearrayWrapper implements IUncompressed {}
 

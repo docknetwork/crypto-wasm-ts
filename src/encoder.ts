@@ -1,4 +1,4 @@
-import { encodeMessageForSigning, fieldElementAsBytes, generateFieldElementFromNumber } from '@docknetwork/crypto-wasm';
+import { encodeMessageForSigning, fieldElementAsBytes, generateFieldElementFromNumber } from 'crypto-wasm-new';
 import { convertDateToTimestamp, flattenObjectToKeyValuesList, isPositiveInteger } from './util';
 import LZUTF8 from 'lzutf8';
 import { BytearrayWrapper } from './bytearray-wrapper';

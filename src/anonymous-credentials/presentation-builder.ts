@@ -1,9 +1,9 @@
 import { Versioned } from './versioned';
-import { BBSCredential, BBSPlusCredential, PSCredential } from './credential';
+import { BBSCredential, BBSPlusCredential, BDDT16Credential, PSCredential } from './credential';
 import {
-  CompositeProofG1,
+  CompositeProof,
   MetaStatements,
-  QuasiProofSpecG1,
+  QuasiProofSpec,
   SetupParam,
   Statement,
   Statements,
@@ -13,7 +13,7 @@ import {
 } from '../composite-proof';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
 import { CircomInputs } from '../r1cs';
-import { R1CS } from '@docknetwork/crypto-wasm';
+import { R1CS } from 'crypto-wasm-new';
 import { CredentialSchema, getTransformedMinMax, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
@@ -26,7 +26,7 @@ import {
   CRYPTO_VERSION_STR,
   FlattenedSchema,
   ID_STR,
-  InequalityProtocol,
+  InequalityProtocol, MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
@@ -51,10 +51,9 @@ import {
   PresentationSpecification
 } from './presentation-specification';
 import { buildContextForProof, Presentation } from './presentation';
-import { AccumulatorPublicKey, AccumulatorWitness, MembershipWitness, NonMembershipWitness } from '../accumulator';
+import { AccumulatorPublicKey, AccumulatorWitness, VBMembershipWitness, VBNonMembershipWitness } from '../accumulator';
 import {
-  accumulatorStatement,
-  buildSignatureStatementFromParamsRef,
+  accumulatorStatement, buildSignatureProverStatementFromParamsRef,
   buildWitness,
   createWitEq,
   createWitEqForBlindedCred,
@@ -87,6 +86,7 @@ import {
   BoundCheckSmcWithKVProverParamsUncompressed
 } from '../bound-check';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
+import { BDDT16MacParams } from '../bddt16-mac';
 
 /**
  * Arguments required to generate the corresponding AttributeBoundPseudonym
@@ -107,24 +107,24 @@ export interface UnboundedPseudonym {
   secretKey: Uint8Array;
 }
 
-type Credential = BBSCredential | BBSPlusCredential | PSCredential;
+type Credential = BBSCredential | BBSPlusCredential | PSCredential | BDDT16Credential;
 
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.5.0';
+  static VERSION = '0.6.0';
 
   // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;
   // To prevent replay attack
   _nonce?: Uint8Array;
-  proof?: CompositeProofG1;
+  proof?: CompositeProof;
   // Just for debugging
-  private _proofSpec?: QuasiProofSpecG1;
+  private _proofSpec?: QuasiProofSpec;
   spec: PresentationSpecification;
 
   // Each credential is referenced by its index in this array
-  credentials: [Credential, PublicKey][];
+  credentials: [Credential, PublicKey?][];
 
   // Attributes revealed from each credential, key of the map is the credential index
   revealedAttributes: Map<number, Set<string>>;
@@ -143,7 +143,7 @@ export class PresentationBuilder extends Versioned {
   attributeInequalities: Map<number, Map<string, [IPresentedAttributeInequality, Uint8Array][]>>;
 
   // Each credential has only one accumulator for status
-  credStatuses: Map<number, [AccumulatorWitness, Uint8Array, AccumulatorPublicKey, object]>;
+  credStatuses: Map<number, [AccumulatorWitness, Uint8Array, AccumulatorPublicKey | undefined, object]>;
 
   // Bounds on attribute. The key of the map is the credential index and for the inner map is the attribute and value of map
   // denotes min, max, an identifier of the setup parameters for the protocol and the protocol name.
@@ -202,7 +202,7 @@ export class PresentationBuilder extends Versioned {
    * @param credential
    * @param pk
    */
-  addCredential(credential: Credential, pk: PublicKey): number {
+  addCredential(credential: Credential, pk?: PublicKey): number {
     // TODO: Accept reference to public keys in case of same key for many credentials
     this.credentials.push([credential, pk]);
     return this.credentials.length - 1;
@@ -257,7 +257,7 @@ export class PresentationBuilder extends Versioned {
     credIdx: number,
     accumWitness: AccumulatorWitness,
     accumulated: Uint8Array,
-    accumPublicKey: AccumulatorPublicKey,
+    accumPublicKey?: AccumulatorPublicKey,
     extra: object = {}
   ) {
     this.validateCredIndex(credIdx);
@@ -509,7 +509,7 @@ export class PresentationBuilder extends Versioned {
       }
       const paramsClass = paramsClassBySignature(cred.signature);
       if (paramsClass === null) {
-        throw new Error(`Invalid signature: ${cred.signature}`);
+        throw new Error(`Invalid signature: ${cred.signature.constructor.name} at credential index ${credIndex}`);
       }
       const sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, paramsClass, numAttribs);
 
@@ -521,7 +521,8 @@ export class PresentationBuilder extends Versioned {
         if (
           cred.credentialStatus[ID_STR] === undefined ||
           (cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_STR &&
-            cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_STR)
+            cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_STR &&
+            cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_KV_STR)
         ) {
           throw new Error(`Credential for ${credIndex} has invalid status ${cred.credentialStatus}`);
         }
@@ -534,12 +535,12 @@ export class PresentationBuilder extends Versioned {
         revealedNames,
         schema.encoder
       );
-      const statement = buildSignatureStatementFromParamsRef(
+      const statement = buildSignatureProverStatementFromParamsRef(
         setupParamsTrk,
         sigParams,
-        this.credentials[credIndex][1],
         numAttribs,
-        revealedAttrsEncoded
+        revealedAttrsEncoded,
+        this.credentials[credIndex][1],
       );
       const witness = buildWitness(cred.signature, unrevealedAttrsEncoded);
       statements.add(statement);
@@ -713,25 +714,25 @@ export class PresentationBuilder extends Versioned {
     }
 
     // Create statements and witnesses for accumulators used in credential status
-    credStatusAux.forEach(([i, t, value]) => {
+    credStatusAux.forEach(([i, checkType, value]) => {
       const s = this.credStatuses.get(i);
       if (s === undefined) {
         throw new Error(`No status details found for credential index ${i}`);
       }
       const [wit, acc, pk] = s;
       let witness;
-      if (t === MEM_CHECK_STR) {
-        if (!(wit instanceof MembershipWitness)) {
+      if (checkType === MEM_CHECK_STR || checkType === MEM_CHECK_KV_STR) {
+        if (!(wit instanceof VBMembershipWitness)) {
           throw new Error(`Expected membership witness but got non-membership witness for credential index ${i}`);
         }
-        witness = Witness.accumulatorMembership(value, wit);
+        witness = Witness.vbAccumulatorMembership(value, wit);
       } else {
-        if (!(wit instanceof NonMembershipWitness)) {
+        if (!(wit instanceof VBNonMembershipWitness)) {
           throw new Error(`Expected non-membership witness but got membership witness for credential index ${i}`);
         }
-        witness = Witness.accumulatorNonMembership(value, wit);
+        witness = Witness.vbAccumulatorNonMembership(value, wit);
       }
-      const statement = accumulatorStatement(t, pk, acc, setupParamsTrk);
+      const statement = accumulatorStatement(i, checkType, acc, setupParamsTrk, pk);
       const sIdx = statements.add(statement);
       witnesses.add(witness);
 
@@ -1005,7 +1006,7 @@ export class PresentationBuilder extends Versioned {
       // Offset of attributes in the Pedersen Commitment, its 0 for BBS and 1 for BBS+ as the commitment in BBS+ is perfectly hiding.
       let pedCommWitnessOffset;
 
-      if (sigParams instanceof BBSSignatureParams || sigParams instanceof BBSPlusSignatureParamsG1) {
+      if (sigParams instanceof BBSSignatureParams || sigParams instanceof BBSPlusSignatureParamsG1 || sigParams instanceof BDDT16MacParams) {
         const commKey = sigParams.getParamsForIndices(blindedSubjectIndices);
         pedCommStId = statements.add(Statement.pedersenCommitmentG1(commKey, this.blindCredReq.req.commitment));
       } else {
@@ -1015,7 +1016,7 @@ export class PresentationBuilder extends Versioned {
       if (sigParams instanceof BBSSignatureParams) {
         witnesses.add(Witness.pedersenCommitment(blindedSubjectValues));
         pedCommWitnessOffset = 0;
-      } else if (sigParams instanceof BBSPlusSignatureParamsG1) {
+      } else if (sigParams instanceof BBSPlusSignatureParamsG1 || sigParams instanceof BDDT16MacParams) {
         witnesses.add(Witness.pedersenCommitment([this.blindCredReq.blinding as Uint8Array, ...blindedSubjectValues]));
         pedCommWitnessOffset = 1;
       } else {
@@ -1163,8 +1164,8 @@ export class PresentationBuilder extends Versioned {
 
     // The version and spec are also added to the proof thus binding these to the proof cryptographically.
     const ctx = buildContextForProof(this.version, this.spec, this._context);
-    this._proofSpec = new QuasiProofSpecG1(statements, metaStatements, setupParamsTrk.setupParams, ctx);
-    this.proof = CompositeProofG1.generateUsingQuasiProofSpec(this._proofSpec, witnesses, this._nonce);
+    this._proofSpec = new QuasiProofSpec(statements, metaStatements, setupParamsTrk.setupParams, ctx);
+    this.proof = CompositeProof.generateUsingQuasiProofSpec(this._proofSpec, witnesses, this._nonce);
 
     // Ciphertexts of credential attributes
     let attributeCiphertexts: Map<number, AttributeCiphertexts[]> | undefined;

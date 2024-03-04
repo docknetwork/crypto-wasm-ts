@@ -6,9 +6,9 @@ import {
   psAdaptSignatureParamsForMsgCount,
   PSSigParams,
   psMessageCommitment
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
-import { psMultiMessageCommitment } from '@docknetwork/crypto-wasm';
+import { psMultiMessageCommitment } from 'crypto-wasm-new';
 import { ISignatureParams, MessageStructure } from '../types';
 
 /**

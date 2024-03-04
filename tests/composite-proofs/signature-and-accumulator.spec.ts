@@ -1,26 +1,27 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../utils';
 import {
   Accumulator,
-  CompositeProofG1,
+  CompositeProof,
+  initializeWasm,
   MetaStatement,
   MetaStatements,
   PositiveAccumulator,
-  ProofSpecG1,
+  ProofSpec,
   Statement,
   Statements,
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
-import { KeyPair, Scheme, Signature, SignatureParams, buildStatement, buildWitness } from '../scheme';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
+import { buildWitness, isKvac, Scheme, Signature } from '../scheme';
+import { checkResult, getParamsAndKeys, proverStmt, signAndVerify, stringToBytes, verifierStmt } from '../utils';
 
 describe(`Proving knowledge of 1 ${Scheme} signature and a certain message in the accumulator`, () => {
-  it('works', async () => {
-    // Load the WASM module
+  beforeAll(async () => {
     await initializeWasm();
+  });
 
+  async function check(isKvAccum: boolean) {
     // Messages to sign
     const messages: Uint8Array[] = [];
     // SSN
@@ -48,21 +49,17 @@ describe(`Proving knowledge of 1 ${Scheme} signature and a certain message in th
     }
 
     const label = stringToBytes('My sig params in g1');
-    const sigParams = SignatureParams.generate(messageCount, label);
 
     // Signers keys
-    const sigKeypair = KeyPair.generate(sigParams);
-    const sigSk = sigKeypair.secretKey;
-    const sigPk = sigKeypair.publicKey;
+    const [sigParams, sigSk, sigPk] = getParamsAndKeys(messageCount, label);
 
     const accumParams = PositiveAccumulator.generateParams(stringToBytes('Accumulator params'));
     const accumKeypair = PositiveAccumulator.generateKeypair(accumParams);
     const accumulator = PositiveAccumulator.initialize(accumParams);
     const state = new InMemoryState();
 
-    const sig = Signature.generate(encodedMessages, sigSk, sigParams, false);
-    const result = sig.verify(encodedMessages, sigPk, sigParams, false);
-    expect(result.verified).toEqual(true);
+    const [sig, result] = signAndVerify(encodedMessages, sigParams, sigSk, sigPk, false);
+    checkResult(result);
 
     const userIdIdx = messageCount - 1;
     await accumulator.add(encodedMessages[userIdIdx], accumKeypair.secretKey, state);
@@ -83,15 +80,15 @@ describe(`Proving knowledge of 1 ${Scheme} signature and a certain message in th
 
     const provingKey = Accumulator.generateMembershipProvingKey(stringToBytes('Our proving key'));
 
-    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
-    const statement2 = Statement.accumulatorMembership(
+    const statement1 = proverStmt(sigParams, revealedMsgs, sigPk);
+    const statement2 = isKvAccum ? Statement.vbAccumulatorMembershipKV(accumulator.accumulated) : Statement.vbAccumulatorMembership(
       accumParams,
       accumKeypair.publicKey,
       provingKey,
       accumulator.accumulated
     );
-    const statements = new Statements(statement1);
-    statements.add(statement2);
+    const proverStatements = new Statements(statement1);
+    proverStatements.add(statement2);
 
     // The last message in the signature is same as the accumulator member
     const witnessEq = new WitnessEqualityMetaStatement();
@@ -106,17 +103,44 @@ describe(`Proving knowledge of 1 ${Scheme} signature and a certain message in th
 
     const context = stringToBytes('some context');
 
-    const proofSpec = new ProofSpecG1(statements, metaStatements, [], context);
-    expect(proofSpec.isValid()).toEqual(true);
+    const proverProofSpec = new ProofSpec(proverStatements, metaStatements, [], context);
+    expect(proverProofSpec.isValid()).toEqual(true);
 
     const witness1 = buildWitness(sig, unrevealedMsgs, false);
-    const witness2 = Witness.accumulatorMembership(encodedMessages[userIdIdx], accumWitness);
+    const witness2 = Witness.vbAccumulatorMembership(encodedMessages[userIdIdx], accumWitness);
     const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
     const nonce = stringToBytes('some unique nonce');
 
-    const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
-    checkResult(proof.verify(proofSpec, nonce));
+    const proof = CompositeProof.generate(proverProofSpec, witnesses, nonce);
+
+    const statement3 = verifierStmt(sigParams, revealedMsgs, sigPk);
+    const verifierStatements = new Statements(statement3);
+    verifierStatements.add(statement2);
+    const verifierProofSpec = new ProofSpec(verifierStatements, metaStatements, [], context);
+    expect(verifierProofSpec.isValid()).toEqual(true);
+    checkResult(proof.verify(verifierProofSpec, nonce));
+
+    if (isKvac()) {
+      const statement4 = Statement.bddt16MacFullVerifier(sigParams, sigSk, revealedMsgs, false);
+      const verifierStatements = new Statements(statement4);
+      if (isKvAccum) {
+        verifierStatements.add(Statement.vbAccumulatorMembershipKVFullVerifier(accumKeypair.secretKey, accumulator.accumulated))
+      } else {
+        verifierStatements.add(statement2);
+      }
+      const verifierProofSpec = new ProofSpec(verifierStatements, metaStatements, [], context);
+      expect(verifierProofSpec.isValid()).toEqual(true);
+      checkResult(proof.verify(verifierProofSpec, nonce));
+    }
+  }
+
+  it('works with non-kv accumulator', async () => {
+    await check(false)
+  });
+
+  it('works with kv accumulator', async () => {
+    await check(true)
   });
 });

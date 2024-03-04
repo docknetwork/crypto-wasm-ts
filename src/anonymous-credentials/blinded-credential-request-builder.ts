@@ -9,7 +9,7 @@ import { BBSCredential, BBSPlusCredential, PSCredential } from './credential';
 import {
   AttributeEquality,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES, BDDT16_MAC_PARAMS_LABEL_BYTES,
   BlindedAttributeEquality,
   BlindSignatureType,
   BoundCheckParamType,
@@ -29,8 +29,12 @@ import {
   SaverProvingKey,
   SaverProvingKeyUncompressed
 } from '../saver';
-import { generateRandomFieldElement, R1CS } from '@docknetwork/crypto-wasm';
-import { BBSBlindedCredentialRequest, BBSPlusBlindedCredentialRequest } from './blinded-credential-request';
+import { generateRandomFieldElement, R1CS } from 'crypto-wasm-new';
+import {
+  BBSBlindedCredentialRequest,
+  BBSPlusBlindedCredentialRequest,
+  BDDT16BlindedCredentialRequest
+} from './blinded-credential-request';
 import { unflatten } from 'flat';
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
@@ -43,6 +47,7 @@ import {
 import { Presentation } from './presentation';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
+import { BDDT16MacParams } from '../bddt16-mac';
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 
@@ -509,6 +514,50 @@ export class BBSPlusBlindedCredentialRequestBuilder extends BlindedCredentialReq
   }
 }
 
+export class BDDT16BlindedCredentialRequestBuilder extends BlindedCredentialRequestBuilder<BDDT16MacParams> {
+  private readonly blinding: Uint8Array;
+
+  constructor() {
+    super();
+    this.blinding = generateRandomFieldElement();
+  }
+
+  /**
+   * Create the request to be sent to the signer and the blinding to be kept to later unblind the credential
+   * @param sigParams
+   * @returns
+   */
+  finalize(
+    sigParams: Uint8Array | BDDT16MacParams = BDDT16_MAC_PARAMS_LABEL_BYTES
+  ): [BDDT16BlindedCredentialRequest, BDDT16Blinding] {
+    return [
+      new BDDT16BlindedCredentialRequest(this.version, super.createPresentation(sigParams)),
+      new BDDT16Blinding(this.blinding)
+    ];
+  }
+
+  getBlinding(): Uint8Array {
+    return this.blinding;
+  }
+
+  computeCommitment(
+    encodedSubject: Map<number, Uint8Array>,
+    totalAttributes: number,
+    labelOrParams: Uint8Array | BDDT16MacParams = BDDT16_MAC_PARAMS_LABEL_BYTES
+  ): Uint8Array {
+    const sigParams = BDDT16MacParams.getMacParamsOfRequiredSize(totalAttributes, labelOrParams);
+    this.sigParams = sigParams;
+    const [commitment] = sigParams.commitToMessages(encodedSubject, false, this.blinding);
+    return commitment;
+  }
+
+  static getSigType(): BlindSignatureType {
+    return BlindSignatureType.Bddt16;
+  }
+}
+
 export class BBSPlusBlinding extends BytearrayWrapper {}
+
+export class BDDT16Blinding extends BytearrayWrapper {}
 
 // TODO: Add for PS as well

@@ -1,26 +1,39 @@
 import {
   Accumulator,
-  AccumulatorSecretKey,
-  CredentialSchema,
+  AccumulatorPublicKey,
+  AccumulatorSecretKey, AccumulatorVerificationParam,
+  AttributeBoundPseudonym,
+  AttributeCiphertexts, BDDT16Credential,
+  CredentialSchema, CredentialVerificationParam, dockAccumulatorParams,
   dockSaverEncryptionGensUncompressed,
   IAccumulatorState,
   IEmbeddedJsonSchema,
+  IJsonSchema, PositiveAccumulator,
+  PredicateParamType,
+  PseudonymBases, REV_ID_STR,
+  SaverCiphertext,
   SaverDecryptor,
   SCHEMA_TYPE_STR,
   STATUS_STR,
-  SUBJECT_STR,
-  SaverCiphertext,
-  AttributeCiphertexts,
-  PseudonymBases,
-  AttributeBoundPseudonym,
-  AccumulatorPublicKey,
-  PredicateParamType, IJsonSchema
+  SUBJECT_STR
 } from '../../src';
-import { Credential, CredentialBuilder, Presentation, PublicKey } from '../scheme';
+import {
+  Credential,
+  CredentialBuilder,
+  isKvac,
+  KeyPair,
+  Presentation,
+  PublicKey,
+  SecretKey,
+  SignatureLabelBytes,
+  SignatureParams
+} from '../scheme';
 import * as _ from 'lodash';
-import { checkResult } from '../utils';
+import { checkResult, stringToBytes } from '../utils';
 import fs from 'fs';
 import { BytearrayWrapper } from '../../src/bytearray-wrapper';
+import { BDDT16MacParams, BDDT16MacSecretKey } from '../../src/bddt16-mac';
+import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 
 export function getExampleSchema(num): IEmbeddedJsonSchema {
   const schema = CredentialSchema.essential();
@@ -655,8 +668,8 @@ export function getDecodedBoundedPseudonym(
  */
 export function checkPresentationJson(
   pres: Presentation,
-  pks: PublicKey[],
-  accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
+  pks: Map<number, CredentialVerificationParam | undefined> | CredentialVerificationParam[],
+  accumulatorPublicKeys?: Map<number, AccumulatorVerificationParam>,
   predicateParams?: Map<string, PredicateParamType>,
   circomOutputs?: Map<number, Uint8Array[][]>,
   // TODO: Rename
@@ -714,4 +727,51 @@ export function checkEmbeddedSchema(withSchemaRef: boolean, schema: CredentialSc
     expect(schema.jsonSchema).toEqual(fullJsonSchema);
     expect(schema.fullJsonSchema).not.toBeDefined();
   }
+}
+
+export function getKeys(seed?: string): [SecretKey, PublicKey] {
+  const params = SignatureParams.generate(100, SignatureLabelBytes);
+  const s = seed ? stringToBytes(seed) : undefined;
+  const isKvac = params instanceof BDDT16MacParams;
+  const keypair = !isKvac ? KeyPair.generate(params, s) : undefined;
+  const sk = !isKvac ? keypair.sk : BDDT16MacSecretKey.generate(s);
+  const pk = !isKvac ? keypair.pk : undefined;
+  return [sk, pk];
+}
+
+export function verifyCred(cred: Credential, pk: PublicKey, sk: SecretKey) {
+  const isKvac = cred instanceof BDDT16Credential;
+  checkResult(!isKvac ? cred.verify(pk) : cred.verifyUsingSecretKey(sk));
+}
+
+export async function setupPrefilledAccum(totalMembers: number, memberIdx: number, memberValPrefix: string, schema: CredentialSchema, seed?: Uint8Array) {
+  const kp = PositiveAccumulator.generateKeypair(dockAccumulatorParams(), seed);
+  const sk = kp.secretKey;
+  const pk = kp.publicKey;
+  const accumulator = PositiveAccumulator.initialize(dockAccumulatorParams());
+  const state = new InMemoryState();
+  const allMembers = await prefillAccumulator(
+    accumulator,
+    sk,
+    state,
+    schema,
+    memberValPrefix,
+    `${STATUS_STR}.${REV_ID_STR}`,
+    totalMembers
+  );
+  const witness = await accumulator.membershipWitness(
+    allMembers[memberIdx],
+    kp.secretKey,
+    state
+  );
+  const verifAccumulator = PositiveAccumulator.fromAccumulated(accumulator.accumulated);
+  expect(
+    verifAccumulator.verifyMembershipWitness(
+      allMembers[memberIdx],
+      witness,
+      pk,
+      dockAccumulatorParams()
+    )
+  ).toEqual(true);
+  return [sk, pk, accumulator, witness]
 }

@@ -1,18 +1,18 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  initializeWasm,
   Accumulator,
   AccumulatorParams,
   AccumulatorPublicKey,
   AccumulatorSecretKey,
-  CompositeProofG1,
+  CompositeProof,
   MembershipProvingKey,
-  MembershipWitness,
+  VBMembershipWitness,
   MetaStatement,
   MetaStatements,
   NonMembershipProvingKey,
-  NonMembershipWitness,
+  VBNonMembershipWitness,
   PositiveAccumulator,
-  ProofSpecG1,
+  ProofSpec,
   Statement,
   Statements,
   UniversalAccumulator,
@@ -21,25 +21,25 @@ import {
   Witnesses,
   randomFieldElement
 } from '../src';
+import { proverStmt, verifierStmt } from './composite-proofs/msg-js-obj/util';
 import { areUint8ArraysEqual, stringToBytes } from './utils';
 import {
   PublicKey,
   Signature,
   SecretKey,
   BlindSignature,
-  buildStatement,
+  buildVerifierStatement,
   KeyPair,
   buildWitness,
   SignatureParams,
   isPS,
   getStatementForBlindSigRequest,
-  isBBSPlus,
   getWitnessForBlindSigRequest,
   isBBS,
   Scheme,
-  adaptKeyForParams
+  adaptKeyForParams, isKvac
 } from './scheme';
-import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
+import { generateRandomG1Element } from 'crypto-wasm-new';
 
 // Test demonstrating the flow where holder (user) gets credentials (message lists and signatures) from multiple issuers (signers)
 // one by one and it proves the knowledge of previously received credentials before getting the next credential (message list and signature).
@@ -107,7 +107,7 @@ let Accum2: PositiveAccumulator;
 let Accum3: UniversalAccumulator;
 
 export interface BlindSigRequest {
-  proof: CompositeProofG1;
+  proof: CompositeProof;
   request: any;
 }
 
@@ -135,23 +135,25 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
     }
 
     function checkPublicKey(sk: SecretKey, pk: PublicKey, params: any) {
-      if (!pk.isValid()) {
-        throw new Error('Public key is invalid');
-      }
-      let gpk = isPS() || isBBS() ? sk.generatePublicKey(params) : sk.generatePublicKeyG2(params);
+      if (!isKvac()) {
+        if (!pk.isValid()) {
+          throw new Error('Public key is invalid');
+        }
+        let gpk = isPS() || isBBS() ? sk.generatePublicKey(params) : sk.generatePublicKeyG2(params);
 
-      if (!areUint8ArraysEqual(gpk.value, pk.value)) {
-        throw new Error(`Generated public key ${gpk.value} different from expected public key ${pk.value}`);
-      }
-      if (!gpk.isValid()) {
-        throw new Error('Generated public key is invalid');
+        if (!areUint8ArraysEqual(gpk.value, pk.value)) {
+          throw new Error(`Generated public key ${gpk.value} different from expected public key ${pk.value}`);
+        }
+        if (!gpk.isValid()) {
+          throw new Error('Generated public key is invalid');
+        }
       }
     }
 
     function setupIssuer1Keys() {
-      const kp = KeyPair.generate(Issuer12SigParams);
-      Issuer1Sk = kp.secretKey;
-      Issuer1Pk = kp.publicKey;
+      const kp = !isKvac() ? KeyPair.generate(Issuer12SigParams) : undefined;
+      Issuer1Sk = !isKvac() ? kp.secretKey : SecretKey.generate();
+      Issuer1Pk = !isKvac() ? kp.publicKey : undefined;
       checkPublicKey(Issuer1Sk, Issuer1Pk, Issuer12SigParams);
       log("Issuer 1's secret and public keys are:");
       log(Issuer1Sk);
@@ -159,9 +161,10 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
     }
 
     function setupIssuer2Keys() {
-      const kp = KeyPair.generate(Issuer12SigParams, stringToBytes('my secret passphrase'));
-      Issuer2Sk = kp.secretKey;
-      Issuer2Pk = kp.publicKey;
+      const seed = stringToBytes('my secret passphrase');
+      const kp = !isKvac() ? KeyPair.generate(Issuer12SigParams, seed) : undefined;
+      Issuer2Sk = !isKvac() ? kp.secretKey : SecretKey.generate(seed);
+      Issuer2Pk = !isKvac() ? kp.publicKey : undefined;
       checkPublicKey(Issuer2Sk, Issuer2Pk, Issuer12SigParams);
       log("Issuer 2's secret and public keys are:");
       log(Issuer2Sk);
@@ -170,9 +173,9 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
 
     function setupIssuer3Keys() {
       const seed = stringToBytes('my-secret-seed');
-      const kp = KeyPair.generate(Issuer3SigParams, seed);
-      Issuer3Sk = kp.secretKey;
-      Issuer3Pk = kp.publicKey;
+      const kp = !isKvac() ? KeyPair.generate(Issuer3SigParams, seed) : undefined;
+      Issuer3Sk = !isKvac() ? kp.secretKey : SecretKey.generate(seed);
+      Issuer3Pk = !isKvac() ? kp.publicKey : undefined;
       checkPublicKey(Issuer3Sk, Issuer3Pk, Issuer3SigParams);
       log("Issuer 3's secret and public keys are:");
       log(Issuer3Sk);
@@ -276,10 +279,10 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       let blinding, request;
       if (isPS()) {
         [blinding, request] = BlindSignature.generateRequest(msgsToCommit, sigParams, h, blindings);
-      } else if (isBBSPlus()) {
-        [blinding, request] = BlindSignature.generateRequest(msgsToCommit, sigParams, false, void 0);
-      } else {
+      } else if (isBBS()) {
         request = BlindSignature.generateRequest(msgsToCommit, sigParams, false);
+      } else {
+        [blinding, request] = BlindSignature.generateRequest(msgsToCommit, sigParams, false, void 0);
       }
       const statements = new Statements(getStatementForBlindSigRequest(request, sigParams, h));
       const witnesses = new Witnesses(getWitnessForBlindSigRequest(msgsToCommit, blinding, blindings));
@@ -300,11 +303,11 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       );
 
       // Proof spec with statement and meta-statement
-      const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+      const proofSpec = new ProofSpec(statements, new MetaStatements());
       expect(proofSpec.isValid()).toEqual(true);
 
       // Composite proof for proving knowledge of opening of Pedersen commitment
-      const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
+      const proof = CompositeProof.generate(proofSpec, witnesses, nonce);
       return [{ proof, request }, blinding, blindings];
     }
 
@@ -320,7 +323,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       accumPk: AccumulatorPublicKey,
       prk: MembershipProvingKey,
       accumulated: Uint8Array,
-      membershipWitness: MembershipWitness,
+      membershipWitness: VBMembershipWitness,
       h: Uint8Array,
       nonce?: Uint8Array
     ): [BlindSigRequest, Uint8Array, Map<number, Uint8Array>] {
@@ -330,11 +333,11 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       // 3) opening of commitment in the blind signature request.
 
       const statements = new Statements();
-      const statement1 = buildStatement(sigParams, pk, revealedMsgs, false);
+      const statement1 = proverStmt(sigParams, revealedMsgs, pk, false);
       const witness1 = buildWitness(credential, unrevealedMsgs, false);
 
-      const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
+      const statement2 = Statement.vbAccumulatorMembership(accumParams, accumPk, prk, accumulated);
+      const witness2 = Witness.vbAccumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
       const [blindStatements, blindWitnesses, request, blinding, blindings] =
         blindSigRequestWithSecretStatementAndWitness(secret, sigParamsForRequestedCredential, h);
@@ -362,14 +365,14 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       metaStatements.add(ms2);
 
       // Create proof spec with statements and meta statements
-      const proofSpec = new ProofSpecG1(statements, metaStatements);
+      const proofSpec = new ProofSpec(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
       const witnesses = new Witnesses();
 
       witnesses.add(witness1);
       witnesses.add(witness2);
       witnesses.append(blindWitnesses);
-      const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
+      const proof = CompositeProof.generate(proofSpec, witnesses, nonce);
       return [{ proof, request }, blinding, blindings];
     }
 
@@ -385,7 +388,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       accumPk: AccumulatorPublicKey,
       prk: MembershipProvingKey,
       accumulated: Uint8Array,
-      membershipWitness: MembershipWitness,
+      membershipWitness: VBMembershipWitness,
       credential2: Signature,
       sigParams2: SignatureParams,
       pk2: PublicKey,
@@ -395,7 +398,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       accumPk2: AccumulatorPublicKey,
       prk2: MembershipProvingKey,
       accumulated2: Uint8Array,
-      membershipWitness2: MembershipWitness,
+      membershipWitness2: VBMembershipWitness,
       h: Uint8Array,
       nonce?: Uint8Array
     ): [BlindSigRequest, Uint8Array, Map<number, Uint8Array>] {
@@ -406,37 +409,35 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       // 4) accumulator membership for credential1,
       // 5) opening of commitment in the blind signature request.
 
-      const statement1 = buildStatement(
+      const statement1 = proverStmt(
         sigParams,
-        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
-        false
+        pk,
       );
       const witness1 = buildWitness(credential, unrevealedMsgs, false);
 
-      const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
+      const statement2 = Statement.vbAccumulatorMembership(accumParams, accumPk, prk, accumulated);
+      const witness2 = Witness.vbAccumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
-      const statement3 = buildStatement(
+      const statement3 = proverStmt(
         sigParams2,
-        adaptKeyForParams(pk2, sigParams2),
         revealedMsgs2,
-        false
+        pk2,
       );
       const witness3 = buildWitness(credential2, unrevealedMsgs2, false);
 
-      const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
-      const witness4 = Witness.accumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
+      const statement4 = Statement.vbAccumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
+      const witness4 = Witness.vbAccumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
 
       const [blindStatemenents, blindWitnesses, request, blinding, blindings] =
         blindSigRequestWithSecretStatementAndWitness(secret, sigParamsForRequestedCredential, h);
-      const statements = new Statements();
+      const proverStatements = new Statements();
 
-      statements.add(statement1);
-      statements.add(statement2);
-      statements.add(statement3);
-      statements.add(statement4);
-      statements.append(blindStatemenents);
+      proverStatements.add(statement1);
+      proverStatements.add(statement2);
+      proverStatements.add(statement3);
+      proverStatements.add(statement4);
+      proverStatements.append(blindStatemenents);
 
       // Prove equality of holder's secret in `credential`, `credential1` and blind signature request.
       const witnessEq1 = new WitnessEqualityMetaStatement();
@@ -459,8 +460,8 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
       metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
 
-      const proofSpec = new ProofSpecG1(statements, metaStatements);
-      expect(proofSpec.isValid()).toEqual(true);
+      const proverProofSpec = new ProofSpec(proverStatements, metaStatements);
+      expect(proverProofSpec.isValid()).toEqual(true);
 
       const witnesses = new Witnesses();
 
@@ -470,7 +471,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       witnesses.add(witness4);
       witnesses.append(blindWitnesses);
 
-      const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
+      const proof = CompositeProof.generate(proverProofSpec, witnesses, nonce);
       return [{ proof, request }, blinding, blindings];
     }
 
@@ -487,7 +488,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       // Verify knowledge of opening of commitment and issue blind signature with that commitment
       const statements = new Statements(getStatementForBlindSigRequest(blindSigReq.request, sigParams, h));
 
-      const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+      const proofSpec = new ProofSpec(statements, new MetaStatements());
       expect(proofSpec.isValid()).toEqual(true);
 
       const res = blindSigReq.proof.verify(proofSpec, nonce);
@@ -523,13 +524,13 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       const indicesToCommit: number[] = [];
       indicesToCommit.push(0);
       const bases = sigParamsForRequestedCredential.getParamsForIndices(indicesToCommit);
-      const statement1 = buildStatement(
+      const statement1 = verifierStmt(
         sigParams,
-        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
+        pk,
         false
       );
-      const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
+      const statement2 = Statement.vbAccumulatorMembership(accumParams, accumPk, prk, accumulated);
       const restStatements = getStatementForBlindSigRequest(blindSigReq.request, sigParams, h);
 
       const statements = new Statements();
@@ -553,7 +554,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
         metaStatements.add(ms2);
       }
 
-      const proofSpec = new ProofSpecG1(statements, metaStatements);
+      const proofSpec = new ProofSpec(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
 
       const res = blindSigReq.proof.verify(proofSpec, nonce);
@@ -599,20 +600,20 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       // 4) accumulator membership for credential1,
       // 5) opening of commitment in the blind signature request.
 
-      const statement1 = buildStatement(
+      const statement1 = verifierStmt(
         sigParams,
-        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
+        pk,
         false
       );
-      const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const statement3 = buildStatement(
+      const statement2 = Statement.vbAccumulatorMembership(accumParams, accumPk, prk, accumulated);
+      const statement3 = verifierStmt(
         sigParams2,
-        adaptKeyForParams(pk2, sigParams2),
         revealedMsgs2,
+        pk2,
         false
       );
-      const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
+      const statement4 = Statement.vbAccumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
       const statement5 = getStatementForBlindSigRequest(blindSigReq.request, sigParamsForRequestedCredential, h);
 
       const statements = new Statements(
@@ -639,7 +640,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
         metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
       }
 
-      const proofSpec = new ProofSpecG1(statements, metaStatements);
+      const proofSpec = new ProofSpec(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
 
       const res = blindSigReq.proof.verify(proofSpec, nonce);
@@ -665,7 +666,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       accumPk: AccumulatorPublicKey,
       prk: MembershipProvingKey,
       accumulated: Uint8Array,
-      membershipWitness: MembershipWitness,
+      membershipWitness: VBMembershipWitness,
       credential2: Signature,
       sigParams2: SignatureParams,
       pk2: PublicKey,
@@ -675,7 +676,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       accumPk2: AccumulatorPublicKey,
       prk2: MembershipProvingKey,
       accumulated2: Uint8Array,
-      membershipWitness2: MembershipWitness,
+      membershipWitness2: VBMembershipWitness,
       credential3: Signature,
       sigParams3: SignatureParams,
       pk3: PublicKey,
@@ -685,7 +686,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       accumPk3: AccumulatorPublicKey,
       prk3: MembershipProvingKey,
       accumulated3: Uint8Array,
-      membershipWitness3: MembershipWitness,
+      membershipWitness3: VBMembershipWitness,
       nonce?: Uint8Array
     ) {
       // Create composite proof of 6 statements,
@@ -696,38 +697,38 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       // 5) knowledge of a signature in credential2,
       // 6) accumulator membership for credential2,
 
-      const statement1 = buildStatement(
+      const statement1 = proverStmt(
         sigParams,
-        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
+        pk,
         false
       );
       const witness1 = buildWitness(credential, unrevealedMsgs, false);
 
-      const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const witness2 = Witness.accumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
+      const statement2 = Statement.vbAccumulatorMembership(accumParams, accumPk, prk, accumulated);
+      const witness2 = Witness.vbAccumulatorMembership(unrevealedMsgs.get(1) as Uint8Array, membershipWitness);
 
-      const statement3 = buildStatement(
+      const statement3 = proverStmt(
         sigParams2,
-        adaptKeyForParams(pk2, sigParams2),
         revealedMsgs2,
+        pk2,
         false
       );
       const witness3 = buildWitness(credential2, unrevealedMsgs2, false);
 
-      const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
-      const witness4 = Witness.accumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
+      const statement4 = Statement.vbAccumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
+      const witness4 = Witness.vbAccumulatorMembership(unrevealedMsgs2.get(1) as Uint8Array, membershipWitness2);
 
-      const statement5 = buildStatement(
+      const statement5 = proverStmt(
         sigParams3,
-        adaptKeyForParams(pk3, sigParams3),
         revealedMsgs3,
+        pk3,
         false
       );
       const witness5 = buildWitness(credential3, unrevealedMsgs3, false);
 
-      const statement6 = Statement.accumulatorMembership(accumParams3, accumPk3, prk3, accumulated3);
-      const witness6 = Witness.accumulatorMembership(unrevealedMsgs3.get(1) as Uint8Array, membershipWitness3);
+      const statement6 = Statement.vbAccumulatorMembership(accumParams3, accumPk3, prk3, accumulated3);
+      const witness6 = Witness.vbAccumulatorMembership(unrevealedMsgs3.get(1) as Uint8Array, membershipWitness3);
 
       const statements = new Statements();
       statements.add(statement1);
@@ -760,7 +761,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
       metaStatements.add(MetaStatement.witnessEquality(witnessEq4));
 
-      const proofSpec = new ProofSpecG1(statements, metaStatements);
+      const proofSpec = new ProofSpec(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
 
       const witnesses = new Witnesses();
@@ -771,11 +772,11 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       witnesses.add(witness5);
       witnesses.add(witness6);
 
-      return CompositeProofG1.generate(proofSpec, witnesses, nonce);
+      return CompositeProof.generate(proofSpec, witnesses, nonce);
     }
 
     function verifyProofOf3Creds(
-      proof: CompositeProofG1,
+      proof: CompositeProof,
       sigParams: SignatureParams,
       pk: PublicKey,
       revealedMsgs: Map<number, Uint8Array>,
@@ -807,27 +808,27 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       // 5) knowledge of a signature in credential2,
       // 6) accumulator membership for credential2,
 
-      const statement1 = buildStatement(
+      const statement1 = verifierStmt(
         sigParams,
-        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
+        pk,
         false
       );
-      const statement2 = Statement.accumulatorMembership(accumParams, accumPk, prk, accumulated);
-      const statement3 = buildStatement(
+      const statement2 = Statement.vbAccumulatorMembership(accumParams, accumPk, prk, accumulated);
+      const statement3 = verifierStmt(
         sigParams2,
-        adaptKeyForParams(pk2, sigParams2),
         revealedMsgs2,
+        pk2,
         false
       );
-      const statement4 = Statement.accumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
-      const statement5 = buildStatement(
+      const statement4 = Statement.vbAccumulatorMembership(accumParams2, accumPk2, prk2, accumulated2);
+      const statement5 = verifierStmt(
         sigParams3,
-        adaptKeyForParams(pk3, sigParams3),
         revealedMsgs3,
+        pk3,
         false
       );
-      const statement6 = Statement.accumulatorMembership(accumParams3, accumPk3, prk3, accumulated3);
+      const statement6 = Statement.vbAccumulatorMembership(accumParams3, accumPk3, prk3, accumulated3);
 
       const statements = new Statements();
       statements.add(statement1);
@@ -860,7 +861,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       metaStatements.add(MetaStatement.witnessEquality(witnessEq3));
       metaStatements.add(MetaStatement.witnessEquality(witnessEq4));
 
-      const proofSpec = new ProofSpecG1(statements, metaStatements);
+      const proofSpec = new ProofSpec(statements, metaStatements);
       expect(proofSpec.isValid()).toEqual(true);
 
       const res = proof.verify(proofSpec, nonce);
@@ -885,17 +886,18 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       holderSecret: Uint8Array,
       msgs: Uint8Array[],
       pk: PublicKey,
+      sk: SecretKey,
       sigParams: SignatureParams
     ): [Signature, Uint8Array[]] {
       const revealed = isPS()
         ? blindedSig.unblind(blindings, pk)
-        : isBBSPlus()
-        ? blindedSig.unblind(blinding)
-        : blindedSig;
+        : isBBS()
+        ? blindedSig
+        : blindedSig.unblind(blinding);
       let final: Uint8Array[] = [];
       final.push(Signature.encodeMessageForSigning(holderSecret));
       final = final.concat(msgs);
-      const res1 = revealed.verify(final, pk, sigParams, false);
+      const res1 = revealed.verify(final, isKvac() ? sk : pk, sigParams, false);
       if (!res1.verified) {
         throw new Error(`Failed to verify revealed sig1 due to ${res1.error}`);
       }
@@ -952,6 +954,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       holderSecret,
       holderAttrs1,
       Issuer1Pk,
+      Issuer1Sk,
       Issuer12SigParams
     );
     // Holder checks that attribute at index 1 is in the accumulator
@@ -1029,6 +1032,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       holderSecret,
       holderMessages2,
       Issuer2Pk,
+      Issuer2Sk,
       Issuer12SigParams
     );
     const memCheck2 = Accum2.verifyMembershipWitness(revocationId2, membershipWitness2, Accum2Pk, Accum2Params);
@@ -1116,6 +1120,7 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       holderSecret,
       holderMessages3,
       Issuer3Pk,
+      Issuer3Sk,
       Issuer3SigParams
     );
     const memCheck3 = Accum3.verifyMembershipWitness(revocationId3, membershipWitness3, Accum3Pk);
@@ -1223,22 +1228,22 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
     }
 
     const j4 = membershipWitness1.toJSON();
-    if (!areUint8ArraysEqual(membershipWitness1.value, MembershipWitness.fromJSON(j4).value)) {
+    if (!areUint8ArraysEqual(membershipWitness1.value, VBMembershipWitness.fromJSON(j4).value)) {
       throw new Error('From JSON failed for witness 1');
     }
 
     const j5 = membershipWitness2.toJSON();
-    if (!areUint8ArraysEqual(membershipWitness2.value, MembershipWitness.fromJSON(j5).value)) {
+    if (!areUint8ArraysEqual(membershipWitness2.value, VBMembershipWitness.fromJSON(j5).value)) {
       throw new Error('From JSON failed for witness 2');
     }
 
     const j6 = membershipWitness3.toJSON();
-    if (!areUint8ArraysEqual(membershipWitness3.value, MembershipWitness.fromJSON(j6).value)) {
+    if (!areUint8ArraysEqual(membershipWitness3.value, VBMembershipWitness.fromJSON(j6).value)) {
       throw new Error('From JSON failed for witness 1');
     }
 
     const j7 = nonMemWitness.toJSON();
-    const l = NonMembershipWitness.fromJSON(j7).value;
+    const l = VBNonMembershipWitness.fromJSON(j7).value;
     if (!areUint8ArraysEqual(nonMemWitness.value.d, l.d)) {
       throw new Error('From JSON failed for non-member witness');
     }

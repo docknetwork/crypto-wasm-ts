@@ -1,14 +1,12 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { areUint8ArraysEqual, checkResult, stringToBytes } from '../../utils';
 import {
-  CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   Encoder,
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   MetaStatements,
-  ProofSpecG1,
+  ProofSpec,
   SetupParam,
   SignedMessages,
   Statement,
@@ -17,19 +15,12 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
-import { checkMapsEqual } from './index';
-import { defaultEncoder } from './data-and-encoder';
-import {
-  SignatureParams,
-  KeyPair,
-  PublicKey,
-  Signature,
-  buildStatement,
-  buildWitness,
-  Scheme,
-  adaptKeyForParams
-} from '../../scheme';
 import { PederCommKey } from '../../../src/ped-com';
+import { buildWitness, PublicKey, Scheme, SecretKey, Signature, SignatureParams } from '../../scheme';
+import { areUint8ArraysEqual, checkResult, getParamsAndKeys, stringToBytes } from '../../utils';
+import { defaultEncoder } from './data-and-encoder';
+import { checkMapsEqual } from './index';
+import { adaptedSigParams, proverStmt, signAndVerify, verifierStmt } from './util';
 
 // Test for scenario where the user wants to prove that he is not resident of certain cities.
 // Similar test can be written for other "set-membership" relations
@@ -37,7 +28,9 @@ describe(`${Scheme} Proving that not resident of certain cities`, () => {
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');
-  let sigPk: PublicKey;
+  let params: SignatureParams;
+  let sk: SecretKey;
+  let pk: PublicKey;
   let commKey: PederCommKey;
 
   let signed: SignedMessages<Signature>;
@@ -74,13 +67,9 @@ describe(`${Scheme} Proving that not resident of certain cities`, () => {
 
   it('signers signs attributes', () => {
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(20, label);
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    sigPk = keypair.publicKey;
+    [params, sk, pk] = getParamsAndKeys(100, label);
 
-    signed = Signature.signMessageObject(attributes, sk, label, encoder);
-    checkResult(signed.signature.verifyMessageObject(attributes, sigPk, label, encoder));
+    signed = signAndVerify(attributes, encoder, label, sk, pk);
   });
 
   it('proof verifies when city is neither NYC, SF, LA, Chicago, Seattle', () => {
@@ -89,8 +78,7 @@ describe(`${Scheme} Proving that not resident of certain cities`, () => {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
-    sigPk = adaptKeyForParams(sigPk, sigParams);
+    const sigParams = adaptedSigParams(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes,
       revealedNames,
@@ -104,7 +92,11 @@ describe(`${Scheme} Proving that not resident of certain cities`, () => {
     const metaStmtsProver = new MetaStatements();
     const witnesses = new Witnesses();
 
-    const sIdx1 = statementsProver.add(buildStatement(sigParams, sigPk, revealedMsgs, false));
+    const sIdx1 = statementsProver.add(proverStmt(
+      sigParams,
+      revealedMsgs,
+      pk
+    ));
     witnesses.add(buildWitness(signed.signature, unrevealedMsgs, false));
 
     for (const c of encodedCities) {
@@ -117,10 +109,10 @@ describe(`${Scheme} Proving that not resident of certain cities`, () => {
     }
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver, setupParams);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver, setupParams);
     expect(proofSpecProver.isValid()).toEqual(true);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
@@ -129,7 +121,11 @@ describe(`${Scheme} Proving that not resident of certain cities`, () => {
     const statementsVerifier = new Statements();
     const metaStmtsVerifier = new MetaStatements();
 
-    const sIdx2 = statementsVerifier.add(buildStatement(sigParams, sigPk, revealedMsgs, false));
+    const sIdx2 = statementsVerifier.add(verifierStmt(
+      sigParams,
+      revealedMsgsFromVerifier,
+      pk
+    ));
 
     for (const c of encodedCities) {
       const sIdx = statementsVerifier.add(Statement.publicInequalityG1FromSetupParamRefs(c, 0));
@@ -139,7 +135,7 @@ describe(`${Scheme} Proving that not resident of certain cities`, () => {
       metaStmtsVerifier.addWitnessEquality(witnessEq);
     }
 
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier, setupParams);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier, setupParams);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));

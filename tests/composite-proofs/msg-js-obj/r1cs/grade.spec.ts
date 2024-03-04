@@ -1,8 +1,16 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { areUint8ArraysEqual, checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
+  areUint8ArraysEqual,
+  checkResult,
+  getParamsAndKeys,
+  getWasmBytes,
+  parseR1CSFile,
+  stringToBytes
+} from '../../../utils';
+import {
+  initializeWasm,
   CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   Encoder,
   encodeRevealedMsgs,
   getIndicesForMsgNames,
@@ -11,7 +19,7 @@ import {
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
-  ProofSpecG1,
+  ProofSpec,
   R1CSSnarkSetup,
   SignedMessages,
   Statement,
@@ -27,11 +35,12 @@ import {
   KeyPair,
   PublicKey,
   Signature,
-  buildStatement,
+  buildVerifierStatement,
   buildWitness,
   Scheme,
   adaptKeyForParams
 } from '../../../scheme';
+import { adaptedSigParams, proverStmt, signAndVerify, verifierStmt } from '../util';
 
 // Test for scenario where the user wants to prove that his grade belongs/does not belong to the given set.
 // Similar test can be written for other "set-membership" relations like user is not resident of certain cities
@@ -39,7 +48,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');
-  let sigPk: PublicKey;
+  let sigPk: PublicKey, sk, params;
 
   let signed1: SignedMessages<Signature>;
   let signed2: SignedMessages<Signature>;
@@ -101,16 +110,10 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
 
   it('signers signs attributes', () => {
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(20, label);
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    sigPk = keypair.publicKey;
+    [params, sk, sigPk] = getParamsAndKeys(20, label);
 
-    signed1 = Signature.signMessageObject(attributes1, sk, label, encoder);
-    checkResult(signed1.signature.verifyMessageObject(attributes1, sigPk, label, encoder));
-
-    signed2 = Signature.signMessageObject(attributes2, sk, label, encoder);
-    checkResult(signed2.signature.verifyMessageObject(attributes2, sigPk, label, encoder));
+    signed1 = signAndVerify(attributes1, encoder, label, sk, sigPk);
+    signed2 = signAndVerify(attributes2, encoder, label, sk, sigPk);
   });
 
   it('proof verifies when grade is either A+, A, B+, B or C', () => {
@@ -119,8 +122,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
-    sigPk = adaptKeyForParams(sigPk, sigParams);
+    const sigParams = adaptedSigParams(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames,
@@ -128,7 +130,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'John' });
 
-    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = proverStmt(sigParams, revealedMsgs, sigPk);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements(statement1);
@@ -142,7 +144,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     metaStmtsProver.addWitnessEquality(witnessEq1);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed1.signature, unrevealedMsgs, false);
@@ -155,13 +157,13 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement3 = buildStatement(sigParams, sigPk, revealedMsgs, false);
+    const statement3 = verifierStmt(sigParams, revealedMsgs, sigPk);
     // generateFieldElementFromNumber(1) because membership is being check, use generateFieldElementFromNumber(0) for checking non-membership
     const pub = [generateFieldElementFromNumber(1), ...encodedGrades];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
@@ -181,7 +183,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     const metaStmtsVerifier = new MetaStatements();
     metaStmtsVerifier.addWitnessEquality(witnessEq2);
 
-    const proofSpecVerifier = new ProofSpecG1(verifierStatements, metaStmtsVerifier);
+    const proofSpecVerifier = new ProofSpec(verifierStatements, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
@@ -193,7 +195,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
+    const sigParams = adaptedSigParams(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes2,
       revealedNames,
@@ -201,7 +203,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'Carol' });
 
-    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = proverStmt(sigParams, revealedMsgs, sigPk);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -216,7 +218,7 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     metaStmtsProver.addWitnessEquality(witnessEq1);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed2.signature, unrevealedMsgs, false);
@@ -229,14 +231,14 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
     const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement3 = buildStatement(sigParams, sigPk, revealedMsgs, false);
-    const pub = [generateFieldElementFromNumber(1), ...encodedGrades];
+    const statement3 = verifierStmt(sigParams, revealedMsgs, sigPk);
+    const pub = [generateFieldElementFromNumber(0), ...encodedGrades];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
 
     const verifierStatements = new Statements(statement3);
@@ -253,9 +255,9 @@ describe(`${Scheme} Proving that grade is either A+, A, B+, B or C`, () => {
 
     metaStmtsVerifier.addWitnessEquality(witnessEq2);
 
-    const proofSpecVerifier = new ProofSpecG1(verifierStatements, metaStmtsVerifier);
+    const proofSpecVerifier = new ProofSpec(verifierStatements, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
-    expect(proof.verify(proofSpecVerifier).verified).toEqual(false);
+    checkResult(proof.verify(proofSpecVerifier));
   });
 });

@@ -1,11 +1,11 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   Accumulator,
   AccumulatorKeypair,
   AccumulatorParams,
-  MembershipWitness,
+  initializeWasm,
   PositiveAccumulator,
-  WitnessUpdatePublicInfo
+  VBMembershipWitness,
+  VBWitnessUpdatePublicInfo
 } from '../src';
 import { InMemoryState } from '../src/accumulator/in-memory-persistence';
 import { stringToBytes } from './utils';
@@ -69,7 +69,7 @@ describe('Prefilled positive accumulator', () => {
     expect(verifAccumulator.verifyMembershipWitness(member2, witness2, keypair.publicKey, params)).toEqual(true);
 
     // Manager decides to remove a member, the new accumulated value will be published along with witness update info
-    const witnessUpdInfo = WitnessUpdatePublicInfo.new(accumulator.accumulated, [], [member2], keypair.secretKey);
+    const witnessUpdInfo = VBWitnessUpdatePublicInfo.new(accumulator.accumulated, [], [member2], keypair.secretKey);
     await accumulator.remove(member2, keypair.secretKey, state);
 
     verifAccumulator = PositiveAccumulator.fromAccumulated(accumulator.accumulated);
@@ -90,11 +90,11 @@ describe('Prefilled positive accumulator', () => {
     expect(verifAccumulator.verifyMembershipWitness(member3, witness3, keypair.publicKey, params)).toEqual(true);
 
     // Update using knowledge of witness info
-    const witness1Old = MembershipWitness.fromJSON(witness1OldJson);
+    const witness1Old = VBMembershipWitness.fromJSON(witness1OldJson);
     witness1Old.updateUsingPublicInfoPostBatchUpdate(member1, [], [member2], witnessUpdInfo);
     expect(verifAccumulator.verifyMembershipWitness(member1, witness1Old, keypair.publicKey, params)).toEqual(true);
 
-    const witness3Old = MembershipWitness.fromJSON(witness3OldJson);
+    const witness3Old = VBMembershipWitness.fromJSON(witness3OldJson);
     witness3Old.updateUsingPublicInfoPostBatchUpdate(member3, [], [member2], witnessUpdInfo);
     expect(verifAccumulator.verifyMembershipWitness(member3, witness3Old, keypair.publicKey, params)).toEqual(true);
   });

@@ -1,5 +1,5 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  initializeWasm,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBSCredential,
@@ -25,11 +25,13 @@ import {
   PSKeypair,
   PSPublicKey,
   PSSecretKey,
-  PSSignatureParams, SignatureType
+  PSSignatureParams, SignatureType, BDDT16Credential, BDDT16_MAC_PARAMS_LABEL_BYTES, BDDT16CredentialBuilder
 } from '../../src';
 import { checkResult, stringToBytes } from '../utils';
 import { checkPresentationJson, getExampleSchema } from './utils';
 import { PederCommKey } from '../../src/ped-com';
+import { BDDT16MacParams, BDDT16MacSecretKey } from '../../src/bddt16-mac';
+import { isKvac } from '../scheme';
 
 describe.each([true, false])(
   `Presentation creation and verification with withSchemaRef=%s involving credentials with different signature schemes`,
@@ -37,10 +39,12 @@ describe.each([true, false])(
     let skBbs: BBSSecretKey, pkBbs: BBSPublicKey;
     let skBbsPlus: BBSPlusSecretKey, pkBbsPlus: BBSPlusPublicKeyG2;
     let skPs: PSSecretKey, pkPs: PSPublicKey;
+    let skBddt16: BDDT16MacSecretKey;
 
     let credentialBbs: BBSCredential;
     let credentialBbsPlus: BBSPlusCredential;
     let credentialPs: PSCredential;
+    let credentialBddt16: BDDT16Credential;
 
     const nonEmbeddedSchema = {
       $id: 'https://example.com?hash=abc123ff',
@@ -56,6 +60,7 @@ describe.each([true, false])(
       const keypairBbs = BBSKeypair.generate(paramsBbs, stringToBytes('seed1'));
       const keypairBbsPlus = BBSPlusKeypairG2.generate(paramsBbsPlus, stringToBytes('seed2'));
       const keypairPs = PSKeypair.generate(paramsPs, stringToBytes('seed3'));
+      skBddt16 = BDDT16MacSecretKey.generate(stringToBytes('seed4'));
       skBbs = keypairBbs.sk;
       pkBbs = keypairBbs.pk;
       skBbsPlus = keypairBbsPlus.sk;
@@ -66,7 +71,8 @@ describe.each([true, false])(
       for (const [credBuilder, sk, pk] of [
         [BBSCredentialBuilder, skBbs, pkBbs],
         [BBSPlusCredentialBuilder, skBbsPlus, pkBbsPlus],
-        [PSCredentialBuilder, skPs, pkPs]
+        [PSCredentialBuilder, skPs, pkPs],
+        [BDDT16CredentialBuilder, skBddt16, undefined]
       ]) {
         const schema = getExampleSchema(11);
         // @ts-ignore
@@ -99,7 +105,11 @@ describe.each([true, false])(
           score: -13.5
         };
         const credential = builder.sign(sk);
-        checkResult(credential.verify(pk));
+        if (!(sk instanceof BDDT16MacSecretKey)) {
+          checkResult(credential.verify(pk));
+        } else {
+          checkResult(credential.verifyUsingSecretKey(sk));
+        }
         if (sk instanceof BBSSecretKey) {
           credentialBbs = credential;
         }
@@ -108,6 +118,9 @@ describe.each([true, false])(
         }
         if (sk instanceof PSSecretKey) {
           credentialPs = credential;
+        }
+        if (sk instanceof BDDT16MacSecretKey) {
+          credentialBddt16 = credential;
         }
       }
     });
@@ -120,34 +133,40 @@ describe.each([true, false])(
       expect(builder.addCredential(credentialBbs, pkBbs)).toEqual(0);
       expect(builder.addCredential(credentialBbsPlus, pkBbsPlus)).toEqual(1);
       expect(builder.addCredential(credentialPs, pkPs)).toEqual(2);
+      expect(builder.addCredential(credentialBddt16)).toEqual(3);
 
       builder.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
       builder.markAttributesRevealed(1, new Set<string>(['credentialSubject.isbool']));
       builder.markAttributesRevealed(2, new Set<string>(['credentialSubject.location.city']));
+      builder.markAttributesRevealed(3, new Set<string>(['credentialSubject.location.country']));
 
       builder.markAttributesEqual(
         [0, 'credentialSubject.sensitive.SSN'],
         [1, 'credentialSubject.sensitive.SSN'],
-        [2, 'credentialSubject.sensitive.SSN']
+        [2, 'credentialSubject.sensitive.SSN'],
+        [3, 'credentialSubject.sensitive.SSN']
       );
       builder.markAttributesEqual(
         [0, 'credentialSubject.sensitive.email'],
         [1, 'credentialSubject.sensitive.email'],
-        [2, 'credentialSubject.sensitive.email']
+        [2, 'credentialSubject.sensitive.email'],
+        [3, 'credentialSubject.sensitive.email']
       );
 
       const inEqualEmail = 'alice@example.com';
       builder.enforceAttributeInequality(0, 'credentialSubject.sensitive.email', inEqualEmail, commKeyId, commKey);
       builder.enforceAttributeInequality(1, 'credentialSubject.sensitive.email', inEqualEmail, commKeyId);
       builder.enforceAttributeInequality(2, 'credentialSubject.sensitive.email', inEqualEmail, commKeyId);
+      builder.enforceAttributeInequality(3, 'credentialSubject.sensitive.email', inEqualEmail, commKeyId);
 
       const pres = builder.finalize();
 
-      expect(pres.spec.credentials.length).toEqual(3);
+      expect(pres.spec.credentials.length).toEqual(4);
 
       expect(pres.spec.credentials[0].sigType).toEqual(SignatureType.Bbs);
       expect(pres.spec.credentials[1].sigType).toEqual(SignatureType.BbsPlus);
       expect(pres.spec.credentials[2].sigType).toEqual(SignatureType.Ps);
+      expect(pres.spec.credentials[3].sigType).toEqual(SignatureType.Bddt16);
 
       expect(pres.spec.credentials[0].revealedAttributes).toEqual({
         credentialSubject: {
@@ -165,8 +184,13 @@ describe.each([true, false])(
           location: { city: 'New York' }
         }
       });
+      expect(pres.spec.credentials[3].revealedAttributes).toEqual({
+        credentialSubject: {
+          location: { country: 'USA' }
+        }
+      });
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
         expect(pres.spec.credentials[i].attributeInequalities).toEqual({
           credentialSubject: {
             sensitive: {
@@ -178,8 +202,17 @@ describe.each([true, false])(
 
       const pp = new Map();
       pp.set(commKeyId, commKey);
-      checkResult(pres.verify([pkBbs, pkBbsPlus, pkPs], undefined, pp));
-      checkPresentationJson(pres, [pkBbs, pkBbsPlus, pkPs], undefined, pp);
+
+      const pks = new Map();
+      pks.set(0, pkBbs);
+      pks.set(1, pkBbsPlus);
+      pks.set(2, pkPs);
+      checkResult(pres.verify(pks, undefined, pp));
+      checkPresentationJson(pres, pks, undefined, pp);
+
+      pks.set(3, skBddt16);
+      checkResult(pres.verify(pks, undefined, pp));
+      checkPresentationJson(pres, pks, undefined, pp);
     });
   }
 );

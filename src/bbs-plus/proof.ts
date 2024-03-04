@@ -11,7 +11,7 @@ import {
   bbsPlusVerifyProofOfKnowledgeOfSignature,
   BbsPlusPoKSigProtocol,
   VerifyResult
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { BBSPlusPublicKeyG2 } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 

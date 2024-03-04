@@ -29,8 +29,8 @@ import {
   universalAccumulatorRemoveBatch,
   universalAccumulatorVerifyMembership,
   universalAccumulatorVerifyNonMembership
-} from '@docknetwork/crypto-wasm';
-import { MembershipWitness, NonMembershipWitness } from './accumulatorWitness';
+} from 'crypto-wasm-new';
+import { VBMembershipWitness, VBNonMembershipWitness } from './accumulatorWitness';
 import { getUint8ArraysFromObject } from '../util';
 import { IAccumulatorState, IUniversalAccumulatorState } from './IAccumulatorState';
 import { IInitialElementsStore } from './IInitialElementsStore';
@@ -261,7 +261,7 @@ export abstract class Accumulator {
     element: Uint8Array,
     secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
-  ): Promise<MembershipWitness>;
+  ): Promise<VBMembershipWitness>;
 
   /**
    * Calculate the membership witnesses for the given batch of elements
@@ -273,7 +273,7 @@ export abstract class Accumulator {
     elements: Uint8Array[],
     secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
-  ): Promise<MembershipWitness[]>;
+  ): Promise<VBMembershipWitness[]>;
 
   /**
    * Verify the membership witness.
@@ -284,7 +284,7 @@ export abstract class Accumulator {
    */
   abstract verifyMembershipWitness(
     member: Uint8Array,
-    witness: MembershipWitness,
+    witness: VBMembershipWitness,
     pk: AccumulatorPublicKey,
     params?: AccumulatorParams
   ): boolean;
@@ -508,11 +508,11 @@ export class PositiveAccumulator extends Accumulator {
     member: Uint8Array,
     secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
-  ): Promise<MembershipWitness> {
+  ): Promise<VBMembershipWitness> {
     await this.ensurePresence(member, state);
     const sk = this.getSecretKey(secretKey);
     const wit = positiveAccumulatorMembershipWitness(this.value, member, sk.value);
-    return new MembershipWitness(wit);
+    return new VBMembershipWitness(wit);
   }
 
   /**
@@ -526,11 +526,11 @@ export class PositiveAccumulator extends Accumulator {
     members: Uint8Array[],
     secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
-  ): Promise<MembershipWitness[]> {
+  ): Promise<VBMembershipWitness[]> {
     await this.ensurePresenceOfBatch(members, state);
     const sk = this.getSecretKey(secretKey);
     return positiveAccumulatorMembershipWitnessesForBatch(this.value, members, sk.value).map(
-      (m) => new MembershipWitness(m)
+      (m) => new VBMembershipWitness(m)
     );
   }
 
@@ -544,7 +544,7 @@ export class PositiveAccumulator extends Accumulator {
    */
   verifyMembershipWitness(
     member: Uint8Array,
-    witness: MembershipWitness,
+    witness: VBMembershipWitness,
     publicKey: AccumulatorPublicKey,
     params?: AccumulatorParams
   ): boolean {
@@ -750,12 +750,12 @@ export class UniversalAccumulator extends Accumulator {
     secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState,
     initialElementsStore?: IInitialElementsStore
-  ): Promise<MembershipWitness> {
+  ): Promise<VBMembershipWitness> {
     await this.checkElementAcceptable(member, initialElementsStore);
     await this.ensurePresence(member, state);
     const sk = this.getSecretKey(secretKey);
     const wit = universalAccumulatorMembershipWitness(this.value, member, sk.value);
-    return new MembershipWitness(wit);
+    return new VBMembershipWitness(wit);
   }
 
   async membershipWitnessesForBatch(
@@ -763,12 +763,12 @@ export class UniversalAccumulator extends Accumulator {
     secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState,
     initialElementsStore?: IInitialElementsStore
-  ): Promise<MembershipWitness[]> {
+  ): Promise<VBMembershipWitness[]> {
     await this.checkElementBatchAcceptable(members, initialElementsStore);
     await this.ensurePresenceOfBatch(members, state);
     const sk = this.getSecretKey(secretKey);
     return universalAccumulatorMembershipWitnessesForBatch(this.value, members, sk.value).map(
-      (m) => new MembershipWitness(m)
+      (m) => new VBMembershipWitness(m)
     );
   }
 
@@ -790,7 +790,7 @@ export class UniversalAccumulator extends Accumulator {
     params?: AccumulatorParams,
     initialElementsStore?: IInitialElementsStore,
     batchSize = 100
-  ): Promise<NonMembershipWitness> {
+  ): Promise<VBNonMembershipWitness> {
     await this.checkElementAcceptable(nonMember, initialElementsStore);
     await this.ensureAbsence(nonMember, state);
     const sk = this.getSecretKey(secretKey);
@@ -810,7 +810,7 @@ export class UniversalAccumulator extends Accumulator {
     }
     const d = universalAccumulatorCombineMultipleD(ds);
     const wit = universalAccumulatorNonMembershipWitness(this.value, d, nonMember, sk.value, params_.value);
-    return new NonMembershipWitness(wit);
+    return new VBNonMembershipWitness(wit);
   }
 
   /**
@@ -830,13 +830,13 @@ export class UniversalAccumulator extends Accumulator {
     params?: AccumulatorParams,
     state?: IUniversalAccumulatorState,
     initialElementsStore?: IInitialElementsStore
-  ): Promise<NonMembershipWitness> {
+  ): Promise<VBNonMembershipWitness> {
     await this.checkElementAcceptable(nonMember, initialElementsStore);
     await this.ensureAbsence(nonMember, state);
     const sk = this.getSecretKey(secretKey);
     const params_ = this.getParams(params);
     const wit = universalAccumulatorNonMembershipWitness(this.value, d, nonMember, sk.value, params_.value);
-    return new NonMembershipWitness(wit);
+    return new VBNonMembershipWitness(wit);
   }
 
   /**
@@ -856,7 +856,7 @@ export class UniversalAccumulator extends Accumulator {
     params?: AccumulatorParams,
     initialElementsStore?: IInitialElementsStore,
     batchSize = 100
-  ): Promise<NonMembershipWitness[]> {
+  ): Promise<VBNonMembershipWitness[]> {
     await this.checkElementBatchAcceptable(nonMembers, initialElementsStore);
     await this.ensureAbsenceOfBatch(nonMembers, state);
     const sk = this.getSecretKey(secretKey);
@@ -894,7 +894,7 @@ export class UniversalAccumulator extends Accumulator {
       ds[i] = universalAccumulatorCombineMultipleD(dsForAll[i]);
     }
     return universalAccumulatorNonMembershipWitnessesForBatch(this.value, ds, nonMembers, sk.value, params_.value).map(
-      (m) => new NonMembershipWitness(m)
+      (m) => new VBNonMembershipWitness(m)
     );
   }
 
@@ -915,19 +915,19 @@ export class UniversalAccumulator extends Accumulator {
     params?: AccumulatorParams,
     state?: IUniversalAccumulatorState,
     initialElementsStore?: IInitialElementsStore
-  ): Promise<NonMembershipWitness[]> {
+  ): Promise<VBNonMembershipWitness[]> {
     await this.checkElementBatchAcceptable(nonMembers, initialElementsStore);
     await this.ensureAbsenceOfBatch(nonMembers, state);
     const sk = this.getSecretKey(secretKey);
     const params_ = this.getParams(params);
     return universalAccumulatorNonMembershipWitnessesForBatch(this.value, d, nonMembers, sk.value, params_.value).map(
-      (m) => new NonMembershipWitness(m)
+      (m) => new VBNonMembershipWitness(m)
     );
   }
 
   verifyMembershipWitness(
     member: Uint8Array,
-    witness: MembershipWitness,
+    witness: VBMembershipWitness,
     pk: AccumulatorPublicKey,
     params?: AccumulatorParams
   ): boolean {
@@ -937,7 +937,7 @@ export class UniversalAccumulator extends Accumulator {
 
   verifyNonMembershipWitness(
     nonMember: Uint8Array,
-    witness: NonMembershipWitness,
+    witness: VBNonMembershipWitness,
     pk: AccumulatorPublicKey,
     params?: AccumulatorParams
   ): boolean {

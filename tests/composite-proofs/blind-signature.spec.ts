@@ -1,6 +1,5 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../utils';
-import { CompositeProofG1, MetaStatements, ProofSpecG1, Statements, Witness, Witnesses } from '../../src';
+import { checkResult, getParamsAndKeys, stringToBytes } from '../utils';
+import { initializeWasm, CompositeProof, MetaStatements, ProofSpec, Statements, Witnesses } from '../../src';
 import {
   BlindSignature,
   KeyPair,
@@ -11,9 +10,9 @@ import {
   encodeMessageForSigningIfPS,
   isPS,
   encodeMessageForSigningIfNotPS,
-  Scheme
+  Scheme, isBBS, isKvac
 } from '../scheme';
-import { generateRandomG1Element } from '@docknetwork/crypto-wasm';
+import { generateRandomG1Element } from 'crypto-wasm-new';
 
 describe(`${Scheme} Getting a blind signature, i.e. signature where signer is not aware of certain attributes of the user`, () => {
   it('works', async () => {
@@ -24,12 +23,9 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
     const messageCount = 5;
 
     const label = stringToBytes('My sig params in g1');
-    const params = SignatureParams.generate(messageCount, label);
 
     // Signers keys
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    const pk = keypair.publicKey;
+    const [params, sk, pk] = getParamsAndKeys(messageCount, label);
     const h = generateRandomG1Element();
 
     // Prepare messages that will be blinded (hidden) and known to signer
@@ -61,10 +57,10 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
         void 0,
         revealedMessages
       );
-    } else if (isBBSPlus()) {
-      [blinding, request] = BlindSignature.generateRequest(blindedMessages, params, true, void 0, revealedMessages);
-    } else {
+    } else if (isBBS()) {
       request = BlindSignature.generateRequest(blindedMessages, params, true, revealedMessages);
+    } else {
+      [blinding, request] = BlindSignature.generateRequest(blindedMessages, params, true, void 0, revealedMessages);
     }
 
     if (isPS()) expect([...request.commitments.keys()].sort((a, b) => a - b)).toEqual(blindedIndices);
@@ -72,7 +68,7 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
 
     const statements = new Statements(getStatementForBlindSigRequest(request, params, h));
 
-    const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+    const proofSpec = new ProofSpec(statements, new MetaStatements());
     expect(proofSpec.isValid()).toEqual(true);
 
     // The witness to the Pedersen commitment contains the blinding at index 0 by convention and then the hidden messages
@@ -84,7 +80,7 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
       )
     );
 
-    const proof = CompositeProofG1.generate(proofSpec, witnesses);
+    const proof = CompositeProof.generate(proofSpec, witnesses);
 
     checkResult(proof.verify(proofSpec));
 
@@ -94,7 +90,7 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
       : BlindSignature.fromRequest(request, sk, params);
 
     // User unblind the signature
-    const sig = isPS() ? blindSig.unblind(blindings, pk) : isBBSPlus() ? blindSig.unblind(blinding) : blindSig;
+    const sig = isPS() ? blindSig.unblind(blindings, pk) : isBBS() ? blindSig : blindSig.unblind(blinding);
 
     // Combine blinded and revealed messages in an array
     const messages = Array(blindedMessages.size + revealedMessages.size);
@@ -105,7 +101,7 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
       messages[i] = m;
     }
 
-    const result = sig.verify(messages, pk, params, true);
+    const result = sig.verify(messages, isKvac() ? sk : pk, params, true);
     expect(result.verified).toEqual(true);
   });
 });

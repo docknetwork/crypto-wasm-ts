@@ -1,11 +1,12 @@
-import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
+import { generateRandomFieldElement } from 'crypto-wasm-new';
 import {
+  initializeWasm,
   IInitialElementsStore,
   Accumulator,
   PositiveAccumulator,
   UniversalAccumulator,
-  MembershipWitness,
-  WitnessUpdatePublicInfo,
+  VBMembershipWitness,
+  VBWitnessUpdatePublicInfo,
   AccumulatorParams,
   AccumulatorKeypair
 } from '../src';
@@ -112,14 +113,14 @@ async function runCommonTests(
   await accumulator.addBatch([e7, e8], sk, state, store);
 
   // Witness updates by accumulator manager using secret key
-  const newWits = MembershipWitness.updateMultiplePostBatchUpdates(wits, [e5, e6], [e7, e8], [], accumulated, sk);
+  const newWits = VBMembershipWitness.updateMultiplePostBatchUpdates(wits, [e5, e6], [e7, e8], [], accumulated, sk);
 
   tempAccumulator = getAccum(accumulator);
   expect(tempAccumulator.verifyMembershipWitness(e5, newWits[0], pk, params)).toEqual(true);
   expect(tempAccumulator.verifyMembershipWitness(e6, newWits[1], pk, params)).toEqual(true);
 
   // Witness update info created by accumulator manager
-  const witnessUpdInfo = WitnessUpdatePublicInfo.new(accumulated, [e7, e8], [], sk);
+  const witnessUpdInfo = VBWitnessUpdatePublicInfo.new(accumulated, [e7, e8], [], sk);
 
   // Witness can be updated without secret key using public info
   wits[0].updateUsingPublicInfoPostBatchUpdate(e5, [e7, e8], [], witnessUpdInfo);
@@ -131,8 +132,8 @@ async function runCommonTests(
   const e5Wit = await accumulator.membershipWitness(e5, sk, state);
   const e6Wit = await accumulator.membershipWitness(e6, sk, state);
 
-  let e5WitTemp = new MembershipWitness(e5Wit.value);
-  let e6WitTemp = new MembershipWitness(e6Wit.value);
+  let e5WitTemp = new VBMembershipWitness(e5Wit.value);
+  let e6WitTemp = new VBMembershipWitness(e6Wit.value);
 
   const e9 = Accumulator.encodePositiveNumberAsAccumulatorMember(109);
   const e10 = Accumulator.encodePositiveNumberAsAccumulatorMember(110);
@@ -149,7 +150,7 @@ async function runCommonTests(
   ];
   const removals = [[e7, e8], [e9], []];
 
-  const witUpd1 = WitnessUpdatePublicInfo.new(accumulator.accumulated, additions[0], removals[0], sk);
+  const witUpd1 = VBWitnessUpdatePublicInfo.new(accumulator.accumulated, additions[0], removals[0], sk);
   await accumulator.addRemoveBatches(additions[0], removals[0], sk, state);
 
   tempAccumulator = getAccum(accumulator);
@@ -158,7 +159,7 @@ async function runCommonTests(
   expect(tempAccumulator.verifyMembershipWitness(e5, e5WitTemp, pk, params)).toEqual(true);
   expect(tempAccumulator.verifyMembershipWitness(e6, e6WitTemp, pk, params)).toEqual(true);
 
-  const witUpd2 = WitnessUpdatePublicInfo.new(accumulator.accumulated, additions[1], removals[1], sk);
+  const witUpd2 = VBWitnessUpdatePublicInfo.new(accumulator.accumulated, additions[1], removals[1], sk);
   await accumulator.addRemoveBatches(additions[1], removals[1], sk, state);
 
   tempAccumulator = getAccum(accumulator);
@@ -167,7 +168,7 @@ async function runCommonTests(
   expect(tempAccumulator.verifyMembershipWitness(e5, e5WitTemp, pk, params)).toEqual(true);
   expect(tempAccumulator.verifyMembershipWitness(e6, e6WitTemp, pk, params)).toEqual(true);
 
-  const witUpd3 = WitnessUpdatePublicInfo.new(accumulator.accumulated, additions[2], removals[2], sk);
+  const witUpd3 = VBWitnessUpdatePublicInfo.new(accumulator.accumulated, additions[2], removals[2], sk);
   await accumulator.addRemoveBatches(additions[2], removals[2], sk, state);
 
   tempAccumulator = getAccum(accumulator);

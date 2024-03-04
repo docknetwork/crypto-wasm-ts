@@ -1,5 +1,5 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  initializeWasm,
   CredentialSchema,
   MEM_CHECK_STR,
   ID_STR,
@@ -11,7 +11,14 @@ import {
   TYPE_STR, IEmbeddedJsonSchema, META_SCHEMA_STR, DefaultSchemaParsingOpts, IJsonSchema
 } from '../../src';
 import { checkResult } from '../utils';
-import { checkEmbeddedSchema, checkSchemaFromJson, getExampleBuilder, getExampleSchema } from './utils';
+import {
+  checkEmbeddedSchema,
+  checkSchemaFromJson,
+  getExampleBuilder,
+  getExampleSchema,
+  getKeys,
+  verifyCred
+} from './utils';
 import * as jsonld from 'jsonld';
 import { validate } from 'jsonschema';
 import {
@@ -22,7 +29,7 @@ import {
   Credential,
   CredentialBuilder,
   SignatureLabelBytes,
-  Scheme
+  Scheme, isKvac
 } from '../scheme';
 
 describe(`${Scheme} Credential signing and verification`, () => {
@@ -30,21 +37,18 @@ describe(`${Scheme} Credential signing and verification`, () => {
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParams.generate(100, SignatureLabelBytes);
-    const keypair = KeyPair.generate(params);
-    sk = keypair.sk;
-    pk = keypair.pk;
+    [sk, pk] = getKeys();
   });
 
-  function checkJsonConvForCred(cred: Credential, pk: PublicKey): Credential {
+  function checkJsonConvForCred(cred: Credential, sk: SecretKey, pk: PublicKey): Credential {
     const credJson = cred.toJSON();
     // Check that the credential JSON contains the schema in JSON-schema format
     checkSchemaFromJson(credJson[SCHEMA_STR], cred.schema);
 
     // The recreated credential should verify
     const recreatedCred = Credential.fromJSON(credJson);
-    checkResult(recreatedCred.verify(pk));
-
+    verifyCred(recreatedCred, pk, sk);
+    
     // The JSON representation of original and recreated credential should be same
     expect(credJson).toEqual(recreatedCred.toJSON());
     expect(recreatedCred.schema.version).toEqual(cred.schema.version);
@@ -58,12 +62,11 @@ describe(`${Scheme} Credential signing and verification`, () => {
     expect(() => builder.sign(sk, undefined, { requireSameFieldsAsSchema: true })).toThrow();
 
     const cred = builder.sign(sk, undefined, { requireSameFieldsAsSchema: false });
-
-    checkResult(cred.verify(pk));
-
-    const recreatedCred = checkJsonConvForCred(cred, pk);
+    verifyCred(cred, pk, sk);
+    
+    const recreatedCred = checkJsonConvForCred(cred, sk, pk);
     expect(recreatedCred.subject).toEqual(builder.subject);
-    checkResult(recreatedCred.verify(pk));
+    verifyCred(recreatedCred, pk, sk);
   }
 
   function checkCredSerz(withSchemaRef: boolean, num: number, allNonEmbeddedSchemas: IJsonSchema[], fullJsonSchema: IEmbeddedJsonSchema) {
@@ -102,9 +105,9 @@ describe(`${Scheme} Credential signing and verification`, () => {
 
     builder.subject = { fname: 'John', lname: 'Smith' };
     const cred = builder.sign(sk);
-
-    checkResult(cred.verify(pk));
-    const recreatedCred = checkJsonConvForCred(cred, pk);
+    verifyCred(cred, pk, sk);
+    
+    const recreatedCred = checkJsonConvForCred(cred, sk, pk);
     expect(recreatedCred.subject).toEqual({ fname: 'John', lname: 'Smith' });
 
     // The credential JSON should be valid as per the JSON schema
@@ -188,8 +191,8 @@ describe(`${Scheme} Credential signing and verification`, () => {
         }
       };
       const cred = builder.sign(sk);
-      checkResult(cred.verify(pk));
-      const recreatedCred = checkJsonConvForCred(cred, pk);
+      verifyCred(cred, pk, sk);
+      const recreatedCred = checkJsonConvForCred(cred, sk, pk);
       expect(recreatedCred.subject).toEqual({
         fname: 'John',
         lname: 'Smith',
@@ -237,8 +240,8 @@ describe(`${Scheme} Credential signing and verification`, () => {
     builder.subject = { fname: 'John', isbool: true };
     const cred = builder.sign(sk);
 
-    checkResult(cred.verify(pk));
-    const recreatedCred = checkJsonConvForCred(cred, pk);
+    verifyCred(cred, pk, sk);
+    const recreatedCred = checkJsonConvForCred(cred, sk, pk);
     expect(recreatedCred.subject).toEqual({ fname: 'John', isbool: true });
 
     // The credential JSON should be valid as per the JSON schema
@@ -294,8 +297,8 @@ describe(`${Scheme} Credential signing and verification`, () => {
     };
     const cred = builder.sign(sk);
 
-    checkResult(cred.verify(pk));
-    const recreatedCred = checkJsonConvForCred(cred, pk);
+    verifyCred(cred, pk, sk);
+    const recreatedCred = checkJsonConvForCred(cred, sk, pk);
     expect(recreatedCred.subject).toEqual({
       fname: 'John',
       lname: 'Smith',
@@ -336,8 +339,8 @@ describe(`${Scheme} Credential signing and verification`, () => {
     builder.subject = { fname: 'John', isDateTime: '2023-09-14T19:26:40.488Z' };
     const cred = builder.sign(sk);
 
-    checkResult(cred.verify(pk));
-    const recreatedCred = checkJsonConvForCred(cred, pk);
+    verifyCred(cred, pk, sk);
+    const recreatedCred = checkJsonConvForCred(cred, sk, pk);
     expect(recreatedCred.subject).toEqual({ fname: 'John', isDateTime: '2023-09-14T19:26:40.488Z' });
 
     // The credential JSON should be valid as per the JSON schema
@@ -349,9 +352,8 @@ describe(`${Scheme} Credential signing and verification`, () => {
     builderNegative.schema = credSchema;
     builderNegative.subject = { fname: 'John', isDateTime: '1800-09-14T19:26:40.488Z' };
     const credNegative = builderNegative.sign(sk);
-
-    checkResult(credNegative.verify(pk));
-    const recreatedCredNegative = checkJsonConvForCred(credNegative, pk);
+    verifyCred(credNegative, pk, sk);
+    const recreatedCredNegative = checkJsonConvForCred(credNegative, sk, pk);
     expect(recreatedCredNegative.subject).toEqual({ fname: 'John', isDateTime: '1800-09-14T19:26:40.488Z' });
 
     // The credential JSON fails to validate for an incorrect schema
@@ -389,8 +391,8 @@ describe(`${Scheme} Credential signing and verification`, () => {
     builder.subject = { fname: 'John', isDateTime: '2023-09-14' };
     const cred = builder.sign(sk);
 
-    checkResult(cred.verify(pk));
-    const recreatedCred = checkJsonConvForCred(cred, pk);
+    verifyCred(cred, pk, sk);
+    const recreatedCred = checkJsonConvForCred(cred, sk, pk);
     expect(recreatedCred.subject).toEqual({ fname: 'John', isDateTime: '2023-09-14' });
 
     // The credential JSON should be valid as per the JSON schema
@@ -448,8 +450,8 @@ describe(`${Scheme} Credential signing and verification`, () => {
     builder.setCredentialStatus('dock:accumulator:accumId123', MEM_CHECK_STR, 'user:A-123');
     const cred = builder.sign(sk);
 
-    checkResult(cred.verify(pk));
-    const recreatedCred = checkJsonConvForCred(cred, pk);
+    verifyCred(cred, pk, sk);
+    const recreatedCred = checkJsonConvForCred(cred, sk, pk);
     expect(recreatedCred.subject).toEqual({
       fname: 'John',
       lname: 'Smith',
@@ -536,9 +538,8 @@ describe(`${Scheme} Credential signing and verification`, () => {
     builder.setTopLevelField('expirationDate', 1662011950934);
 
     const cred = builder.sign(sk);
-
-    checkResult(cred.verify(pk));
-    checkJsonConvForCred(cred, pk);
+    verifyCred(cred, pk, sk);
+    checkJsonConvForCred(cred, sk, pk);
   });
 
   it('json-ld validation', async () => {

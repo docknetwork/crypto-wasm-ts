@@ -1,18 +1,18 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
   CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   EncodeFunc,
   Encoder,
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
-  ProofSpecG1,
+  ProofSpec,
   R1CSSnarkSetup,
   SetupParam,
   SignedMessages,
@@ -22,19 +22,19 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual } from '../index';
-import { defaultEncoder } from '../data-and-encoder';
 import {
-  PublicKey,
-  Signature,
-  KeyPair,
-  SignatureParams,
-  buildSignatureParamsSetupParam,
   buildPublicKeySetupParam,
-  buildStatementFromSetupParamsRef,
+  buildSignatureParamsSetupParam,
   buildWitness,
-  Scheme
+  isKvac,
+  PublicKey,
+  Scheme,
+  Signature
 } from '../../../scheme';
+import { checkResult, getParamsAndKeys, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { defaultEncoder } from '../data-and-encoder';
+import { checkMapsEqual } from '../index';
+import { adaptedSigParams, proverStmtFromSetupParamsRef, signAndVerify, verifierStmtFromSetupParamsRef } from '../util';
 
 // Test for a scenario where a user wants to prove that he has 10 receipts where:
 // 1. all are unique because they have different ids
@@ -53,7 +53,7 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
   let minDateEncoded: Uint8Array;
 
   const label = stringToBytes('Sig params label');
-  let sigPk: PublicKey;
+  let sigPk: PublicKey, sk, params;
 
   let r1csForUnique: ParsedR1CSFile, wasmForUnique: Uint8Array;
   let r1csForGreaterThan: ParsedR1CSFile, wasmForGreaterThan: Uint8Array;
@@ -110,10 +110,7 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
   it('signers signs attributes', () => {
     const numAttrs = Object.keys(receiptAttributesStruct).length;
     // Issuing multiple credentials with the same number of attributes so create sig. params only once for faster execution
-    let params = SignatureParams.generate(numAttrs, label);
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    sigPk = keypair.publicKey;
+    [params, sk, sigPk] = getParamsAndKeys(numAttrs, label);
 
     for (let i = 0; i < numReceipts; i++) {
       receiptsAttributes.push({
@@ -123,10 +120,7 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
         amount: minAmount + Math.ceil(Math.random() * 100),
         otherDetails: Math.random().toString(36).slice(2, 20) // https://stackoverflow.com/a/38622545
       });
-      signed.push(Signature.signMessageObject(receiptsAttributes[i], sk, params, encoder));
-      checkResult(
-        signed[i].signature.verifyMessageObject(receiptsAttributes[i], sigPk, params, encoder)
-      );
+      signed.push(signAndVerify(receiptsAttributes[i], encoder, label, sk, sigPk))
     }
   });
 
@@ -148,7 +142,7 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
     const revealedNames = new Set<string>();
     revealedNames.add('posId');
 
-    const sigParams = SignatureParams.getSigParamsForMsgStructure(receiptAttributesStruct, label);
+    const sigParams = adaptedSigParams(receiptAttributesStruct, label);
 
     const revealedMsgs: Map<number, Uint8Array>[] = [];
     const unrevealedMsgs: Map<number, Uint8Array>[] = [];
@@ -165,7 +159,9 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
     const proverSetupParams: SetupParam[] = [];
     // Setup params for the signature
     proverSetupParams.push(buildSignatureParamsSetupParam(sigParams));
-    proverSetupParams.push(buildPublicKeySetupParam(sigPk));
+    if (!isKvac()) {
+      proverSetupParams.push(buildPublicKeySetupParam(sigPk));
+    }
     // Setup params for the uniqueness check SNARK
     proverSetupParams.push(SetupParam.r1cs(r1csForUnique));
     proverSetupParams.push(SetupParam.bytes(wasmForUnique));
@@ -175,23 +171,25 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
     proverSetupParams.push(SetupParam.bytes(wasmForGreaterThan));
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(provingKeyForGreaterThan));
 
+    const r1csSetupParamOffset = isKvac() ? 1: 0;
+
     const statementsProver = new Statements();
 
     // 1 statement for proving knowledge of 1 signature (receipt)
     const sIdxs: number[] = [];
     for (let i = 0; i < numReceipts; i++) {
-      sIdxs.push(statementsProver.add(buildStatementFromSetupParamsRef(0, 1, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(proverStmtFromSetupParamsRef(0, revealedMsgs[i],1)));
     }
 
     // Statement to prove uniqueness of all receipt-ids
-    sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(2, 3, 4)));
+    sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(2 - r1csSetupParamOffset, 3 - r1csSetupParamOffset, 4 - r1csSetupParamOffset)));
 
     // Creating 2 statements for greater than check, one for amount and other for date of each receipt
     for (let i = 0; i < numReceipts; i++) {
       // For greater than check on amount
-      sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(5, 6, 7)));
+      sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(5 - r1csSetupParamOffset, 6 - r1csSetupParamOffset, 7 - r1csSetupParamOffset)));
       // For greater than check on date
-      sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(5, 6, 7)));
+      sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(5 - r1csSetupParamOffset, 6 - r1csSetupParamOffset, 7 - r1csSetupParamOffset)));
     }
 
     const metaStmtsProver = new MetaStatements();
@@ -216,7 +214,7 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
       metaStmtsProver.addWitnessEquality(witnessEq3);
     }
 
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver, proverSetupParams);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver, proverSetupParams);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witnesses = new Witnesses();
@@ -246,7 +244,7 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
       witnesses.add(Witness.r1csCircomWitness(inputs3));
     }
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
     console.timeEnd('Proof generate');
 
     console.time('Proof verify');
@@ -259,7 +257,9 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
 
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(buildSignatureParamsSetupParam(sigParams));
-    verifierSetupParams.push(buildPublicKeySetupParam(sigPk));
+    if (!isKvac()) {
+      verifierSetupParams.push(buildPublicKeySetupParam(sigPk));
+    }
     // generateFieldElementFromNumber(1) as uniqueness check passes, i.e. all ids are different
     verifierSetupParams.push(SetupParam.fieldElementVec([generateFieldElementFromNumber(1)]));
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(verifyingKeyForUniqueness));
@@ -273,14 +273,14 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
 
     const sIdxVs: number[] = [];
     for (let i = 0; i < numReceipts; i++) {
-      sIdxVs.push(statementsVerifier.add(buildStatementFromSetupParamsRef(0, 1, revealedMsgsFromVerifier[i], false)));
+      sIdxVs.push(statementsVerifier.add(verifierStmtFromSetupParamsRef(0, revealedMsgsFromVerifier[i], 1, false)));
     }
 
-    sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(2, 3)));
+    sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(2 - r1csSetupParamOffset, 3 - r1csSetupParamOffset)));
 
     for (let i = 0; i < numReceipts; i++) {
-      sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(4, 6)));
-      sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(5, 6)));
+      sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(4 - r1csSetupParamOffset, 6 - r1csSetupParamOffset)));
+      sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(5 - r1csSetupParamOffset, 6 - r1csSetupParamOffset)));
     }
 
     const metaStmtsVerifier = new MetaStatements();
@@ -302,7 +302,7 @@ describe(`${Scheme} Proving the possession of 10 unique receipts, with each rece
       metaStmtsVerifier.addWitnessEquality(witnessEq3);
     }
 
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier, verifierSetupParams);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier, verifierSetupParams);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));

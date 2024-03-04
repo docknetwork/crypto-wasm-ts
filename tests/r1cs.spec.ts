@@ -1,6 +1,6 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import { checkLegoProvingKey, fromLeToBigInt, getWasmBytes, parseR1CSFile } from './utils';
-import { CircomCircuit, CircomInputs, processParsedR1CSFile, R1CSSnarkSetup } from '../src';
+import { initializeWasm, CircomCircuit, CircomInputs, processParsedR1CSFile, R1CSSnarkSetup } from '../src';
 
 describe('For R1CS from Circom', () => {
   beforeAll(async () => {

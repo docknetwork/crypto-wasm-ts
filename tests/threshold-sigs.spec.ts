@@ -1,33 +1,34 @@
-import { generateRandomG1Element, initializeWasm } from '@docknetwork/crypto-wasm';
-import {
-  ThresholdBbsPlusSigner,
-  Challenges,
-  GadgetVector,
-  HashedKeys,
-  Participant as BaseOTParticipant,
-  ReceiverPublicKey,
-  Responses,
-  SenderPublicKey,
-  Commitments,
-  CommitmentsForZeroSharing,
-  BaseOTOutput,
-  Message1,
-  Message2,
-  ThresholdBbsSignatureShare,
-  ThresholdBbsPlusSignatureShare
-} from '../src/threshold-sigs';
-import { PublicKeyBase } from '../src/types';
-import { checkResult, runFrostKeygen, stringToBytes } from './utils';
+import { generateRandomG1Element } from 'crypto-wasm-new';
 import {
   BBSPlusPublicKeyG2,
   BBSPlusSecretKey,
   BBSPlusSignatureParamsG1,
   BBSPublicKey,
   BBSSecretKey,
-  BBSSignatureParams
+  BBSSignatureParams,
+  initializeWasm
 } from '../src';
 import { ParticipantG2 } from '../src/frost-dkg';
+import {
+  BaseOTOutput,
+  Challenges,
+  Commitments,
+  CommitmentsForZeroSharing,
+  GadgetVector,
+  HashedKeys,
+  Message1,
+  Message2,
+  Participant as BaseOTParticipant,
+  ReceiverPublicKey,
+  Responses,
+  SenderPublicKey,
+  ThresholdBbsPlusSignatureShare,
+  ThresholdBbsPlusSigner,
+  ThresholdBbsSignatureShare
+} from '../src/threshold-sigs';
 import { ThresholdBbsSigner } from '../src/threshold-sigs/bbs';
+import { PublicKeyBase } from '../src/types';
+import { checkResult, runFrostKeygen, stringToBytes } from './utils';
 
 describe('Threshold BBS+ and BBS', () => {
   const threshold = 3;

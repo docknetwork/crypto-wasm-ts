@@ -10,7 +10,7 @@ import {
   updateNonMembershipWitnessPostRemove,
   updateNonMembershipWitnessUsingPublicInfoAfterBatchUpdate,
   updateNonMembershipWitnessUsingPublicInfoAfterMultipleBatchUpdates
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { getUint8ArraysFromObject, jsonObjToUint8Array } from '../util';
 import { AccumulatorSecretKey } from './params-and-keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
@@ -28,17 +28,17 @@ export abstract class AccumulatorWitness {
     element: Uint8Array,
     additions: Uint8Array[],
     removals: Uint8Array[],
-    publicInfo: WitnessUpdatePublicInfo
+    publicInfo: VBWitnessUpdatePublicInfo
   ): void;
   abstract updateUsingPublicInfoPostMultipleBatchUpdates(
     element: Uint8Array,
     additions: Uint8Array[][],
     removals: Uint8Array[][],
-    publicInfo: WitnessUpdatePublicInfo[]
+    publicInfo: VBWitnessUpdatePublicInfo[]
   ): void;
 }
 
-export class MembershipWitness extends AccumulatorWitness {
+export class VBMembershipWitness extends AccumulatorWitness {
   // @ts-ignore
   value: Uint8Array;
 
@@ -73,7 +73,7 @@ export class MembershipWitness extends AccumulatorWitness {
     member: Uint8Array,
     additions: Uint8Array[],
     removals: Uint8Array[],
-    publicInfo: WitnessUpdatePublicInfo
+    publicInfo: VBWitnessUpdatePublicInfo
   ) {
     this.value = updateMembershipWitnessUsingPublicInfoAfterBatchUpdate(
       this.value,
@@ -96,7 +96,7 @@ export class MembershipWitness extends AccumulatorWitness {
     member: Uint8Array,
     additions: Uint8Array[][],
     removals: Uint8Array[][],
-    publicInfo: WitnessUpdatePublicInfo[]
+    publicInfo: VBWitnessUpdatePublicInfo[]
   ) {
     const info = publicInfo.map((i) => i.value);
     this.value = updateMembershipWitnessUsingPublicInfoAfterMultipleBatchUpdates(
@@ -118,13 +118,13 @@ export class MembershipWitness extends AccumulatorWitness {
    * @param secretKey
    */
   static updateMultiplePostBatchUpdates(
-    witnesses: MembershipWitness[],
+    witnesses: VBMembershipWitness[],
     members: Uint8Array[],
     additions: Uint8Array[],
     removals: Uint8Array[],
     accumulatorValueBeforeUpdates: Uint8Array,
     secretKey: AccumulatorSecretKey
-  ): MembershipWitness[] {
+  ): VBMembershipWitness[] {
     const wits = witnesses.map((m) => m.value);
     return updateMembershipWitnessesPostBatchUpdates(
       wits,
@@ -133,7 +133,7 @@ export class MembershipWitness extends AccumulatorWitness {
       removals,
       accumulatorValueBeforeUpdates,
       secretKey.value
-    ).map((m) => new MembershipWitness(m));
+    ).map((m) => new VBMembershipWitness(m));
   }
 
   toJSON(): string {
@@ -142,14 +142,14 @@ export class MembershipWitness extends AccumulatorWitness {
     });
   }
 
-  static fromJSON(json: string): MembershipWitness {
+  static fromJSON(json: string): VBMembershipWitness {
     const obj = JSON.parse(json);
     const [value] = getUint8ArraysFromObject(obj, ['value']);
-    return new MembershipWitness(value);
+    return new VBMembershipWitness(value);
   }
 }
 
-export class NonMembershipWitness extends AccumulatorWitness {
+export class VBNonMembershipWitness extends AccumulatorWitness {
   // @ts-ignore
   value: { d: Uint8Array; C: Uint8Array };
 
@@ -184,7 +184,7 @@ export class NonMembershipWitness extends AccumulatorWitness {
     nonMember: Uint8Array,
     additions: Uint8Array[],
     removals: Uint8Array[],
-    publicInfo: WitnessUpdatePublicInfo
+    publicInfo: VBWitnessUpdatePublicInfo
   ) {
     this.value = updateNonMembershipWitnessUsingPublicInfoAfterBatchUpdate(
       this.value,
@@ -207,7 +207,7 @@ export class NonMembershipWitness extends AccumulatorWitness {
     nonMember: Uint8Array,
     additions: Uint8Array[][],
     removals: Uint8Array[][],
-    publicInfo: WitnessUpdatePublicInfo[]
+    publicInfo: VBWitnessUpdatePublicInfo[]
   ) {
     const info = publicInfo.map((i) => i.value);
     this.value = updateNonMembershipWitnessUsingPublicInfoAfterMultipleBatchUpdates(
@@ -229,13 +229,13 @@ export class NonMembershipWitness extends AccumulatorWitness {
    * @param secretKey
    */
   static updateMultiplePostBatchUpdates(
-    witnesses: NonMembershipWitness[],
+    witnesses: VBNonMembershipWitness[],
     nonMembers: Uint8Array[],
     additions: Uint8Array[],
     removals: Uint8Array[],
     accumulatorValueBeforeUpdates: Uint8Array,
     secretKey: AccumulatorSecretKey
-  ): NonMembershipWitness[] {
+  ): VBNonMembershipWitness[] {
     const wits = witnesses.map((w) => w.value);
     return updateNonMembershipWitnessesPostBatchUpdates(
       wits,
@@ -244,7 +244,7 @@ export class NonMembershipWitness extends AccumulatorWitness {
       removals,
       accumulatorValueBeforeUpdates,
       secretKey.value
-    ).map((m) => new NonMembershipWitness(m));
+    ).map((m) => new VBNonMembershipWitness(m));
   }
 
   toJSON(): string {
@@ -253,25 +253,25 @@ export class NonMembershipWitness extends AccumulatorWitness {
     });
   }
 
-  static fromJSON(json: string): NonMembershipWitness {
+  static fromJSON(json: string): VBNonMembershipWitness {
     const obj = JSON.parse(json);
     const [d, C] = getUint8ArraysFromObject(obj.value, ['d', 'C']);
-    return new NonMembershipWitness({ d, C });
+    return new VBNonMembershipWitness({ d, C });
   }
 }
 
 /**
  * Public info published by the accumulator manager used to update witnesses after several additions and removals.
  */
-export class WitnessUpdatePublicInfo extends BytearrayWrapper {
+export class VBWitnessUpdatePublicInfo extends BytearrayWrapper {
   toJSON(): string {
     return JSON.stringify({
       value: this.value
     });
   }
 
-  fromJSON(json: string): WitnessUpdatePublicInfo {
-    return new WitnessUpdatePublicInfo(jsonObjToUint8Array(json));
+  fromJSON(json: string): VBWitnessUpdatePublicInfo {
+    return new VBWitnessUpdatePublicInfo(jsonObjToUint8Array(json));
   }
 
   /**
@@ -286,8 +286,8 @@ export class WitnessUpdatePublicInfo extends BytearrayWrapper {
     additions: Uint8Array[],
     removals: Uint8Array[],
     sk: AccumulatorSecretKey
-  ): WitnessUpdatePublicInfo {
+  ): VBWitnessUpdatePublicInfo {
     const value = publicInfoForWitnessUpdate(accumulatorValueBeforeUpdates, additions, removals, sk.value);
-    return new WitnessUpdatePublicInfo(value);
+    return new VBWitnessUpdatePublicInfo(value);
   }
 }

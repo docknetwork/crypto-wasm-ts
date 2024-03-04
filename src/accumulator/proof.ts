@@ -11,8 +11,8 @@ import {
   accumulatorInitializeNonMembershipProof,
   accumulatorVerifyMembershipProof,
   VerifyResult
-} from '@docknetwork/crypto-wasm';
-import { MembershipWitness, NonMembershipWitness } from './accumulatorWitness';
+} from 'crypto-wasm-new';
+import { VBMembershipWitness, VBNonMembershipWitness } from './accumulatorWitness';
 import {
   AccumulatorParams,
   AccumulatorPublicKey,
@@ -21,15 +21,15 @@ import {
 } from './params-and-keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 
-export class MembershipProofProtocol extends BytearrayWrapper {
+export class VBMembershipProofProtocol extends BytearrayWrapper {
   static initialize(
     member: Uint8Array,
-    witness: MembershipWitness,
+    witness: VBMembershipWitness,
     publicKey: AccumulatorPublicKey,
     params: AccumulatorParams,
     provingKey: MembershipProvingKey,
     blinding: Uint8Array = generateRandomFieldElement()
-  ): MembershipProofProtocol {
+  ): VBMembershipProofProtocol {
     const protocol = accumulatorInitializeMembershipProof(
       member,
       blinding,
@@ -38,12 +38,12 @@ export class MembershipProofProtocol extends BytearrayWrapper {
       params.value,
       provingKey.value
     );
-    return new MembershipProofProtocol(protocol);
+    return new VBMembershipProofProtocol(protocol);
   }
 
-  generateProof(challenge: Uint8Array): MembershipProof {
+  generateProof(challenge: Uint8Array): VBMembershipProof {
     const proof = accumulatorGenMembershipProof(this.value, challenge);
-    return new MembershipProof(proof);
+    return new VBMembershipProof(proof);
   }
 
   challengeContribution(
@@ -62,15 +62,15 @@ export class MembershipProofProtocol extends BytearrayWrapper {
   }
 }
 
-export class NonMembershipProofProtocol extends BytearrayWrapper {
+export class VBNonMembershipProofProtocol extends BytearrayWrapper {
   static initialize(
     nonMember: Uint8Array,
-    witness: NonMembershipWitness,
+    witness: VBNonMembershipWitness,
     publicKey: AccumulatorPublicKey,
     params: AccumulatorParams,
     provingKey: NonMembershipProvingKey,
     blinding?: Uint8Array
-  ): MembershipProofProtocol {
+  ): VBMembershipProofProtocol {
     const b = blinding === undefined ? generateRandomFieldElement() : blinding;
     const protocol = accumulatorInitializeNonMembershipProof(
       nonMember,
@@ -80,12 +80,12 @@ export class NonMembershipProofProtocol extends BytearrayWrapper {
       params.value,
       provingKey.value
     );
-    return new MembershipProofProtocol(protocol);
+    return new VBMembershipProofProtocol(protocol);
   }
 
-  generateProof(challenge: Uint8Array): NonMembershipProof {
+  generateProof(challenge: Uint8Array): VBNonMembershipProof {
     const proof = accumulatorGenNonMembershipProof(this.value, challenge);
-    return new NonMembershipProof(proof);
+    return new VBNonMembershipProof(proof);
   }
 
   challengeContribution(
@@ -104,7 +104,7 @@ export class NonMembershipProofProtocol extends BytearrayWrapper {
   }
 }
 
-export class MembershipProof extends BytearrayWrapper {
+export class VBMembershipProof extends BytearrayWrapper {
   verify(
     accumulated: Uint8Array,
     challenge: Uint8Array,
@@ -138,7 +138,7 @@ export class MembershipProof extends BytearrayWrapper {
   }
 }
 
-export class NonMembershipProof extends BytearrayWrapper {
+export class VBNonMembershipProof extends BytearrayWrapper {
   verify(
     accumulated: Uint8Array,
     challenge: Uint8Array,

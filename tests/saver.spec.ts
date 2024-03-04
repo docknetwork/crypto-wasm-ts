@@ -1,5 +1,5 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
+  initializeWasm,
   getChunkBitSize,
   SaverChunkedCommitmentKey,
   SaverChunkedCommitmentKeyUncompressed,

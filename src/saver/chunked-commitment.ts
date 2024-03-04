@@ -3,7 +3,7 @@ import { ICompressed, IUncompressed } from '../ICompressed';
 import {
   saverGenerateChunkedCommitmentGenerators,
   saverDecompressChunkedCommitmentGenerators
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 
 /**
  * Same as `SaverChunkedCommitmentKey` but in uncompressed form.

@@ -1,5 +1,5 @@
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import { generateGadgetVectorForThresholdSig } from '@docknetwork/crypto-wasm';
+import { generateGadgetVectorForThresholdSig } from 'crypto-wasm-new';
 
 export class GadgetVector extends BytearrayWrapper {
   static generate(label: Uint8Array): GadgetVector {

@@ -11,8 +11,19 @@ import {
   ParsedR1CSFile,
   PublicKeyBase
 } from '../src';
-import { VerifyResult } from '@docknetwork/crypto-wasm';
+import { VerifyResult } from 'crypto-wasm-new';
 import { Participant, Round1Msg, Share } from '../src/frost-dkg';
+import {
+  buildProverStatement,
+  buildVerifierStatement,
+  isBBSPlus,
+  isKvac,
+  isPS,
+  PublicKey,
+  SecretKey,
+  Signature,
+  SignatureParams
+} from './scheme';
 
 /**
  * Converts a UTF-8 Encoded string to a byte array
@@ -217,4 +228,26 @@ export function runFrostKeygen(participants: Participant[], pkBase: PublicKeyBas
   expect(expectedTpk as Uint8Array).toEqual(participants[0].generateThresholdPublicKeyFromPublicKeys(pkWithIds).value);
   // @ts-ignore
   return [sks, pks, expectedTpk];
+}
+
+export function getParamsAndKeys(messageCount: number, label?: Uint8Array): [SignatureParams, SecretKey, PublicKey] {
+  const params = SignatureParams.generate(messageCount, label);
+
+  const sk = SecretKey.generate(isPS() ? messageCount : void 0);
+  const pk = isKvac() ? undefined : isBBSPlus() ? sk.generatePublicKeyG2(params) : sk.generatePublicKey(params);
+  return [params, sk, pk];
+}
+
+export function signAndVerify(messages, params, sk, pk, encode = false): [Signature, VerifyResult] {
+  const sig = isPS() ? Signature.generate(messages, sk, params) : Signature.generate(messages, sk, params, encode);
+  const result = isKvac() ? sig.verify(messages, sk, params, encode) : isPS() ? sig.verify(messages, pk, params) : sig.verify(messages, pk, params, encode);
+  return [sig, result];
+}
+
+export function proverStmt(params: SignatureParams, revealedMsgs: Map<number, Uint8Array>, pk?: PublicKey, encode = false) {
+  return isPS() ? buildProverStatement(params, pk, revealedMsgs, encode) : buildProverStatement(params, revealedMsgs, encode)
+}
+
+export function verifierStmt(params: SignatureParams, revealedMsgs: Map<number, Uint8Array>, pk?: PublicKey, encode = false) {
+  return isKvac() ? buildVerifierStatement(params, revealedMsgs, encode) : buildVerifierStatement(params, pk, revealedMsgs, encode);
 }

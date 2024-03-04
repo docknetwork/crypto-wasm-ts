@@ -1,8 +1,7 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
   CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   createWitnessEqualityMetaStatement,
   EncodeFunc,
   Encoder,
@@ -10,11 +9,12 @@ import {
   flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
-  QuasiProofSpecG1,
+  QuasiProofSpec,
   R1CSSnarkSetup,
   SetupParam,
   SignedMessages,
@@ -24,21 +24,20 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual } from '../index';
-import { defaultEncoder } from '../data-and-encoder';
 import {
-  SignatureParams,
-  KeyPair,
-  Signature,
-  PublicKey,
-  buildSignatureParamsSetupParam,
+  adaptKeyForParams,
   buildPublicKeySetupParam,
-  buildStatementFromSetupParamsRef,
-  buildWitness,
-  isPS,
+  buildSignatureParamsSetupParam,
+  buildWitness, isKvac,
+  PublicKey,
   Scheme,
-  adaptKeyForParams
+  Signature,
+  SignatureParams
 } from '../../../scheme';
+import { checkResult, getParamsAndKeys, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { defaultEncoder } from '../data-and-encoder';
+import { checkMapsEqual } from '../index';
+import { adaptedSigParams, proverStmtFromSetupParamsRef, signAndVerify, verifierStmtFromSetupParamsRef } from '../util';
 
 // Test for a scenario where a user have 20 assets and liabilities, in different credentials (signed documents). The user
 // proves that the sum of his assets is greater than sum of liabilities by 10000 without revealing actual values of either.
@@ -46,7 +45,7 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');
-  let sigPk: PublicKey;
+  let pk: PublicKey, sk, params;
 
   let r1cs: ParsedR1CSFile;
   let wasm: Uint8Array;
@@ -140,11 +139,10 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
     const numAssetAttrs = flattenObjectToKeyValuesList(assetAttributesStruct)[0].length;
     const numLiablAttrs = flattenObjectToKeyValuesList(liabilitiesAttributesStruct)[0].length;
     // Issuing multiple credentials with the same number of attributes so create sig. params only once for faster execution
+    [params, sk, pk] = getParamsAndKeys(Math.max(numAssetAttrs, numLiablAttrs), label);
+
     let assetSigParams = SignatureParams.generate(numAssetAttrs, label);
     let liablSigParams = SignatureParams.generate(numLiablAttrs, label);
-    const keypair = KeyPair.generate(assetSigParams);
-    const sk = keypair.secretKey;
-    sigPk = keypair.publicKey;
 
     // Generate assets and liabilities
     for (let i = 0; i < numAssetCredentials; i++) {
@@ -163,15 +161,7 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
           id5: (i + 5) * 10000
         }
       });
-      signedAssets.push(Signature.signMessageObject(assetAttributes[i], sk, assetSigParams, encoder));
-      checkResult(
-        signedAssets[i].signature.verifyMessageObject(
-          assetAttributes[i],
-          sigPk,
-          assetSigParams,
-          encoder
-        )
-      );
+      signedAssets.push(signAndVerify(assetAttributes[i], encoder, label, sk, pk));
     }
 
     for (let i = 0; i < numLiabilityCredentials; i++) {
@@ -189,15 +179,7 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
           id4: (i + 4) * 100
         }
       });
-      signedLiabilities.push(Signature.signMessageObject(liabilityAttributes[i], sk, liablSigParams, encoder));
-      checkResult(
-        signedLiabilities[i].signature.verifyMessageObject(
-          liabilityAttributes[i],
-          sigPk,
-          liablSigParams,
-          encoder
-        )
-      );
+      signedLiabilities.push(signAndVerify(liabilityAttributes[i], encoder, label, sk, pk));
     }
   });
 
@@ -227,8 +209,8 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParamsAssets = SignatureParams.getSigParamsForMsgStructure(assetAttributesStruct, label);
-    const sigParamsLiabilities = SignatureParams.getSigParamsForMsgStructure(liabilitiesAttributesStruct, label);
+    const sigParamsAssets = adaptedSigParams(assetAttributesStruct, label);
+    const sigParamsLiabilities = adaptedSigParams(liabilitiesAttributesStruct, label);
 
     console.time('Proof generate');
     // Prepare revealed and unrevealed attributes
@@ -256,29 +238,31 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
     const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(buildSignatureParamsSetupParam(sigParamsAssets));
     proverSetupParams.push(buildSignatureParamsSetupParam(sigParamsLiabilities));
-    proverSetupParams.push(
-      buildPublicKeySetupParam(adaptKeyForParams(sigPk, sigParamsAssets))
-    );
     proverSetupParams.push(SetupParam.r1cs(r1cs));
     proverSetupParams.push(SetupParam.bytes(wasm));
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(provingKey));
-    proverSetupParams.push(
-      buildPublicKeySetupParam(adaptKeyForParams(sigPk, sigParamsLiabilities))
-    );
+    if (!isKvac()) {
+      proverSetupParams.push(
+        buildPublicKeySetupParam(adaptKeyForParams(pk, sigParamsAssets))
+      );
+      proverSetupParams.push(
+        buildPublicKeySetupParam(adaptKeyForParams(pk, sigParamsLiabilities))
+      );
+    }
 
     const statementsProver = new Statements();
 
     // Statements to prove possesion of credentials
     const sIdxs: number[] = [];
     for (let i = 0; i < numAssetCredentials; i++) {
-      sIdxs.push(statementsProver.add(buildStatementFromSetupParamsRef(0, 2, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(proverStmtFromSetupParamsRef(0, revealedMsgs[i], 5, false)));
     }
     for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-      sIdxs.push(statementsProver.add(buildStatementFromSetupParamsRef(1, 6, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(proverStmtFromSetupParamsRef(1, revealedMsgs[i], 6, false)));
     }
 
     // For proving the relation between assets and liabilities.
-    sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(3, 4, 5)));
+    sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(2, 3, 4)));
 
     const metaStmtsProver = new MetaStatements();
 
@@ -337,7 +321,7 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
       }
     }
 
-    const proofSpecProver = new QuasiProofSpecG1(statementsProver, metaStmtsProver, proverSetupParams);
+    const proofSpecProver = new QuasiProofSpec(statementsProver, metaStmtsProver, proverSetupParams);
 
     const witnesses = new Witnesses();
     for (let i = 0; i < numAssetCredentials; i++) {
@@ -373,7 +357,7 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
     inputs.setPublicInput('min', minDiffEncoded);
     witnesses.add(Witness.r1csCircomWitness(inputs));
 
-    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proofSpecProver, witnesses);
+    const proof = CompositeProof.generateUsingQuasiProofSpec(proofSpecProver, witnesses);
     console.timeEnd('Proof generate');
 
     console.time('Proof verify');
@@ -391,31 +375,33 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(buildSignatureParamsSetupParam(sigParamsAssets));
     verifierSetupParams.push(buildSignatureParamsSetupParam(sigParamsLiabilities));
-    verifierSetupParams.push(
-      buildPublicKeySetupParam(adaptKeyForParams(sigPk, sigParamsAssets))
-    );
 
     // generateFieldElementFromNumber(1) as the condition "sum of assets - sum of liabilities > minDiff" should be true,
     // if "sum of assets - sum of liabilities <= minDiff" was being checked, then use generateFieldElementFromNumber(0)
     verifierSetupParams.push(SetupParam.fieldElementVec([generateFieldElementFromNumber(1), minDiffEncoded]));
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(verifyingKey));
-    verifierSetupParams.push(
-      buildPublicKeySetupParam(adaptKeyForParams(sigPk, sigParamsLiabilities))
-    );
+    if (!isKvac()) {
+      verifierSetupParams.push(
+        buildPublicKeySetupParam(adaptKeyForParams(pk, sigParamsAssets))
+      );
+      verifierSetupParams.push(
+        buildPublicKeySetupParam(adaptKeyForParams(pk, sigParamsLiabilities))
+      );
+    }
 
     const statementsVerifier = new Statements();
 
     const sIdxVs: number[] = [];
     for (let i = 0; i < numAssetCredentials; i++) {
-      for (const stmt of [].concat(buildStatementFromSetupParamsRef(0, 2, revealedMsgsFromVerifier[i], false)))
+      for (const stmt of [].concat(verifierStmtFromSetupParamsRef(0, revealedMsgsFromVerifier[i], 4, false)))
         sIdxVs.push(statementsVerifier.add(stmt));
     }
     for (let i = numAssetCredentials; i < numAssetCredentials + numLiabilityCredentials; i++) {
-      for (const stmt of [].concat(buildStatementFromSetupParamsRef(1, 5, revealedMsgsFromVerifier[i], false)))
+      for (const stmt of [].concat(verifierStmtFromSetupParamsRef(1, revealedMsgsFromVerifier[i], 5, false)))
         sIdxVs.push(statementsVerifier.add(stmt));
     }
 
-    sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(3, 4)));
+    sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(2, 3)));
 
     const metaStmtsVerifier = new MetaStatements();
 
@@ -472,7 +458,7 @@ describe(`${Scheme} Proving that sum of assets is greater than sum of liabilitie
       }
     }
 
-    const proofSpecVerifier = new QuasiProofSpecG1(statementsVerifier, metaStmtsVerifier, verifierSetupParams);
+    const proofSpecVerifier = new QuasiProofSpec(statementsVerifier, metaStmtsVerifier, verifierSetupParams);
 
     checkResult(proof.verifyUsingQuasiProofSpec(proofSpecVerifier));
     console.timeEnd('Proof verify');

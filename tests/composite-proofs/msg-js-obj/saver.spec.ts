@@ -1,14 +1,13 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getBoundCheckSnarkKeys, readByteArrayFromFile, stringToBytes } from '../../utils';
 import {
-  CompositeProofG1,
+  CompositeProof,
   dockSaverEncryptionGensUncompressed,
   encodeRevealedMsgs,
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   MetaStatements,
-  QuasiProofSpecG1,
+  QuasiProofSpec,
   SaverChunkedCommitmentKey,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
@@ -23,9 +22,17 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
+import { adaptKeyForParams, buildWitness, Scheme, Signature } from '../../scheme';
+import {
+  checkResult,
+  getBoundCheckSnarkKeys,
+  getParamsAndKeys,
+  readByteArrayFromFile,
+  stringToBytes
+} from '../../utils';
 import { attributes1, attributes1Struct, GlobalEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { adaptKeyForParams, buildStatement, buildWitness, isPS, KeyPair, Scheme, Signature, SignatureParams } from '../../scheme';
+import { proverStmt, signAndVerify, verifierStmt } from './util';
 
 describe(`${Scheme} Verifiable encryption using SAVER`, () => {
   beforeAll(async () => {
@@ -42,13 +49,9 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
 
     const label = stringToBytes('Sig params label - this is public');
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(100, label);
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    const pk = keypair.publicKey;
+    const [params, sk, pk] = getParamsAndKeys(100, label);
 
-    const signed = Signature.signMessageObject(attributes1, sk, label, GlobalEncoder);
-    checkResult(signed.signature.verifyMessageObject(attributes1, pk, label, GlobalEncoder));
+    const signed = signAndVerify(attributes1, GlobalEncoder, label, sk, pk);
 
     // Setup for decryptor
     let saverEncGens, saverSk, saverProvingKey, saverVerifyingKey, saverEk, saverDk;
@@ -113,7 +116,11 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'John', lname: 'Smith', country: 'USA' });
 
-    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = proverStmt(
+      sigParams,
+      revealedMsgs,
+      sigPk
+    );
     const statement2 = Statement.saverProver(saverEncGens, commKey, saverEk, saverProvingKey, chunkBitSize);
     const statement3 = Statement.boundCheckLegoProver(timeMin, timeMax, boundCheckProvingKey);
 
@@ -135,7 +142,7 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
     metaStmtsProver.addWitnessEquality(witnessEq2);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new QuasiProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new QuasiProofSpec(statementsProver, metaStmtsProver);
 
     const witness1 = buildWitness(signed.signature, unrevealedMsgs, false);
     const witness2 = Witness.saver(signed.encodedMessages['SSN']);
@@ -144,13 +151,17 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
     witnesses.add(witness2);
     witnesses.add(witness3);
 
-    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proofSpecProver, witnesses);
+    const proof = CompositeProof.generateUsingQuasiProofSpec(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributes1Struct, GlobalEncoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement4 = buildStatement(sigParams, sigPk, revealedMsgsFromVerifier, false);
+    const statement4 = verifierStmt(
+      sigParams,
+      revealedMsgsFromVerifier,
+      sigPk
+    );
     const statement5 = Statement.saverVerifier(saverEncGens, commKey, saverEk, saverVerifyingKey, chunkBitSize);
     const statement6 = Statement.boundCheckLegoVerifier(timeMin, timeMax, boundCheckVerifyingKey);
 
@@ -171,7 +182,7 @@ describe(`${Scheme} Verifiable encryption using SAVER`, () => {
     metaStmtsVerifier.addWitnessEquality(witnessEq3);
     metaStmtsVerifier.addWitnessEquality(witnessEq4);
 
-    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStmtsVerifier);
+    const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStmtsVerifier);
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec));
 
     // Verifier extracts the ciphertext

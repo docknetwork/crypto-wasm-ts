@@ -1,8 +1,8 @@
 import { BBSSignatureParams } from './params';
-import { bbsVerify, bbsSign, VerifyResult } from '@docknetwork/crypto-wasm';
+import { bbsVerify, bbsSign, VerifyResult } from 'crypto-wasm-new';
 import { BBSPublicKey, BBSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import { bbsBlindSign } from '@docknetwork/crypto-wasm';
+import { bbsBlindSign } from 'crypto-wasm-new';
 import { Encoder, MessageEncoder } from '../encoder';
 import { encodeRevealedMessageObject, getBlindedIndicesAndRevealedMessages } from '../sign-verify-js-objs';
 import { MessageStructure, SignedMessages } from '../types';

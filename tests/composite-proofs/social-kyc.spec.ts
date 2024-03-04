@@ -1,29 +1,32 @@
-import { CompositeProofG1, MetaStatements, ProofSpecG1, Statement, Statements, Witness, Witnesses } from '../../src';
-
+import { generateRandomFieldElement, generateRandomG1Element, pedersenCommitmentG1 } from 'crypto-wasm-new';
 import {
-  generateRandomFieldElement,
-  generateRandomG1Element,
+  CompositeProof,
   initializeWasm,
-  pedersenCommitmentG1
-} from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../utils';
+  MetaStatements,
+  ProofSpec,
+  Statement,
+  Statements,
+  Witness,
+  Witnesses
+} from '../../src';
 import {
-  Signature,
   BlindSignature,
-  SignatureParams,
-  KeyPair,
-  PublicKey,
-  SecretKey,
-  isPS,
-  isBBSPlus,
-  getWitnessForBlindSigRequest,
-  getStatementForBlindSigRequest,
-  encodeMessageForSigningIfPS,
   encodeMessageForSigningIfNotPS,
-  Scheme
+  encodeMessageForSigningIfPS,
+  getStatementForBlindSigRequest,
+  getWitnessForBlindSigRequest,
+  isBBS,
+  isKvac,
+  isPS,
+  PublicKey,
+  Scheme,
+  SecretKey,
+  Signature,
+  SignatureParams
 } from '../scheme';
+import { checkResult, getParamsAndKeys, stringToBytes } from '../utils';
 
-describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
+describe(`Social KYC (Know Your Customer) with ${Scheme} credentials`, () => {
   // A social KYC (Know Your Customer) credential claims that the subject owns certain social media profile like a twitter
   // profile credential claims that a user owns the twitter profile with certain handle. User posts a commitment to some
   // random value on his profile and then requests a credential from the issuer by supplying a proof of knowledge of the
@@ -46,12 +49,8 @@ describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
     // Load the WASM module
     await initializeWasm();
 
-    sigParams = SignatureParams.generate(attributeCount);
-
     // Generate keys
-    const sigKeypair = KeyPair.generate(sigParams);
-    sk = sigKeypair.secretKey;
-    pk = sigKeypair.publicKey;
+    [sigParams, sk, pk] = getParamsAndKeys(attributeCount);
 
     h = generateRandomG1Element();
     g = generateRandomG1Element();
@@ -88,10 +87,10 @@ describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
         void 0,
         knownAttributes
       );
-    } else if (isBBSPlus()) {
-      [blinding, request] = BlindSignature.generateRequest(blindedAttributes, sigParams, true, void 0, knownAttributes);
-    } else {
+    } else if (isBBS()) {
       request = BlindSignature.generateRequest(blindedAttributes, sigParams, true, knownAttributes);
+    } else {
+      [blinding, request] = BlindSignature.generateRequest(blindedAttributes, sigParams, true, void 0, knownAttributes);
     }
     // The proof is created for 2 statements.
 
@@ -105,7 +104,7 @@ describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
     const context = stringToBytes('Verifying twitter profile with issuer 1');
 
     const meta = new MetaStatements();
-    const proofSpec = new ProofSpecG1(statements, meta, [], context);
+    const proofSpec = new ProofSpec(statements, meta, [], context);
 
     // This is the opening of the commitment posted in tweet
     const witness1 = Witness.pedersenCommitment([randomValueTweet]);
@@ -120,7 +119,7 @@ describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
     witnesses.add(witness1);
 
     // User creates this proof and sends to the issuer.
-    const proof = CompositeProofG1.generate(proofSpec, witnesses);
+    const proof = CompositeProof.generate(proofSpec, witnesses);
 
     // Issuer checks that the commitment `commitmentTweet` is present in the tweet and then verifies the following
     // proof to check user's knowledge of its opening.
@@ -132,11 +131,11 @@ describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
       : BlindSignature.fromRequest(request, sk, sigParams);
 
     // // User unblinds the signature and now has valid credential
-    const sig: Signature = isBBSPlus()
-      ? blindSig.unblind(blinding!)
+    const sig: Signature = isBBS()
+      ? blindSig
       : isPS()
       ? blindSig.unblind(blindings!, pk)
-      : blindSig;
+      : blindSig.unblind(blinding!);
 
     // Combine blinded and known attributes in an array
     const attributes = Array(blindedAttributes.size + knownAttributes.size);
@@ -147,7 +146,7 @@ describe(`${Scheme} Social KYC (Know Your Customer)`, () => {
       attributes[i] = m;
     }
 
-    const result = sig.verify(attributes, pk, sigParams, true);
+    const result = isKvac() ? sig.verify(attributes, sk, sigParams, true) : sig.verify(attributes, pk, sigParams, true);
     checkResult(result);
   });
 });

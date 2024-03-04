@@ -1,19 +1,19 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
   CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   createWitnessEqualityMetaStatement,
   EncodeFunc,
   Encoder,
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
-  ProofSpecG1,
+  ProofSpec,
   R1CSSnarkSetup,
   SignedMessages,
   Statement,
@@ -22,20 +22,11 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual } from '../index';
+import { buildWitness, PublicKey, Scheme, SecretKey, Signature } from '../../../scheme';
+import { checkResult, getParamsAndKeys, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import { defaultEncoder } from '../data-and-encoder';
-import {
-  buildStatement,
-  buildWitness,
-  Signature,
-  KeyPair,
-  PublicKey,
-  SecretKey,
-  SignatureParams,
-  isPS,
-  Scheme,
-  adaptKeyForParams
-} from '../../../scheme';
+import { checkMapsEqual } from '../index';
+import { adaptedSigParams, proverStmt, signAndVerify, verifierStmt } from '../util';
 
 // Test for a scenario where a user wants to prove that he either got the vaccination less than 30 days ago or got
 // tested negative less than 2 days ago but does not reveal when these events happened or which of these conditions is true.
@@ -43,8 +34,8 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');
-  let sigPk: PublicKey;
-  let sigSk: SecretKey;
+  let pk: PublicKey, params;
+  let sk: SecretKey;
 
   const secondsInADay = 24 * 60 * 60;
   // Time in seconds as of now
@@ -118,10 +109,8 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
   function sign(vDays: number, tDays: number): [SignedMessages<Signature>, SignedMessages<Signature>] {
     vaccinationAttributes.vaccination.date = now - vDays * secondsInADay;
     diseaseTestAttributes.test.date = now - tDays * secondsInADay;
-    const signedV = Signature.signMessageObject(vaccinationAttributes, sigSk, label, encoder);
-    checkResult(signedV.signature.verifyMessageObject(vaccinationAttributes, sigPk, label, encoder));
-    const signedT = Signature.signMessageObject(diseaseTestAttributes, sigSk, label, encoder);
-    checkResult(signedT.signature.verifyMessageObject(diseaseTestAttributes, sigPk, label, encoder));
+    const signedV = signAndVerify(vaccinationAttributes, encoder, label, sk, pk);
+    const signedT = signAndVerify(diseaseTestAttributes, encoder, label, sk, pk);
     return [signedV, signedT];
   }
 
@@ -145,10 +134,7 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     wasm = getWasmBytes('greater_than_or_public_64.wasm');
 
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(100, label);
-    const keypair = KeyPair.generate(params);
-    sigSk = keypair.secretKey;
-    sigPk = keypair.publicKey;
+    [params, sk, pk] = getParamsAndKeys(100, label);
   });
 
   it('verifier generates SNARk proving and verifying key', async () => {
@@ -166,8 +152,7 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     revealedNamesV.add('fname');
     revealedNamesV.add('vaccination.name');
 
-    const sigParamsV = SignatureParams.getSigParamsForMsgStructure(vaccinationAttributesStruct, label);
-    const pkV = adaptKeyForParams(sigPk, sigParamsV);
+    const sigParamsV = adaptedSigParams(vaccinationAttributesStruct, label);
     const [revealedMsgsV, unrevealedMsgsV, revealedMsgsRawV] = getRevealedAndUnrevealed(
       vaccinationAttributes,
       revealedNamesV,
@@ -180,8 +165,7 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     revealedNamesT.add('test.type');
     revealedNamesT.add('test.result');
 
-    const sigParamsT = SignatureParams.getSigParamsForMsgStructure(diseaseTestAttributesStruct, label);
-    const pkT = adaptKeyForParams(sigPk, sigParamsT);
+    const sigParamsT = adaptedSigParams(diseaseTestAttributesStruct, label);
     const [revealedMsgsT, unrevealedMsgsT, revealedMsgsRawT] = getRevealedAndUnrevealed(
       diseaseTestAttributes,
       revealedNamesT,
@@ -189,8 +173,8 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     );
     expect(revealedMsgsRawT).toEqual({ fname: 'John', test: { type: 'Antigen', result: 'Negative' } });
 
-    const statement1 = buildStatement(sigParamsV, pkV, revealedMsgsV, false);
-    const statement2 = buildStatement(sigParamsT, pkT, revealedMsgsT, false);
+    const statement1 = proverStmt(sigParamsV, revealedMsgsV, pk);
+    const statement2 = proverStmt(sigParamsT, revealedMsgsT, pk);
     const statement3 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -221,7 +205,7 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     metaStmtsProver.addWitnessEquality(witnessEq2);
     metaStmtsProver.addWitnessEquality(witnessEq3);
 
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witnesses = new Witnesses();
@@ -235,7 +219,7 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     inputs.setPublicInput('in4', encodedTime2DaysAgo);
     witnesses.add(Witness.r1csCircomWitness(inputs));
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     const revealedMsgsFromVerifierV = encodeRevealedMsgs(revealedMsgsRawV, vaccinationAttributesStruct, encoder);
     checkMapsEqual(revealedMsgsV, revealedMsgsFromVerifierV);
@@ -243,8 +227,8 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     const revealedMsgsFromVerifierT = encodeRevealedMsgs(revealedMsgsRawT, diseaseTestAttributesStruct, encoder);
     checkMapsEqual(revealedMsgsT, revealedMsgsFromVerifierT);
 
-    const statement4 = buildStatement(sigParamsV, pkV, revealedMsgsFromVerifierV, false);
-    const statement5 = buildStatement(sigParamsT, pkT, revealedMsgsFromVerifierT, false);
+    const statement4 = verifierStmt(sigParamsV, revealedMsgsFromVerifierV, pk, false);
+    const statement5 = verifierStmt(sigParamsT, revealedMsgsFromVerifierT, pk, false);
     const pub = [generateFieldElementFromNumber(checkShouldPass ? 1 : 0), encodedTime30DaysAgo, encodedTime2DaysAgo];
     const statement6 = Statement.r1csCircomVerifier(pub, verifyingKey);
 
@@ -276,7 +260,7 @@ describe(`${Scheme} Proving that either vaccinated less than 30 days ago OR last
     metaStmtsVerifier.addWitnessEquality(witnessEq5);
     metaStmtsVerifier.addWitnessEquality(witnessEq6);
 
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));

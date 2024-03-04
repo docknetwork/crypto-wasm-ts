@@ -1,21 +1,6 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../utils';
-import {
-  CompositeProofG1,
-  MetaStatements,
-  ProofSpecG1,
-  Statements,
-  Witnesses
-} from '../../src';
-import {
-  KeyPair,
-  Scheme,
-  Signature,
-  SignatureParams,
-  buildStatement,
-  buildWitness,
-  encodeMessageForSigningIfPS
-} from '../scheme'
+import { CompositeProof, initializeWasm, MetaStatements, ProofSpec, Statement, Statements, Witnesses } from '../../src';
+import { buildWitness, encodeMessageForSigningIfPS, isKvac, Scheme } from '../scheme';
+import { checkResult, getParamsAndKeys, proverStmt, signAndVerify, stringToBytes, verifierStmt } from '../utils';
 
 describe(`${Scheme} Proving knowledge of 1 signature over the attributes`, () => {
   it('works', async () => {
@@ -35,20 +20,15 @@ describe(`${Scheme} Proving knowledge of 1 signature over the attributes`, () =>
     // City
     messages.push(encodeMessageForSigningIfPS(stringToBytes('New York')));
 
-    const messageCount = messages.length;
+    const messageCount= messages.length;
 
     const label = stringToBytes('My sig params in g1');
-    const params = SignatureParams.generate(messageCount, label);
-
     // Signers keys
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    const pk = keypair.publicKey;
+    const [params, sk, pk] = getParamsAndKeys(messageCount, label);
 
     // Signer knows all the messages and signs
-    const sig = Signature.generate(messages, sk, params, true);
-    const result = sig.verify(messages, pk, params, true);
-    expect(result.verified).toEqual(true);
+    const [sig, result] = signAndVerify(messages, params, sk, pk, true);
+    checkResult(result);
 
     // User reveals 2 messages at index 2 and 4 to verifier, last name and city
     const revealedMsgIndices: Set<number> = new Set();
@@ -64,23 +44,37 @@ describe(`${Scheme} Proving knowledge of 1 signature over the attributes`, () =>
       }
     }
 
-    const statement1 = buildStatement(params, pk, revealedMsgs, true);
-    const statements = new Statements(statement1);
+    const statement1 = proverStmt(params, revealedMsgs, pk, true);
+    const proverStatements = new Statements(statement1);
 
     // Optional context of the proof
     const context = stringToBytes('some context');
 
     // Both the prover (user) and verifier should independently construct this `ProofSpec` but only for testing, i am reusing it.
-    const proofSpec = new ProofSpecG1(statements, new MetaStatements(), [], context);
-    expect(proofSpec.isValid()).toEqual(true);
+    const proverProofSpec = new ProofSpec(proverStatements, new MetaStatements(), [], context);
+    expect(proverProofSpec.isValid()).toEqual(true);
 
     const witness1 = buildWitness(sig, unrevealedMsgs, true);
     const witnesses = new Witnesses(witness1);
 
     const nonce = stringToBytes('some unique nonce');
 
-    const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
+    const proof = CompositeProof.generate(proverProofSpec, witnesses, nonce);
 
-    checkResult(proof.verify(proofSpec, nonce));
+    const statement2 = verifierStmt(params, revealedMsgs, pk, true);
+    const verifierStatements = new Statements(statement2);
+    const verifierProofSpec = new ProofSpec(verifierStatements, new MetaStatements(), [], context);
+    expect(verifierProofSpec.isValid()).toEqual(true);
+    checkResult(proof.verify(verifierProofSpec, nonce));
+
+    if (isKvac()) {
+      const statement3 = Statement.bddt16MacFullVerifier(params, sk, revealedMsgs, true);
+      const verifierStatements = new Statements(statement3);
+      const verifierProofSpec = new ProofSpec(verifierStatements, new MetaStatements(), [], context);
+      expect(verifierProofSpec.isValid()).toEqual(true);
+      checkResult(proof.verify(verifierProofSpec, nonce));
+
+
+    }
   });
 });

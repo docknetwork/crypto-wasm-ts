@@ -1,9 +1,11 @@
+import { generateRandomFieldElement } from 'crypto-wasm-new';
 import {
   AttributeBoundPseudonym,
-  CompositeProofG1,
+  CompositeProof,
+  initializeWasm,
   MetaStatement,
   MetaStatements,
-  ProofSpecG1,
+  ProofSpec,
   Pseudonym,
   PseudonymBases,
   Statement,
@@ -12,9 +14,16 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
-import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getRevealedUnrevealed, stringToBytes } from '../utils';
-import { KeyPair, Scheme, Signature, SignatureParams, buildStatement, buildWitness } from '../scheme';
+import { buildWitness, Scheme, Signature } from '../scheme';
+import {
+  checkResult,
+  getParamsAndKeys,
+  getRevealedUnrevealed,
+  proverStmt,
+  signAndVerify,
+  stringToBytes,
+  verifierStmt
+} from '../utils';
 
 // Get some attributes for testing
 function getAttributes(): Uint8Array[] {
@@ -44,13 +53,13 @@ function registerUsingPseudonym(pseudonym: Pseudonym, base: Uint8Array, secretKe
   const statements = new Statements();
   statements.add(statement);
 
-  const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+  const proofSpec = new ProofSpec(statements, new MetaStatements());
 
   const witness = Witness.pseudonym(secretKey);
   const witnesses = new Witnesses();
   witnesses.add(witness);
 
-  const proof = CompositeProofG1.generate(proofSpec, witnesses);
+  const proof = CompositeProof.generate(proofSpec, witnesses);
 
   checkResult(proof.verify(proofSpec));
 }
@@ -67,13 +76,13 @@ function registerUsingAttributeBoundPseudonym(
   const statements = new Statements();
   statements.add(statement);
 
-  const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+  const proofSpec = new ProofSpec(statements, new MetaStatements());
 
   const witness = Witness.attributeBoundPseudonym(attributes, secretKey);
   const witnesses = new Witnesses();
   witnesses.add(witness);
 
-  const proof = CompositeProofG1.generate(proofSpec, witnesses);
+  const proof = CompositeProof.generate(proofSpec, witnesses);
 
   checkResult(proof.verify(proofSpec));
 }
@@ -133,55 +142,63 @@ describe(`${Scheme} Register using pseudonym not bound to any attributes`, () =>
     // User gets a credential (attributes + signature)
     const encodedAttributes = getAttributes();
     const label = stringToBytes('My sig params in g1');
-    const sigParams = SignatureParams.generate(encodedAttributes.length, label);
 
     // Signers keys
-    const sigKeypair = KeyPair.generate(sigParams);
-    const sigSk = sigKeypair.secretKey;
-    const sigPk = sigKeypair.publicKey;
+    const [sigParams, sigSk, sigPk] = getParamsAndKeys(encodedAttributes.length, label);
 
-    const sig = Signature.generate(encodedAttributes, sigSk, sigParams, false);
+    const [sig, result] = signAndVerify(encodedAttributes, sigParams, sigSk, sigPk);
+    checkResult(result);
 
     // Prover is not revealing any attribute
     const [_, unrevealed] = getRevealedUnrevealed(encodedAttributes, new Set());
 
     // User using its pseudonym at service provider 1
     {
-      const statement1 = buildStatement(sigParams, sigPk, new Map(), false);
+      const statement1 = proverStmt(sigParams, new Map(), sigPk);
       const statement2 = Statement.pseudonym(pseudonym1, base1);
-      const statements = new Statements();
-      statements.add(statement1);
-      statements.add(statement2);
+      const proverStatements = new Statements();
+      proverStatements.add(statement1);
+      proverStatements.add(statement2);
 
-      const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+      const proverProofSpec = new ProofSpec(proverStatements, new MetaStatements());
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.pseudonym(secretKey);
       const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
-      const proof = CompositeProofG1.generate(proofSpec, witnesses);
+      const proof = CompositeProof.generate(proverProofSpec, witnesses);
 
-      checkResult(proof.verify(proofSpec));
+      const statement3 = verifierStmt(sigParams, new Map(), sigPk);
+      const verifierStatements = new Statements();
+      verifierStatements.add(statement3);
+      verifierStatements.add(statement2);
+      const verifierProofSpec = new ProofSpec(verifierStatements, new MetaStatements());
+      checkResult(proof.verify(verifierProofSpec));
     }
 
     // User using its pseudonym at service provider 2
     {
-      const statement1 = buildStatement(sigParams, sigPk, new Map(), false);
+      const statement1 = proverStmt(sigParams, new Map(), sigPk);
       const statement2 = Statement.pseudonym(pseudonym2, base2);
-      const statements = new Statements(statement1);
-      statements.add(statement2);
+      const proverStatements = new Statements(statement1);
+      proverStatements.add(statement2);
 
-      const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+      const proverProofSpec = new ProofSpec(proverStatements, new MetaStatements());
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.pseudonym(secretKey);
       const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
-      const proof = CompositeProofG1.generate(proofSpec, witnesses);
+      const proof = CompositeProof.generate(proverProofSpec, witnesses);
 
-      checkResult(proof.verify(proofSpec));
+      const statement3 = verifierStmt(sigParams, new Map(), sigPk);
+      const verifierStatements = new Statements();
+      verifierStatements.add(statement3);
+      verifierStatements.add(statement2);
+      const verifierProofSpec = new ProofSpec(verifierStatements, new MetaStatements());
+      checkResult(proof.verify(verifierProofSpec));
     }
   });
 });
@@ -282,14 +299,9 @@ describe(`${Scheme} Using pseudonym bound to some attributes`, () => {
 
   it('Usage along with credential', () => {
     const label = stringToBytes('My sig params in g1');
-    const sigParams = SignatureParams.generate(encodedAttributes.length, label);
-
-    // Signers keys
-    const sigKeypair = KeyPair.generate(sigParams);
-    const sigSk = sigKeypair.secretKey;
-    const sigPk = sigKeypair.publicKey;
-
-    const sig = Signature.generate(encodedAttributes, sigSk, sigParams, false);
+    const [sigParams, sigSk, sigPk] = getParamsAndKeys(encodedAttributes.length, label);
+    const [sig, result] = signAndVerify(encodedAttributes, sigParams, sigSk, sigPk, false);
+    checkResult(result);
 
     // Prover is not revealing 1 attribute
     const revealedIndices = new Set<number>();
@@ -298,11 +310,11 @@ describe(`${Scheme} Using pseudonym bound to some attributes`, () => {
 
     // User using its pseudonym at service provider 1
     {
-      const statement1 = buildStatement(sigParams, sigPk, revealed, false);
+      const statement1 = proverStmt(sigParams, revealed, sigPk);
       const statement2 = Statement.attributeBoundPseudonym(pseudonym1, bases1ForAttributes, base1ForSecretKey);
-      const statements = new Statements();
-      statements.add(statement1);
-      statements.add(statement2);
+      const proverStatements = new Statements();
+      proverStatements.add(statement1);
+      proverStatements.add(statement2);
 
       // The 0th attribute in the credential is bound to the pseudonym
       const witnessEq = new WitnessEqualityMetaStatement();
@@ -314,25 +326,30 @@ describe(`${Scheme} Using pseudonym bound to some attributes`, () => {
       const metaStatements = new MetaStatements();
       metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 
-      const proofSpec = new ProofSpecG1(statements, metaStatements);
+      const proverProofSpec = new ProofSpec(proverStatements, metaStatements);
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.attributeBoundPseudonym(attributesPseudonym1, secretKey);
       const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
-      const proof = CompositeProofG1.generate(proofSpec, witnesses);
+      const proof = CompositeProof.generate(proverProofSpec, witnesses);
 
-      checkResult(proof.verify(proofSpec));
+      const statement3 = verifierStmt(sigParams, revealed, sigPk);
+      const verifierStatements = new Statements();
+      verifierStatements.add(statement3);
+      verifierStatements.add(statement2);
+      const verifierProofSpec = new ProofSpec(verifierStatements, metaStatements);
+      checkResult(proof.verify(verifierProofSpec));
     }
 
     // User using its pseudonym at service provider 2
     {
-      const statement1 = buildStatement(sigParams, sigPk, revealed, false);
+      const statement1 = proverStmt(sigParams, revealed, sigPk);
       const statement2 = Statement.attributeBoundPseudonym(pseudonym2, bases2ForAttributes, base2ForSecretKey);
-      const statements = new Statements();
-      statements.add(statement1);
-      statements.add(statement2);
+      const proverStatements = new Statements();
+      proverStatements.add(statement1);
+      proverStatements.add(statement2);
 
       // The 0th attribute in the credential is bound to the pseudonym at index 0
       const witnessEq1 = new WitnessEqualityMetaStatement();
@@ -352,25 +369,30 @@ describe(`${Scheme} Using pseudonym bound to some attributes`, () => {
       metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
       metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
 
-      const proofSpec = new ProofSpecG1(statements, metaStatements);
+      const proverProofSpec = new ProofSpec(proverStatements, metaStatements);
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.attributeBoundPseudonym(attributesPseudonym2, secretKey);
       const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
-      const proof = CompositeProofG1.generate(proofSpec, witnesses);
+      const proof = CompositeProof.generate(proverProofSpec, witnesses);
 
-      checkResult(proof.verify(proofSpec));
+      const statement3 = verifierStmt(sigParams, revealed, sigPk);
+      const verifierStatements = new Statements();
+      verifierStatements.add(statement3);
+      verifierStatements.add(statement2);
+      const verifierProofSpec = new ProofSpec(verifierStatements, metaStatements);
+      checkResult(proof.verify(verifierProofSpec));
     }
 
     // User using its pseudonym at service provider 3
     {
-      const statement1 = buildStatement(sigParams, sigPk, revealed, false);
+      const statement1 = proverStmt(sigParams, revealed, sigPk);
       const statement2 = Statement.attributeBoundPseudonym(pseudonym3, bases3ForAttributes);
-      const statements = new Statements();
-      statements.add(statement1);
-      statements.add(statement2);
+      const proverStatements = new Statements();
+      proverStatements.add(statement1);
+      proverStatements.add(statement2);
 
       // The 0th attribute in the credential is bound to the pseudonym at index 0
       const witnessEq1 = new WitnessEqualityMetaStatement();
@@ -390,16 +412,21 @@ describe(`${Scheme} Using pseudonym bound to some attributes`, () => {
       metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
       metaStatements.add(MetaStatement.witnessEquality(witnessEq2));
 
-      const proofSpec = new ProofSpecG1(statements, metaStatements);
+      const proverProofSpec = new ProofSpec(proverStatements, metaStatements);
 
       const witness1 = buildWitness(sig, unrevealed, false);
       const witness2 = Witness.attributeBoundPseudonym(attributesPseudonym3);
       const witnesses = new Witnesses(witness1);
       witnesses.add(witness2);
 
-      const proof = CompositeProofG1.generate(proofSpec, witnesses);
+      const proof = CompositeProof.generate(proverProofSpec, witnesses);
 
-      checkResult(proof.verify(proofSpec));
+      const statement3 = verifierStmt(sigParams, revealed, sigPk);
+      const verifierStatements = new Statements();
+      verifierStatements.add(statement3);
+      verifierStatements.add(statement2);
+      const verifierProofSpec = new ProofSpec(verifierStatements, metaStatements);
+      checkResult(proof.verify(verifierProofSpec));
     }
   });
 });

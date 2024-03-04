@@ -1,52 +1,79 @@
-import { Versioned } from './versioned';
+import b58 from 'bs58';
+import { VerifyResult } from 'crypto-wasm-new';
+import { flatten } from 'flat';
+import stringify from 'json-stringify-deterministic';
+import semver from 'semver/preload';
+import { BBSSignatureParams } from '../bbs';
+import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
+import { BDDT16MacParams } from '../bddt16-mac';
+import {
+  BoundCheckBppParams,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckSmcParams,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckSmcWithKVVerifierParams,
+  BoundCheckSmcWithKVVerifierParamsUncompressed
+} from '../bound-check';
+import {
+  CompositeProof,
+  MetaStatements,
+  QuasiProofSpec,
+  SetupParam,
+  Statement,
+  Statements,
+  WitnessEqualityMetaStatement
+} from '../composite-proof';
+import { BDDT16DelegatedProof, VBAccumMembershipDelegatedProof } from '../delegated-proofs';
+import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
+import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
+import { PSSignatureParams } from '../ps';
+import { Pseudonym, PseudonymBases } from '../Pseudonym';
+import { SaverCiphertext } from '../saver';
+import { flattenObjectToKeyValuesList } from '../util';
+import { DelegatedProof, IDelegatedCredentialProof, IDelegatedCredentialStatusProof } from './delegated-proof';
 import {
   IBoundedPseudonymCommitKey,
-  ICircomPredicate, ICircuitPrivateVar, ICircuitPrivateVarMultiCred,
+  ICircomPredicate,
+  ICircuitPrivateVar,
+  ICircuitPrivateVarMultiCred,
   IPresentedAttributeBound,
   IPresentedAttributeInequality,
   IPresentedAttributeVE,
   IPresentedCredential,
   PresentationSpecification
 } from './presentation-specification';
-import {
-  CompositeProofG1,
-  MetaStatements,
-  QuasiProofSpecG1,
-  SetupParam,
-  Statement,
-  Statements,
-  WitnessEqualityMetaStatement
-} from '../composite-proof';
 import { CredentialSchema, getTransformedMinMax, ValueType } from './schema';
-import { VerifyResult } from '@docknetwork/crypto-wasm';
-import { flatten } from 'flat';
+import { SetupParamsTracker } from './setup-params-tracker';
 import {
+  AccumulatorVerificationParam,
   AttributeCiphertexts,
   BBS_BLINDED_CRED_PROOF_TYPE,
   BBS_PLUS_BLINDED_CRED_PROOF_TYPE,
+  BDDT16_BLINDED_CRED_PROOF_TYPE,
+  BlindSignatureType,
+  BoundCheckProtocol,
+  CircomProtocol,
+  CredentialVerificationParam,
   CRYPTO_VERSION_STR,
   FlattenedSchema,
   ID_STR,
+  InequalityProtocol,
+  MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
-  BlindSignatureType,
-  RevocationStatusProtocol,
-  SignatureType,
   PredicateParamType,
   PublicKey,
   REV_CHECK_STR,
   REV_ID_STR,
+  RevocationStatusProtocol,
   SCHEMA_STR,
-  STATUS_STR,
-  BoundCheckProtocol,
-  VerifiableEncryptionProtocol,
-  CircomProtocol,
-  InequalityProtocol
+  SignatureType,
+  STATUS_STR, TYPE_STR,
+  VerifiableEncryptionProtocol
 } from './types-and-consts';
-import { AccumulatorPublicKey } from '../accumulator';
 import {
   accumulatorStatement,
-  buildSignatureStatementFromParamsRef,
+  buildSignatureVerifierStatementFromParamsRef,
   createWitEq,
   createWitEqForBlindedCred,
   deepClone,
@@ -56,25 +83,7 @@ import {
   paramsClassByPublicKey,
   saverStatement
 } from './util';
-import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
-import { SaverCiphertext } from '../saver';
-import b58 from 'bs58';
-import { SetupParamsTracker } from './setup-params-tracker';
-import { flattenObjectToKeyValuesList } from '../util';
-import { Pseudonym, PseudonymBases } from '../Pseudonym';
-import { BBSSignatureParams } from '../bbs';
-import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
-import {
-  BoundCheckBppParams,
-  BoundCheckBppParamsUncompressed,
-  BoundCheckSmcParams,
-  BoundCheckSmcParamsUncompressed,
-  BoundCheckSmcWithKVVerifierParams,
-  BoundCheckSmcWithKVVerifierParamsUncompressed
-} from '../bound-check';
-import semver from 'semver/preload';
-import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
-import stringify from 'json-stringify-deterministic';
+import { Versioned } from './versioned';
 
 /**
  * The context passed to the proof contains the version and the presentation spec as well. This is done to bind the
@@ -105,7 +114,7 @@ export function buildContextForProof(
 
 export class Presentation extends Versioned {
   readonly spec: PresentationSpecification;
-  readonly proof: CompositeProofG1;
+  readonly proof: CompositeProof;
   // Ciphertexts for the verifiable encryption of required attributes. The key of the map is the credential index.
   // This is intentionally not part of presentation specification as this is created as part of the proof generation,
   // not before.
@@ -119,7 +128,7 @@ export class Presentation extends Versioned {
   constructor(
     version: string,
     spec: PresentationSpecification,
-    proof: CompositeProofG1,
+    proof: CompositeProof,
     attributeCiphertexts?: Map<number, AttributeCiphertexts[]>,
     context?: string,
     nonce?: Uint8Array,
@@ -136,7 +145,7 @@ export class Presentation extends Versioned {
 
   /**
    *
-   * @param publicKeys - Array of keys in the order of credentials in the presentation.
+   * @param credentialVerifParams - Array of keys in the order of credentials in the presentation.
    * @param accumulatorPublicKeys - Mapping credential index -> accumulator public key
    * @param predicateParams - Setup params for various predicates
    * @param circomOutputs - Values for the outputs variables of the Circom programs used for predicates. They key of the map
@@ -146,22 +155,27 @@ export class Presentation extends Versioned {
    */
   verify(
     // TODO: Accept reference to public keys in case of same key for many credentials
-    publicKeys: PublicKey[],
-    accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
+    credentialVerifParams: Map<number, CredentialVerificationParam | undefined> | CredentialVerificationParam[],
+    accumulatorPublicKeys?: Map<number, AccumulatorVerificationParam>,
     predicateParams?: Map<string, PredicateParamType>,
     circomOutputs?: Map<number, Uint8Array[][]>,
     blindedAttributesCircomOutputs?: Uint8Array[][],
     circomOutputsMultiCred?: Uint8Array[][],
   ): VerifyResult {
-    const numCreds = this.spec.credentials.length;
-    if (publicKeys.length !== numCreds) {
-      throw new Error(`Supply same no of public keys as creds. ${publicKeys.length} != ${numCreds}`);
-    }
 
     // NOTE: The order of processing predicates should match exactly to the order in presentation builder, eg. if circom predicates
     // are processed at the end in the builder than they should be processed at the end here as well, if verifiable encryption is
-    // processed at 2nd last in the builder than they should be processed at 2nd last here as well.
+    // processed at 2nd last in the builder than they should be processed at 2nd last here as well. By convention credentials are
+    // processed first, then their statuses (if present) and then any predicates.
 
+    let credVerifParams = new Map<number, CredentialVerificationParam | undefined>();
+    if (credentialVerifParams instanceof Map) {
+      credVerifParams = credentialVerifParams;
+    } else {
+      credentialVerifParams.forEach((v, i) => {
+        credVerifParams.set(i, v)
+      });
+    }
     const statements = new Statements();
     const metaStatements = new MetaStatements();
 
@@ -187,6 +201,8 @@ export class Presentation extends Versioned {
     const setupParamsTrk = new SetupParamsTracker();
     const sigParamsByScheme = new Map();
 
+    const versionGt5 = semver.gt(this.version, '0.5.0');
+
     for (let credIndex = 0; credIndex < this.spec.credentials.length; credIndex++) {
       const presentedCred = this.spec.credentials[credIndex];
       const presentedCredSchema = CredentialSchema.fromJSON(JSON.parse(presentedCred.schema));
@@ -195,18 +211,44 @@ export class Presentation extends Versioned {
 
       const revealedEncoded = Presentation.encodeRevealed(credIndex, presentedCred, presentedCredSchema, flattenedSchema[0]);
 
-      const paramsClass = paramsClassByPublicKey(publicKeys[credIndex]);
-      if (paramsClass === null) {
-        throw new Error(`Invalid public key: ${publicKeys[credIndex]}`);
+      let sigParamsClass;
+      switch (presentedCred.sigType) {
+        case SignatureType.Bbs:
+          sigParamsClass = BBSSignatureParams;
+          break;
+        case SignatureType.BbsPlus:
+          sigParamsClass = BBSPlusSignatureParamsG1;
+          break;
+        case SignatureType.Ps:
+          sigParamsClass = PSSignatureParams;
+          break;
+        case SignatureType.Bddt16:
+          sigParamsClass = BDDT16MacParams;
+          break;
+        default:
+          if (presentedCred.sigType !== undefined) {
+            throw new Error(`Invalid signature type ${presentedCred.sigType} for credential index ${credIndex}`);
+          } else {
+            const pk = credVerifParams.get(credIndex);
+            if (pk === undefined) {
+              throw new Error(`Public key not given for for credential index ${credIndex}`);
+            }
+            // KVAC were introduced later and by that time `sigType` is present in presented credentials
+            sigParamsClass = paramsClassByPublicKey(pk as PublicKey);
+            if (sigParamsClass === null) {
+              throw new Error(`Invalid public key: ${pk} for credential index ${credIndex}`);
+            }
+          }
       }
-      const sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, paramsClass, numAttribs);
+      const sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, sigParamsClass, numAttribs);
 
-      const statement = buildSignatureStatementFromParamsRef(
+      const statement = buildSignatureVerifierStatementFromParamsRef(
         setupParamsTrk,
         sigParams,
-        publicKeys[credIndex],
         numAttribs,
-        revealedEncoded
+        revealedEncoded,
+        credVerifParams.get(credIndex),
+        versionGt5
       );
       statements.add(statement);
       flattenedSchemas.push(flattenedSchema);
@@ -240,13 +282,10 @@ export class Presentation extends Versioned {
       }
     }
 
-    credStatusAux.forEach(([i, t, accum]) => {
+    credStatusAux.forEach(([i, checkType, accum]) => {
       // let statement;
       const pk = accumulatorPublicKeys?.get(i);
-      if (pk === undefined) {
-        throw new Error(`Accumulator public key wasn't provided for credential index ${i}`);
-      }
-      const statement = accumulatorStatement(t, pk, accum, setupParamsTrk);
+      const statement = accumulatorStatement(i, checkType, accum, setupParamsTrk, pk);
       const sIdx = statements.add(statement);
       const witnessEq = new WitnessEqualityMetaStatement();
       witnessEq.addWitnessRef(i, flattenedSchemas[i][0].indexOf(`${STATUS_STR}.${REV_ID_STR}`));
@@ -431,6 +470,9 @@ export class Presentation extends Versioned {
       } else if (sigType === BBS_PLUS_BLINDED_CRED_PROOF_TYPE) {
         sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BBSPlusSignatureParamsG1, numAttribs);
         pedCommWitnessOffset = 1;
+      } else if (sigType === BDDT16_BLINDED_CRED_PROOF_TYPE) {
+        sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BDDT16MacParams, numAttribs);
+        pedCommWitnessOffset = 1;
       } else {
         throw new Error('Blind signing not yet implemented for PS');
       }
@@ -551,8 +593,60 @@ export class Presentation extends Versioned {
     }
 
     const ctx = buildContextForProof(this.version, this.spec, this.context);
-    const proofSpec = new QuasiProofSpecG1(statements, metaStatements, setupParamsTrk.setupParams, ctx);
-    return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce);
+    const proofSpec = new QuasiProofSpec(statements, metaStatements, setupParamsTrk.setupParams, ctx);
+    return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce, versionGt5);
+  }
+
+  /**
+   * Get delegated proof for
+   * @returns - The key in the returned map is the credential index
+   */
+  getDelegatedProofs(): Map<number, DelegatedProof> {
+    const r = new Map<number, DelegatedProof>();
+    const delegatedProofs = this.proof.getDelegatedProofs();
+    let nextCredStatusStatementIdx = this.spec.credentials.length;
+    for (let i = 0; i < this.spec.credentials.length; i++) {
+      const presentedCred = this.spec.credentials[i];
+      let credP: IDelegatedCredentialProof | undefined, statusP: IDelegatedCredentialStatusProof | undefined;
+
+      if (presentedCred.sigType === SignatureType.Bddt16) {
+        const proof = delegatedProofs.get(i);
+        if (proof === undefined) {
+          throw new Error(`Could not find delegated credential proof for credential index ${i}`)
+        }
+        if (!(proof instanceof BDDT16DelegatedProof)) {
+          throw new Error(`Unexpected delegated credential proof type ${proof.constructor.name} for credential index ${i}`)
+        }
+        credP = {
+          sigType: presentedCred.sigType,
+          proof
+        }
+      }
+
+      if (presentedCred.status !== undefined) {
+        if (presentedCred.status[TYPE_STR] === RevocationStatusProtocol.Vb22 && presentedCred.status[REV_CHECK_STR] === MEM_CHECK_KV_STR) {
+          const proof = delegatedProofs.get(nextCredStatusStatementIdx);
+          if (proof === undefined) {
+            throw new Error(`Could not find delegated credential status proof for credential index ${i}`)
+          }
+          if (!(proof instanceof VBAccumMembershipDelegatedProof)) {
+            throw new Error(`Unexpected delegated credential status proof type ${proof.constructor.name} for credential index ${i}`)
+          }
+          statusP = {
+            [ID_STR]: presentedCred.status[ID_STR],
+            [TYPE_STR]: presentedCred.status[TYPE_STR],
+            [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR],
+            proof
+          }
+        }
+        nextCredStatusStatementIdx++;
+      }
+
+      if (credP !== undefined || statusP !== undefined) {
+        r.set(i, new DelegatedProof(credP, statusP));
+      }
+    }
+    return r;
   }
 
   /**
@@ -579,7 +673,8 @@ export class Presentation extends Versioned {
       if (
         presentedCred.status[ID_STR] === undefined ||
         (presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_STR &&
-          presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_STR)
+          presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_STR &&
+          presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_KV_STR)
       ) {
         throw new Error(`Presented credential for ${credIdx} has invalid status ${presentedCred.status}`);
       }
@@ -1279,6 +1374,6 @@ export class Presentation extends Versioned {
       presSpec.blindCredentialRequest = req;
     }
 
-    return new Presentation(version, presSpec, new CompositeProofG1(b58.decode(proof)), atc, context, nnc, bac);
+    return new Presentation(version, presSpec, new CompositeProof(b58.decode(proof)), atc, context, nnc, bac);
   }
 }

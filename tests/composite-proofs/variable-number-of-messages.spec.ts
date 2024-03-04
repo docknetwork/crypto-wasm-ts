@@ -1,17 +1,8 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../utils';
-import { CompositeProofG1, MetaStatements, ProofSpecG1, Statements, Witnesses } from '../../src';
-import {
-  Signature,
-  KeyPair,
-  SignatureParams,
-  buildStatement,
-  buildWitness,
-  encodeMessageForSigningIfPS,
-  Scheme
-} from '../scheme';
+import { CompositeProof, initializeWasm, MetaStatements, ProofSpec, Statements, Witnesses } from '../../src';
+import { buildWitness, encodeMessageForSigningIfPS, Scheme } from '../scheme';
+import { checkResult, getParamsAndKeys, proverStmt, signAndVerify, stringToBytes, verifierStmt } from '../utils';
 
-describe(`${Scheme} Proving knowledge of 1 signature where some of the attributes are null, i.e.not applicable`, () => {
+describe(`Proving knowledge of 1 ${Scheme} signature where some of the attributes are null, i.e. not applicable`, () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();
@@ -43,17 +34,13 @@ describe(`${Scheme} Proving knowledge of 1 signature where some of the attribute
 
     const messageCount = messages.length;
     const label = stringToBytes('My sig params in g1');
-    const params = SignatureParams.generate(messageCount, label);
 
     // Signers keys
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    const pk = keypair.publicKey;
+    const [params, sk, pk] = getParamsAndKeys(messageCount, label);
 
     // Signer knows all the messages and signs
-    const sig = Signature.generate(messages, sk, params, true);
-    const result = sig.verify(messages, pk, params, true);
-    expect(result.verified).toEqual(true);
+    const [sig, result] = signAndVerify(messages, params, sk, pk, true);
+    checkResult(result);
 
     // User reveals his name, high school year and city to verifier, i.e. indices 2, 4 and 8. He also needs to reveal first
     // attribute (index 0) which indicates which attributes don't apply to him.
@@ -72,18 +59,22 @@ describe(`${Scheme} Proving knowledge of 1 signature where some of the attribute
       }
     }
 
-    const statement1 = buildStatement(params, pk, revealedMsgs, true);
+    const statement1 = proverStmt(params, revealedMsgs, pk, true);
     const statements = new Statements(statement1);
 
     // Both the prover (user) and verifier should independently construct this `ProofSpec` but only for testing, i am reusing it.
-    const proofSpec = new ProofSpecG1(statements, new MetaStatements());
-    expect(proofSpec.isValid()).toEqual(true);
+    const proverProofSpec = new ProofSpec(statements, new MetaStatements());
+    expect(proverProofSpec.isValid()).toEqual(true);
 
     const witness1 = buildWitness(sig, unrevealedMsgs, true);
     const witnesses = new Witnesses(witness1);
 
-    const proof = CompositeProofG1.generate(proofSpec, witnesses);
+    const proof = CompositeProof.generate(proverProofSpec, witnesses);
 
-    checkResult(proof.verify(proofSpec));
+    const statement2 = verifierStmt(params, revealedMsgs, pk, true);
+    const verifierStatements = new Statements(statement2);
+    const verifierProofSpec = new ProofSpec(verifierStatements, new MetaStatements(), []);
+    expect(verifierProofSpec.isValid()).toEqual(true);
+    checkResult(proof.verify(verifierProofSpec));
   });
 });

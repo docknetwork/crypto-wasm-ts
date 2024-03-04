@@ -1,25 +1,25 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../utils';
+import { checkResult, getParamsAndKeys, proverStmt, signAndVerify, stringToBytes, verifierStmt } from '../utils';
 import {
-  CompositeProofG1,
+  initializeWasm,
+  CompositeProof,
   MetaStatement,
   MetaStatements,
-  ProofSpecG1,
+  ProofSpec,
   Statements,
   WitnessEqualityMetaStatement,
-  Witnesses
+  Witnesses, Statement
 } from '../../src';
 import {
   KeyPair,
   Scheme,
   Signature,
   SignatureParams,
-  buildStatement,
+  buildVerifierStatement,
   buildWitness,
-  encodeMessageForSigningIfPS,
-} from '../scheme'
+  encodeMessageForSigningIfPS, isPS, buildProverStatement, isKvac
+} from '../scheme';
 
-describe(`${Scheme} Proving knowledge of 2 BBS+ signatures over attributes and equality of a specific attribute`, () => {
+describe(`Proving knowledge of 2 ${Scheme}  signatures over attributes and equality of a specific attribute`, () => {
   it('works', async () => {
     // Load the WASM module
     await initializeWasm();
@@ -61,40 +61,26 @@ describe(`${Scheme} Proving knowledge of 2 BBS+ signatures over attributes and e
 
     const messageCount2 = messages2.length;
 
-    // 1st Signer's params
+    // 1st Signer's params and keys
     const label1 = stringToBytes('Label-1');
-    const params1 = SignatureParams.generate(messageCount1, label1);
+    const [params1, sk1, pk1] = getParamsAndKeys(messageCount1, label1);
 
-    // 2nd Signer's params
+    // 2nd Signer's params and keys
     const label2 = stringToBytes('Label-2');
-    const params2 = SignatureParams.generate(messageCount2, label2);
-
-    // Signer 1 keys
-    const keypair1 = KeyPair.generate(params1);
-    const sk1 = keypair1.secretKey;
-    const pk1 = keypair1.publicKey;
-
-    // Signer 2 keys
-    const keypair2 = KeyPair.generate(params2);
-    const sk2 = keypair2.secretKey;
-    const pk2 = keypair2.publicKey;
+    const [params2, sk2, pk2] = getParamsAndKeys(messageCount2, label2);
 
     // 1st Signer signs
-    const sig1 = Signature.generate(messages1, sk1, params1, true);
-    // User verifies signature from 1st signer
-    const result1 = sig1.verify(messages1, pk1, params1, true);
-    expect(result1.verified).toEqual(true);
+    const [sig1, result1] = signAndVerify(messages1, params1, sk1, pk1, true);
+    checkResult(result1);
 
     // 2nd Signer signs
-    const sig2 = Signature.generate(messages2, sk2, params2, true);
-    // User verifies signature from 2nd signer
-    const result2 = sig2.verify(messages2, pk2, params2, true);
-    expect(result2.verified).toEqual(true);
+    const [sig2, result2] = signAndVerify(messages2, params2, sk2, pk2, true);
+    checkResult(result2);
 
     // User wants to prove knowledge of 2 signatures and hence 2 statements
 
     // Statement for signature of 1st signer, not revealing any messages to the verifier
-    const statement1 = buildStatement(params1, pk1, new Map(), true);
+    const statement1 = proverStmt(params1, new Map(), pk1, true);
 
     // Statement for signature of 2nd signer, revealing 1 message to the verifier
     const revealedMsgIndices: Set<number> = new Set();
@@ -108,11 +94,11 @@ describe(`${Scheme} Proving knowledge of 2 BBS+ signatures over attributes and e
         unrevealedMsgs2.set(i, messages2[i]);
       }
     }
-    const statement2 = buildStatement(params2, pk2, revealedMsgs, true);
+    const statement2 = proverStmt(params2, revealedMsgs, pk2, true);
 
-    const statements = new Statements();
-    const sId1 = statements.add(statement1);
-    const sId2 = statements.add(statement2);
+    const proverStatements = new Statements();
+    const sId1 = proverStatements.add(statement1);
+    const sId2 = proverStatements.add(statement2);
 
     const metaStatements = new MetaStatements();
     // For proving equality of SSN, messages1[0] == messages2[5], specify using MetaStatement
@@ -133,8 +119,8 @@ describe(`${Scheme} Proving knowledge of 2 BBS+ signatures over attributes and e
 
     const context = stringToBytes('test-context');
 
-    const proofSpec = new ProofSpecG1(statements, metaStatements, [], context);
-    expect(proofSpec.isValid()).toEqual(true);
+    const proverProofSpec = new ProofSpec(proverStatements, metaStatements, [], context);
+    expect(proverProofSpec.isValid()).toEqual(true);
 
     // Using the messages and signature from 1st signer
     const unrevealedMsgs1 = new Map(messages1.map((m, i) => [i, m]));
@@ -147,8 +133,27 @@ describe(`${Scheme} Proving knowledge of 2 BBS+ signatures over attributes and e
 
     const nonce = stringToBytes('some unique nonce');
 
-    const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
+    const proof = CompositeProof.generate(proverProofSpec, witnesses, nonce);
 
-    checkResult(proof.verify(proofSpec, nonce));
+    // Statement for signature of 1st signer, not revealing any messages to the verifier
+    const statement3 = verifierStmt(params1, new Map(), pk1, true);
+    const statement4 = verifierStmt(params2, revealedMsgs, pk2, true);
+    const verifierStatements = new Statements();
+    verifierStatements.add(statement3);
+    verifierStatements.add(statement4);
+    const verifierProofSpec = new ProofSpec(verifierStatements, metaStatements, [], context);
+    expect(verifierProofSpec.isValid()).toEqual(true);
+    checkResult(proof.verify(verifierProofSpec, nonce));
+
+    if (isKvac()) {
+      const statement5 = Statement.bddt16MacFullVerifier(params1, sk1, new Map(), true);
+      const statement6 = Statement.bddt16MacFullVerifier(params2, sk2, revealedMsgs, true);
+      const verifierStatements = new Statements();
+      verifierStatements.add(statement5);
+      verifierStatements.add(statement6);
+      const verifierProofSpec = new ProofSpec(verifierStatements, metaStatements, [], context);
+      expect(verifierProofSpec.isValid()).toEqual(true);
+      checkResult(proof.verify(verifierProofSpec, nonce));
+    }
   });
 });

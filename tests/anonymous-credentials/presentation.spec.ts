@@ -1,4 +1,5 @@
 import {
+  initializeWasm,
   AccumulatorPublicKey,
   CredentialSchema,
   dockAccumulatorParams,
@@ -6,7 +7,7 @@ import {
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MEM_CHECK_STR,
-  MembershipWitness,
+  VBMembershipWitness,
   PositiveAccumulator,
   Pseudonym,
   PseudonymBases,
@@ -34,9 +35,9 @@ import {
   BoundCheckSmcWithKVSetup,
   META_SCHEMA_STR,
   DefaultSchemaParsingOpts,
-  InequalityProtocol, BoundCheckParamType
+  InequalityProtocol, BoundCheckParamType, AccumulatorSecretKey, MEM_CHECK_KV_STR
 } from '../../src';
-import { generateRandomFieldElement, initializeWasm } from '@docknetwork/crypto-wasm';
+import { generateRandomFieldElement } from 'crypto-wasm-new';
 import {
   areUint8ArraysEqual,
   checkResult,
@@ -51,19 +52,16 @@ import {
   checkSchemaFromJson,
   getDecodedBoundedPseudonym,
   getExampleBuilder,
-  getExampleSchema,
-  prefillAccumulator
+  getExampleSchema, getKeys,
+  prefillAccumulator, setupPrefilledAccum, verifyCred
 } from './utils';
 import {
   Credential,
   CredentialBuilder,
-  KeyPair,
   PresentationBuilder,
   Scheme,
   PublicKey,
-  SecretKey,
-  SignatureLabelBytes,
-  SignatureParams
+  SecretKey, isKvac
 } from '../scheme';
 
 // Setting it to false will make the test run the SNARK setups making tests quite slow
@@ -89,12 +87,14 @@ describe.each([true, false])(
     const scope1 = stringToBytes('Service provider 1');
 
     let accumulator3: PositiveAccumulator;
+    let accumulator3Sk: AccumulatorSecretKey;
     let accumulator3Pk: AccumulatorPublicKey;
-    let accumulator3Witness: MembershipWitness;
+    let accumulator3Witness: VBMembershipWitness;
 
     let accumulator4: PositiveAccumulator;
+    let accumulator4Sk: AccumulatorSecretKey;
     let accumulator4Pk: AccumulatorPublicKey;
-    let accumulator4Witness: MembershipWitness;
+    let accumulator4Witness: VBMembershipWitness;
 
     let boundCheckProvingKey: LegoProvingKeyUncompressed;
     let boundCheckVerifyingKey: LegoVerifyingKeyUncompressed;
@@ -177,19 +177,10 @@ describe.each([true, false])(
 
     beforeAll(async () => {
       await initializeWasm();
-      const params = SignatureParams.generate(100, SignatureLabelBytes);
-      const keypair1 = KeyPair.generate(params, stringToBytes('seed1'));
-      const keypair2 = KeyPair.generate(params, stringToBytes('seed2'));
-      const keypair3 = KeyPair.generate(params, stringToBytes('seed3'));
-      const keypair4 = KeyPair.generate(params);
-      sk1 = keypair1.sk;
-      pk1 = keypair1.pk;
-      sk2 = keypair2.sk;
-      pk2 = keypair2.pk;
-      sk3 = keypair3.sk;
-      pk3 = keypair3.pk;
-      sk4 = keypair4.sk;
-      pk4 = keypair4.pk;
+      [sk1, pk1] = getKeys('seed1');
+      [sk2, pk2] = getKeys('seed2');
+      [sk3, pk3] = getKeys('seed3');
+      [sk4, pk4] = getKeys();
 
       const schema1 = getExampleSchema(9);
       const builder1 = new CredentialBuilder();
@@ -214,7 +205,7 @@ describe.each([true, false])(
         secret: 'my-secret-that-wont-tell-anyone'
       };
       credential1 = builder1.sign(sk1);
-      checkResult(credential1.verify(pk1));
+      verifyCred(credential1, pk1, sk1);
 
       const schema2 = getExampleSchema(11);
       const builder2 = new CredentialBuilder();
@@ -246,7 +237,7 @@ describe.each([true, false])(
         score: -13.5
       };
       credential2 = builder2.sign(sk2);
-      checkResult(credential2.verify(pk2));
+      verifyCred(credential2, pk2, sk2);
 
       const schema3 = getExampleSchema(5);
       let credSchema3: CredentialSchema;
@@ -288,36 +279,11 @@ describe.each([true, false])(
       };
       builder3.setCredentialStatus('dock:accumulator:accumId123', MEM_CHECK_STR, 'user:A-123');
       credential3 = builder3.sign(sk3);
-      checkResult(credential3.verify(pk3));
+      verifyCred(credential3, pk3, sk3);
 
       const seed = stringToBytes('secret-seed-for-accum');
-      const accumKeypair3 = PositiveAccumulator.generateKeypair(dockAccumulatorParams(), seed);
-      accumulator3Pk = accumKeypair3.publicKey;
-      accumulator3 = PositiveAccumulator.initialize(dockAccumulatorParams());
-      const accumState3 = new InMemoryState();
-      const allMembers3 = await prefillAccumulator(
-        accumulator3,
-        accumKeypair3.secretKey,
-        accumState3,
-        credSchema3,
-        'user:A-',
-        `${STATUS_STR}.${REV_ID_STR}`,
-        200
-      );
-      accumulator3Witness = await accumulator3.membershipWitness(
-        allMembers3[122],
-        accumKeypair3.secretKey,
-        accumState3
-      );
-      let verifAccumulator3 = PositiveAccumulator.fromAccumulated(accumulator3.accumulated);
-      expect(
-        verifAccumulator3.verifyMembershipWitness(
-          allMembers3[122],
-          accumulator3Witness,
-          accumulator3Pk,
-          dockAccumulatorParams()
-        )
-      ).toEqual(true);
+      // @ts-ignore
+      [accumulator3Sk, accumulator3Pk, accumulator3, accumulator3Witness] = await setupPrefilledAccum(200, 122, 'user:A-', credSchema3, seed);
 
       const schema4 = getExampleSchema(10);
 
@@ -357,35 +323,10 @@ describe.each([true, false])(
       };
       builder4.setCredentialStatus('dock:accumulator:accumId124', MEM_CHECK_STR, 'tran:2022-YZ4-250');
       credential4 = builder4.sign(sk4);
-      checkResult(credential4.verify(pk4));
+      verifyCred(credential4, pk4, sk4);
 
-      const accumKeypair4 = PositiveAccumulator.generateKeypair(dockAccumulatorParams());
-      accumulator4Pk = accumKeypair4.publicKey;
-      accumulator4 = PositiveAccumulator.initialize(dockAccumulatorParams());
-      const accumState4 = new InMemoryState();
-      const allMembers4 = await prefillAccumulator(
-        accumulator4,
-        accumKeypair4.secretKey,
-        accumState4,
-        credSchema4,
-        'tran:2022-YZ4-',
-        `${STATUS_STR}.${REV_ID_STR}`,
-        300
-      );
-      accumulator4Witness = await accumulator4.membershipWitness(
-        allMembers4[249],
-        accumKeypair4.secretKey,
-        accumState4
-      );
-      const verifAccumulator4 = PositiveAccumulator.fromAccumulated(accumulator4.accumulated);
-      expect(
-        verifAccumulator4.verifyMembershipWitness(
-          allMembers4[249],
-          accumulator4Witness,
-          accumulator4Pk,
-          dockAccumulatorParams()
-        )
-      ).toEqual(true);
+      // @ts-ignore
+      [accumulator4Sk, accumulator4Pk, accumulator4, accumulator4Witness] = await setupPrefilledAccum(300, 249, 'tran:2022-YZ4-', credSchema4);
 
       const schema5 = CredentialSchema.essential();
       const subjectItem = {
@@ -451,7 +392,7 @@ describe.each([true, false])(
         }
       ];
       credential5 = builder5.sign(sk1);
-      checkResult(credential5.verify(pk1));
+      verifyCred(credential5, pk1, sk1);
 
       const schema6 = CredentialSchema.essential();
       const subjectItem2 = {
@@ -534,7 +475,7 @@ describe.each([true, false])(
       builder6.setTopLevelField('issuanceDate', 1662010849700);
       builder6.setTopLevelField('expirationDate', 1662011950934);
       credential6 = builder6.sign(sk1);
-      checkResult(credential6.verify(pk1));
+      verifyCred(credential6, pk1, sk1);
 
       // Schema with date type
       const schema7 = CredentialSchema.essential();
@@ -563,7 +504,7 @@ describe.each([true, false])(
       builder7.setTopLevelField('issuanceDate', 1694719600488);
       builder7.setTopLevelField('expirationDate', 1994719600488);
       credential7 = builder7.sign(sk1);
-      checkResult(credential7.verify(pk1));
+      verifyCred(credential7, pk1, sk1);
     });
 
     it('from a flat credential - `credential1`', () => {
@@ -665,15 +606,15 @@ describe.each([true, false])(
 
       function check(credBuilder: CredentialBuilder, sk: SecretKey, pk: PublicKey) {
         const credential = credBuilder.sign(sk, undefined, { requireSameFieldsAsSchema: false });
-        checkResult(credential.verify(pk1));
+        verifyCred(credential, pk, sk);
         const builder7 = new PresentationBuilder();
         expect(builder7.addCredential(credential, pk)).toEqual(0);
         const pres7 = builder7.finalize();
 
         expect(pres7.spec.credentials.length).toEqual(1);
-        checkResult(pres7.verify([pk1]));
+        checkResult(pres7.verify([pk]));
 
-        checkPresentationJson(pres7, [pk1]);
+        checkPresentationJson(pres7, [pk]);
       }
     });
 
@@ -796,7 +737,7 @@ describe.each([true, false])(
       expect(pres3.spec.getStatus(0)).toEqual({
         id: 'dock:accumulator:accumId123',
         [TYPE_STR]: VB_ACCUMULATOR_22,
-        revocationCheck: 'membership',
+        revocationCheck: MEM_CHECK_STR,
         accumulated: accumulator3.accumulated,
         extra: { blockNo: 2010334 }
       });
@@ -851,8 +792,10 @@ describe.each([true, false])(
         }
       });
 
-      // Public keys in wrong order
-      expect(pres4.verify([pk2, pk1]).verified).toEqual(false);
+      if (!isKvac()) {
+        // Public keys in wrong order
+        expect(pres4.verify([pk2, pk1]).verified).toEqual(false);
+      }
 
       checkResult(pres4.verify([pk1, pk2]));
 
@@ -918,14 +861,14 @@ describe.each([true, false])(
       expect(pres5.spec.getStatus(0)).toEqual({
         id: 'dock:accumulator:accumId123',
         [TYPE_STR]: VB_ACCUMULATOR_22,
-        revocationCheck: 'membership',
+        revocationCheck: MEM_CHECK_STR,
         accumulated: accumulator3.accumulated,
         extra: { blockNo: 2010334 }
       });
       expect(pres5.spec.getStatus(1)).toEqual({
         id: 'dock:accumulator:accumId124',
         [TYPE_STR]: VB_ACCUMULATOR_22,
-        revocationCheck: 'membership',
+        revocationCheck: MEM_CHECK_STR,
         accumulated: accumulator4.accumulated,
         extra: { blockNo: 2010340 }
       });
@@ -1022,14 +965,14 @@ describe.each([true, false])(
       expect(pres6.spec.getStatus(2)).toEqual({
         id: 'dock:accumulator:accumId123',
         [TYPE_STR]: VB_ACCUMULATOR_22,
-        revocationCheck: 'membership',
+        revocationCheck: MEM_CHECK_STR,
         accumulated: accumulator3.accumulated,
         extra: { blockNo: 2010334 }
       });
       expect(pres6.spec.getStatus(3)).toEqual({
         id: 'dock:accumulator:accumId124',
         [TYPE_STR]: VB_ACCUMULATOR_22,
-        revocationCheck: 'membership',
+        revocationCheck: MEM_CHECK_STR,
         accumulated: accumulator4.accumulated,
         extra: { blockNo: 2010340 }
       });
@@ -2120,5 +2063,96 @@ describe.each([true, false])(
 
       checkPresentationJson(pres2, [pk1], undefined, pp);
     });
+
+    it('from credential with status with keyed verification', () => {
+      const schema = getExampleSchema(5);
+      let credSchema: CredentialSchema;
+      if (withSchemaRef) {
+        credSchema = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, schema);
+      } else {
+        credSchema = new CredentialSchema(schema);
+      }
+      const credBuilder = new CredentialBuilder();
+      credBuilder.schema = credSchema;
+      credBuilder.subject = {
+        fname: 'John',
+        lname: 'Smith',
+        sensitive: {
+          very: {
+            secret: 'my-secret-that-wont-tell-anyone'
+          },
+          email: 'john.smith@acme.com',
+          phone: '801009801',
+          SSN: '123-456789-0'
+        },
+        lessSensitive: {
+          location: {
+            country: 'USA',
+            city: 'New York'
+          },
+          department: {
+            name: 'Random',
+            location: {
+              name: 'Somewhere',
+              geo: {
+                lat: -23.658,
+                long: 2.556
+              }
+            }
+          }
+        },
+        rank: 6
+      };
+      credBuilder.setCredentialStatus('dock:accumulator:accumId123', MEM_CHECK_KV_STR, 'user:A-123');
+      const credential = credBuilder.sign(sk3);
+      verifyCred(credential, pk3, sk3);
+
+      const presBuilder = new PresentationBuilder();
+      expect(presBuilder.addCredential(credential, pk3)).toEqual(0);
+      presBuilder.markAttributesRevealed(
+        0,
+        new Set<string>([
+          'credentialSubject.fname',
+          'credentialSubject.lessSensitive.location.country',
+          'credentialSubject.lessSensitive.department.location.name'
+        ])
+      );
+      presBuilder.addAccumInfoForCredStatus(0, accumulator3Witness, accumulator3.accumulated, undefined, {
+        blockNo: 2010334
+      });
+      const pres = presBuilder.finalize();
+
+      expect(pres.spec.credentials[0].revealedAttributes).toEqual({
+        credentialSubject: {
+          fname: 'John',
+          lessSensitive: { location: { country: 'USA' }, department: { location: { name: 'Somewhere' } } }
+        }
+      });
+      // This check is made by the verifier, i.e. verifier checks that the accumulator id, type, value and timestamp (`blockNo`)
+      // are as expected
+      expect(pres.spec.getStatus(0)).toEqual({
+        id: 'dock:accumulator:accumId123',
+        [TYPE_STR]: VB_ACCUMULATOR_22,
+        revocationCheck: MEM_CHECK_KV_STR,
+        accumulated: accumulator3.accumulated,
+        extra: { blockNo: 2010334 }
+      });
+
+      checkResult(pres.verify([pk3]));
+
+      const presJson = pres.toJSON();
+
+      // The schema of the credential in the presentation matches the JSON-schema
+      // @ts-ignore
+      checkSchemaFromJson(presJson.spec.credentials[0].schema, credential.schema);
+
+      checkPresentationJson(pres, [pk3]);
+
+      // Verifier passes the accumulator public key for verification
+      const acc = new Map();
+      acc.set(0, accumulator3Sk);
+      checkResult(pres.verify([pk3], acc));
+      checkPresentationJson(pres, [pk3], acc);
+    })
   }
 );

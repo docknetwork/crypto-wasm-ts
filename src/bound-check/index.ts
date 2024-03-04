@@ -6,7 +6,7 @@ import {
   decompressSmcParams,
   boundCheckSmcWithKVSetup,
   decompressSmcParamsAndSk
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { LegoProvingKey } from '../legosnark';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { ICompressed, IUncompressed } from '../ICompressed';

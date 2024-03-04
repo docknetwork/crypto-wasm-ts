@@ -1,4 +1,4 @@
-import { pedersenCommitmentG1, generateRandomG1Element } from '@docknetwork/crypto-wasm';
+import { pedersenCommitmentG1, generateRandomG1Element } from 'crypto-wasm-new';
 import { BytearrayWrapper } from './bytearray-wrapper';
 import { base58ToBytearray, bytearrayToBase58 } from './util';
 

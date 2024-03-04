@@ -1,6 +1,6 @@
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { ICompressed, IUncompressed } from '../ICompressed';
-import { legosnarkDecompressPk, legosnarkDecompressVk, legosnarkVkFromPk } from '@docknetwork/crypto-wasm';
+import { legosnarkDecompressPk, legosnarkDecompressVk, legosnarkVkFromPk } from 'crypto-wasm-new';
 
 /**
  * Uncompressed proving key of LegoGroth16

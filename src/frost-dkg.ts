@@ -13,7 +13,7 @@ import {
   frostKeygenG2StartRound1,
   frostKeygenG2ThresholdPubkeyFromPubkeys,
   generateKeyBaseFromGivenG2Point
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { PublicKeyBase } from './types';
 import { BBSPlusSignatureParamsG1 } from './bbs-plus';
 import { BBSSignatureParams } from './bbs';

@@ -11,7 +11,7 @@ import {
   psVerifySignaturePoK,
   PSPoKSigProtocol,
   VerifyResult
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { PSPublicKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 

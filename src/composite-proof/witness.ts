@@ -10,13 +10,14 @@ import {
   generateR1CSCircomWitness,
   generateBoundCheckBppWitness,
   generateBoundCheckSmcWitness,
-  generateBoundCheckSmcWithKVWitness, generatePublicInequalityWitness
-} from '@docknetwork/crypto-wasm';
+  generateBoundCheckSmcWithKVWitness, generatePublicInequalityWitness, generatePoKBDDT16MacWitness
+} from 'crypto-wasm-new';
 import { BBSPlusSignatureG1 } from '../bbs-plus';
-import { MembershipWitness, NonMembershipWitness } from '../accumulator';
+import { VBMembershipWitness, VBNonMembershipWitness } from '../accumulator';
 import { CircomInputs } from '../r1cs';
 import { PSSignature } from '../ps';
 import { BBSSignature } from '../bbs';
+import { BDDT16Mac } from '../bddt16-mac';
 
 /**
  * Private data known only to the prover whose knowledge is being proved in a proof.
@@ -67,12 +68,20 @@ export class Witness {
     return generatePoKBBSPlusSignatureWitness(signature.value, unrevealedMessages, encodeMessages);
   }
 
+  static bddt16Mac(
+    mac: BDDT16Mac,
+    unrevealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBDDT16MacWitness(mac.value, unrevealedMessages, encodeMessages);
+  }
+
   /**
    * Accumulator member and its witness
    * @param member
    * @param accumulatorWitness
    */
-  static accumulatorMembership(member: Uint8Array, accumulatorWitness: MembershipWitness): Uint8Array {
+  static vbAccumulatorMembership(member: Uint8Array, accumulatorWitness: VBMembershipWitness): Uint8Array {
     return generateAccumulatorMembershipWitness(member, accumulatorWitness.value);
   }
 
@@ -81,7 +90,7 @@ export class Witness {
    * @param nonMember
    * @param accumulatorWitness
    */
-  static accumulatorNonMembership(nonMember: Uint8Array, accumulatorWitness: NonMembershipWitness): Uint8Array {
+  static vbAccumulatorNonMembership(nonMember: Uint8Array, accumulatorWitness: VBNonMembershipWitness): Uint8Array {
     return generateAccumulatorNonMembershipWitness(nonMember, accumulatorWitness.value);
   }
 

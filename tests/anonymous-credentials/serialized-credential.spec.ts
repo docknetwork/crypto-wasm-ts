@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { Credential, PublicKey, Scheme } from '../scheme';
+import { Credential, isKvac, isPS, PublicKey, Scheme } from '../scheme';
 import { checkResult } from '../utils';
+import {initializeWasm} from '../../src';
 
 describe(`${Scheme} Credential creation and verification from JSON`, () => {
   const fileNamePrefix = Scheme.toLowerCase();
@@ -25,11 +25,13 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
     }
   }
 
-  it('check version 0.0.2', () => {
+  const skipIfKvac = isKvac() ? it.skip : it;
+
+  skipIfKvac('check version 0.0.2', () => {
     check('0.0.2', '0.0.1');
   })
 
-  it('check version 0.4.0', () => {
+  skipIfKvac('check version 0.4.0', () => {
     check('0.4.0', '0.2.0');
   })
 })

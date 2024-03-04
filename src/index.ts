@@ -1,4 +1,4 @@
-export { initializeWasm, isWasmInitialized, requireWasmInitialized } from '@docknetwork/crypto-wasm';
+export { initializeWasm, isWasmInitialized, requireWasmInitialized } from './init';
 export * from './util';
 export * from './bbs-plus';
 export * from './bbs';

@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { CredentialSchema } from '../../src';
+import { initializeWasm, CredentialSchema } from '../../src';
 
 describe('Credential Schema creation from JSON', () => {
   beforeAll(async () => {

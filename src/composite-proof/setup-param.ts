@@ -20,8 +20,8 @@ import {
   generateSetupParamForFieldElemVec,
   generateSetupParamForBppParams,
   generateSetupParamForSmcParams,
-  generateSetupParamForSmcParamsAndSk
-} from '@docknetwork/crypto-wasm';
+  generateSetupParamForSmcParamsAndSk, generateSetupParamForBDDT16MacParameters
+} from 'crypto-wasm-new';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
   SaverChunkedCommitmentKey,
@@ -44,9 +44,9 @@ import {
 import { AccumulatorParams, AccumulatorPublicKey, MembershipProvingKey, NonMembershipProvingKey } from '../accumulator';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { BBSSignatureParams } from '../bbs';
-import { generateSetupParamForPSSignatureParameters } from '@docknetwork/crypto-wasm';
+import { generateSetupParamForPSSignatureParameters } from 'crypto-wasm-new';
 import { PSPublicKey, PSSignatureParams } from '../ps';
-import { generateSetupParamForPSPublicKey, generateSetupParamForCommitmentKey } from '@docknetwork/crypto-wasm';
+import { generateSetupParamForPSPublicKey, generateSetupParamForCommitmentKey } from 'crypto-wasm-new';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
 import {
   BoundCheckBppParams,
@@ -57,6 +57,7 @@ import {
   BoundCheckSmcWithKVVerifierParamsUncompressed
 } from '../bound-check';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
+import { BDDT16MacParams } from '../bddt16-mac';
 
 /**
  * Represents (public) setup parameters of different protocols. Different setup parameters can be wrapped in this and
@@ -82,6 +83,10 @@ export class SetupParam extends BytearrayWrapper {
 
   static psSignaturePublicKey(publicKey: PSPublicKey): SetupParam {
     return new SetupParam(generateSetupParamForPSPublicKey(publicKey.value));
+  }
+
+  static bddt16MacParams(params: BDDT16MacParams): SetupParam {
+    return new SetupParam(generateSetupParamForBDDT16MacParameters(params.value));
   }
 
   static vbAccumulatorParams(params: AccumulatorParams): SetupParam {

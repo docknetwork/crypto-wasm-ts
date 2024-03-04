@@ -1,5 +1,5 @@
 import { LegoProvingKey } from '../legosnark';
-import { R1CS, r1csSnarkSetup } from '@docknetwork/crypto-wasm';
+import { R1CS, r1csSnarkSetup } from 'crypto-wasm-new';
 import { ParsedR1CSFile, processParsedR1CSFile } from './file';
 
 /**

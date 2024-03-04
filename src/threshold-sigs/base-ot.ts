@@ -5,7 +5,7 @@ import {
   baseOTPhaseProcessResponses,
   baseOTPhaseProcessSenderPubkey,
   startBaseOTPhase
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { PublicKeyBase } from '../types';
 import { BaseOTOutput } from './common';

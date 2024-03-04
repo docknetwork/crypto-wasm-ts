@@ -1,11 +1,12 @@
 import * as fs from 'fs';
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { Credential, Presentation, PresentationBuilder, PublicKey, Scheme } from '../scheme';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
+import { Credential, isKvac, Presentation, PresentationBuilder, PublicKey, Scheme } from '../scheme';
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../utils';
 import { checkCiphertext } from './utils';
 import {
   AccumulatorPublicKey,
   getR1CS,
+  initializeWasm,
   LegoVerifyingKeyUncompressed,
   SaverChunkedCommitmentKey,
   SaverDecryptionKeyUncompressed,
@@ -17,6 +18,8 @@ import {
 describe(`${Scheme} Presentation creation and verification from JSON`, () => {
   const fileNamePrefix = Scheme.toLowerCase();
   const chunkBitSize = 16;
+
+  const skipIfKvac = isKvac() ? it.skip : it;
 
   beforeAll(async () => {
     await initializeWasm();
@@ -153,20 +156,20 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     expect(pres2Json).toEqual(pres2.toJSON());
   }
 
-  it('check version 0.1.0', () => {
+  skipIfKvac('check version 0.1.0', () => {
     check('0.0.2', '0.1.0', 'bound-check-legogroth16-vk');
   });
 
-  it('check version 0.1.0 with circom predicates', async () => {
+  skipIfKvac('check version 0.1.0 with circom predicates', async () => {
     await checkCircom('0.1.0', 'circom-set_membership_5_public-vk');
   });
 
-  it('check version 0.4.0', () => {
+  skipIfKvac('check version 0.4.0', () => {
     // Legosnark keys changed due type of certain values changed from `u64` to `u32`
     check('0.4.0', '0.4.0', 'bound-check-legogroth16-vk2');
   });
 
-  it('check version 0.4.0 with circom predicates', async () => {
+  skipIfKvac('check version 0.4.0 with circom predicates', async () => {
     await checkCircom('0.4.0', 'circom-set_membership_5_public-2-vk');
   });
 });

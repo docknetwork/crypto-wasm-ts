@@ -1,18 +1,18 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
   CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   EncodeFunc,
   Encoder,
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
-  ProofSpecG1,
+  ProofSpec,
   R1CSSnarkSetup,
   SignedMessages,
   Statement,
@@ -21,19 +21,11 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual } from '../index';
+import { buildWitness, PublicKey, Scheme, Signature } from '../../../scheme';
+import { getParamsAndKeys, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
 import { defaultEncoder } from '../data-and-encoder';
-import {
-  PublicKey,
-  KeyPair,
-  SignatureParams,
-  Signature,
-  buildStatement,
-  buildWitness,
-  isPS,
-  Scheme,
-  adaptKeyForParams
-} from '../../../scheme';
+import { checkMapsEqual } from '../index';
+import { adaptedSigParams, proverStmt, signAndVerify, verifierStmt } from '../util';
 
 // Test for a scenario where user wants to prove that certain attribute of his credential is the preimage of a public MiMC hash.
 describe(`${Scheme} Proving that certain attribute of a credential is the preimage of a public MiMC hash`, () => {
@@ -43,7 +35,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
   const pubKeyHash = '30898ada1347d8fc53ffe37656edd4f8c42d4b791730ce05a1f41b72bc30f039'; // This is a big-endian hex string
 
   const label = stringToBytes('Sig params label');
-  let pk: PublicKey;
+  let pk: PublicKey, sk, params;
 
   let signed1: SignedMessages<Signature>;
   let signed2: SignedMessages<Signature>;
@@ -126,16 +118,10 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
 
   it('signers signs attributes', () => {
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(100, label);
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    pk = keypair.publicKey;
+    [params, sk, pk] = getParamsAndKeys(100, label);
 
-    signed1 = Signature.signMessageObject(attributes1, sk, label, encoder);
-    checkResult(signed1.signature.verifyMessageObject(attributes1, pk, label, encoder));
-
-    signed2 = Signature.signMessageObject(attributes2, sk, label, encoder);
-    checkResult(signed2.signature.verifyMessageObject(attributes2, pk, label, encoder));
+    signed1 = signAndVerify(attributes1, encoder, label, sk, pk);
+    signed2 = signAndVerify(attributes2, encoder, label, sk, pk);
   });
 
   it('proof verifies when public key hash matches the expected hash', () => {
@@ -150,8 +136,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
-    const sigPk = adaptKeyForParams(pk, sigParams);
+    const sigParams = adaptedSigParams(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames,
@@ -160,7 +145,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
     expect(revealedMsgsRaw).toEqual({ fname: 'John' });
 
     console.time('Proof generate');
-    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = proverStmt(sigParams, revealedMsgs, pk);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -175,7 +160,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
     metaStmtsProver.addWitnessEquality(witnessEq1);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed.signature, unrevealedMsgs, false);
@@ -188,7 +173,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
     const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
     console.timeEnd('Proof generate');
 
     console.time('Proof verify');
@@ -196,12 +181,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement3 = buildStatement(
-      sigParams,
-      adaptKeyForParams(pk, sigParams),
-      revealedMsgsFromVerifier,
-      false
-    );
+    const statement3 = verifierStmt(sigParams, revealedMsgsFromVerifier, pk);
     const pub = [encodedPubKeyHash];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
 
@@ -216,7 +196,7 @@ describe(`${Scheme} Proving that certain attribute of a credential is the preima
 
     metaStmtsVerifier.addWitnessEquality(witnessEq2);
 
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     expect(proof.verify(proofSpecVerifier).verified).toEqual(doesCheckPass);

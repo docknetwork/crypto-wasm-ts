@@ -1,27 +1,18 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
   CredentialSchema,
+  DefaultSchemaParsingOpts,
+  getR1CS,
+  initializeWasm,
+  META_SCHEMA_STR,
   ParsedR1CSFile,
   R1CSSnarkSetup,
-  getR1CS,
-  META_SCHEMA_STR,
-  DefaultSchemaParsingOpts,
   SUBJECT_STR
 } from '../../src';
-import {
-  SignatureParams,
-  KeyPair,
-  SecretKey,
-  PublicKey,
-  CredentialBuilder,
-  Credential,
-  PresentationBuilder,
-  SignatureLabelBytes,
-  Scheme
-} from '../scheme';
+import { Credential, CredentialBuilder, PresentationBuilder, PublicKey, Scheme, SecretKey } from '../scheme';
 
-import { checkPresentationJson, getExampleSchema } from './utils';
-import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../utils';
+import { checkPresentationJson, getExampleSchema, getKeys, verifyCred } from './utils';
+import { checkResult, getWasmBytes, parseR1CSFile } from '../utils';
 
 describe.each([true, false])(
   `${Scheme} Presentation creation and verification with Circom predicates with withSchemaRef=%s`,
@@ -53,10 +44,7 @@ describe.each([true, false])(
 
     beforeAll(async () => {
       await initializeWasm();
-      const params = SignatureParams.generate(100, SignatureLabelBytes);
-      const keypair = KeyPair.generate(params, stringToBytes('seed1'));
-      sk = keypair.sk;
-      pk = keypair.pk;
+      [sk, pk] = getKeys('seed1');
 
       let credSchema1: CredentialSchema, credSchema2: CredentialSchema;
       const schema1 = getExampleSchema(12);
@@ -377,7 +365,7 @@ describe.each([true, false])(
         };
         expect(builder.subject.amount).toBeLessThan(maxAmount);
         credentials.push(builder.sign(sk));
-        checkResult(credentials[i].verify(pk));
+        verifyCred(credentials[i], pk, sk);
       }
 
       const builder = new PresentationBuilder();
@@ -499,7 +487,7 @@ describe.each([true, false])(
         };
         expect(builder.subject.salary.amount).toBeLessThan(maxSalary);
         credentials.push(builder.sign(sk));
-        checkResult(credentials[i].verify(pk));
+        verifyCred(credentials[i], pk, sk);
       }
 
       const builder = new PresentationBuilder();
@@ -612,7 +600,7 @@ describe.each([true, false])(
           }
         };
         assetCreds.push(builder.sign(sk));
-        checkResult(assetCreds[i].verify(pk));
+        verifyCred(assetCreds[i], pk, sk);
       }
 
       const liabCreds: Credential[] = [];
@@ -631,7 +619,7 @@ describe.each([true, false])(
           }
         };
         liabCreds.push(builder.sign(sk));
-        checkResult(liabCreds[i].verify(pk));
+        verifyCred(liabCreds[i], pk, sk);
       }
 
       const builder = new PresentationBuilder();

@@ -12,7 +12,7 @@ import {
   bbsPlusCommitMsgsInG1,
   generateRandomFieldElement,
   BbsPlusSigParams
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
 import { ISignatureParams, MessageStructure } from '../types';
 /**

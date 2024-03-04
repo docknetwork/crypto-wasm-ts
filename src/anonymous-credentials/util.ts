@@ -1,10 +1,11 @@
-import { AccumulatorPublicKey } from '../accumulator';
+import { AccumulatorPublicKey, AccumulatorSecretKey } from '../accumulator';
 import {
+  AccumulatorVerificationParam,
   AttributeEquality,
   AttributeRef,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
-  FlattenedSchema,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES, BDDT16_MAC_PARAMS_LABEL_BYTES, CredentialVerificationParam,
+  FlattenedSchema, MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
   PredicateParamType,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
@@ -29,6 +30,7 @@ import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '..
 import { SetupParamsTracker } from './setup-params-tracker';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
+import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
 
 export function isValueDate(value: string): boolean {
   // YYYY-MM-DD
@@ -165,6 +167,8 @@ export function paramsClassBySignature(signature: Signature): SignatureParamsCla
     return BBSPlusSignatureParamsG1;
   } else if (signature instanceof PSSignature) {
     return PSSignatureParams;
+  } else if (signature instanceof BDDT16Mac) {
+    return BDDT16MacParams;
   } else {
     return null;
   }
@@ -182,39 +186,111 @@ export function paramsClassByPublicKey(pk: PublicKey): SignatureParamsClass | nu
   }
 }
 
-export function buildSignatureStatementFromParamsRef(
+export function buildSignatureVerifierStatementFromParamsRef(
   setupParamsTrk: SetupParamsTracker,
   sigParams: SignatureParams,
-  pk: PublicKey,
   messageCount: number,
-  revealedMessages: Map<number, Uint8Array>
+  revealedMessages: Map<number, Uint8Array>,
+  credVerParam?: CredentialVerificationParam,
+  useNewVersion = true
 ): Uint8Array {
-  if (paramsClassByPublicKey(pk) !== sigParams.constructor) {
-    throw new Error(`Public key and params have different schemes: ${pk}, ${sigParams}`);
-  }
-  let setupParams: SetupParam,
-    setupPK: SetupParam,
-    buildStatement: (
+  let setupSigP: SetupParam,
+    setupPK: SetupParam | undefined,
+    buildStatement: ((
       sigParamsRef: number,
       publicKeyRef: number,
       revealedMessages: Map<number, Uint8Array>,
       encodeMessages: boolean
-    ) => Uint8Array;
+    ) => Uint8Array) | ((
+      sigParamsRef: number,
+      revealedMessages: Map<number, Uint8Array>,
+      encodeMessages: boolean
+    ) => Uint8Array);
+
+  function getPk(): PublicKey {
+    if (credVerParam === undefined) {
+      throw new Error('Public key needs to be provided for BBS signatures')
+    }
+    const pk = credVerParam as PublicKey;
+    if (paramsClassByPublicKey(pk) !== sigParams.constructor) {
+      throw new Error(`Public key and params have different schemes: ${credVerParam}, ${sigParams}`);
+    }
+    return pk;
+  }
+
+  switch (sigParams.constructor) {
+    case BBSSignatureParams:
+      setupSigP = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount) as BBSSignatureParams);
+      setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(getPk());
+      buildStatement = useNewVersion ? Statement.bbsSignatureVerifierFromSetupParamRefs : Statement.bbsSignatureFromSetupParamRefsOld;
+      return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
+    case BBSPlusSignatureParamsG1:
+      setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(getPk());
+      setupSigP = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount) as BBSPlusSignatureParamsG1);
+      buildStatement = useNewVersion ? Statement.bbsPlusSignatureVerifierFromSetupParamRefs : Statement.bbsPlusSignatureFromSetupParamRefsOld;
+      return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
+    case PSSignatureParams:
+      let psPK = getPk() as PSPublicKey;
+      const supported = psPK.supportedMessageCount();
+      if (messageCount !== supported) {
+        if (messageCount < supported) {
+          psPK = psPK.adaptForLess(messageCount);
+        } else {
+          throw new Error(`Unsupported message count - supported up to ${supported}, received = ${messageCount}`);
+        }
+      }
+      setupPK = SetupParam.psSignaturePublicKey(psPK);
+      setupSigP = SetupParam.psSignatureParams(sigParams.adapt(messageCount) as PSSignatureParams);
+      buildStatement = Statement.psSignatureFromSetupParamRefs;
+      return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
+    case BDDT16MacParams:
+      setupSigP = SetupParam.bddt16MacParams(sigParams.adapt(messageCount) as BDDT16MacParams);
+      if (credVerParam instanceof BDDT16MacSecretKey) {
+        return Statement.bddt16MacFullVerifierFromSetupParamRefs(setupParamsTrk.add(setupSigP), credVerParam, revealedMessages, false);
+      } else {
+        return Statement.bddt16MacFromSetupParamRefs(setupParamsTrk.add(setupSigP), revealedMessages, false);
+      }
+    default:
+      throw new Error(`Signature params are invalid ${sigParams}`);
+  }
+}
+
+export function buildSignatureProverStatementFromParamsRef(
+  setupParamsTrk: SetupParamsTracker,
+  sigParams: SignatureParams,
+  messageCount: number,
+  revealedMessages: Map<number, Uint8Array>,
+  pk?: PublicKey
+): Uint8Array {
+  if (pk !== undefined && paramsClassByPublicKey(pk) !== sigParams.constructor) {
+    throw new Error(`Public key and params have different schemes: ${pk}, ${sigParams}`);
+  }
+  let setupParams: SetupParam,
+    setupPK: SetupParam | undefined,
+    buildStatement: ((
+      sigParamsRef: number,
+      publicKeyRef: number,
+      revealedMessages: Map<number, Uint8Array>,
+      encodeMessages: boolean
+    ) => Uint8Array) | ((
+      sigParamsRef: number,
+      revealedMessages: Map<number, Uint8Array>,
+      encodeMessages: boolean
+    ) => Uint8Array);
 
   switch (sigParams.constructor) {
     case BBSSignatureParams:
       setupParams = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount) as BBSSignatureParams);
-      setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
-      buildStatement = Statement.bbsSignatureFromSetupParamRefs;
-
+      buildStatement = Statement.bbsSignatureProverFromSetupParamRefs;
       break;
     case BBSPlusSignatureParamsG1:
-      setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(pk);
       setupParams = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount) as BBSPlusSignatureParamsG1);
-      buildStatement = Statement.bbsPlusSignatureFromSetupParamRefs;
-
+      buildStatement = Statement.bbsPlusSignatureProverFromSetupParamRefs;
       break;
     case PSSignatureParams:
+      if (pk === undefined) {
+        throw new Error('Public key should be provided for PS signature')
+      }
       let psPK = pk as PSPublicKey;
       const supported = psPK.supportedMessageCount();
       if (messageCount !== supported) {
@@ -224,17 +300,20 @@ export function buildSignatureStatementFromParamsRef(
           throw new Error(`Unsupported message count - supported up to ${supported}, received = ${messageCount}`);
         }
       }
-
       setupPK = SetupParam.psSignaturePublicKey(psPK);
       setupParams = SetupParam.psSignatureParams(sigParams.adapt(messageCount) as PSSignatureParams);
       buildStatement = Statement.psSignatureFromSetupParamRefs;
-
+      break;
+    case BDDT16MacParams:
+      setupParams = SetupParam.bddt16MacParams(sigParams.adapt(messageCount) as BDDT16MacParams);
+      buildStatement = Statement.bddt16MacFromSetupParamRefs;
       break;
     default:
-      throw new Error(`Signature params are invalid ${sigParams}`);
+      throw new Error(`Signature params are invalid ${sigParams.constructor.name}`);
   }
 
-  return buildStatement(setupParamsTrk.add(setupParams), setupParamsTrk.add(setupPK), revealedMessages, false);
+  // @ts-ignore
+  return setupPK !== undefined ? buildStatement(setupParamsTrk.add(setupParams), setupParamsTrk.add(setupPK), revealedMessages, false) : buildStatement(setupParamsTrk.add(setupParams), revealedMessages, false);
 }
 
 /**
@@ -250,6 +329,8 @@ export function getDefaultLabelBytesForSignatureParams(signatureParamsClass: Sig
       return BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES;
     case PSSignatureParams:
       return PS_SIGNATURE_PARAMS_LABEL_BYTES;
+    case BDDT16MacParams:
+      return BDDT16_MAC_PARAMS_LABEL_BYTES;
     default:
       return null;
   }
@@ -262,8 +343,11 @@ export function buildWitness(signature: Signature, unrevealedMessages: Map<numbe
     return Witness.bbsPlusSignature(signature, unrevealedMessages, false);
   } else if (signature instanceof PSSignature) {
     return Witness.psSignature(signature, unrevealedMessages);
+  } else if (signature instanceof BDDT16Mac) {
+    return Witness.bddt16Mac(signature, unrevealedMessages, false);
   } else {
-    throw new Error(`Signature is invalid ${signature}`);
+    // @ts-ignore
+    throw new Error(`Signature is invalid ${signature.constructor.name}`);
   }
 }
 
@@ -307,36 +391,58 @@ export const getSignatureParamsForMsgCount = (
 };
 
 export function accumulatorStatement(
+  credIndex: number,
   checkType: string,
-  pk: AccumulatorPublicKey,
   accumulated: Uint8Array,
-  setupParamsTrk: SetupParamsTracker
+  setupParamsTrk: SetupParamsTracker,
+  vk?: AccumulatorVerificationParam,
 ): Uint8Array {
   let statement: Uint8Array;
   if (!setupParamsTrk.hasAccumulatorParams()) {
     setupParamsTrk.addAccumulatorParams();
   }
-  if (checkType === MEM_CHECK_STR) {
-    if (!setupParamsTrk.hasAccumulatorMemProvingKey()) {
-      setupParamsTrk.addAccumulatorMemProvingKey();
+  if (checkType === MEM_CHECK_KV_STR) {
+    if (vk === undefined) {
+      statement = Statement.vbAccumulatorMembershipKV(
+        accumulated
+      );
+    } else {
+      if (vk instanceof AccumulatorSecretKey) {
+        statement = Statement.vbAccumulatorMembershipKVFullVerifier(
+          vk,
+          accumulated
+        );
+      } else {
+        throw new Error(`Unexpected accumulator verification param ${vk.constructor.name} passed for credential index ${credIndex}`)
+      }
     }
-    statement = Statement.accumulatorMembershipFromSetupParamRefs(
-      setupParamsTrk.accumParamsIdx,
-      setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(pk)),
-      setupParamsTrk.memPrkIdx,
-      accumulated
-    );
   } else {
-    if (!setupParamsTrk.hasAccumulatorNonMemProvingKey()) {
-      setupParamsTrk.addAccumulatorNonMemProvingKey();
+    if (!(vk instanceof AccumulatorPublicKey)) {
+      throw new Error(`Accumulator public key wasn't provided for credential index ${credIndex}`);
     }
-    statement = Statement.accumulatorNonMembershipFromSetupParamRefs(
-      setupParamsTrk.accumParamsIdx,
-      setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(pk)),
-      setupParamsTrk.nonMemPrkIdx,
-      accumulated
-    );
+    if (checkType === MEM_CHECK_STR) {
+      if (!setupParamsTrk.hasAccumulatorMemProvingKey()) {
+        setupParamsTrk.addAccumulatorMemProvingKey();
+      }
+      statement = Statement.vbAccumulatorMembershipFromSetupParamRefs(
+        setupParamsTrk.accumParamsIdx,
+        setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(vk)),
+        setupParamsTrk.memPrkIdx,
+        accumulated
+      );
+    } else {
+      if (!setupParamsTrk.hasAccumulatorNonMemProvingKey()) {
+        setupParamsTrk.addAccumulatorNonMemProvingKey();
+      }
+      statement = Statement.vbAccumulatorNonMembershipFromSetupParamRefs(
+        setupParamsTrk.accumParamsIdx,
+        setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(vk)),
+        setupParamsTrk.nonMemPrkIdx,
+        accumulated
+      );
+    }
   }
+
   return statement;
 }
 

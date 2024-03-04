@@ -12,7 +12,7 @@ import {
   thresholdBbsPhase2ReceiveMessage2,
   thresholdBbsPhase2Start,
   thresholdBbsStartPhase1
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { BBSSecretKey, BBSSignature, BBSSignatureParams } from '../bbs';
 
 export class ThresholdBbsSigner extends ThresholdSigner {

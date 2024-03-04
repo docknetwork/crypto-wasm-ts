@@ -1,14 +1,22 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getRevealedUnrevealed, getWasmBytes, parseR1CSFile, stringToBytes } from '../../utils';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
+  checkResult,
+  getParamsAndKeys,
+  getRevealedUnrevealed,
+  getWasmBytes,
+  parseR1CSFile, proverStmt, signAndVerify,
+  stringToBytes, verifierStmt
+} from '../../utils';
+import {
+  initializeWasm,
   CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatement,
   MetaStatements,
   ParsedR1CSFile,
-  QuasiProofSpecG1,
+  QuasiProofSpec,
   R1CSSnarkSetup,
   Statement,
   Statements,
@@ -23,7 +31,7 @@ import {
   Signature,
   SignatureParams,
   buildWitness,
-  buildStatement,
+  buildVerifierStatement,
   Scheme
 } from '../../scheme';
 
@@ -67,15 +75,8 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: less than checks`, () =
   });
 
   it('do signers setup', () => {
-    sigParams1 = SignatureParams.generate(messageCount);
-    const sigKeypair1 = KeyPair.generate(sigParams1);
-    sigSk1 = sigKeypair1.secretKey;
-    sigPk1 = sigKeypair1.publicKey;
-
-    sigParams2 = SignatureParams.generate(messageCount);
-    const sigKeypair2 = KeyPair.generate(sigParams2);
-    sigSk2 = sigKeypair2.secretKey;
-    sigPk2 = sigKeypair2.publicKey;
+    [sigParams1, sigSk1, sigPk1] = getParamsAndKeys(messageCount);
+    [sigParams2, sigSk2, sigPk2] = getParamsAndKeys(messageCount);
 
     messages1 = [];
     messages2 = [];
@@ -84,10 +85,11 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: less than checks`, () =
       messages2.push(generateFieldElementFromNumber(2000 + i));
     }
 
-    sig1 = Signature.generate(messages1, sigSk1, sigParams1, false);
-    sig2 = Signature.generate(messages2, sigSk2, sigParams2, false);
-    expect(sig1.verify(messages1, sigPk1, sigParams1, false).verified).toEqual(true);
-    expect(sig2.verify(messages2, sigPk2, sigParams2, false).verified).toEqual(true);
+    let result1, result2;
+    [sig1, result1] = signAndVerify(messages1, sigParams1, sigSk1, sigPk1);
+    checkResult(result1);
+    [sig2, result2] = signAndVerify(messages2, sigParams2, sigSk2, sigPk2);
+    checkResult(result2);
   });
 
   function proveAndVerifyLessThan(
@@ -99,7 +101,7 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: less than checks`, () =
     const publicMax = generateFieldElementFromNumber(5000);
 
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, new Set<number>());
-    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = proverStmt(sigParams, revealedMsgs, sigPk);
     const statement2 = Statement.r1csCircomProver(ltR1cs, ltWasm, ltProvingKey);
     const statement3 = Statement.r1csCircomProver(ltPubR1cs, ltPubWasm, ltPubProvingKey);
 
@@ -140,19 +142,20 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: less than checks`, () =
     witnesses.add(witness2);
     witnesses.add(witness3);
 
-    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
+    const proverProofSpec = new QuasiProofSpec(proverStatements, metaStatements);
 
-    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
+    const proof = CompositeProof.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 
     const statement4 = Statement.r1csCircomVerifier([generateFieldElementFromNumber(1)], ltVerifyingKey);
     const statement5 = Statement.r1csCircomVerifier([generateFieldElementFromNumber(1), publicMax], ltPubVerifyingKey);
+    const statement6 = verifierStmt(sigParams, revealedMsgs, sigPk);
 
     const verifierStatements = new Statements();
-    verifierStatements.add(statement1);
+    verifierStatements.add(statement6);
     verifierStatements.add(statement4);
     verifierStatements.add(statement5);
 
-    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
+    const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStatements);
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec));
   }
 
@@ -168,8 +171,8 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: less than checks`, () =
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
     const [revealedMsgs2, unrevealedMsgs2] = getRevealedUnrevealed(messages2, new Set<number>());
 
-    const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
-    const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
+    const statement1 = proverStmt(sigParams1, revealedMsgs1, sigPk1);
+    const statement2 = proverStmt(sigParams2, revealedMsgs2, sigPk2);
 
     const statement3 = Statement.r1csCircomProver(ltR1cs, ltWasm, ltProvingKey);
 
@@ -199,18 +202,20 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: less than checks`, () =
     const witnesses = new Witnesses([].concat(witness1).concat(witness2));
     witnesses.add(witness3);
 
-    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
+    const proverProofSpec = new QuasiProofSpec(proverStatements, metaStatements);
 
-    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
+    const proof = CompositeProof.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 
     const statement4 = Statement.r1csCircomVerifier([generateFieldElementFromNumber(1)], ltVerifyingKey);
+    const statement5 = verifierStmt(sigParams1, revealedMsgs1, sigPk1);
+    const statement6 = verifierStmt(sigParams2, revealedMsgs2, sigPk2);
 
     const verifierStatements = new Statements();
-    verifierStatements.add(statement1);
-    verifierStatements.add(statement2);
+    verifierStatements.add(statement5);
+    verifierStatements.add(statement6);
     verifierStatements.add(statement4);
 
-    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
+    const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStatements);
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec));
   });
 });

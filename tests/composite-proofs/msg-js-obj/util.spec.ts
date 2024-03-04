@@ -1,7 +1,6 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { EncodeFunc, Encoder, flattenObjectToKeyValuesList } from '../../../src';
+import { initializeWasm, EncodeFunc, Encoder, flattenObjectToKeyValuesList } from '../../../src';
 import { stringToBytes } from '../../utils';
-import { Signature, SignatureParams, Scheme } from '../../scheme';
+import { Signature, SignatureParams, Scheme, isKvac } from '../../scheme';
 
 describe(`${Scheme} Utils`, () => {
   beforeAll(async () => {
@@ -32,17 +31,18 @@ describe(`${Scheme} Utils`, () => {
   it('Signature params getter', () => {
     const params1 = SignatureParams.generate(2);
 
-    expect(() => SignatureParams.getSigParamsOfRequiredSize(1, params1)).toThrow();
-    expect(() => SignatureParams.getSigParamsOfRequiredSize(3, params1)).toThrow();
-    expect(() => SignatureParams.getSigParamsOfRequiredSize(2, params1)).not.toThrow();
-    expect(() => SignatureParams.getSigParamsOfRequiredSize(1, stringToBytes('some label'))).not.toThrow();
-    expect(() => SignatureParams.getSigParamsOfRequiredSize(2, stringToBytes('some label'))).not.toThrow();
-    expect(() => SignatureParams.getSigParamsOfRequiredSize(3, stringToBytes('some label'))).not.toThrow();
+    const f = isKvac() ? SignatureParams.getMacParamsOfRequiredSize : SignatureParams.getSigParamsOfRequiredSize;
+    expect(() => f(1, params1)).toThrow();
+    expect(() => f(3, params1)).toThrow();
+    expect(() => f(2, params1)).not.toThrow();
+    expect(() => f(1, stringToBytes('some label'))).not.toThrow();
+    expect(() => f(2, stringToBytes('some label'))).not.toThrow();
+    expect(() => f(3, stringToBytes('some label'))).not.toThrow();
 
     const params2 = SignatureParams.generate(2, stringToBytes('label2'));
-    expect(() => SignatureParams.getSigParamsOfRequiredSize(1, params2)).not.toThrow();
-    expect(() => SignatureParams.getSigParamsOfRequiredSize(2, params2)).not.toThrow();
-    expect(() => SignatureParams.getSigParamsOfRequiredSize(3, params2)).not.toThrow();
+    expect(() => f(1, params2)).not.toThrow();
+    expect(() => f(2, params2)).not.toThrow();
+    expect(() => f(3, params2)).not.toThrow();
   });
 
   it('encoder works', () => {

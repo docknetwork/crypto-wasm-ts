@@ -1,4 +1,4 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
+import { generateFieldElementFromNumber, initializeWasm } from 'crypto-wasm-new';
 import {
   AccumulatorPublicKey,
   AccumulatorSecretKey,
@@ -15,7 +15,7 @@ import {
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MEM_CHECK_STR,
-  MembershipWitness,
+  VBMembershipWitness,
   PositiveAccumulator,
   PredicateParamType,
   PresentationBuilder,
@@ -44,21 +44,26 @@ import {
   BoundCheckSmcWithKVSetup,
   DefaultSchemaParsingOpts,
   META_SCHEMA_STR,
-  InequalityProtocol
+  InequalityProtocol, CredentialVerificationParam, BDDT16BlindedCredentialRequestBuilder, BDDT16BlindedCredential
 } from '../../src';
 import {
   SignatureParams,
-  KeyPair,
   SecretKey,
   PublicKey,
   Credential,
-  SignatureLabelBytes,
   Scheme,
   isBBS,
-  isPS
+  isPS, isKvac
 } from '../scheme';
 
-import { checkCiphertext, getDecodedBoundedPseudonym, getExampleSchema, prefillAccumulator } from './utils';
+import {
+  checkCiphertext,
+  getDecodedBoundedPseudonym,
+  getExampleSchema,
+  getKeys,
+  prefillAccumulator,
+  verifyCred
+} from './utils';
 import {
   checkResult,
   getBoundCheckSnarkKeys,
@@ -69,7 +74,7 @@ import {
 } from '../utils';
 import { flatten, unflatten } from 'flat';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
-import { BBSBlindedCredentialRequest, BBSPlusBlindedCredentialRequest, BlindedCredentialRequest } from '../../src';
+import { BDDT16BlindedCredentialRequest, BBSBlindedCredentialRequest, BBSPlusBlindedCredentialRequest, BlindedCredentialRequest } from '../../src';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -89,7 +94,7 @@ function newReqBuilder(
   schema: CredentialSchema,
   subjectToBlind: object
 ): BlindedCredentialRequestBuilder<SignatureParams> {
-  const reqBuilder = isBBS() ? new BBSBlindedCredentialRequestBuilder() : new BBSPlusBlindedCredentialRequestBuilder();
+  const reqBuilder = isKvac() ? new BDDT16BlindedCredentialRequestBuilder() : isBBS() ? new BBSBlindedCredentialRequestBuilder() : new BBSPlusBlindedCredentialRequestBuilder();
   reqBuilder.schema = schema;
   reqBuilder.subjectToBlind = subjectToBlind;
   return reqBuilder;
@@ -105,14 +110,14 @@ function checkBlindedSubject(req, blindedSubject) {
 
 function checkReqJson(
   req: BlindedCredentialRequest,
-  pks: PublicKey[],
+  pks: Map<number, CredentialVerificationParam | undefined> | CredentialVerificationParam[],
   accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
   predicateParams?: Map<string, PredicateParamType>,
   circomOutputs?: Map<number, Uint8Array[][]>,
   blindedAttributesCircomOutputs?: Uint8Array[][]
 ) {
   const reqJson = req.toJSON();
-  const recreatedReq = isBBS()
+  const recreatedReq = isKvac() ? BDDT16BlindedCredentialRequest.fromJSON(reqJson) : isBBS()
     ? BBSBlindedCredentialRequest.fromJSON(reqJson)
     : BBSPlusBlindedCredentialRequest.fromJSON(reqJson);
   checkResult(
@@ -121,15 +126,15 @@ function checkReqJson(
   expect(recreatedReq.toJSON()).toEqual(reqJson);
 }
 
-function checkBlindedCredJson(blindedCred: BlindedCredential<any>, pk: PublicKey, blindedSubject: object, blinding?) {
+function checkBlindedCredJson(blindedCred: BlindedCredential<any>, sk: SecretKey, pk: PublicKey, blindedSubject: object, blinding?) {
   const credJson = blindedCred.toJSON();
-  const recreatedCred = isBBS() ? BBSBlindedCredential.fromJSON(credJson) : BBSPlusBlindedCredential.fromJSON(credJson);
+  const recreatedCred = isKvac() ? BDDT16BlindedCredential.fromJSON(credJson) : isBBS() ? BBSBlindedCredential.fromJSON(credJson) : BBSPlusBlindedCredential.fromJSON(credJson);
   // @ts-ignore
   const cred = isBBS()
     ? // @ts-ignore
       recreatedCred.toCredential(blindedSubject)
     : recreatedCred.toCredential(blindedSubject, blinding);
-  checkResult(cred.verify(pk));
+  verifyCred(cred, pk, sk);
   expect(recreatedCred.toJSON()).toEqual(credJson);
 }
 
@@ -154,7 +159,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
   let accumulator1Sk: AccumulatorSecretKey;
   let accumulator1Members: Uint8Array[];
   let accumulator1State: InMemoryState;
-  let accumulator1Witness: MembershipWitness;
+  let accumulator1Witness: VBMembershipWitness;
 
   let boundCheckProvingKey: LegoProvingKeyUncompressed;
   let boundCheckVerifyingKey: LegoVerifyingKeyUncompressed;
@@ -237,11 +242,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
   beforeAll(async () => {
     await initializeWasm();
-    const params = SignatureParams.generate(100, SignatureLabelBytes);
-
-    const keypair1 = KeyPair.generate(params, stringToBytes('seed1'));
-    sk1 = keypair1.sk;
-    pk1 = keypair1.pk;
+    [sk1, pk1] = getKeys('seed1');
 
     if (withSchemaRef) {
       schema1 = new CredentialSchema(
@@ -273,9 +274,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       300
     );
 
-    const keypair2 = KeyPair.generate(params, stringToBytes('seed2'));
-    sk2 = keypair2.sk;
-    pk2 = keypair2.pk;
+    [sk2, pk2] = getKeys('seed2');
 
     if (withSchemaRef) {
       schema2 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(9));
@@ -283,9 +282,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       schema2 = new CredentialSchema(getExampleSchema(9));
     }
 
-    const keypair3 = KeyPair.generate(params);
-    sk3 = keypair3.sk;
-    pk3 = keypair3.pk;
+    [sk3, pk3] = getKeys();
 
     if (withSchemaRef) {
       schema3 = new CredentialSchema(nonEmbeddedSchema, DefaultSchemaParsingOpts, true, undefined, getExampleSchema(7));
@@ -368,7 +365,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     credential1 = isBBS()
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
-    checkResult(credential1.verify(pk1));
+    verifyCred(credential1, pk1, sk1);
     const verifAccumulator = PositiveAccumulator.fromAccumulated(accumulator1.accumulated);
     expect(
       verifAccumulator.verifyMembershipWitness(
@@ -379,7 +376,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       )
     ).toEqual(true);
 
-    checkBlindedCredJson(blindedCred, pk1, blindedSubject, blinding);
+    checkBlindedCredJson(blindedCred, sk1, pk1, blindedSubject, blinding);
   });
 
   it('should be able to request a blinded-credential while presenting another credential and proving some attributes equal', () => {
@@ -443,9 +440,9 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     credential2 = isBBS()
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
-    checkResult(credential2.verify(pk2));
+    verifyCred(credential2, pk2, sk2);
 
-    checkBlindedCredJson(blindedCred, pk2, blindedSubject, blinding);
+    checkBlindedCredJson(blindedCred, sk2, pk2, blindedSubject, blinding);
   });
 
   it('should be able to request a blinded-credential while presenting 2 credentials and proving some attributes equal and predicates on some credential attributes', () => {
@@ -754,9 +751,9 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     credential3 = isBBS()
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
-    checkResult(credential3.verify(pk3));
+    verifyCred(credential3, pk3, sk3);
 
-    checkBlindedCredJson(blindedCred, pk3, blindedSubject, blinding);
+    checkBlindedCredJson(blindedCred, sk3, pk3, blindedSubject, blinding);
   });
 
   it('should be able to request a blinded-credential and prove bounds on and verifiably encrypt some of the blinded attributes', () => {
@@ -925,9 +922,9 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     const credential = isBBS()
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
-    checkResult(credential.verify(pk3));
+    verifyCred(credential, pk3, sk3);
 
-    checkBlindedCredJson(blindedCred, pk3, blindedSubject, blinding);
+    checkBlindedCredJson(blindedCred, sk3, pk3, blindedSubject, blinding);
   });
 
   it('should be able to request a blinded-credential and prove Circom predicates on some of the blinded attributes', async () => {
@@ -1064,7 +1061,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     const credential = isBBS()
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
-    checkResult(credential.verify(pk3));
+    verifyCred(credential, pk3, sk3);
   });
 
   it('should be able to present pseudonyms bounded to credential and blinded attributes', () => {
@@ -1236,8 +1233,8 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     credential3 = isBBS()
       ? blindedCred.toCredential(blindedSubject)
       : blindedCred.toCredential(blindedSubject, blinding);
-    checkResult(credential3.verify(pk3));
+    verifyCred(credential3, pk3, sk3);
 
-    checkBlindedCredJson(blindedCred, pk3, blindedSubject, blinding);
+    checkBlindedCredJson(blindedCred, sk3, pk3, blindedSubject, blinding);
   });
 });

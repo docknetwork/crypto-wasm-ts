@@ -8,12 +8,12 @@ import {
   VerifyResult,
   psMessageCommitment,
   PSCommitmentOrMessage
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { PSPublicKey, PSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { encodeRevealedMessageObject } from '../sign-verify-js-objs';
 import { Encoder, MessageEncoder } from '../encoder';
-import { psAggregateSignatures } from '@docknetwork/crypto-wasm';
+import { psAggregateSignatures } from 'crypto-wasm-new';
 import { MessageStructure, SignedMessages } from '../types';
 
 /**

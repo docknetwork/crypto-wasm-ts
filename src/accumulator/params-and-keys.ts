@@ -9,7 +9,7 @@ import {
   generateNonMembershipProvingKey,
   isAccumulatorParamsValid,
   isAccumulatorPublicKeyValid
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 
 export class AccumulatorParams extends BytearrayWrapper {
   /**

@@ -1,8 +1,7 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
   CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   createWitnessEqualityMetaStatement,
   EncodeFunc,
   Encoder,
@@ -10,11 +9,12 @@ import {
   flattenObjectToKeyValuesList,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
-  ProofSpecG1,
+  ProofSpec,
   R1CSSnarkSetup,
   SetupParam,
   SignedMessages,
@@ -24,19 +24,18 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual } from '../index';
-import { defaultEncoder } from '../data-and-encoder';
 import {
-  PublicKey,
-  KeyPair,
-  SignatureParams,
-  Signature,
   buildPublicKeySetupParam,
-  buildStatementFromSetupParamsRef,
   buildSignatureParamsSetupParam,
-  buildWitness,
-  Scheme
+  buildWitness, isKvac,
+  PublicKey,
+  Scheme,
+  Signature
 } from '../../../scheme';
+import { checkResult, getParamsAndKeys, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { defaultEncoder } from '../data-and-encoder';
+import { checkMapsEqual } from '../index';
+import { adaptedSigParams, proverStmtFromSetupParamsRef, signAndVerify, verifierStmtFromSetupParamsRef } from '../util';
 
 // Test for a scenario where a user wants to prove that his yearly income is less than 25000 where his income comprises
 // of 12 payslip credentials, 1 for each month's.
@@ -44,7 +43,7 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
   let encoder: Encoder;
 
   const label = stringToBytes('Sig params label');
-  let sigPk: PublicKey;
+  let pk: PublicKey, sk, params;
 
   let r1cs: ParsedR1CSFile;
   let wasm: Uint8Array;
@@ -107,10 +106,7 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
   it('signers signs attributes', () => {
     const numAttrs = flattenObjectToKeyValuesList(payslipAttributesStruct)[0].length;
     // Issuing multiple credentials with the same number of attributes so create sig. params only once for faster execution
-    let params = SignatureParams.generate(numAttrs, label);
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    sigPk = keypair.publicKey;
+    [params, sk, pk] = getParamsAndKeys(numAttrs, label);
 
     for (let i = 0; i < numPayslips; i++) {
       payslipAttributes.push({
@@ -129,10 +125,7 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
           amount: Math.floor(Math.random() * 2000) // salary will be under 2000
         }
       });
-      signed.push(Signature.signMessageObject(payslipAttributes[i], sk, params, encoder));
-      checkResult(
-        signed[i].signature.verifyMessageObject(payslipAttributes[i], sigPk, params, encoder)
-      );
+      signed.push(signAndVerify(payslipAttributes[i], encoder, label, sk, pk));
     }
   });
 
@@ -155,7 +148,7 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
     revealedNames.add('salary.year');
     revealedNames.add('salary.month');
 
-    const sigParams = SignatureParams.getSigParamsForMsgStructure(payslipAttributesStruct, label);
+    const sigParams = adaptedSigParams(payslipAttributesStruct, label);
 
     const revealedMsgs: Map<number, Uint8Array>[] = [];
     const unrevealedMsgs: Map<number, Uint8Array>[] = [];
@@ -171,19 +164,21 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
 
     const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(buildSignatureParamsSetupParam(sigParams));
-    proverSetupParams.push(buildPublicKeySetupParam(sigPk));
     proverSetupParams.push(SetupParam.r1cs(r1cs));
     proverSetupParams.push(SetupParam.bytes(wasm));
     proverSetupParams.push(SetupParam.legosnarkProvingKeyUncompressed(provingKey));
+    if (!isKvac()) {
+      proverSetupParams.push(buildPublicKeySetupParam(pk));
+    }
 
     const statementsProver = new Statements();
 
     const sIdxs: number[] = [];
     for (let i = 0; i < numPayslips; i++) {
-      sIdxs.push(statementsProver.add(buildStatementFromSetupParamsRef(0, 1, revealedMsgs[i], false)));
+      sIdxs.push(statementsProver.add(proverStmtFromSetupParamsRef(0, revealedMsgs[i], 4, false)));
     }
 
-    sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(2, 3, 4)));
+    sIdxs.push(statementsProver.add(Statement.r1csCircomProverFromSetupParamRefs(1, 2, 3)));
 
     const metaStmtsProver = new MetaStatements();
 
@@ -217,7 +212,7 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
       metaStmtsProver.addWitnessEquality(witnessEq);
     }
 
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver, proverSetupParams);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver, proverSetupParams);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witnesses = new Witnesses();
@@ -234,7 +229,7 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
     inputs.setPublicInput('max', salaryLimitEncoded);
     witnesses.add(Witness.r1csCircomWitness(inputs));
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
     console.timeEnd('Proof generate');
 
     console.time('Proof verify');
@@ -247,7 +242,6 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
 
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(buildSignatureParamsSetupParam(sigParams));
-    verifierSetupParams.push(buildPublicKeySetupParam(sigPk));
 
     // To prove not less than, i.e. <= or >, replace `generateFieldElementFromNumber(1)` with `generateFieldElementFromNumber(0)`
     // as 1 indicates success of the check, 0 indicates failure of the check
@@ -255,14 +249,18 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
 
     verifierSetupParams.push(SetupParam.legosnarkVerifyingKeyUncompressed(verifyingKey));
 
+    if (!isKvac()) {
+      verifierSetupParams.push(buildPublicKeySetupParam(pk));
+    }
+
     const statementsVerifier = new Statements();
 
     const sIdxVs: number[] = [];
     for (let i = 0; i < numPayslips; i++) {
-      sIdxVs.push(statementsVerifier.add(buildStatementFromSetupParamsRef(0, 1, revealedMsgsFromVerifier[i], false)));
+      sIdxVs.push(statementsVerifier.add(verifierStmtFromSetupParamsRef(0, revealedMsgsFromVerifier[i], 3, false)));
     }
 
-    sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(2, 3)));
+    sIdxVs.push(statementsVerifier.add(Statement.r1csCircomVerifierFromSetupParamRefs(1, 2)));
 
     const metaStmtsVerifier = new MetaStatements();
 
@@ -295,7 +293,7 @@ describe(`${Scheme} Proving that yearly income calculated from monthly payslips 
       metaStmtsVerifier.addWitnessEquality(witnessEq);
     }
 
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier, verifierSetupParams);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier, verifierSetupParams);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));

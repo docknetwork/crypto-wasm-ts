@@ -6,7 +6,7 @@ import {
   bbsPlusIsPublicKeyG2Valid,
   bbsPlusIsPublicKeyG1Valid,
   bbsPlusGenerateSigningKey
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { BBSPlusSignatureParamsG1, BBSPlusSignatureParamsG2 } from './params';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 

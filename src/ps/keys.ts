@@ -9,8 +9,8 @@ import {
   psSigningKeyMaxSupportedMsgs,
   psPublicKeyMaxSupportedMsgs,
   psAdaptPublicKeyForLessMessages
-} from '@docknetwork/crypto-wasm';
-import { psShamirDeal } from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
+import { psShamirDeal } from 'crypto-wasm-new';
 
 /**
  * Public key for modified Pointcheval-Sanders signature scheme used in `Coconut`.

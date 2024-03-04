@@ -3,9 +3,9 @@ import {
   SCHEMA_STR,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
-  PS_SIGNATURE_PARAMS_LABEL_BYTES
+  PS_SIGNATURE_PARAMS_LABEL_BYTES, BDDT16_MAC_PARAMS_LABEL_BYTES
 } from './types-and-consts';
-import { BBSCredential, BBSPlusCredential, Credential, PSCredential } from './credential';
+import { BBSCredential, BBSPlusCredential, BDDT16Credential, Credential, PSCredential } from './credential';
 import { flatten } from 'flat';
 import { areArraysEqual } from '../util';
 import { BBSPublicKey, BBSSecretKey, BBSSignature, BBSSignatureParams } from '../bbs';
@@ -19,6 +19,7 @@ import {
 import { PSPublicKey, PSSecretKey, PSSignature, PSSignatureParams } from '../ps';
 import { SignedMessages } from '../types';
 import { CredentialBuilderCommon } from './credential-builder-common';
+import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
 
 export interface ISigningOpts {
   // Whether the credential should contain exactly the same fields (object keys, array items, literals) as the
@@ -229,5 +230,36 @@ export class PSCredentialBuilder extends CredentialBuilder<PSSecretKey, PSPublic
 
   protected applyDefaultProofMetadataIfNeeded(s: object) {
     PSCredential.applyDefaultProofMetadataIfNeeded(s);
+  }
+}
+
+export class BDDT16CredentialBuilder extends CredentialBuilder<
+  BDDT16MacSecretKey,
+  undefined,
+  BDDT16Mac,
+  BDDT16MacParams
+> {
+  protected signMessageObject(
+    messages: Object,
+    secretKey: BDDT16MacSecretKey,
+    labelOrParams: Uint8Array | BDDT16MacParams = BDDT16_MAC_PARAMS_LABEL_BYTES,
+    encoder: Encoder
+  ): SignedMessages<BDDT16Mac> {
+    return BDDT16Mac.signMessageObject(messages, secretKey, labelOrParams, encoder);
+  }
+
+  protected newCredential(
+    version: string,
+    schema: CredentialSchema,
+    subject: object,
+    topLevelFields: Map<string, unknown>,
+    sig: BDDT16Mac,
+    credStatus?: object
+  ): BDDT16Credential {
+    return new BDDT16Credential(version, schema, subject, topLevelFields, sig, credStatus);
+  }
+
+  protected applyDefaultProofMetadataIfNeeded(s: object) {
+    BDDT16Credential.applyDefaultProofMetadataIfNeeded(s);
   }
 }

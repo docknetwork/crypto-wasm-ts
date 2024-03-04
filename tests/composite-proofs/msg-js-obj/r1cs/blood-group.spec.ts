@@ -1,17 +1,17 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
-import { areUint8ArraysEqual, checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../../../utils';
+import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
   CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   Encoder,
   encodeRevealedMsgs,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatements,
   ParsedR1CSFile,
-  ProofSpecG1,
+  ProofSpec,
   R1CSSnarkSetup,
   SignedMessages,
   Statement,
@@ -20,19 +20,18 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../../src';
-import { checkMapsEqual } from '../index';
-import { defaultEncoder } from '../data-and-encoder';
+import { buildWitness, PublicKey, Scheme, Signature } from '../../../scheme';
 import {
-  PublicKey,
-  KeyPair,
-  SignatureParams,
-  Signature,
-  buildStatement,
-  buildWitness,
-  isPS,
-  Scheme,
-  adaptKeyForParams
-} from '../../../scheme';
+  areUint8ArraysEqual,
+  checkResult,
+  getParamsAndKeys,
+  getWasmBytes,
+  parseR1CSFile,
+  stringToBytes
+} from '../../../utils';
+import { defaultEncoder } from '../data-and-encoder';
+import { checkMapsEqual } from '../index';
+import { adaptedSigParams, proverStmt, signAndVerify, verifierStmt } from '../util';
 
 // Test for a scenario where a user wants to prove that his blood group is AB- without revealing the blood group.
 // Similar test can be written for other "not-equals" relations like user is not resident of certain city
@@ -41,7 +40,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
   let encodedABNeg: Uint8Array;
 
   const label = stringToBytes('Sig params label');
-  let pk: PublicKey;
+  let pk: PublicKey, sk, params;
 
   // CredentialBuilder for the user with blood group AB+
   let signed1: SignedMessages<Signature>;
@@ -120,16 +119,10 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
 
   it('signers signs attributes', () => {
     // Message count shouldn't matter as `label` is known
-    const params = SignatureParams.generate(100, label);
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    pk = keypair.publicKey;
+    [params, sk, pk] = getParamsAndKeys(100, label);
 
-    signed1 = Signature.signMessageObject(attributes1, sk, label, encoder);
-    checkResult(signed1.signature.verifyMessageObject(attributes1, pk, label, encoder));
-
-    signed2 = Signature.signMessageObject(attributes2, sk, label, encoder);
-    checkResult(signed2.signature.verifyMessageObject(attributes2, pk, label, encoder));
+    signed1 = signAndVerify(attributes1, encoder, label, sk, pk);
+    signed2 = signAndVerify(attributes2, encoder, label, sk, pk);
   });
 
   it('proof verifies when blood groups is not AB-', () => {
@@ -138,8 +131,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
-    const sigPK = adaptKeyForParams(pk, sigParams);
+    const sigParams = adaptedSigParams(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames,
@@ -147,7 +139,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'John' });
 
-    const statement1 = buildStatement(sigParams, sigPK, revealedMsgs, false);
+    const statement1 = proverStmt(sigParams, revealedMsgs, pk);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -163,7 +155,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     metaStmtsProver.addWitnessEquality(witnessEq1);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed1.signature, unrevealedMsgs, false);
@@ -176,13 +168,13 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement3 = buildStatement(sigParams, sigPK, revealedMsgsFromVerifier, false);
+    const statement3 = verifierStmt(sigParams, revealedMsgsFromVerifier, pk);
     const pub = [generateFieldElementFromNumber(1), encodedABNeg];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
 
@@ -197,7 +189,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
 
     metaStmtsVerifier.addWitnessEquality(witnessEq2);
 
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
@@ -209,8 +201,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     const revealedNames = new Set<string>();
     revealedNames.add('fname');
 
-    const sigParams = SignatureParams.getSigParamsForMsgStructure(attributesStruct, label);
-    const sigPK = adaptKeyForParams(pk, sigParams);
+    const sigParams = adaptedSigParams(attributesStruct, label);
     const [revealedMsgs, unrevealedMsgs, revealedMsgsRaw] = getRevealedAndUnrevealed(
       attributes2,
       revealedNames,
@@ -218,12 +209,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     );
     expect(revealedMsgsRaw).toEqual({ fname: 'Carol' });
 
-    const statement1 = buildStatement(
-      sigParams,
-      adaptKeyForParams(pk, sigParams),
-      revealedMsgs,
-      false
-    );
+    const statement1 = proverStmt(sigParams, revealedMsgs, pk);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const statementsProver = new Statements();
@@ -238,7 +224,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     metaStmtsProver.addWitnessEquality(witnessEq1);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed2.signature, unrevealedMsgs, false);
@@ -251,13 +237,13 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
     const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
     checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-    const statement3 = buildStatement(sigParams, sigPK, revealedMsgsFromVerifier, false);
+    const statement3 = verifierStmt(sigParams, revealedMsgsFromVerifier, pk);
     const pub = [generateFieldElementFromNumber(1), encodedABNeg];
     const statement4 = Statement.r1csCircomVerifier(pub, verifyingKey);
 
@@ -272,7 +258,7 @@ describe(`${Scheme} Proving that blood group is not AB-`, () => {
 
     metaStmtsVerifier.addWitnessEquality(witnessEq2);
 
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     expect(proof.verify(proofSpecVerifier).verified).toEqual(false);

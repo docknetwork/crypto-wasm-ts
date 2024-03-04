@@ -1,4 +1,4 @@
-import { generateFieldElementFromNumber, initializeWasm } from '@docknetwork/crypto-wasm';
+import { generateFieldElementFromNumber, initializeWasm } from 'crypto-wasm-new';
 import {
   BoundCheckBppParams,
   BoundCheckBppParamsUncompressed,
@@ -7,12 +7,12 @@ import {
   BoundCheckSmcWithKVProverParamsUncompressed,
   BoundCheckSmcWithKVSetup,
   BoundCheckSmcWithKVVerifierParamsUncompressed,
-  CompositeProofG1,
+  CompositeProof,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatement,
   MetaStatements,
-  QuasiProofSpecG1,
+  QuasiProofSpec,
   SetupParam,
   Statement,
   Statements,
@@ -20,7 +20,14 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
-import { checkResult, getRevealedUnrevealed, stringToBytes, getBoundCheckSnarkKeys } from '../utils';
+import {
+  checkResult,
+  getRevealedUnrevealed,
+  stringToBytes,
+  getBoundCheckSnarkKeys,
+  getParamsAndKeys,
+  signAndVerify, proverStmt, verifierStmt
+} from '../utils';
 import {
   KeyPair,
   SecretKey,
@@ -28,8 +35,8 @@ import {
   Signature,
   SignatureParams,
   buildWitness,
-  buildStatement,
-  Scheme
+  buildVerifierStatement,
+  Scheme, isPS, buildProverStatement
 } from '../scheme';
 
 describe(`Bound check of ${Scheme} signed messages`, () => {
@@ -81,15 +88,8 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
   });
 
   it('do signers setup', () => {
-    sigParams1 = SignatureParams.generate(messageCount);
-    const sigKeypair1 = KeyPair.generate(sigParams1);
-    sigSk1 = sigKeypair1.secretKey;
-    sigPk1 = sigKeypair1.publicKey;
-
-    sigParams2 = SignatureParams.generate(messageCount);
-    const sigKeypair2 = KeyPair.generate(sigParams2);
-    sigSk2 = sigKeypair2.secretKey;
-    sigPk2 = sigKeypair2.publicKey;
+    [sigParams1, sigSk1, sigPk1] = getParamsAndKeys(messageCount);
+    [sigParams2, sigSk2, sigPk2] = getParamsAndKeys(messageCount);
 
     messages1 = [];
     messages2 = [];
@@ -103,10 +103,12 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
       }
     }
 
-    sig1 = Signature.generate(messages1, sigSk1, sigParams1, false);
-    sig2 = Signature.generate(messages2, sigSk2, sigParams2, false);
-    expect(sig1.verify(messages1, sigPk1, sigParams1, false).verified).toEqual(true);
-    expect(sig2.verify(messages2, sigPk2, sigParams2, false).verified).toEqual(true);
+    let result1, result2;
+    [sig1, result1] = signAndVerify(messages1, sigParams1, sigSk1, sigPk1);
+    checkResult(result1);
+    [sig2, result2] = signAndVerify(messages2, sigParams2, sigSk2, sigPk2);
+    checkResult(result2);
+
   });
 
   function validateBounds(boundCheckProver, boundCheckProverFromRefs, boundCheckVerifier, boundCheckVerifierFromRefs) {
@@ -172,17 +174,17 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     sigPk: PublicKey,
     messages: Uint8Array[],
     sig: Signature,
-    proverStmt,
+    pStmt,
     witnessGen,
-    verifierStmt,
+    vStmt,
     proverParams,
     verifierParams
   ) {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, revealedIndices);
-    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
-    const statement2 = proverStmt(min1, max1, proverParams);
+    const statement1 = proverStmt(sigParams, revealedMsgs, sigPk);
+    const statement2 = pStmt(min1, max1, proverParams);
     const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
 
@@ -197,26 +199,27 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
-    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
+    const proverProofSpec = new QuasiProofSpec(proverStatements, metaStatements);
 
     const nonce = stringToBytes('a nonce');
 
-    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
+    const proof = CompositeProof.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
-    const statement3 = verifierStmt(min1, max1, verifierParams);
-    const verifierStatements = new Statements(statement1);
+    const statement3 = vStmt(min1, max1, verifierParams);
+    const statement4 = verifierStmt(sigParams, revealedMsgs, sigPk);
+    const verifierStatements = new Statements(statement4);
     verifierStatements.add(statement3);
 
-    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
+    const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStatements);
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
   }
 
   function proveAndVerifyMultiple(
     proverSetupParamGen,
     verifierSetupParamGen,
-    proverStmt,
+    pStmt,
     witnessGen,
-    verifierStmt,
+    vStmt,
     proverParams,
     verifierParams
   ) {
@@ -226,12 +229,12 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const [revealedMsgs1, unrevealedMsgs1] = getRevealedUnrevealed(messages1, new Set<number>());
     const [revealedMsgs2, unrevealedMsgs2] = getRevealedUnrevealed(messages2, new Set<number>());
 
-    const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
-    const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
-    const statement3 = proverStmt(min1, max1, 0);
-    const statement4 = proverStmt(min2, max2, 0);
-    const statement5 = proverStmt(min3, max3, 0);
-    const statement6 = proverStmt(min4, max4, 0);
+    const statement1 = proverStmt(sigParams1, revealedMsgs1, sigPk1);
+    const statement2 = proverStmt(sigParams2, revealedMsgs2, sigPk2);
+    const statement3 = pStmt(min1, max1, 0);
+    const statement4 = pStmt(min2, max2, 0);
+    const statement5 = pStmt(min3, max3, 0);
+    const statement6 = pStmt(min4, max4, 0);
 
     const proverStatements = new Statements();
     proverStatements.add(statement1);
@@ -271,27 +274,29 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     witnesses.add(witnessGen(messages2[msgIdx]));
     witnesses.add(witnessGen(messages2[msgIdx + 1]));
 
-    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
+    const proverProofSpec = new QuasiProofSpec(proverStatements, metaStatements, proverSetupParams);
 
     const nonce = stringToBytes('a nonce');
 
-    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
+    const proof = CompositeProof.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(verifierSetupParamGen(verifierParams));
 
-    const statement7 = verifierStmt(min1, max1, 0);
-    const statement8 = verifierStmt(min2, max2, 0);
-    const statement9 = verifierStmt(min3, max3, 0);
-    const statement10 = verifierStmt(min4, max4, 0);
+    const statement7 = vStmt(min1, max1, 0);
+    const statement8 = vStmt(min2, max2, 0);
+    const statement9 = vStmt(min3, max3, 0);
+    const statement10 = vStmt(min4, max4, 0);
+    const statement11 = verifierStmt(sigParams1, revealedMsgs1, sigPk1);
+    const statement12 = verifierStmt(sigParams2, revealedMsgs2, sigPk2);
 
-    const verifierStatements = new Statements([].concat(statement1, statement2));
+    const verifierStatements = new Statements([].concat(statement11, statement12));
     verifierStatements.add(statement7);
     verifierStatements.add(statement8);
     verifierStatements.add(statement9);
     verifierStatements.add(statement10);
 
-    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
+    const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStatements, verifierSetupParams);
 
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
   }
@@ -299,9 +304,9 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
   function boundsOnTimestamps(
     proverSetupParamGen,
     verifierSetupParamGen,
-    proverStmt,
+    pStmt,
     witnessGen,
-    verifierStmt,
+    vStmt,
     proverParams,
     verifierParams
   ) {
@@ -322,7 +327,8 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     attributes.push(Signature.encodePositiveNumberForSigning(now + 2000000)); // Expiration date as no. of milliseconds since epoch
 
     // Signer creates the signature and shares with prover
-    const sig = Signature.generate(attributes, sigSk1, sigParams1, false);
+    const [sig, result] = signAndVerify(attributes, sigParams1, sigSk1, sigPk1);
+    checkResult(result);
 
     const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(proverSetupParamGen(proverParams));
@@ -330,13 +336,13 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     const revealedIndices = new Set<number>();
     revealedIndices.add(0);
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(attributes, revealedIndices);
-    const statement1 = buildStatement(sigParams1, sigPk1, revealedAttrs, false);
+    const statement1 = proverStmt(sigParams1, revealedAttrs, sigPk1);
     // For proving birth date was after `bornAfter`
-    const statement2 = proverStmt(bornAfter, now, 0);
+    const statement2 = pStmt(bornAfter, now, 0);
     // For proving issuance date was between `earliestIssuance` and `latestIssuance`
-    const statement3 = proverStmt(earliestIssuance, latestIssuance, 0);
+    const statement3 = pStmt(earliestIssuance, latestIssuance, 0);
     // For proving expiration date was between `now` and `someDistantFuture`, i.e. its not expired as of now.
-    const statement4 = proverStmt(now, someDistantFuture, 0);
+    const statement4 = pStmt(now, someDistantFuture, 0);
 
     const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
@@ -369,29 +375,30 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     witnesses.add(witnessGen(attributes[3]));
     witnesses.add(witnessGen(attributes[4]));
 
-    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
+    const proverProofSpec = new QuasiProofSpec(proverStatements, metaStatements, proverSetupParams);
 
     const nonce = stringToBytes('a nonce');
 
-    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
+    const proof = CompositeProof.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(verifierSetupParamGen(verifierParams));
 
     // For verifying birth date was after `bornAfter`
-    const statement5 = verifierStmt(bornAfter, now, 0);
+    const statement5 = vStmt(bornAfter, now, 0);
     // For verifying issuance date was between `earliestIssuance` and `latestIssuance`
-    const statement6 = verifierStmt(earliestIssuance, latestIssuance, 0);
+    const statement6 = vStmt(earliestIssuance, latestIssuance, 0);
     // For verifying expiration date was between `now` and `someDistantFuture`, i.e. its not expired as of now.
-    const statement7 = verifierStmt(now, someDistantFuture, 0);
+    const statement7 = vStmt(now, someDistantFuture, 0);
+    const statement8 = verifierStmt(sigParams1, revealedAttrs, sigPk1);
 
     const verifierStatements = new Statements();
-    verifierStatements.add(statement1);
+    verifierStatements.add(statement8);
     verifierStatements.add(statement5);
     verifierStatements.add(statement6);
     verifierStatements.add(statement7);
 
-    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
+    const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStatements, verifierSetupParams);
 
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
   }
@@ -399,9 +406,9 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
   function boundsOnNegativeAndDecimal(
     proverSetupParamGen,
     verifierSetupParamGen,
-    proverStmt,
+    pStmt,
     witnessGen,
-    verifierStmt,
+    vStmt,
     proverParams,
     verifierParams
   ) {
@@ -505,19 +512,20 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
     }
 
     // Signer creates the signature and shares with prover
-    const sig = Signature.generate(encodedAttributes, sigSk1, sigParams1, false);
+    const [sig, result] = signAndVerify(encodedAttributes, sigParams1, sigSk1, sigPk1);
+    checkResult(result);
 
     const proverSetupParams: SetupParam[] = [];
     proverSetupParams.push(proverSetupParamGen(proverParams));
 
     const [revealedAttrs, unrevealedAttrs] = getRevealedUnrevealed(encodedAttributes, new Set<number>());
-    const statement1 = buildStatement(sigParams1, sigPk1, revealedAttrs, false);
+    const statement1 = proverStmt(sigParams1, revealedAttrs, sigPk1);
 
-    const statement2 = proverStmt(transMin1, transMax1, 0);
-    const statement3 = proverStmt(transMin2, transMax2, 0);
-    const statement4 = proverStmt(transMin3, transMax3, 0);
-    const statement5 = proverStmt(transMin3, transMax3, 0);
-    const statement6 = proverStmt(transMin4, transMax4, 0);
+    const statement2 = pStmt(transMin1, transMax1, 0);
+    const statement3 = pStmt(transMin2, transMax2, 0);
+    const statement4 = pStmt(transMin3, transMax3, 0);
+    const statement5 = pStmt(transMin3, transMax3, 0);
+    const statement6 = pStmt(transMin4, transMax4, 0);
 
     const proverStatements = new Statements(statement1);
     proverStatements.add(statement2);
@@ -540,29 +548,30 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
       witnesses.add(witnessGen(encodedAttributes[i]));
     }
 
-    const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
+    const proverProofSpec = new QuasiProofSpec(proverStatements, metaStatements, proverSetupParams);
 
     const nonce = stringToBytes('a nonce');
 
-    const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
+    const proof = CompositeProof.generateUsingQuasiProofSpec(proverProofSpec, witnesses, nonce);
 
     const verifierSetupParams: SetupParam[] = [];
     verifierSetupParams.push(verifierSetupParamGen(verifierParams));
 
-    const statement7 = verifierStmt(transMin1, transMax1, 0);
-    const statement8 = verifierStmt(transMin2, transMax2, 0);
-    const statement9 = verifierStmt(transMin3, transMax3, 0);
-    const statement10 = verifierStmt(transMin3, transMax3, 0);
-    const statement11 = verifierStmt(transMin4, transMax4, 0);
+    const statement7 = vStmt(transMin1, transMax1, 0);
+    const statement8 = vStmt(transMin2, transMax2, 0);
+    const statement9 = vStmt(transMin3, transMax3, 0);
+    const statement10 = vStmt(transMin3, transMax3, 0);
+    const statement11 = vStmt(transMin4, transMax4, 0);
+    const statement12 = verifierStmt(sigParams1, revealedAttrs, sigPk1);
 
-    const verifierStatements = new Statements(statement1);
+    const verifierStatements = new Statements(statement12);
     verifierStatements.add(statement7);
     verifierStatements.add(statement8);
     verifierStatements.add(statement9);
     verifierStatements.add(statement10);
     verifierStatements.add(statement11);
 
-    const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
+    const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStatements, verifierSetupParams);
 
     checkResult(proof.verifyUsingQuasiProofSpec(verifierProofSpec, nonce));
   }

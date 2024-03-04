@@ -1,9 +1,13 @@
 import { Versioned } from './versioned';
 import { Presentation } from './presentation';
-import { PredicateParamType, PublicKey, VERSION_STR } from './types-and-consts';
+import { CredentialVerificationParam, PredicateParamType, PublicKey, VERSION_STR } from './types-and-consts';
 import { AccumulatorPublicKey } from '../accumulator';
-import { VerifyResult } from '@docknetwork/crypto-wasm';
-import { BBSBlindedCredentialBuilder, BBSPlusBlindedCredentialBuilder } from './blinded-credential-builder';
+import { VerifyResult } from 'crypto-wasm-new';
+import {
+  BBSBlindedCredentialBuilder,
+  BBSPlusBlindedCredentialBuilder,
+  BDDT16BlindedCredentialBuilder
+} from './blinded-credential-builder';
 
 /**
  * A request for getting a blinded credential. Sent by the user to the signer who will verify it and then sign a blinded credential
@@ -23,7 +27,7 @@ export abstract class BlindedCredentialRequest extends Versioned {
   }
 
   verify(
-    publicKeys: PublicKey[],
+    publicKeys: Map<number, CredentialVerificationParam | undefined> | CredentialVerificationParam[],
     accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
     predicateParams?: Map<string, PredicateParamType>,
     circomOutputs?: Map<number, Uint8Array[][]>,
@@ -110,5 +114,26 @@ export class BBSPlusBlindedCredentialRequest extends BlindedCredentialRequest {
     // @ts-ignore
     const { version, presentation } = j;
     return new BBSPlusBlindedCredentialRequest(version, Presentation.fromJSON(presentation));
+  }
+}
+
+export class BDDT16BlindedCredentialRequest extends BlindedCredentialRequest {
+  constructor(version: string, presentation: Presentation) {
+    super(version, presentation);
+  }
+
+  /**
+   * Return the blinded credential builder which will be used to create the blinded credential
+   * @returns
+   */
+  generateBlindedCredentialBuilder(): BDDT16BlindedCredentialBuilder {
+    // @ts-ignore
+    return new BDDT16BlindedCredentialBuilder(this.presentation.spec.blindCredentialRequest);
+  }
+
+  static fromJSON(j: object): BDDT16BlindedCredentialRequest {
+    // @ts-ignore
+    const { version, presentation } = j;
+    return new BDDT16BlindedCredentialRequest(version, Presentation.fromJSON(presentation));
   }
 }

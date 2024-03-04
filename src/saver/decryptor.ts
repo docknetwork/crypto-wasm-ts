@@ -8,7 +8,7 @@ import {
   saverGenerateEncryptionGenerators,
   saverGetSnarkVkFromPk,
   saverDecryptCiphertextUsingSnarkVk
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 
 import { getChunkBitSize } from './util';
 import { ICompressed, IUncompressed } from '../ICompressed';

@@ -1,4 +1,4 @@
-import { encodeMessageForSigning } from '@docknetwork/crypto-wasm';
+import { encodeMessageForSigning } from 'crypto-wasm-new';
 import {
   BBSBlindSignature,
   BBSCredential,
@@ -38,8 +38,12 @@ import {
   getPSWitnessesForBlindSigRequest,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  PS_SIGNATURE_PARAMS_LABEL_BYTES
+  PS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BDDT16_MAC_PARAMS_LABEL_BYTES,
+  getBDDT16StatementForBlindMacRequest,
+  getBDDT16WitnessForBlindMacRequest, BDDT16CredentialBuilder, BDDT16Credential
 } from '../src';
+import { BDDT16BlindMac, BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../src/bddt16-mac';
 
 export { Presentation } from '../src/anonymous-credentials/presentation';
 export { PresentationBuilder } from '../src/anonymous-credentials/presentation-builder';
@@ -56,10 +60,12 @@ export let Scheme: string = process.env.TEST_SIGNATURE_SCHEME || 'BBS',
   getStatementForBlindSigRequest,
   getWitnessForBlindSigRequest,
   buildWitness,
-  buildStatement,
+  buildProverStatement,
+  buildVerifierStatement,
   buildPublicKeySetupParam,
   buildSignatureParamsSetupParam,
-  buildStatementFromSetupParamsRef,
+  buildProverStatementFromSetupParamsRef,
+  buildVerifierStatementFromSetupParamsRef,
   CredentialBuilder,
   Credential,
   encodeMessageForSigningIfPS: (msg: Uint8Array) => Uint8Array,
@@ -67,6 +73,7 @@ export let Scheme: string = process.env.TEST_SIGNATURE_SCHEME || 'BBS',
   isBBS = () => false,
   isBBSPlus = () => false,
   isPS = () => false,
+  isKvac = () => false,
   adaptKeyForParams = (key, _params) => key;
 
 switch (Scheme) {
@@ -79,10 +86,12 @@ switch (Scheme) {
     SignatureParams = BBSSignatureParams;
     PoKSignatureProtocol = BBSPoKSignatureProtocol;
     buildWitness = Witness.bbsSignature;
-    buildStatement = Statement.bbsSignature;
+    buildProverStatement = Statement.bbsSignatureProver;
+    buildVerifierStatement = Statement.bbsSignatureVerifier;
     buildPublicKeySetupParam = SetupParam.bbsPlusSignaturePublicKeyG2;
     buildSignatureParamsSetupParam = SetupParam.bbsSignatureParams;
-    buildStatementFromSetupParamsRef = Statement.bbsSignatureFromSetupParamRefs;
+    buildProverStatementFromSetupParamsRef = Statement.bbsSignatureProverFromSetupParamRefs;
+    buildVerifierStatementFromSetupParamsRef = Statement.bbsSignatureVerifierFromSetupParamRefs;
     getStatementForBlindSigRequest = getBBSStatementForBlindSigRequest;
     getWitnessForBlindSigRequest = getBBSWitnessForBlindSigRequest;
     CredentialBuilder = BBSCredentialBuilder;
@@ -101,10 +110,12 @@ switch (Scheme) {
     SignatureParams = BBSPlusSignatureParamsG1;
     PoKSignatureProtocol = BBSPlusPoKSignatureProtocol;
     buildWitness = Witness.bbsPlusSignature;
-    buildStatement = Statement.bbsPlusSignature;
+    buildProverStatement = Statement.bbsPlusSignatureProver;
+    buildVerifierStatement = Statement.bbsPlusSignatureVerifier;
     buildPublicKeySetupParam = SetupParam.bbsPlusSignaturePublicKeyG2;
     buildSignatureParamsSetupParam = SetupParam.bbsPlusSignatureParamsG1;
-    buildStatementFromSetupParamsRef = Statement.bbsPlusSignatureFromSetupParamRefs;
+    buildProverStatementFromSetupParamsRef = Statement.bbsPlusSignatureProverFromSetupParamRefs;
+    buildVerifierStatementFromSetupParamsRef = Statement.bbsPlusSignatureVerifierFromSetupParamRefs;
     getStatementForBlindSigRequest = getBBSPlusStatementForBlindSigRequest;
     getWitnessForBlindSigRequest = getBBSPlusWitnessForBlindSigRequest;
     CredentialBuilder = BBSPlusCredentialBuilder;
@@ -123,10 +134,12 @@ switch (Scheme) {
     SignatureParams = PSSignatureParams;
     PoKSignatureProtocol = PSPoKSignatureProtocol;
     buildWitness = Witness.psSignature;
-    buildStatement = Statement.psSignature;
+    buildProverStatement = Statement.psSignature;
+    buildVerifierStatement = Statement.psSignature;
     buildPublicKeySetupParam = SetupParam.psSignaturePublicKey;
     buildSignatureParamsSetupParam = SetupParam.psSignatureParams;
-    buildStatementFromSetupParamsRef = Statement.psSignatureFromSetupParamRefs;
+    buildProverStatementFromSetupParamsRef = Statement.psSignatureFromSetupParamRefs;
+    buildVerifierStatementFromSetupParamsRef = Statement.psSignatureFromSetupParamRefs;
     getStatementForBlindSigRequest = getPSStatementsForBlindSigRequest;
     getWitnessForBlindSigRequest = getPSWitnessesForBlindSigRequest;
     CredentialBuilder = PSCredentialBuilder;
@@ -137,9 +150,33 @@ switch (Scheme) {
     isPS = () => true;
     adaptKeyForParams = (key, params) => key.adaptForLess(params.supportedMessageCount());
     break;
+  case 'BDDT16':
+    PublicKey = undefined;
+    SecretKey = BDDT16MacSecretKey;
+    Signature = BDDT16Mac;
+    BlindSignature = BDDT16BlindMac;
+    KeyPair = undefined;
+    SignatureParams = BDDT16MacParams;
+    PoKSignatureProtocol = undefined;
+    buildWitness = Witness.bddt16Mac;
+    buildProverStatement = Statement.bddt16Mac;
+    buildVerifierStatement = Statement.bddt16Mac;
+    buildPublicKeySetupParam = undefined;
+    buildSignatureParamsSetupParam = SetupParam.bddt16MacParams;
+    buildProverStatementFromSetupParamsRef = Statement.bddt16MacFromSetupParamRefs;
+    buildVerifierStatementFromSetupParamsRef = Statement.bddt16MacFromSetupParamRefs;
+    getStatementForBlindSigRequest = getBDDT16StatementForBlindMacRequest;
+    getWitnessForBlindSigRequest = getBDDT16WitnessForBlindMacRequest;
+    CredentialBuilder = BDDT16CredentialBuilder;
+    Credential = BDDT16Credential;
+    SignatureLabelBytes = BDDT16_MAC_PARAMS_LABEL_BYTES;
+    encodeMessageForSigningIfPS = (msg) => msg;
+    encodeMessageForSigningIfNotPS = encodeMessageForSigning;
+    isKvac = () => true;
+    break;
   default:
     throw new Error(
-      `Unknown signature scheme provided in \`TEST_SIGNATURE_SCHEME\`: ${Scheme}, expected either \`BBS\`, \`BBS+\` or \`PS\``
+      `Unknown signature scheme provided in \`TEST_SIGNATURE_SCHEME\`: ${Scheme}, expected either \`BBS\`, \`BBS+\`, \`PS\` or BDDT16`
     );
 }
 
@@ -151,10 +188,12 @@ export type BlindSignature = typeof BlindSignature;
 export type SignatureParams = typeof SignatureParams;
 export type PoKSignatureProtocol = typeof PoKSignatureProtocol;
 export type buildWitness = typeof buildWitness;
-export type buildStatement = typeof buildStatement;
+export type buildProverStatement = typeof buildProverStatement;
+export type buildVerifierStatement = typeof buildVerifierStatement;
 export type buildPublicKeySetupParam = typeof buildPublicKeySetupParam;
 export type buildSignatureParamsSetupParam = typeof buildSignatureParamsSetupParam;
-export type buildStatementFromSetupParamsRef = typeof buildStatementFromSetupParamsRef;
+export type buildProverStatementFromSetupParamsRef = typeof buildProverStatementFromSetupParamsRef;
+export type buildVerifierStatementFromSetupParamsRef = typeof buildVerifierStatementFromSetupParamsRef;
 export type getStatementForBlindSigRequest = typeof getStatementForBlindSigRequest;
 export type getWitnessForBlindSigRequest = typeof getWitnessForBlindSigRequest;
 export type CredentialBuilder = typeof CredentialBuilder;

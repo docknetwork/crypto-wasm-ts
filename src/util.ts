@@ -1,4 +1,4 @@
-import { generateFieldElementFromBytes, generateRandomFieldElement } from '@docknetwork/crypto-wasm';
+import { generateFieldElementFromBytes, generateRandomFieldElement } from 'crypto-wasm-new';
 import { flatten } from 'flat';
 import { LegoProvingKey } from './legosnark';
 import b58 from 'bs58';

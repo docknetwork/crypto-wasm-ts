@@ -1,12 +1,13 @@
 import {
+  initializeWasm,
   CircomInputs,
-  CompositeProofG1,
+  CompositeProof,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
   MetaStatement,
   MetaStatements,
   ParsedR1CSFile,
-  ProofSpecG1,
+  ProofSpec,
   R1CSSnarkSetup,
   Statement,
   Statements,
@@ -14,8 +15,15 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
-import { generateFieldElementFromNumber, initializeWasm, generateRandomFieldElement } from '@docknetwork/crypto-wasm';
-import { checkResult, getRevealedUnrevealed, getWasmBytes, parseR1CSFile } from '../../utils';
+import { generateFieldElementFromNumber, generateRandomFieldElement } from 'crypto-wasm-new';
+import {
+  checkResult,
+  getParamsAndKeys,
+  getRevealedUnrevealed,
+  getWasmBytes,
+  parseR1CSFile, proverStmt,
+  signAndVerify, verifierStmt
+} from '../../utils';
 import {
   PublicKey,
   SecretKey,
@@ -23,7 +31,7 @@ import {
   Signature,
   SignatureParams,
   buildWitness,
-  buildStatement,
+  buildVerifierStatement,
   Scheme
 } from '../../scheme';
 
@@ -53,18 +61,16 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: set membership check`, 
   });
 
   it('do signers setup', () => {
-    sigParams = SignatureParams.generate(messageCount);
-    const sigKeypair1 = KeyPair.generate(sigParams);
-    sigSk = sigKeypair1.secretKey;
-    sigPk = sigKeypair1.publicKey;
+    [sigParams, sigSk, sigPk] = getParamsAndKeys(messageCount);
 
     messages = [];
     for (let i = 0; i < messageCount; i++) {
       messages.push(generateFieldElementFromNumber(1000 + i));
     }
 
-    sig = Signature.generate(messages, sigSk, sigParams, false);
-    expect(sig.verify(messages, sigPk, sigParams, false).verified).toEqual(true);
+    let result;
+    [sig, result] = signAndVerify(messages, sigParams, sigSk, sigPk);
+    checkResult(result);
   });
 
   it('check for message present in the set', () => {
@@ -77,7 +83,7 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: set membership check`, 
     ];
     const [revealedMsgs, unrevealedMsgs] = getRevealedUnrevealed(messages, new Set<number>());
 
-    const statement1 = buildStatement(sigParams, sigPk, revealedMsgs, false);
+    const statement1 = proverStmt(sigParams, revealedMsgs, sigPk);
     const statement2 = Statement.r1csCircomProver(r1cs, wasm, provingKey);
 
     const proverStatements = new Statements();
@@ -91,7 +97,7 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: set membership check`, 
     const metaStatements = new MetaStatements();
     metaStatements.add(MetaStatement.witnessEquality(witnessEq1));
 
-    const proofSpecProver = new ProofSpecG1(proverStatements, metaStatements);
+    const proofSpecProver = new ProofSpec(proverStatements, metaStatements);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(sig, unrevealedMsgs, false);
@@ -104,15 +110,16 @@ describe(`${Scheme} Proof with R1CS and Circom circuits: set membership check`, 
     const witnesses = new Witnesses(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     const statement3 = Statement.r1csCircomVerifier([generateFieldElementFromNumber(1), ...publicSet], verifyingKey);
+    const statement4 = verifierStmt(sigParams, revealedMsgs, sigPk);
 
     const verifierStatements = new Statements();
-    verifierStatements.add(statement1);
+    verifierStatements.add(statement4);
     verifierStatements.add(statement3);
 
-    const proofSpecVerifier = new ProofSpecG1(verifierStatements, metaStatements);
+    const proofSpecVerifier = new ProofSpec(verifierStatements, metaStatements);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));

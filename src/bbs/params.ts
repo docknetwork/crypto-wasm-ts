@@ -1,4 +1,4 @@
-import { bbsCommitMsgs } from '@docknetwork/crypto-wasm';
+import { bbsCommitMsgs } from 'crypto-wasm-new';
 import {
   bbsGenerateSignatureParams,
   bbsSignatureParamsToBytes,
@@ -6,7 +6,7 @@ import {
   bbsIsSignatureParamsValid,
   bbsAdaptSigParamsForMsgCount,
   BbsSigParams
-} from '@docknetwork/crypto-wasm';
+} from 'crypto-wasm-new';
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
 import { ISignatureParams, MessageStructure } from '../types';
 

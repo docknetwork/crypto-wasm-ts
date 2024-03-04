@@ -1,8 +1,7 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
 import {
   Accumulator,
   AccumulatorSecretKey,
-  CompositeProofG1,
+  CompositeProof,
   createWitnessEqualityMetaStatement,
   EncodeFunc,
   Encoder,
@@ -11,21 +10,23 @@ import {
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
   IAccumulatorState,
+  initializeWasm,
   MetaStatements,
   PositiveAccumulator,
-  ProofSpecG1,
+  ProofSpec,
   Statement,
   Statements,
+  VBWitnessUpdatePublicInfo,
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses,
-  WitnessUpdatePublicInfo
+  Witnesses
 } from '../../../src';
-import { checkResult, stringToBytes } from '../../utils';
 import { InMemoryState } from '../../../src/accumulator/in-memory-persistence';
+import { buildWitness, Scheme } from '../../scheme';
+import { checkResult, getParamsAndKeys, stringToBytes } from '../../utils';
 import { attributes1, attributes1Struct, attributes2, attributes2Struct, defaultEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
-import { adaptKeyForParams, buildStatement, buildWitness, KeyPair, Scheme, SignatureParams, Signature } from '../../scheme';
+import { proverStmt, signAndVerify, verifierStmt } from './util';
 
 describe(`${Scheme} Accumulator`, () => {
   beforeAll(async () => {
@@ -62,18 +63,12 @@ describe(`${Scheme} Accumulator`, () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = SignatureParams.generate(100, label1);
-    const keypair1 = KeyPair.generate(params1);
-    const sk1 = keypair1.secretKey;
-    const pk1 = keypair1.publicKey;
+    const [params1, sk1, pk1] = getParamsAndKeys(100, label1);
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = SignatureParams.generate(100, label2);
-    const keypair2 = KeyPair.generate(params2);
-    const sk2 = keypair2.secretKey;
-    const pk2 = keypair2.publicKey;
+    const [params2, sk2, pk2] = getParamsAndKeys(100, label2);
 
     // Accumulator manager 1's setup
     const accumParams1 = PositiveAccumulator.generateParams(stringToBytes('Accumulator params 1'));
@@ -107,7 +102,7 @@ describe(`${Scheme} Accumulator`, () => {
     // Sign and verify all signatures
 
     // Signer 1 signs the attributes
-    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, encoder);
+    const signed1 = signAndVerify(attributes1, encoder, label1, sk1, pk1);
 
     // Accumulator manager 1 generates the witness for the accumulator member, i.e. attribute signed1.encodedMessages['user-id']
     // and gives the witness to the user.
@@ -116,8 +111,6 @@ describe(`${Scheme} Accumulator`, () => {
       accumKeypair1.secretKey,
       accumState1
     );
-
-    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator1 = PositiveAccumulator.fromAccumulated(accumulator1.accumulated);
@@ -131,7 +124,7 @@ describe(`${Scheme} Accumulator`, () => {
     ).toEqual(true);
 
     // Signer 2 signs the attributes
-    const signed2 = Signature.signMessageObject(attributes2, sk2, label2, encoder);
+    const signed2 = signAndVerify(attributes2, encoder, label2, sk2, pk2);
 
     // Accumulator manager 2 generates the witness and gives it to the user
     const accumWitness2 = await accumulator2.membershipWitness(
@@ -139,8 +132,6 @@ describe(`${Scheme} Accumulator`, () => {
       accumKeypair2.secretKey,
       accumState2
     );
-
-    checkResult(signed2.signature.verifyMessageObject(attributes2, pk2, label2, encoder));
 
     // The user verifies the accumulator membership by using the witness
     let verifAccumulator2 = PositiveAccumulator.fromAccumulated(accumulator2.accumulated);
@@ -173,31 +164,36 @@ describe(`${Scheme} Accumulator`, () => {
     const sigParams1 = getAdaptedSignatureParamsForMessages(params1, attributes1Struct);
     const sigParams2 = getAdaptedSignatureParamsForMessages(params2, attributes2Struct);
 
-    const sigPk1 = adaptKeyForParams(pk1, sigParams1);
-    const sigPk2 = adaptKeyForParams(pk2, sigParams2);
-
     const [revealedMsgs1, unrevealedMsgs1, revealedMsgsRaw1] = getRevealedAndUnrevealed(
       attributes1,
       revealedNames1,
       encoder
     );
-    const statement1 = buildStatement(sigParams1, sigPk1, revealedMsgs1, false);
+    const statement1 = proverStmt(
+      sigParams1,
+      revealedMsgs1,
+      pk1,
+    );
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
       attributes2,
       revealedNames2,
       encoder
     );
-    const statement2 = buildStatement(sigParams2, sigPk2, revealedMsgs2, false);
+    const statement2 = proverStmt(
+      sigParams2,
+      revealedMsgs2,
+      pk2,
+    );
 
-    const statement3 = Statement.accumulatorMembership(
+    const statement3 = Statement.vbAccumulatorMembership(
       accumParams1,
       accumKeypair1.publicKey,
       provingKey1,
       accumulator1.accumulated
     );
 
-    const statement4 = Statement.accumulatorMembership(
+    const statement4 = Statement.vbAccumulatorMembership(
       accumParams2,
       accumKeypair2.publicKey,
       provingKey2,
@@ -233,19 +229,19 @@ describe(`${Scheme} Accumulator`, () => {
     metaStmtsProver.addWitnessEquality(witnessEq3);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
     const witness2 = buildWitness(signed2.signature, unrevealedMsgs2, false);
-    const witness3 = Witness.accumulatorMembership(signed1.encodedMessages['user-id'], accumWitness1);
-    const witness4 = Witness.accumulatorMembership(signed2.encodedMessages['sensitive.user-id'], accumWitness2);
+    const witness3 = Witness.vbAccumulatorMembership(signed1.encodedMessages['user-id'], accumWitness1);
+    const witness4 = Witness.vbAccumulatorMembership(signed2.encodedMessages['sensitive.user-id'], accumWitness2);
 
     const witnesses = new Witnesses([].concat(witness1, witness2));
     witnesses.add(witness3);
     witnesses.add(witness4);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgs1FromVerifier = encodeRevealedMsgs(revealedMsgsRaw1, attributes1Struct, encoder);
@@ -253,15 +249,23 @@ describe(`${Scheme} Accumulator`, () => {
     const revealedMsgs2FromVerifier = encodeRevealedMsgs(revealedMsgsRaw2, attributes2Struct, encoder);
     checkMapsEqual(revealedMsgs2, revealedMsgs2FromVerifier);
 
-    const statement5 = buildStatement(sigParams1, sigPk1, revealedMsgs1FromVerifier, false);
-    const statement6 = buildStatement(sigParams2, sigPk2, revealedMsgs2FromVerifier, false);
-    const statement7 = Statement.accumulatorMembership(
+    const statement5 = verifierStmt(
+      sigParams1,
+      revealedMsgs1FromVerifier,
+      pk1
+    );
+    const statement6 = verifierStmt(
+      sigParams2,
+      revealedMsgs2FromVerifier,
+      pk2
+    );
+    const statement7 = Statement.vbAccumulatorMembership(
       accumParams1,
       accumKeypair1.publicKey,
       provingKey1,
       accumulator1.accumulated
     );
-    const statement8 = Statement.accumulatorMembership(
+    const statement8 = Statement.vbAccumulatorMembership(
       accumParams2,
       accumKeypair2.publicKey,
       provingKey2,
@@ -295,7 +299,7 @@ describe(`${Scheme} Accumulator`, () => {
     metaStmtsVerifier.addWitnessEquality(witnessEq6);
 
     // The verifier should independently construct this `ProofSpec`
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
@@ -303,13 +307,13 @@ describe(`${Scheme} Accumulator`, () => {
     // Remove members from accumulator
 
     // Prepare witness update info that needs to be shared with the members
-    const witnessUpdInfo1 = WitnessUpdatePublicInfo.new(
+    const witnessUpdInfo1 = VBWitnessUpdatePublicInfo.new(
       accumulator1.accumulated,
       [],
       [allMembers1[5]],
       accumKeypair1.secretKey
     );
-    const witnessUpdInfo2 = WitnessUpdatePublicInfo.new(
+    const witnessUpdInfo2 = VBWitnessUpdatePublicInfo.new(
       accumulator2.accumulated,
       [],
       [allMembers1[20]],

@@ -1,12 +1,12 @@
 import { MetaStatements, Statements } from './statement';
 import { SetupParam } from './setup-param';
-import { generateProofSpecG1, isProofSpecG1Valid } from '@docknetwork/crypto-wasm';
+import { generateProofSpecG1, isProofSpecG1Valid } from 'crypto-wasm-new';
 
 /**
  * The specification used to construct the proof. This contains all the statements and the meta statements.
- * If you have a lot of `Statements` or `SetupParam`s or they have a large size like for SNARKs, use `QuasiProofSpecG1`
+ * If you have a lot of `Statements` or `SetupParam`s or they have a large size like for SNARKs, use `QuasiProofSpec`
  */
-export class ProofSpecG1 {
+export class ProofSpec {
   value: Uint8Array;
 
   constructor(
@@ -30,11 +30,11 @@ export class ProofSpecG1 {
 
 /**
  * The specification used to construct the proof. This contains all the statements and the meta statements.
- * The difference between this and `ProofSpecG1` that this does not call WASM to generate a `ProofSpecG1` object that
+ * The difference between this and `ProofSpec` that this does not call WASM to generate a `ProofSpec` object that
  * corresponds to the `ProofSpec` struct in Rust. This WASM call be expensive due to the serialization overhead and thus
  * it's advised to use this when there are a lot of `Statements` or `SetupParam`s.
  */
-export class QuasiProofSpecG1 {
+export class QuasiProofSpec {
   statements: Statements;
   metaStatements: MetaStatements;
   setupParams: SetupParam[];
@@ -69,7 +69,7 @@ export class QuasiProofSpecG1 {
     this.context = context;
   }
 
-  toProofSpec(): ProofSpecG1 {
-    return new ProofSpecG1(this.statements, this.metaStatements, this.setupParams, this.context);
+  toProofSpec(): ProofSpec {
+    return new ProofSpec(this.statements, this.metaStatements, this.setupParams, this.context);
   }
 }

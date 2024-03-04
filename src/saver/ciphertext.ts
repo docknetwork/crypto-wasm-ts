@@ -1,5 +1,5 @@
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import { saverVerifyDecryptionUsingSnarkVk, VerifyResult } from '@docknetwork/crypto-wasm';
+import { saverVerifyDecryptionUsingSnarkVk, VerifyResult } from 'crypto-wasm-new';
 import {
   Decrypted,
   SaverDecryptionKey,

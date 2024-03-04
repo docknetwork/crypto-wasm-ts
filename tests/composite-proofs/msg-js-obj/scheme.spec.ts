@@ -1,20 +1,24 @@
-import { initializeWasm } from '@docknetwork/crypto-wasm';
-import { checkResult, stringToBytes } from '../../utils';
 import {
-  CompositeProofG1,
+  CompositeProof,
   createWitnessEqualityMetaStatement,
   Encoder,
   encodeRevealedMsgs,
   getAdaptedSignatureParamsForMessages,
   getIndicesForMsgNames,
   getRevealedAndUnrevealed,
+  initializeWasm,
   isValidMsgStructure,
   MetaStatements,
-  ProofSpecG1, Statement,
-  Statements, Witness,
+  ProofSpec,
+  Statement,
+  Statements,
+  Witness,
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../../src';
+import { PederCommKey } from '../../../src/ped-com';
+import { buildWitness, Scheme } from '../../scheme';
+import { checkResult, getParamsAndKeys, stringToBytes } from '../../utils';
 import {
   attributes1,
   attributes1Struct,
@@ -24,11 +28,10 @@ import {
   attributes3Struct,
   defaultEncoder
 } from './data-and-encoder';
-import { SignatureParams, KeyPair, isPS, buildStatement, buildWitness, Scheme, adaptKeyForParams, Signature } from '../../scheme';
 import { checkMapsEqual, signedToHex } from './index';
-import { PederCommKey } from '../../../src/ped-com';
+import { proverStmt, signAndVerify, verifierStmt } from './util';
 
-describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
+describe(`Signing and proof of knowledge of ${Scheme} signatures`, () => {
   // NOTE: The following tests contain a lot of duplicated code but that is intentional as this code is for illustration purpose.
 
   beforeAll(async () => {
@@ -42,10 +45,7 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
 
     const label = stringToBytes('Sig params label - this is public');
     // Message count shouldn't matter as `label` is known
-    let params = SignatureParams.generate(100, label);
-    const keypair = KeyPair.generate(params);
-    const sk = keypair.secretKey;
-    const pk = keypair.publicKey;
+    const [params, sk, pk] = getParamsAndKeys(100, label);
 
     // The encoder has to be known and agreed upon by all system participants, i.e. signer, prover and verifier.
     const encoder = new Encoder(undefined, defaultEncoder);
@@ -62,8 +62,7 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     ]) {
       expect(isValidMsgStructure(attributes, attributesStruct)).toEqual(true);
 
-      const signed = Signature.signMessageObject(attributes, sk, label, encoder);
-      checkResult(signed.signature.verifyMessageObject(attributes, pk, label, encoder));
+      const signed = signAndVerify(attributes, encoder, label, sk, pk);
 
       // For debugging
       console.log(signedToHex(signed));
@@ -117,24 +116,23 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
         });
       }
 
-      const statement1 = buildStatement(
+      const statement1 = proverStmt(
         sigParams,
-        adaptKeyForParams(pk, sigParams),
         revealedMsgs,
-        false
+        pk
       );
       const statementsProver = new Statements();
       statementsProver.add(statement1);
 
       // The prover should independently construct this `ProofSpec`
-      const proofSpecProver = new ProofSpecG1(statementsProver, new MetaStatements());
+      const proofSpecProver = new ProofSpec(statementsProver, new MetaStatements());
       expect(proofSpecProver.isValid()).toEqual(true);
 
       const witness1 = buildWitness(signed.signature, unrevealedMsgs, false);
       const witnesses = new Witnesses();
       witnesses.add(witness1);
 
-      const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+      const proof = CompositeProof.generate(proofSpecProver, witnesses);
       // For debugging
       console.log(proof.hex);
 
@@ -142,17 +140,16 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
       const revealedMsgsFromVerifier = encodeRevealedMsgs(revealedMsgsRaw, attributesStruct, encoder);
       checkMapsEqual(revealedMsgs, revealedMsgsFromVerifier);
 
-      const statement2 = buildStatement(
+      const statement2 = verifierStmt(
         sigParams,
-        adaptKeyForParams(pk, sigParams),
         revealedMsgsFromVerifier,
-        false
+        pk
       );
       const statementsVerifier = new Statements();
       statementsVerifier.add(statement2);
 
       // The verifier should independently construct this `ProofSpec`
-      const proofSpecVerifier = new ProofSpecG1(statementsVerifier, new MetaStatements());
+      const proofSpecVerifier = new ProofSpec(statementsVerifier, new MetaStatements());
       expect(proofSpecVerifier.isValid()).toEqual(true);
 
       checkResult(proof.verify(proofSpecVerifier));
@@ -169,27 +166,18 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = SignatureParams.generate(100, label1);
-    const keypair1 = KeyPair.generate(params1);
-    const sk1 = keypair1.secretKey;
-    const pk1 = keypair1.publicKey;
+    const [params1, sk1, pk1] = getParamsAndKeys(100, label1);
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = SignatureParams.generate(100, label2);
-    const keypair2 = KeyPair.generate(params2);
-    const sk2 = keypair2.secretKey;
-    const pk2 = keypair2.publicKey;
+    const [params2, sk2, pk2] = getParamsAndKeys(100, label2);
 
     const encoder = new Encoder(undefined, defaultEncoder);
 
     // Sign and verify all signatures
-    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, encoder);
-    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, encoder));
-
-    const signed2 = Signature.signMessageObject(attributes2, sk2, label2, encoder);
-    checkResult(signed2.signature.verifyMessageObject(attributes2, pk2, label2, encoder));
+    const signed1 = signAndVerify(attributes1, encoder, label1, sk1, pk1);
+    const signed2 = signAndVerify(attributes2, encoder, label2, sk2, pk2);
 
     // Reveal
     // - first name ("fname" attribute) from both sets of signed attributes
@@ -218,11 +206,10 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     );
     expect(revealedMsgsRaw1).toEqual({ fname: 'John', BMI: 23.25, country: 'USA' });
 
-    const statement1 = buildStatement(
+    const statement1 = proverStmt(
       sigParams1,
-      adaptKeyForParams(pk1, sigParams1),
       revealedMsgs1,
-      false
+      pk1,
     );
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
@@ -241,11 +228,10 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
       score: -13.5
     });
 
-    const statement2 = buildStatement(
+    const statement2 = proverStmt(
       sigParams2,
-      adaptKeyForParams(pk2, sigParams2),
       revealedMsgs2,
-      false
+      pk2,
     );
 
     const statementsProver = new Statements();
@@ -253,7 +239,7 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     statementsProver.add(statement2);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, new MetaStatements());
+    const proofSpecProver = new ProofSpec(statementsProver, new MetaStatements());
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
@@ -262,7 +248,7 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     witnesses.add(witness1);
     witnesses.add(witness2);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgs1FromVerifier = encodeRevealedMsgs(revealedMsgsRaw1, attributes1Struct, encoder);
@@ -270,24 +256,22 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     const revealedMsgs2FromVerifier = encodeRevealedMsgs(revealedMsgsRaw2, attributes2Struct, encoder);
     checkMapsEqual(revealedMsgs2, revealedMsgs2FromVerifier);
 
-    const statement3 = buildStatement(
+    const statement3 = verifierStmt(
       sigParams1,
-      adaptKeyForParams(pk1, sigParams1),
       revealedMsgs1FromVerifier,
-      false
+      pk1
     );
-    const statement4 = buildStatement(
+    const statement4 = verifierStmt(
       sigParams2,
-      adaptKeyForParams(pk2, sigParams2),
       revealedMsgs2FromVerifier,
-      false
+      pk2
     );
     const statementsVerifier = new Statements();
     statementsVerifier.add(statement3);
     statementsVerifier.add(statement4);
 
     // The verifier should independently construct this `ProofSpec`
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, new MetaStatements());
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, new MetaStatements());
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
@@ -300,38 +284,24 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     // 1st signer's setup
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = SignatureParams.generate(100, label1);
-    const keypair1 = KeyPair.generate(params1);
-    const sk1 = keypair1.secretKey;
-    const pk1 = keypair1.publicKey;
+    const [params1, sk1, pk1] = getParamsAndKeys(100, label1);
 
     // 2nd signer's setup
     const label2 = stringToBytes('Sig params label 2');
     // Message count shouldn't matter as `label2` is known
-    let params2 = SignatureParams.generate(100, label2);
-    const keypair2 = KeyPair.generate(params2);
-    const sk2 = keypair2.secretKey;
-    const pk2 = keypair2.publicKey;
+    const [params2, sk2, pk2] = getParamsAndKeys(100, label2);
 
     // 3rd signer's setup
     const label3 = stringToBytes('Sig params label 3');
     // Message count shouldn't matter as `label3` is known
-    let params3 = SignatureParams.generate(100, label3);
-    const keypair3 = KeyPair.generate(params3);
-    const sk3 = keypair3.secretKey;
-    const pk3 = keypair3.publicKey;
+    const [params3, sk3, pk3] = getParamsAndKeys(100, label3);
 
     const encoder = new Encoder(undefined, defaultEncoder);
 
     // Sign and verify all signatures
-    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, encoder);
-    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, encoder));
-
-    const signed2 = Signature.signMessageObject(attributes2, sk2, label2, encoder);
-    checkResult(signed2.signature.verifyMessageObject(attributes2, pk2, label2, encoder));
-
-    const signed3 = Signature.signMessageObject(attributes3, sk3, label3, encoder);
-    checkResult(signed3.signature.verifyMessageObject(attributes3, pk3, label3, encoder));
+    const signed1 = signAndVerify(attributes1, encoder, label1, sk1, pk1);
+    const signed2 = signAndVerify(attributes2, encoder, label2, sk2, pk2);
+    const signed3 = signAndVerify(attributes3, encoder, label3, sk3, pk3);
 
     // Reveal
     // - first name ("fname" attribute) from all 3 sets of signed attributes
@@ -373,11 +343,10 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     );
     expect(revealedMsgsRaw1).toEqual({ fname: 'John', BMI: 23.25, country: 'USA' });
 
-    const statement1 = buildStatement(
+    const statement1 = proverStmt(
       sigParams1,
-      adaptKeyForParams(pk1, sigParams1),
       revealedMsgs1,
-      false
+      pk1,
     );
 
     const [revealedMsgs2, unrevealedMsgs2, revealedMsgsRaw2] = getRevealedAndUnrevealed(
@@ -395,11 +364,10 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
       }
     });
 
-    const statement2 = buildStatement(
+    const statement2 = proverStmt(
       sigParams2,
-      adaptKeyForParams(pk2, sigParams1),
       revealedMsgs2,
-      false
+      pk2,
     );
 
     const [revealedMsgs3, unrevealedMsgs3, revealedMsgsRaw3] = getRevealedAndUnrevealed(
@@ -423,11 +391,10 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
       rank: 6
     });
 
-    const statement3 = buildStatement(
+    const statement3 = proverStmt(
       sigParams3,
-      adaptKeyForParams(pk3, sigParams3),
       revealedMsgs3,
-      false
+      pk3,
     );
 
     const statementsProver = new Statements();
@@ -518,7 +485,7 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     metaStmtsProver.addWitnessEquality(witnessEq9);
 
     // The prover should independently construct this `ProofSpec`
-    const proofSpecProver = new ProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpecProver = new ProofSpec(statementsProver, metaStmtsProver);
     expect(proofSpecProver.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
@@ -529,7 +496,7 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     witnesses.add(witness2);
     witnesses.add(witness3);
 
-    const proof = CompositeProofG1.generate(proofSpecProver, witnesses);
+    const proof = CompositeProof.generate(proofSpecProver, witnesses);
 
     // Verifier independently encodes revealed messages
     const revealedMsgs1FromVerifier = encodeRevealedMsgs(revealedMsgsRaw1, attributes1Struct, encoder);
@@ -539,23 +506,20 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     const revealedMsgs3FromVerifier = encodeRevealedMsgs(revealedMsgsRaw3, attributes3Struct, encoder);
     checkMapsEqual(revealedMsgs3, revealedMsgs3FromVerifier);
 
-    const statement4 = buildStatement(
+    const statement4 = verifierStmt(
       sigParams1,
-      adaptKeyForParams(pk1, sigParams1),
       revealedMsgs1FromVerifier,
-      false
+      pk1
     );
-    const statement5 = buildStatement(
+    const statement5 = verifierStmt(
       sigParams2,
-      adaptKeyForParams(pk2, sigParams2),
       revealedMsgs2FromVerifier,
-      false
+      pk2
     );
-    const statement6 = buildStatement(
+    const statement6 = verifierStmt(
       sigParams3,
-      adaptKeyForParams(pk3, sigParams3),
       revealedMsgs3FromVerifier,
-      false
+      pk3
     );
     const statementsVerifier = new Statements();
     const sIdx4 = statementsVerifier.add(statement4);
@@ -639,7 +603,7 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     metaStmtsVerifier.addWitnessEquality(witnessEq18);
 
     // The verifier should independently construct this `ProofSpec`
-    const proofSpecVerifier = new ProofSpecG1(statementsVerifier, metaStmtsVerifier);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsVerifier);
     expect(proofSpecVerifier.isValid()).toEqual(true);
 
     checkResult(proof.verify(proofSpecVerifier));
@@ -649,16 +613,12 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     const commKey = new PederCommKey(stringToBytes('test'));
     const label1 = stringToBytes('Sig params label 1');
     // Message count shouldn't matter as `label1` is known
-    let params1 = SignatureParams.generate(100, label1);
-    const keypair1 = KeyPair.generate(params1);
-    const sk1 = keypair1.secretKey;
-    const pk1 = keypair1.publicKey;
+    const [params1, sk1, pk1] = getParamsAndKeys(100, label1);
 
     const encoder = new Encoder(undefined, defaultEncoder);
 
     // Sign and verify all signatures
-    const signed1 = Signature.signMessageObject(attributes1, sk1, label1, encoder);
-    checkResult(signed1.signature.verifyMessageObject(attributes1, pk1, label1, encoder));
+    const signed1 = signAndVerify(attributes1, encoder, label1, sk1, pk1);
 
     const revealedNames1 = new Set<string>();
     revealedNames1.add('fname');
@@ -679,11 +639,10 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     const wrongEmail1Encoded = encoder.encodeMessage('email', wrongEmail1);
     const wrongEmail2Encoded = encoder.encodeMessage('email', wrongEmail2);
 
-    const statement1 = buildStatement(
+    const statement1 = proverStmt(
       sigParams1,
-      adaptKeyForParams(pk1, sigParams1),
       revealedMsgs1,
-      false
+      pk1,
     );
 
     const statement2 = Statement.publicInequalityG1FromCompressedParams(wrongEmail1Encoded, commKey);
@@ -701,7 +660,7 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     const metaStmtsProver = new MetaStatements();
     metaStmtsProver.addWitnessEquality(witnessEq1);
 
-    const proofSpec = new ProofSpecG1(statementsProver, metaStmtsProver);
+    const proofSpec = new ProofSpec(statementsProver, metaStmtsProver);
     expect(proofSpec.isValid()).toEqual(true);
 
     const witness1 = buildWitness(signed1.signature, unrevealedMsgs1, false);
@@ -713,7 +672,18 @@ describe(`${Scheme} Signing and proof of knowledge of signatures`, () => {
     witnesses.add(witness2);
     witnesses.add(witness3);
 
-    const proof = CompositeProofG1.generate(proofSpec, witnesses);
-    checkResult(proof.verify(proofSpec));
+    const proof = CompositeProof.generate(proofSpec, witnesses);
+
+    const statement4 = verifierStmt(
+      sigParams1,
+      revealedMsgs1,
+      pk1
+    );
+    const statementsVerifier = new Statements(statement4);
+    statementsVerifier.add(statement2);
+    statementsVerifier.add(statement3);
+    const proofSpecVerifier = new ProofSpec(statementsVerifier, metaStmtsProver);
+    expect(proofSpecVerifier.isValid()).toEqual(true);
+    checkResult(proof.verify(proofSpecVerifier));
   });
 });
