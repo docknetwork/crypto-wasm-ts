@@ -10,9 +10,9 @@ import {
   SUBJECT_STR
 } from '../../src';
 import { Credential, CredentialBuilder, PresentationBuilder, PublicKey, Scheme, SecretKey } from '../scheme';
+import { checkResult, getWasmBytes, parseR1CSFile } from '../utils';
 
 import { checkPresentationJson, getExampleSchema, getKeys, verifyCred } from './utils';
-import { checkResult, getWasmBytes, parseR1CSFile } from '../utils';
 
 describe.each([true, false])(
   `${Scheme} Presentation creation and verification with Circom predicates with withSchemaRef=%s`,

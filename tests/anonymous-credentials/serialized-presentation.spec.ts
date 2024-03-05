@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import { generateFieldElementFromNumber } from 'crypto-wasm-new';
-import { Credential, isKvac, Presentation, PresentationBuilder, PublicKey, Scheme } from '../scheme';
+import { Credential, isKvac, Presentation, PresentationBuilder, PublicKey, Scheme, SecretKey } from '../scheme';
 import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../utils';
 import { checkCiphertext } from './utils';
 import {
@@ -19,6 +19,7 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
   const fileNamePrefix = Scheme.toLowerCase();
   const chunkBitSize = 16;
 
+  // For skipping older tests before introducing KVAC
   const skipIfKvac = isKvac() ? it.skip : it;
 
   beforeAll(async () => {
@@ -33,9 +34,13 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     const ck = SaverChunkedCommitmentKey.generate(stringToBytes('a new nonce'));
     const commKey = ck.decompress();
 
-    const pk1Bin = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk1.bin`);
-    const pk2Bin = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk2.bin`);
-    const pk3Bin = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk3.bin`);
+    const pk1Bin = isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk1.bin`);
+    const pk2Bin = isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk2.bin`);
+    const pk3Bin = isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk3.bin`);
+    const sk1Bin = !isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_sk1.bin`);
+    const sk2Bin = !isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_sk2.bin`);
+    const sk3Bin = !isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_sk3.bin`);
+
     const accPkBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_pk.bin`);
     const boundCheckVkBin = fs.readFileSync(`${__dirname}/serialized-objects/${boundCheckVkName}.bin`);
     const saverVkBin = fs.readFileSync(`${__dirname}/serialized-objects/saver-vk.bin`);
@@ -50,14 +55,21 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
       `${__dirname}/serialized-objects/${fileNamePrefix}_credential2-${credVersion}.json`,
       'utf8'
     );
+    let credential3Json = fs.readFileSync(
+      `${__dirname}/serialized-objects/${fileNamePrefix}_credential3-${credVersion}.json`,
+      'utf8'
+    );
 
     let presJson = fs.readFileSync(
       `${__dirname}/serialized-objects/${fileNamePrefix}-presentation-${presVersion}.json`,
       'utf8'
     );
-    const pk1 = PublicKey.fromBytes(pk1Bin);
-    const pk2 = PublicKey.fromBytes(pk2Bin);
-    const pk3 = PublicKey.fromBytes(pk3Bin);
+    const pk1 = isKvac() ? undefined : PublicKey.fromBytes(pk1Bin);
+    const pk2 = isKvac() ? undefined : PublicKey.fromBytes(pk2Bin);
+    const pk3 = isKvac() ? undefined : PublicKey.fromBytes(pk3Bin);
+    const sk1 = !isKvac() ? undefined : SecretKey.fromBytes(sk1Bin);
+    const sk2 = !isKvac() ? undefined : SecretKey.fromBytes(sk2Bin);
+    const sk3 = !isKvac() ? undefined : SecretKey.fromBytes(sk3Bin);
     const accPk = AccumulatorPublicKey.fromBytes(accPkBin);
     const boundCheckVk = LegoVerifyingKeyUncompressed.fromBytes(boundCheckVkBin);
     const saverVk = SaverVerifyingKeyUncompressed.fromBytes(saverVkBin);
@@ -68,7 +80,15 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     const cred1 = Credential.fromJSON(credential1Json);
     credential2Json = JSON.parse(credential2Json);
     const cred2 = Credential.fromJSON(credential2Json);
+    credential3Json = JSON.parse(credential3Json);
+    const cred3 = Credential.fromJSON(credential3Json);
+
+    checkResult(isKvac() ? cred1.verifyUsingSecretKey(sk1) : cred1.verify(pk1));
+    checkResult(isKvac() ? cred2.verifyUsingSecretKey(sk2) : cred2.verify(pk2));
+    checkResult(isKvac() ? cred3.verifyUsingSecretKey(sk3) : cred3.verify(pk3));
+
     presJson = JSON.parse(presJson);
+
     // @ts-ignore
     const pres = Presentation.fromJSON(presJson);
 
@@ -82,6 +102,10 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     pp.set(snarkPkId, saverVk);
     checkResult(pres.verify([pk1, pk2, pk3], acc, pp));
     expect(presJson).toEqual(pres.toJSON());
+
+    if (isKvac()) {
+      checkResult(pres.verify([sk1, sk2, sk3], acc, pp));
+    }
 
     // @ts-ignore
     expect(pres.attributeCiphertexts.size).toEqual(2);
@@ -113,7 +137,7 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     const r1csGrade = await parseR1CSFile('set_membership_5_public.r1cs');
     const wasmGrade = getWasmBytes('set_membership_5_public.wasm');
 
-    const pk1Bin = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk1.bin`);
+    const pk1Bin = isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk1.bin`);
     const circomVkBin = fs.readFileSync(`${__dirname}/serialized-objects/${circomVkName}.bin`);
     let pres1Json = fs.readFileSync(
       `${__dirname}/serialized-objects/${fileNamePrefix}-circom-presentation1-${presVersion}.json`,
@@ -124,7 +148,7 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
       'utf8'
     );
 
-    const pk1 = PublicKey.fromBytes(pk1Bin);
+    const pk1 = isKvac() ? undefined : PublicKey.fromBytes(pk1Bin);
     const circomVk = LegoVerifyingKeyUncompressed.fromBytes(circomVkBin);
     pres1Json = JSON.parse(pres1Json);
     // @ts-ignore
@@ -171,5 +195,23 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
 
   skipIfKvac('check version 0.4.0 with circom predicates', async () => {
     await checkCircom('0.4.0', 'circom-set_membership_5_public-2-vk');
+  });
+
+  skipIfKvac('check version 0.5.0', () => {
+    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
+    check('0.4.0', '0.5.0', 'bound-check-legogroth16-vk2');
+  });
+
+  skipIfKvac('check version 0.5.0 with circom predicates', async () => {
+    await checkCircom('0.5.0', 'circom-set_membership_5_public-2-vk');
+  });
+
+  it('check version 0.6.0', () => {
+    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
+    check('0.4.0', '0.6.0', 'bound-check-legogroth16-vk2');
+  });
+
+  it('check version 0.6.0 with circom predicates', async () => {
+    await checkCircom('0.6.0', 'circom-set_membership_5_public-2-vk');
   });
 });

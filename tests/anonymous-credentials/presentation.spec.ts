@@ -1,22 +1,30 @@
+import { generateRandomFieldElement } from 'crypto-wasm-new';
 import {
-  initializeWasm,
   AccumulatorPublicKey,
+  AccumulatorSecretKey,
+  BoundCheckBppParams,
+  BoundCheckBppParamsUncompressed,
+  BoundCheckParamType,
+  BoundCheckProtocol,
+  BoundCheckSmcParams,
+  BoundCheckSmcParamsUncompressed,
+  BoundCheckSmcWithKVProverParamsUncompressed,
+  BoundCheckSmcWithKVSetup,
+  BoundCheckSmcWithKVVerifierParamsUncompressed,
   CredentialSchema,
-  dockAccumulatorParams,
+  DefaultSchemaParsingOpts,
   dockSaverEncryptionGens,
+  InequalityProtocol,
+  initializeWasm,
   LegoProvingKeyUncompressed,
   LegoVerifyingKeyUncompressed,
+  MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
-  VBMembershipWitness,
+  META_SCHEMA_STR,
   PositiveAccumulator,
   Pseudonym,
   PseudonymBases,
   randomFieldElement,
-  REV_ID_STR,
-  STATUS_STR,
-  VB_ACCUMULATOR_22,
-  SUBJECT_STR,
-  TYPE_STR,
   SaverChunkedCommitmentKey,
   SaverDecryptionKeyUncompressed,
   SaverDecryptor,
@@ -24,20 +32,13 @@ import {
   SaverProvingKeyUncompressed,
   SaverSecretKey,
   SaverVerifyingKeyUncompressed,
-  BoundCheckProtocol,
-  VerifiableEncryptionProtocol,
-  BoundCheckBppParamsUncompressed,
-  BoundCheckSmcParamsUncompressed,
-  BoundCheckBppParams,
-  BoundCheckSmcParams,
-  BoundCheckSmcWithKVProverParamsUncompressed,
-  BoundCheckSmcWithKVVerifierParamsUncompressed,
-  BoundCheckSmcWithKVSetup,
-  META_SCHEMA_STR,
-  DefaultSchemaParsingOpts,
-  InequalityProtocol, BoundCheckParamType, AccumulatorSecretKey, MEM_CHECK_KV_STR
+  SUBJECT_STR,
+  TYPE_STR,
+  VB_ACCUMULATOR_22,
+  VBMembershipWitness,
+  VerifiableEncryptionProtocol
 } from '../../src';
-import { generateRandomFieldElement } from 'crypto-wasm-new';
+import { Credential, CredentialBuilder, isKvac, PresentationBuilder, PublicKey, Scheme, SecretKey } from '../scheme';
 import {
   areUint8ArraysEqual,
   checkResult,
@@ -45,24 +46,17 @@ import {
   readByteArrayFromFile,
   stringToBytes
 } from '../utils';
-import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
 import {
   checkCiphertext,
   checkPresentationJson,
   checkSchemaFromJson,
   getDecodedBoundedPseudonym,
   getExampleBuilder,
-  getExampleSchema, getKeys,
-  prefillAccumulator, setupPrefilledAccum, verifyCred
+  getExampleSchema,
+  getKeys,
+  setupPrefilledAccum,
+  verifyCred
 } from './utils';
-import {
-  Credential,
-  CredentialBuilder,
-  PresentationBuilder,
-  Scheme,
-  PublicKey,
-  SecretKey, isKvac
-} from '../scheme';
 
 // Setting it to false will make the test run the SNARK setups making tests quite slow
 const loadSnarkSetupFromFiles = true;
