@@ -10,3 +10,4 @@ export * from './blinded-credential-request-builder';
 export * from './blinded-credential-request';
 export * from './blinded-credential-builder';
 export * from './blinded-credential';
+export * from './delegated-proof';

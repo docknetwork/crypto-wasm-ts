@@ -19,7 +19,13 @@ import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { CredentialCommon } from './credential-common';
 import { BDDT16CredentialBuilder } from './credential-builder';
-import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
+import {
+  BDDT16Mac,
+  BDDT16MacParams,
+  BDDT16MacProofOfValidity,
+  BDDT16MacPublicKeyG1,
+  BDDT16MacSecretKey
+} from '../bddt16-mac';
 
 export abstract class Credential<PublicKey, Signature, SignatureParams> extends CredentialCommon<Signature> {
   abstract verify(publicKey: PublicKey, signatureParams?: SignatureParams): VerifyResult;
@@ -231,6 +237,17 @@ export class BDDT16Credential extends Credential<undefined, BDDT16Mac, BDDT16Mac
       signatureParams ?? BDDT16_MAC_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
+  }
+
+  verifyUsingValidityProof(proof: BDDT16MacProofOfValidity, publicKey: BDDT16MacPublicKeyG1, signatureParams: BDDT16MacParams) : VerifyResult {
+    const cred = this.serializeForSigning();
+    return proof.verifyMessageObject(
+      this.signature,
+      cred,
+      publicKey,
+      signatureParams ?? BDDT16_MAC_PARAMS_LABEL_BYTES,
+      this.schema.encoder
+    )
   }
 
   /**

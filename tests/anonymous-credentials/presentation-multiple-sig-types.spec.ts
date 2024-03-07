@@ -25,7 +25,12 @@ import {
   PSKeypair,
   PSPublicKey,
   PSSecretKey,
-  PSSignatureParams, SignatureType, BDDT16Credential, BDDT16_MAC_PARAMS_LABEL_BYTES, BDDT16CredentialBuilder
+  PSSignatureParams,
+  SignatureType,
+  BDDT16Credential,
+  BDDT16_MAC_PARAMS_LABEL_BYTES,
+  BDDT16CredentialBuilder,
+  BDDT16MacProofOfValidity, BDDT16MacPublicKeyG1, BDDT16KeypairG1
 } from '../../src';
 import { checkResult, stringToBytes } from '../utils';
 import { checkPresentationJson, getExampleSchema } from './utils';
@@ -39,7 +44,7 @@ describe.each([true, false])(
     let skBbs: BBSSecretKey, pkBbs: BBSPublicKey;
     let skBbsPlus: BBSPlusSecretKey, pkBbsPlus: BBSPlusPublicKeyG2;
     let skPs: PSSecretKey, pkPs: PSPublicKey;
-    let skBddt16: BDDT16MacSecretKey;
+    let skBddt16: BDDT16MacSecretKey, pkBddt16: BDDT16MacPublicKeyG1;
 
     let credentialBbs: BBSCredential;
     let credentialBbsPlus: BBSPlusCredential;
@@ -57,10 +62,13 @@ describe.each([true, false])(
       const paramsBbs = BBSSignatureParams.generate(1, BBS_SIGNATURE_PARAMS_LABEL_BYTES);
       const paramsBbsPlus = BBSPlusSignatureParamsG1.generate(1, BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES);
       const paramsPs = PSSignatureParams.generate(100, PS_SIGNATURE_PARAMS_LABEL_BYTES);
+      const paramsBddt16 = BDDT16MacParams.generate(1, BDDT16_MAC_PARAMS_LABEL_BYTES);
       const keypairBbs = BBSKeypair.generate(paramsBbs, stringToBytes('seed1'));
       const keypairBbsPlus = BBSPlusKeypairG2.generate(paramsBbsPlus, stringToBytes('seed2'));
       const keypairPs = PSKeypair.generate(paramsPs, stringToBytes('seed3'));
-      skBddt16 = BDDT16MacSecretKey.generate(stringToBytes('seed4'));
+      const keypairBddt16 = BDDT16KeypairG1.generate(paramsBddt16, stringToBytes('seed4'));
+      skBddt16 = keypairBddt16.sk;
+      pkBddt16 = keypairBddt16.pk;
       skBbs = keypairBbs.sk;
       pkBbs = keypairBbs.pk;
       skBbsPlus = keypairBbsPlus.sk;
@@ -109,6 +117,10 @@ describe.each([true, false])(
           checkResult(credential.verify(pk));
         } else {
           checkResult(credential.verifyUsingSecretKey(sk));
+
+          // Check using validity proof as well
+          const proof = new BDDT16MacProofOfValidity(credential.signature, skBddt16, pkBddt16, paramsBddt16);
+          checkResult(credential.verifyUsingValidityProof(proof, pkBddt16, paramsBddt16));
         }
         if (sk instanceof BBSSecretKey) {
           credentialBbs = credential;
@@ -123,6 +135,7 @@ describe.each([true, false])(
           credentialBddt16 = credential;
         }
       }
+
     });
 
     it('works', () => {

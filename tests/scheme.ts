@@ -41,7 +41,7 @@ import {
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
   BDDT16_MAC_PARAMS_LABEL_BYTES,
   getBDDT16StatementForBlindMacRequest,
-  getBDDT16WitnessForBlindMacRequest, BDDT16CredentialBuilder, BDDT16Credential
+  getBDDT16WitnessForBlindMacRequest, BDDT16CredentialBuilder, BDDT16Credential, BDDT16KeypairG1, BDDT16MacPublicKeyG1
 } from '../src';
 import { BDDT16BlindMac, BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../src/bddt16-mac';
 
@@ -73,6 +73,7 @@ export let Scheme: string = process.env.TEST_SIGNATURE_SCHEME || 'BBS',
   isBBS = () => false,
   isBBSPlus = () => false,
   isPS = () => false,
+  isBDDT16 = () => false,
   isKvac = () => false,
   adaptKeyForParams = (key, _params) => key;
 
@@ -151,11 +152,11 @@ switch (Scheme) {
     adaptKeyForParams = (key, params) => key.adaptForLess(params.supportedMessageCount());
     break;
   case 'BDDT16':
-    PublicKey = undefined;
+    PublicKey = BDDT16MacPublicKeyG1;
     SecretKey = BDDT16MacSecretKey;
     Signature = BDDT16Mac;
     BlindSignature = BDDT16BlindMac;
-    KeyPair = undefined;
+    KeyPair = BDDT16KeypairG1;
     SignatureParams = BDDT16MacParams;
     PoKSignatureProtocol = undefined;
     buildWitness = Witness.bddt16Mac;
@@ -172,6 +173,7 @@ switch (Scheme) {
     SignatureLabelBytes = BDDT16_MAC_PARAMS_LABEL_BYTES;
     encodeMessageForSigningIfPS = (msg) => msg;
     encodeMessageForSigningIfNotPS = encodeMessageForSigning;
+    isBDDT16 = () => true,
     isKvac = () => true;
     break;
   default:

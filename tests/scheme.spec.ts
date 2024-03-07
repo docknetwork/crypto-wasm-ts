@@ -1,5 +1,11 @@
 import { encodeMessageForSigning, generateRandomG1Element } from 'crypto-wasm-new';
-import { bytesToChallenge, initializeWasm, PSBlindSignature, randomFieldElement } from '../src';
+import {
+  BDDT16MacProofOfValidity,
+  bytesToChallenge,
+  initializeWasm,
+  PSBlindSignature,
+  randomFieldElement
+} from '../src';
 import { checkResult, getParamsAndKeys, getRevealedUnrevealed, signAndVerify, stringToBytes } from './utils';
 import {
   BlindSignature,
@@ -7,7 +13,7 @@ import {
   isBBS,
   isBBSPlus,
   isKvac,
-  isPS,
+  isPS, KeyPair,
   PoKSignatureProtocol,
   PublicKey,
   Scheme,
@@ -90,7 +96,6 @@ describe(`${Scheme} signature`, () => {
     let blindings = new Map();
 
     const label = stringToBytes('My sig params in g1');
-    // const params = SignatureParams.generate(messageCount, label);
     const [params, sk, pk] = getParamsAndKeys(messageCount, label);
 
     expect(params.isValid()).toEqual(true);
@@ -388,4 +393,23 @@ describe(`${Scheme} signature`, () => {
         ).verified
       ).toBe(true);
     });
+
+  if (isKvac()) {
+    it('should have proof of validity of mac', () => {
+      const messageCount = 10;
+      const messages = getMessages(messageCount).map((m) => Signature.encodeMessageForSigning(m));
+      const label = stringToBytes('My sig params in g1');
+      const params = SignatureParams.generate(messageCount, label);
+      const keypair = KeyPair.generate(params);
+      const sk = keypair.sk;
+      const pk = keypair.pk;
+      expect(pk.isValid()).toEqual(true);
+
+      const [mac, result] = signAndVerify(messages, params, sk, pk, false);
+      checkResult(result);
+
+      const proof = new BDDT16MacProofOfValidity(mac, sk, pk, params);
+      checkResult(proof.verify(mac, messages, pk, params, false));
+    })
+  }
 });

@@ -2,6 +2,7 @@ export { initializeWasm, isWasmInitialized, requireWasmInitialized } from './ini
 export * from './util';
 export * from './bbs-plus';
 export * from './bbs';
+export * from './bddt16-mac';
 export * from './accumulator';
 export * from './composite-proof';
 export * from './saver';
@@ -17,3 +18,4 @@ export * from './types';
 export { getR1CS } from './r1cs/file';
 export { processParsedR1CSFile } from './r1cs/file';
 export { ParsedR1CSFile } from './r1cs/file';
+export * from './delegated-proofs';

@@ -1,13 +1,15 @@
+import { BytearrayWrapper } from '../bytearray-wrapper';
 import { Encoder, MessageEncoder } from '../encoder';
 import {
   bddt16BlindMacGenerate,
   bddt16MacGenerate,
   bddt16MacVerify, bddt16UnblindMac,
+  bddt16MacProofOfValidity, bddt16MacVerifyProofOfValidity,
   VerifyResult
 } from 'crypto-wasm-new';
 import { MessageStructure, SignedMessages } from '../types';
 import { BDDT16MacParams } from './params';
-import { BDDT16MacSecretKey } from './keys';
+import { BDDT16MacSecretKey, BDDT16MacPublicKeyG1 } from './keys';
 import { encodeRevealedMessageObject, getBlindedIndicesAndRevealedMessages } from '../sign-verify-js-objs';
 
 /**
@@ -231,4 +233,45 @@ export interface BDDT16BlindMacRequest {
    * signer of some or all of the message
    */
   revealedMessages?: Map<number, Uint8Array>;
+}
+
+/**
+ * This MAC cannot be verified without the secret key but the signer can give a proof to the user that the MAC is
+ * correct, i.e. it was created with the public key of the secret key.
+ */
+export class BDDT16MacProofOfValidity extends BytearrayWrapper {
+  constructor(mac: BDDT16Mac, secretKey: BDDT16MacSecretKey, publicKey: BDDT16MacPublicKeyG1, params: BDDT16MacParams) {
+    const proof = bddt16MacProofOfValidity(mac.value, secretKey.value, publicKey.value, params.value);
+    super(proof);
+  }
+
+  verify(mac: BDDT16Mac,
+         messages: Uint8Array[],
+         publicKey: BDDT16MacPublicKeyG1,
+         params: BDDT16MacParams,
+         encodeMessages: boolean
+  ): VerifyResult {
+    if (messages.length !== params.supportedMessageCount()) {
+      throw new Error(
+        `Number of messages ${
+          messages.length
+        } is different from ${params.supportedMessageCount()} supported by the MAC params`
+      );
+    }
+    return bddt16MacVerifyProofOfValidity(this.value, mac.value, messages, publicKey.value, params.value, encodeMessages);
+  }
+
+  verifyMessageObject(
+    mac: BDDT16Mac,
+    messages: object,
+    publicKey: BDDT16MacPublicKeyG1,
+    labelOrParams: Uint8Array | BDDT16MacParams,
+    encoder: Encoder
+  ): VerifyResult {
+    const [_, encodedValues] = encoder.encodeMessageObject(messages);
+    const msgCount = encodedValues.length;
+
+    const params = BDDT16MacParams.getMacParamsOfRequiredSize(msgCount, labelOrParams);
+    return this.verify(mac, encodedValues, publicKey, params, false)
+  }
 }
