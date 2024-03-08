@@ -67,7 +67,7 @@ describe(`Signing and proof of knowledge of ${Scheme} signatures`, () => {
       if (isBDDT16()) {
         const pk = sk.generatePublicKeyG1(params);
         const proof = new BDDT16MacProofOfValidity(signed.signature, sk, pk, params);
-        checkResult(proof.verifyMessageObject(signed.signature, attributes, pk, label, encoder));
+        checkResult(proof.verifyWithMessageObject(signed.signature, attributes, pk, label, encoder));
       }
 
       // For debugging

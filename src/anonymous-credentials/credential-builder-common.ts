@@ -11,7 +11,8 @@ import {
   SCHEMA_STR,
   STATUS_STR,
   SUBJECT_STR,
-  TYPE_STR, MEM_CHECK_KV_STR
+  TYPE_STR,
+  MEM_CHECK_KV_STR
 } from './types-and-consts';
 
 /**
@@ -61,7 +62,9 @@ export abstract class CredentialBuilderCommon extends Versioned {
 
   setCredentialStatus(registryId: string, revCheck: string, memberValue: unknown) {
     if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR && revCheck !== MEM_CHECK_KV_STR) {
-      throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} or ${MEM_CHECK_KV_STR} but was ${revCheck}`);
+      throw new Error(
+        `Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} or ${MEM_CHECK_KV_STR} but was ${revCheck}`
+      );
     }
     this._credStatus = {
       [TYPE_STR]: RevocationStatusProtocol.Vb22,

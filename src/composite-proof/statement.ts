@@ -48,7 +48,12 @@ import {
 } from 'crypto-wasm-new';
 // import { generatePoKBBSSignatureStatement, generatePoKBBSPlusSignatureStatement, generatePoKBBSSignatureStatementFromParamRefs, generatePoKBBSPlusSignatureStatementFromParamRefs } from 'crypto-wasm-old/lib/composite_proof_system_wasm';
 // @ts-ignore
-import { generatePoKBBSSignatureStatement, generatePoKBBSPlusSignatureStatement, generatePoKBBSSignatureStatementFromParamRefs, generatePoKBBSPlusSignatureStatementFromParamRefs } from 'crypto-wasm-old';
+import {
+  generatePoKBBSSignatureStatement,
+  generatePoKBBSPlusSignatureStatement,
+  generatePoKBBSSignatureStatementFromParamRefs,
+  generatePoKBBSPlusSignatureStatementFromParamRefs
+} from 'crypto-wasm-old';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
   getChunkBitSize,
@@ -179,7 +184,12 @@ export class Statement {
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSPlusSignatureVerifierStatement(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
+    return generatePoKBBSPlusSignatureVerifierStatement(
+      sigParams.value,
+      publicKey.value,
+      revealedMessages,
+      encodeMessages
+    );
   }
 
   /**
@@ -232,7 +242,12 @@ export class Statement {
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSSignatureVerifierStatementFromParamRefs(sigParamsRef, publicKeyRef, revealedMessages, encodeMessages);
+    return generatePoKBBSSignatureVerifierStatementFromParamRefs(
+      sigParamsRef,
+      publicKeyRef,
+      revealedMessages,
+      encodeMessages
+    );
   }
 
   static bbsPlusSignatureFromSetupParamRefsOld(
@@ -254,11 +269,7 @@ export class Statement {
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSPlusSignatureProverStatementFromParamRefs(
-      sigParamsRef,
-      revealedMessages,
-      encodeMessages
-    );
+    return generatePoKBBSPlusSignatureProverStatementFromParamRefs(sigParamsRef, revealedMessages, encodeMessages);
   }
 
   /**
@@ -297,7 +308,12 @@ export class Statement {
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBDDT16MacFullVerifierStatement(macParams.value, secretKey.value, revealedMessages, encodeMessages);
+    return generatePoKBDDT16MacFullVerifierStatement(
+      macParams.value,
+      secretKey.value,
+      revealedMessages,
+      encodeMessages
+    );
   }
 
   static bddt16MacFromSetupParamRefs(
@@ -305,11 +321,7 @@ export class Statement {
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBDDT16MacStatementFromParamRefs(
-      macParamsRef,
-      revealedMessages,
-      encodeMessages
-    );
+    return generatePoKBDDT16MacStatementFromParamRefs(macParamsRef, revealedMessages, encodeMessages);
   }
 
   static bddt16MacFullVerifierFromSetupParamRefs(
@@ -407,16 +419,11 @@ export class Statement {
     return generateAccumulatorNonMembershipStatementFromParamRefs(params, publicKey, provingKey, accumulated);
   }
 
-  static vbAccumulatorMembershipKV(
-    accumulated: Uint8Array
-  ): Uint8Array {
+  static vbAccumulatorMembershipKV(accumulated: Uint8Array): Uint8Array {
     return generateAccumulatorKVMembershipStatement(accumulated);
   }
 
-  static vbAccumulatorMembershipKVFullVerifier(
-    secretKey: AccumulatorSecretKey,
-    accumulated: Uint8Array,
-  ): Uint8Array {
+  static vbAccumulatorMembershipKVFullVerifier(secretKey: AccumulatorSecretKey, accumulated: Uint8Array): Uint8Array {
     return generateAccumulatorKVFullVerifierMembershipStatement(secretKey.value, accumulated);
   }
 

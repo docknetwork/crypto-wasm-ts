@@ -10,7 +10,9 @@ import {
   generateR1CSCircomWitness,
   generateBoundCheckBppWitness,
   generateBoundCheckSmcWitness,
-  generateBoundCheckSmcWithKVWitness, generatePublicInequalityWitness, generatePoKBDDT16MacWitness
+  generateBoundCheckSmcWithKVWitness,
+  generatePublicInequalityWitness,
+  generatePoKBDDT16MacWitness
 } from 'crypto-wasm-new';
 import { BBSPlusSignatureG1 } from '../bbs-plus';
 import { VBMembershipWitness, VBNonMembershipWitness } from '../accumulator';
@@ -68,11 +70,7 @@ export class Witness {
     return generatePoKBBSPlusSignatureWitness(signature.value, unrevealedMessages, encodeMessages);
   }
 
-  static bddt16Mac(
-    mac: BDDT16Mac,
-    unrevealedMessages: Map<number, Uint8Array>,
-    encodeMessages: boolean
-  ): Uint8Array {
+  static bddt16Mac(mac: BDDT16Mac, unrevealedMessages: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
     return generatePoKBDDT16MacWitness(mac.value, unrevealedMessages, encodeMessages);
   }
 

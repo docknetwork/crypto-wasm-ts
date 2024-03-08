@@ -4,8 +4,11 @@ import {
   AttributeEquality,
   AttributeRef,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BBS_SIGNATURE_PARAMS_LABEL_BYTES, BDDT16_MAC_PARAMS_LABEL_BYTES, CredentialVerificationParam,
-  FlattenedSchema, MEM_CHECK_KV_STR,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BDDT16_MAC_PARAMS_LABEL_BYTES,
+  CredentialVerificationParam,
+  FlattenedSchema,
+  MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
   PredicateParamType,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
@@ -91,7 +94,7 @@ export function flattenPredicatesInSpec(obj: object): [string[], object[][]] {
         const m1 = new Map();
         m1.set(innerObjKey, temp[k]);
         m.set(arrayIdx, m1);
-          tempMap.set(key, [m, arrayIdx])
+        tempMap.set(key, [m, arrayIdx]);
       } else {
         if (arrayIdx > tempMapValue[1]) {
           tempMapValue[1] = arrayIdx;
@@ -196,20 +199,18 @@ export function buildSignatureVerifierStatementFromParamsRef(
 ): Uint8Array {
   let setupSigP: SetupParam,
     setupPK: SetupParam | undefined,
-    buildStatement: ((
-      sigParamsRef: number,
-      publicKeyRef: number,
-      revealedMessages: Map<number, Uint8Array>,
-      encodeMessages: boolean
-    ) => Uint8Array) | ((
-      sigParamsRef: number,
-      revealedMessages: Map<number, Uint8Array>,
-      encodeMessages: boolean
-    ) => Uint8Array);
+    buildStatement:
+      | ((
+          sigParamsRef: number,
+          publicKeyRef: number,
+          revealedMessages: Map<number, Uint8Array>,
+          encodeMessages: boolean
+        ) => Uint8Array)
+      | ((sigParamsRef: number, revealedMessages: Map<number, Uint8Array>, encodeMessages: boolean) => Uint8Array);
 
   function getPk(): PublicKey {
     if (credVerParam === undefined) {
-      throw new Error('Public key needs to be provided for BBS signatures')
+      throw new Error('Public key needs to be provided for BBS signatures');
     }
     const pk = credVerParam as PublicKey;
     if (paramsClassByPublicKey(pk) !== sigParams.constructor) {
@@ -222,12 +223,16 @@ export function buildSignatureVerifierStatementFromParamsRef(
     case BBSSignatureParams:
       setupSigP = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount) as BBSSignatureParams);
       setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(getPk());
-      buildStatement = useNewVersion ? Statement.bbsSignatureVerifierFromSetupParamRefs : Statement.bbsSignatureFromSetupParamRefsOld;
+      buildStatement = useNewVersion
+        ? Statement.bbsSignatureVerifierFromSetupParamRefs
+        : Statement.bbsSignatureFromSetupParamRefsOld;
       return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
     case BBSPlusSignatureParamsG1:
       setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(getPk());
       setupSigP = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount) as BBSPlusSignatureParamsG1);
-      buildStatement = useNewVersion ? Statement.bbsPlusSignatureVerifierFromSetupParamRefs : Statement.bbsPlusSignatureFromSetupParamRefsOld;
+      buildStatement = useNewVersion
+        ? Statement.bbsPlusSignatureVerifierFromSetupParamRefs
+        : Statement.bbsPlusSignatureFromSetupParamRefsOld;
       return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
     case PSSignatureParams:
       let psPK = getPk() as PSPublicKey;
@@ -246,7 +251,12 @@ export function buildSignatureVerifierStatementFromParamsRef(
     case BDDT16MacParams:
       setupSigP = SetupParam.bddt16MacParams(sigParams.adapt(messageCount) as BDDT16MacParams);
       if (credVerParam instanceof BDDT16MacSecretKey) {
-        return Statement.bddt16MacFullVerifierFromSetupParamRefs(setupParamsTrk.add(setupSigP), credVerParam, revealedMessages, false);
+        return Statement.bddt16MacFullVerifierFromSetupParamRefs(
+          setupParamsTrk.add(setupSigP),
+          credVerParam,
+          revealedMessages,
+          false
+        );
       } else {
         return Statement.bddt16MacFromSetupParamRefs(setupParamsTrk.add(setupSigP), revealedMessages, false);
       }
@@ -267,16 +277,14 @@ export function buildSignatureProverStatementFromParamsRef(
   }
   let setupParams: SetupParam,
     setupPK: SetupParam | undefined,
-    buildStatement: ((
-      sigParamsRef: number,
-      publicKeyRef: number,
-      revealedMessages: Map<number, Uint8Array>,
-      encodeMessages: boolean
-    ) => Uint8Array) | ((
-      sigParamsRef: number,
-      revealedMessages: Map<number, Uint8Array>,
-      encodeMessages: boolean
-    ) => Uint8Array);
+    buildStatement:
+      | ((
+          sigParamsRef: number,
+          publicKeyRef: number,
+          revealedMessages: Map<number, Uint8Array>,
+          encodeMessages: boolean
+        ) => Uint8Array)
+      | ((sigParamsRef: number, revealedMessages: Map<number, Uint8Array>, encodeMessages: boolean) => Uint8Array);
 
   switch (sigParams.constructor) {
     case BBSSignatureParams:
@@ -289,7 +297,7 @@ export function buildSignatureProverStatementFromParamsRef(
       break;
     case PSSignatureParams:
       if (pk === undefined) {
-        throw new Error('Public key should be provided for PS signature')
+        throw new Error('Public key should be provided for PS signature');
       }
       let psPK = pk as PSPublicKey;
       const supported = psPK.supportedMessageCount();
@@ -312,8 +320,11 @@ export function buildSignatureProverStatementFromParamsRef(
       throw new Error(`Signature params are invalid ${sigParams.constructor.name}`);
   }
 
-  // @ts-ignore
-  return setupPK !== undefined ? buildStatement(setupParamsTrk.add(setupParams), setupParamsTrk.add(setupPK), revealedMessages, false) : buildStatement(setupParamsTrk.add(setupParams), revealedMessages, false);
+  return setupPK !== undefined
+    // @ts-ignore
+    ? buildStatement(setupParamsTrk.add(setupParams), setupParamsTrk.add(setupPK), revealedMessages, false)
+    // @ts-ignore
+    : buildStatement(setupParamsTrk.add(setupParams), revealedMessages, false);
 }
 
 /**
@@ -395,7 +406,7 @@ export function accumulatorStatement(
   checkType: string,
   accumulated: Uint8Array,
   setupParamsTrk: SetupParamsTracker,
-  vk?: AccumulatorVerificationParam,
+  vk?: AccumulatorVerificationParam
 ): Uint8Array {
   let statement: Uint8Array;
   if (!setupParamsTrk.hasAccumulatorParams()) {
@@ -403,17 +414,14 @@ export function accumulatorStatement(
   }
   if (checkType === MEM_CHECK_KV_STR) {
     if (vk === undefined) {
-      statement = Statement.vbAccumulatorMembershipKV(
-        accumulated
-      );
+      statement = Statement.vbAccumulatorMembershipKV(accumulated);
     } else {
       if (vk instanceof AccumulatorSecretKey) {
-        statement = Statement.vbAccumulatorMembershipKVFullVerifier(
-          vk,
-          accumulated
-        );
+        statement = Statement.vbAccumulatorMembershipKVFullVerifier(vk, accumulated);
       } else {
-        throw new Error(`Unexpected accumulator verification param ${vk.constructor.name} passed for credential index ${credIndex}`)
+        throw new Error(
+          `Unexpected accumulator verification param ${vk.constructor.name} passed for credential index ${credIndex}`
+        );
       }
     }
   } else {

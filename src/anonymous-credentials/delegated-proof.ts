@@ -6,15 +6,15 @@ import { ID_STR, REV_CHECK_STR, RevocationStatusProtocol, SignatureType, TYPE_ST
 import { Versioned } from './versioned';
 
 export interface IDelegatedCredentialProof {
-  sigType: SignatureType,
-  proof: BDDT16DelegatedProof
+  sigType: SignatureType;
+  proof: BDDT16DelegatedProof;
 }
 
 export interface IDelegatedCredentialStatusProof {
   [ID_STR]: string;
   [TYPE_STR]: RevocationStatusProtocol;
   [REV_CHECK_STR]: string;
-  proof: VBAccumMembershipDelegatedProof
+  proof: VBAccumMembershipDelegatedProof;
 }
 
 export class DelegatedProof extends Versioned {
@@ -30,10 +30,10 @@ export class DelegatedProof extends Versioned {
   }
 
   verify(credentialSecretKey?: BDDT16MacSecretKey, accumSecretKey?: AccumulatorSecretKey): VerifyResult {
-    const r = {verified: true, error: ""}
+    const r = { verified: true, error: '' };
     if (this.credential !== undefined) {
       if (credentialSecretKey === undefined) {
-        throw new Error('Secret key not provided for credential')
+        throw new Error('Secret key not provided for credential');
       }
       const rc = this.credential.proof.verify(credentialSecretKey);
       if (!rc.verified) {
@@ -42,7 +42,7 @@ export class DelegatedProof extends Versioned {
     }
     if (this.status !== undefined) {
       if (accumSecretKey === undefined) {
-        throw new Error('Secret key not provided for accumulator')
+        throw new Error('Secret key not provided for accumulator');
       }
       const rc = this.status.proof.verify(accumSecretKey);
       if (!rc.verified) {

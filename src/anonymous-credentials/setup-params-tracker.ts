@@ -2,7 +2,9 @@ import { SetupParam } from '../composite-proof';
 import {
   dockAccumulatorMemProvingKey,
   dockAccumulatorNonMemProvingKey,
-  dockAccumulatorParams, dockBoundCheckBppSetup, dockInequalityCommKey,
+  dockAccumulatorParams,
+  dockBoundCheckBppSetup,
+  dockInequalityCommKey,
   dockSaverEncryptionGens,
   dockSaverEncryptionGensUncompressed
 } from './types-and-consts';

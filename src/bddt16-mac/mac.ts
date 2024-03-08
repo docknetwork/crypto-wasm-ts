@@ -3,8 +3,10 @@ import { Encoder, MessageEncoder } from '../encoder';
 import {
   bddt16BlindMacGenerate,
   bddt16MacGenerate,
-  bddt16MacVerify, bddt16UnblindMac,
-  bddt16MacProofOfValidity, bddt16MacVerifyProofOfValidity,
+  bddt16MacVerify,
+  bddt16UnblindMac,
+  bddt16MacProofOfValidity,
+  bddt16MacVerifyProofOfValidity,
   VerifyResult
 } from 'crypto-wasm-new';
 import { MessageStructure, SignedMessages } from '../types';
@@ -79,6 +81,25 @@ export class BDDT16Mac extends MessageEncoder {
       encodedMessages,
       signature
     };
+  }
+
+  static getSignedMessageObjectWithProof(
+    messages: Object,
+    secretKey: BDDT16MacSecretKey,
+    publicKey: BDDT16MacPublicKeyG1,
+    labelOrParams: Uint8Array | BDDT16MacParams,
+    encoder: Encoder
+  ): [SignedMessages<BDDT16Mac>, BDDT16MacProofOfValidity] {
+    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
+    const encodedMessageList = Object.values(encodedMessages);
+
+    const sigParams = BDDT16MacParams.getMacParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
+    const signature = BDDT16Mac.generate(encodedMessageList, secretKey, sigParams, false);
+    const proof = new BDDT16MacProofOfValidity(signature, secretKey, publicKey, sigParams);
+    return [{
+      encodedMessages,
+      signature
+    }, proof];
   }
 
   /**
@@ -245,11 +266,12 @@ export class BDDT16MacProofOfValidity extends BytearrayWrapper {
     super(proof);
   }
 
-  verify(mac: BDDT16Mac,
-         messages: Uint8Array[],
-         publicKey: BDDT16MacPublicKeyG1,
-         params: BDDT16MacParams,
-         encodeMessages: boolean
+  verify(
+    mac: BDDT16Mac,
+    messages: Uint8Array[],
+    publicKey: BDDT16MacPublicKeyG1,
+    params: BDDT16MacParams,
+    encodeMessages: boolean
   ): VerifyResult {
     if (messages.length !== params.supportedMessageCount()) {
       throw new Error(
@@ -258,10 +280,17 @@ export class BDDT16MacProofOfValidity extends BytearrayWrapper {
         } is different from ${params.supportedMessageCount()} supported by the MAC params`
       );
     }
-    return bddt16MacVerifyProofOfValidity(this.value, mac.value, messages, publicKey.value, params.value, encodeMessages);
+    return bddt16MacVerifyProofOfValidity(
+      this.value,
+      mac.value,
+      messages,
+      publicKey.value,
+      params.value,
+      encodeMessages
+    );
   }
 
-  verifyMessageObject(
+  verifyWithMessageObject(
     mac: BDDT16Mac,
     messages: object,
     publicKey: BDDT16MacPublicKeyG1,
@@ -272,6 +301,6 @@ export class BDDT16MacProofOfValidity extends BytearrayWrapper {
     const msgCount = encodedValues.length;
 
     const params = BDDT16MacParams.getMacParamsOfRequiredSize(msgCount, labelOrParams);
-    return this.verify(mac, encodedValues, publicKey, params, false)
+    return this.verify(mac, encodedValues, publicKey, params, false);
   }
 }

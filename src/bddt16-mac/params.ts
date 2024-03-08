@@ -1,7 +1,13 @@
 import { ISignatureParams, MessageStructure } from '../types';
 import {
-  bddt16GenerateMacParams, bddt16IsMacParamsValid, bddt16MacAdaptParamsForMsgCount, bddt16MacCommitMsgs,
-  Bddt16MacParams, bddt16MacParamsFromBytes, bddt16MacParamsToBytes, generateRandomFieldElement
+  bddt16GenerateMacParams,
+  bddt16IsMacParamsValid,
+  bddt16MacAdaptParamsForMsgCount,
+  bddt16MacCommitMsgs,
+  Bddt16MacParams,
+  bddt16MacParamsFromBytes,
+  bddt16MacParamsToBytes,
+  generateRandomFieldElement
 } from 'crypto-wasm-new';
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
 
@@ -109,10 +115,7 @@ export class BDDT16MacParams implements ISignatureParams {
    * @param msgCount
    * @param labelOrParams
    */
-  static getMacParamsOfRequiredSize(
-    msgCount: number,
-    labelOrParams: Uint8Array | BDDT16MacParams
-  ): BDDT16MacParams {
+  static getMacParamsOfRequiredSize(msgCount: number, labelOrParams: Uint8Array | BDDT16MacParams): BDDT16MacParams {
     return getSigParamsOfRequiredSize(BDDT16MacParams, msgCount, labelOrParams);
   }
 
@@ -123,7 +126,7 @@ export class BDDT16MacParams implements ISignatureParams {
     const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
     return this.getMacParamsOfRequiredSize(msgCount, labelOrParams);
   }
-  
+
   toJSON(): string {
     return JSON.stringify({
       value: {
@@ -135,5 +138,4 @@ export class BDDT16MacParams implements ISignatureParams {
       label: this.label
     });
   }
-  
 }

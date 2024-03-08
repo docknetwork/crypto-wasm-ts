@@ -8,7 +8,7 @@ import { BytearrayWrapper } from './bytearray-wrapper';
  */
 export class BDDT16DelegatedProof extends BytearrayWrapper {
   verify(secretKey: BDDT16MacSecretKey): VerifyResult {
-    return verifyBDDT16DelegatedProof(this.value, secretKey.value)
+    return verifyBDDT16DelegatedProof(this.value, secretKey.value);
   }
 }
 
@@ -17,6 +17,6 @@ export class BDDT16DelegatedProof extends BytearrayWrapper {
  */
 export class VBAccumMembershipDelegatedProof extends BytearrayWrapper {
   verify(secretKey: AccumulatorSecretKey): VerifyResult {
-    return verifyVBAccumMembershipDelegatedProof(this.value, secretKey.value)
+    return verifyVBAccumMembershipDelegatedProof(this.value, secretKey.value);
   }
 }

@@ -3,7 +3,8 @@ import {
   SCHEMA_STR,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
-  PS_SIGNATURE_PARAMS_LABEL_BYTES, BDDT16_MAC_PARAMS_LABEL_BYTES
+  PS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BDDT16_MAC_PARAMS_LABEL_BYTES
 } from './types-and-consts';
 import { BBSCredential, BBSPlusCredential, BDDT16Credential, Credential, PSCredential } from './credential';
 import { flatten } from 'flat';

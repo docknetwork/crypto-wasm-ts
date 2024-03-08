@@ -11,7 +11,9 @@ import {
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
   SCHEMA_STR,
   STATUS_STR,
-  SUBJECT_STR, BDDT16_CRED_PROOF_TYPE, BDDT16_MAC_PARAMS_LABEL_BYTES
+  SUBJECT_STR,
+  BDDT16_CRED_PROOF_TYPE,
+  BDDT16_MAC_PARAMS_LABEL_BYTES
 } from './types-and-consts';
 import { VerifyResult } from 'crypto-wasm-new';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
@@ -221,7 +223,7 @@ export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatu
 
 export class BDDT16Credential extends Credential<undefined, BDDT16Mac, BDDT16MacParams> {
   verify(publicKey: undefined, signatureParams?: BDDT16MacParams): VerifyResult {
-    throw new Error(`Not applicable`)
+    throw new Error(`Not applicable`);
   }
 
   /**
@@ -239,15 +241,19 @@ export class BDDT16Credential extends Credential<undefined, BDDT16Mac, BDDT16Mac
     );
   }
 
-  verifyUsingValidityProof(proof: BDDT16MacProofOfValidity, publicKey: BDDT16MacPublicKeyG1, signatureParams: BDDT16MacParams) : VerifyResult {
+  verifyUsingValidityProof(
+    proof: BDDT16MacProofOfValidity,
+    publicKey: BDDT16MacPublicKeyG1,
+    signatureParams?: BDDT16MacParams
+  ): VerifyResult {
     const cred = this.serializeForSigning();
-    return proof.verifyMessageObject(
+    return proof.verifyWithMessageObject(
       this.signature,
       cred,
       publicKey,
       signatureParams ?? BDDT16_MAC_PARAMS_LABEL_BYTES,
       this.schema.encoder
-    )
+    );
   }
 
   /**

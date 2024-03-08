@@ -8,7 +8,9 @@ import {
   BBS_BLINDED_CRED_PROOF_TYPE,
   BBS_CRED_PROOF_TYPE,
   BBS_PLUS_BLINDED_CRED_PROOF_TYPE,
-  BBS_PLUS_CRED_PROOF_TYPE, BDDT16_BLINDED_CRED_PROOF_TYPE, BDDT16_CRED_PROOF_TYPE,
+  BBS_PLUS_CRED_PROOF_TYPE,
+  BDDT16_BLINDED_CRED_PROOF_TYPE,
+  BDDT16_CRED_PROOF_TYPE,
   PROOF_STR,
   TYPE_STR
 } from './types-and-consts';
@@ -49,7 +51,9 @@ export abstract class BlindedCredential<BlindSig> extends CredentialCommon<Blind
   }
 
   protected static validateProofType(typ: string) {
-    if (![BBS_BLINDED_CRED_PROOF_TYPE, BBS_PLUS_BLINDED_CRED_PROOF_TYPE, BDDT16_BLINDED_CRED_PROOF_TYPE].includes(typ)) {
+    if (
+      ![BBS_BLINDED_CRED_PROOF_TYPE, BBS_PLUS_BLINDED_CRED_PROOF_TYPE, BDDT16_BLINDED_CRED_PROOF_TYPE].includes(typ)
+    ) {
       throw new Error(`Invalid proof type ${typ}`);
     }
   }

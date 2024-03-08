@@ -15,7 +15,8 @@ import { PSPublicKey, PSSecretKey, PSSignature, PSSignatureParams } from '../ps'
 import {
   Accumulator,
   AccumulatorParams,
-  AccumulatorPublicKey, AccumulatorSecretKey,
+  AccumulatorPublicKey,
+  AccumulatorSecretKey,
   MembershipProvingKey,
   NonMembershipProvingKey
 } from '../accumulator';
@@ -116,8 +117,8 @@ export const BBS_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBSSignatureDock2023'
 export const BBS_PLUS_CRED_PROOF_TYPE = 'Bls12381BBS+SignatureDock2022';
 export const BBS_PLUS_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBS+SignatureDock2023';
 export const PS_CRED_PROOF_TYPE = 'Bls12381PSSignatureDock2023';
-export const BDDT16_CRED_PROOF_TYPE = 'Bls12381BDDT16Dock2024';
-export const BDDT16_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBDDT16Dock2024';
+export const BDDT16_CRED_PROOF_TYPE = 'Bls12381BDDT16MACDock2024';
+export const BDDT16_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBDDT16MACDock2024';
 export const LEGOGROTH16 = 'LegoGroth16';
 export const SAVER = 'SAVER';
 

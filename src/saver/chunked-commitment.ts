@@ -1,9 +1,6 @@
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { ICompressed, IUncompressed } from '../ICompressed';
-import {
-  saverGenerateChunkedCommitmentGenerators,
-  saverDecompressChunkedCommitmentGenerators
-} from 'crypto-wasm-new';
+import { saverGenerateChunkedCommitmentGenerators, saverDecompressChunkedCommitmentGenerators } from 'crypto-wasm-new';
 
 /**
  * Same as `SaverChunkedCommitmentKey` but in uncompressed form.

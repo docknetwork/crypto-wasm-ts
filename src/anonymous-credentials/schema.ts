@@ -391,7 +391,7 @@ export interface IEmbeddedJsonSchema {
 
 /**
  * JSON schema that does not contain the properties but its $id property can be used to fetch the properties.
- * Intentionally not allowing `properties` key as reconciliation will be needed in case of conflict with fetched properties 
+ * Intentionally not allowing `properties` key as reconciliation will be needed in case of conflict with fetched properties
  */
 export interface IJsonSchema {
   [META_SCHEMA_STR]: string;

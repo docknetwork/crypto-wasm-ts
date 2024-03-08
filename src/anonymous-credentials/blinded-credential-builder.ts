@@ -2,7 +2,8 @@ import { CredentialBuilderCommon } from './credential-builder-common';
 import { IBlindCredentialRequest } from './presentation-specification';
 import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BBS_SIGNATURE_PARAMS_LABEL_BYTES, BDDT16_MAC_PARAMS_LABEL_BYTES,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BDDT16_MAC_PARAMS_LABEL_BYTES
 } from './types-and-consts';
 import { BBSCredential, BBSPlusCredential, BDDT16Credential } from './credential';
 import { BBSBlindSignature, BBSSecretKey, BBSSignatureParams } from '../bbs';
@@ -122,13 +123,7 @@ export class BDDT16BlindedCredentialBuilder extends BlindedCredentialBuilder {
   ): BDDT16BlindedCredential {
     const [totalAttrs, encodedAttrs] = this.getTotalAttributesAndEncodedKnownAttributes();
     const params = BDDT16MacParams.getMacParamsOfRequiredSize(totalAttrs, sigParams);
-    const sig = BDDT16BlindMac.generate(
-      this.blindedCredReq.commitment,
-      encodedAttrs,
-      secretKey,
-      params,
-      false
-    );
+    const sig = BDDT16BlindMac.generate(this.blindedCredReq.commitment, encodedAttrs, secretKey, params, false);
     return new BDDT16BlindedCredential(
       this.version,
       this.schema as CredentialSchema,

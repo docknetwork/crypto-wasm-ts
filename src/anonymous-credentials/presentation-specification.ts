@@ -166,7 +166,7 @@ export class PresentationSpecification {
   // key == pseudonym
   unboundedPseudonyms?: { [key: string]: IPresentedUnboundedPseudonym };
   blindCredentialRequest?: IBlindCredentialRequest;
-  circomPredicatesMultiCred?: ICircomPredicate<ICircuitPrivateVarMultiCred>[]
+  circomPredicatesMultiCred?: ICircomPredicate<ICircuitPrivateVarMultiCred>[];
 
   constructor() {
     this.credentials = [];

@@ -68,7 +68,8 @@ import {
   RevocationStatusProtocol,
   SCHEMA_STR,
   SignatureType,
-  STATUS_STR, TYPE_STR,
+  STATUS_STR,
+  TYPE_STR,
   VerifiableEncryptionProtocol
 } from './types-and-consts';
 import {
@@ -160,9 +161,8 @@ export class Presentation extends Versioned {
     predicateParams?: Map<string, PredicateParamType>,
     circomOutputs?: Map<number, Uint8Array[][]>,
     blindedAttributesCircomOutputs?: Uint8Array[][],
-    circomOutputsMultiCred?: Uint8Array[][],
+    circomOutputsMultiCred?: Uint8Array[][]
   ): VerifyResult {
-
     // NOTE: The order of processing predicates should match exactly to the order in presentation builder, eg. if circom predicates
     // are processed at the end in the builder than they should be processed at the end here as well, if verifiable encryption is
     // processed at 2nd last in the builder than they should be processed at 2nd last here as well. By convention credentials are
@@ -173,7 +173,7 @@ export class Presentation extends Versioned {
       credVerifParams = credentialVerifParams;
     } else {
       credentialVerifParams.forEach((v, i) => {
-        credVerifParams.set(i, v)
+        credVerifParams.set(i, v);
       });
     }
     const statements = new Statements();
@@ -209,7 +209,12 @@ export class Presentation extends Versioned {
       const flattenedSchema = presentedCredSchema.flatten();
       const numAttribs = flattenedSchema[0].length;
 
-      const revealedEncoded = Presentation.encodeRevealed(credIndex, presentedCred, presentedCredSchema, flattenedSchema[0]);
+      const revealedEncoded = Presentation.encodeRevealed(
+        credIndex,
+        presentedCred,
+        presentedCredSchema,
+        flattenedSchema[0]
+      );
 
       let sigParamsClass;
       switch (presentedCred.sigType) {
@@ -361,7 +366,13 @@ export class Presentation extends Versioned {
 
     if (this.spec.circomPredicatesMultiCred !== undefined) {
       this.spec.circomPredicatesMultiCred.forEach((pred, j) => {
-        const statement = Presentation.createCircomStatement(pred, j, setupParamsTrk, predicateParams, circomOutputsMultiCred);
+        const statement = Presentation.createCircomStatement(
+          pred,
+          j,
+          setupParamsTrk,
+          predicateParams,
+          circomOutputsMultiCred
+        );
         const sIdx = statements.add(statement);
 
         function addWitnessEquality(cId: number, attributeName: object) {
@@ -612,32 +623,39 @@ export class Presentation extends Versioned {
       if (presentedCred.sigType === SignatureType.Bddt16) {
         const proof = delegatedProofs.get(i);
         if (proof === undefined) {
-          throw new Error(`Could not find delegated credential proof for credential index ${i}`)
+          throw new Error(`Could not find delegated credential proof for credential index ${i}`);
         }
         if (!(proof instanceof BDDT16DelegatedProof)) {
-          throw new Error(`Unexpected delegated credential proof type ${proof.constructor.name} for credential index ${i}`)
+          throw new Error(
+            `Unexpected delegated credential proof type ${proof.constructor.name} for credential index ${i}`
+          );
         }
         credP = {
           sigType: presentedCred.sigType,
           proof
-        }
+        };
       }
 
       if (presentedCred.status !== undefined) {
-        if (presentedCred.status[TYPE_STR] === RevocationStatusProtocol.Vb22 && presentedCred.status[REV_CHECK_STR] === MEM_CHECK_KV_STR) {
+        if (
+          presentedCred.status[TYPE_STR] === RevocationStatusProtocol.Vb22 &&
+          presentedCred.status[REV_CHECK_STR] === MEM_CHECK_KV_STR
+        ) {
           const proof = delegatedProofs.get(nextCredStatusStatementIdx);
           if (proof === undefined) {
-            throw new Error(`Could not find delegated credential status proof for credential index ${i}`)
+            throw new Error(`Could not find delegated credential status proof for credential index ${i}`);
           }
           if (!(proof instanceof VBAccumMembershipDelegatedProof)) {
-            throw new Error(`Unexpected delegated credential status proof type ${proof.constructor.name} for credential index ${i}`)
+            throw new Error(
+              `Unexpected delegated credential status proof type ${proof.constructor.name} for credential index ${i}`
+            );
           }
           statusP = {
             [ID_STR]: presentedCred.status[ID_STR],
             [TYPE_STR]: presentedCred.status[TYPE_STR],
             [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR],
             proof
-          }
+          };
         }
         nextCredStatusStatementIdx++;
       }
@@ -828,7 +846,7 @@ export class Presentation extends Versioned {
         witnessEq.addWitnessRef(statementIdx, nameIdx);
         witnessEq.addWitnessRef(sIdx, 0);
         metaStatements.addWitnessEquality(witnessEq);
-      })
+      });
     });
   }
 
@@ -902,7 +920,7 @@ export class Presentation extends Versioned {
         witnessEq.addWitnessRef(statementIdx, nameIdx);
         witnessEq.addWitnessRef(sIdx, 0);
         metaStatements.addWitnessEquality(witnessEq);
-      })
+      });
     });
   }
 
@@ -917,7 +935,14 @@ export class Presentation extends Versioned {
     outputs?: Uint8Array[][]
   ) {
     predicates.forEach((pred, j) => {
-      const statement = Presentation.createCircomStatement(pred, j, setupParamsTrk, predicateParams, outputs, statementIdx);
+      const statement = Presentation.createCircomStatement(
+        pred,
+        j,
+        setupParamsTrk,
+        predicateParams,
+        outputs,
+        statementIdx
+      );
       const sIdx = statements.add(statement);
 
       function addWitnessEquality(attributeName: object) {
@@ -942,7 +967,14 @@ export class Presentation extends Versioned {
     });
   }
 
-  private static createCircomStatement(pred: ICircomPredicate<ICircuitPrivateVar | ICircuitPrivateVarMultiCred>, predIdx: number, setupParamsTrk: SetupParamsTracker, predicateParams?: Map<string, PredicateParamType>, outputs?: Uint8Array[][], statementIdx?: number): Uint8Array {
+  private static createCircomStatement(
+    pred: ICircomPredicate<ICircuitPrivateVar | ICircuitPrivateVarMultiCred>,
+    predIdx: number,
+    setupParamsTrk: SetupParamsTracker,
+    predicateParams?: Map<string, PredicateParamType>,
+    outputs?: Uint8Array[][],
+    statementIdx?: number
+  ): Uint8Array {
     const param = predicateParams?.get(pred.snarkKeyId);
     Presentation.addLegoVerifyingKeyToTracker(pred.snarkKeyId, param, setupParamsTrk);
 
@@ -955,7 +987,7 @@ export class Presentation extends Versioned {
     const unqId = `circom-outputs-${statementIdx !== undefined ? statementIdx : null}__${predIdx}`;
     setupParamsTrk.addForParamId(unqId, SetupParam.fieldElementVec(publicInputs));
 
-    return  Statement.r1csCircomVerifierFromSetupParamRefs(
+    return Statement.r1csCircomVerifierFromSetupParamRefs(
       setupParamsTrk.indexForParam(unqId),
       setupParamsTrk.indexForParam(pred.snarkKeyId)
     );
@@ -971,7 +1003,9 @@ export class Presentation extends Versioned {
       }
     }
 
-    function formatCircomPreds(circomPredicates: ICircomPredicate<ICircuitPrivateVar | ICircuitPrivateVarMultiCred>[]): object {
+    function formatCircomPreds(
+      circomPredicates: ICircomPredicate<ICircuitPrivateVar | ICircuitPrivateVarMultiCred>[]
+    ): object {
       return circomPredicates.map((v) => {
         const r = deepClone(v) as object;
         // @ts-ignore
@@ -1120,9 +1154,9 @@ export class Presentation extends Versioned {
     } else {
       let errorMsg: string;
       if (statementIdx !== undefined) {
-        errorMsg =  `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Legosnark verifying key but was ${param}`;
+        errorMsg = `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Legosnark verifying key but was ${param}`;
       } else {
-        errorMsg =  `Predicate param id ${paramId} was expected to be a Legosnark verifying key but was ${param}`;
+        errorMsg = `Predicate param id ${paramId} was expected to be a Legosnark verifying key but was ${param}`;
       }
       throw new Error(errorMsg);
     }
@@ -1238,7 +1272,7 @@ export class Presentation extends Versioned {
     const { version, context, nonce, spec, attributeCiphertexts, blindedAttributeCiphertexts, proof } = j;
     const nnc = nonce ? b58.decode(nonce) : undefined;
 
-    function formatCircomPreds(pred: object): ICircomPredicate<ICircuitPrivateVar| ICircuitPrivateVarMultiCred>[] {
+    function formatCircomPreds(pred: object): ICircomPredicate<ICircuitPrivateVar | ICircuitPrivateVarMultiCred>[] {
       const circomPredicates = deepClone(pred) as object[];
       circomPredicates.forEach((cp) => {
         if (cp['protocol'] !== undefined && !Object.values(CircomProtocol).includes(cp['protocol'])) {
@@ -1305,9 +1339,7 @@ export class Presentation extends Versioned {
           status = deepClone(cred['status']) as object;
           status['accumulated'] = b58.decode(cred['status']['accumulated']);
         } else {
-          throw new Error(
-            `status type should be one of ${RevocationStatusProtocol} but was ${cred['status']['type']}`
-          );
+          throw new Error(`status type should be one of ${RevocationStatusProtocol} but was ${cred['status']['type']}`);
         }
       }
       if (cred['circomPredicates'] !== undefined) {
@@ -1334,7 +1366,9 @@ export class Presentation extends Versioned {
     }
 
     if (spec['circomPredicatesMultiCred'] !== undefined) {
-      presSpec.circomPredicatesMultiCred = formatCircomPreds(spec['circomPredicatesMultiCred']) as ICircomPredicate<ICircuitPrivateVarMultiCred>[];
+      presSpec.circomPredicatesMultiCred = formatCircomPreds(
+        spec['circomPredicatesMultiCred']
+      ) as ICircomPredicate<ICircuitPrivateVarMultiCred>[];
     }
 
     presSpec.attributeEqualities = spec['attributeEqualities'];

@@ -9,7 +9,8 @@ import { BBSCredential, BBSPlusCredential, PSCredential } from './credential';
 import {
   AttributeEquality,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BBS_SIGNATURE_PARAMS_LABEL_BYTES, BDDT16_MAC_PARAMS_LABEL_BYTES,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BDDT16_MAC_PARAMS_LABEL_BYTES,
   BlindedAttributeEquality,
   BlindSignatureType,
   BoundCheckParamType,
@@ -325,7 +326,18 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     if (chunkBitSize !== 8 && chunkBitSize !== 16) {
       throw new Error(`Only 8 and 16 supported for chunkBitSize but given ${chunkBitSize}`);
     }
-    PresentationBuilder.processVerifiableEncs(this.presentationBuilder, this.verifEnc, attributeName, chunkBitSize, commKeyId, encryptionKeyId, snarkPkId, commKey, encryptionKey, snarkPk);
+    PresentationBuilder.processVerifiableEncs(
+      this.presentationBuilder,
+      this.verifEnc,
+      attributeName,
+      chunkBitSize,
+      commKeyId,
+      encryptionKeyId,
+      snarkPkId,
+      commKey,
+      encryptionKey,
+      snarkPk
+    );
   }
 
   enforceCircomPredicateOnBlindedAttribute(

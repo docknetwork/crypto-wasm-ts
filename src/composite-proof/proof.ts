@@ -1,13 +1,17 @@
 import {
   generateCompositeProofG1,
-  generateCompositeProofG1WithDeconstructedProofSpec, getAllDelegatedSubproofsFromProof,
+  generateCompositeProofG1WithDeconstructedProofSpec,
+  getAllDelegatedSubproofsFromProof,
   saverGetCiphertextFromProof,
   saverGetCiphertextsFromProof,
   verifyCompositeProofG1,
   verifyCompositeProofG1WithDeconstructedProofSpec,
   VerifyResult
 } from 'crypto-wasm-new';
-import {verifyCompositeProofG1 as verifyCompositeProofG1Old, verifyCompositeProofG1WithDeconstructedProofSpec as verifyCompositeProofG1WithDeconstructedProofSpecOld} from 'crypto-wasm-old';
+import {
+  verifyCompositeProofG1 as verifyCompositeProofG1Old,
+  verifyCompositeProofG1WithDeconstructedProofSpec as verifyCompositeProofG1WithDeconstructedProofSpecOld
+} from 'crypto-wasm-old';
 import { BDDT16DelegatedProof, VBAccumMembershipDelegatedProof } from '../delegated-proofs';
 import { MetaStatements, Statements } from './statement';
 import { Witnesses } from './witness';
@@ -60,7 +64,9 @@ export class CompositeProof extends BytearrayWrapper {
    * @param useNewVersion - Whether to use the new version of the wasm library
    */
   verify(proofSpec: ProofSpec, nonce?: Uint8Array, useNewVersion = true): VerifyResult {
-    return useNewVersion ? verifyCompositeProofG1(this.value, proofSpec.value, nonce) : verifyCompositeProofG1Old(this.value, proofSpec.value, nonce);
+    return useNewVersion
+      ? verifyCompositeProofG1(this.value, proofSpec.value, nonce)
+      : verifyCompositeProofG1Old(this.value, proofSpec.value, nonce);
   }
 
   /**
@@ -124,21 +130,23 @@ export class CompositeProof extends BytearrayWrapper {
     useNewVersion = true
   ): VerifyResult {
     const params = (setupParams ?? new Array<SetupParam>()).map((s) => s.value);
-    return useNewVersion ? verifyCompositeProofG1WithDeconstructedProofSpec(
-      this.value,
-      statements.values,
-      metaStatements.values,
-      params,
-      context,
-      nonce
-    ): verifyCompositeProofG1WithDeconstructedProofSpecOld(
-      this.value,
-      statements.values,
-      metaStatements.values,
-      params,
-      context,
-      nonce
-    );
+    return useNewVersion
+      ? verifyCompositeProofG1WithDeconstructedProofSpec(
+          this.value,
+          statements.values,
+          metaStatements.values,
+          params,
+          context,
+          nonce
+        )
+      : verifyCompositeProofG1WithDeconstructedProofSpecOld(
+          this.value,
+          statements.values,
+          metaStatements.values,
+          params,
+          context,
+          nonce
+        );
   }
 
   /**
@@ -146,7 +154,7 @@ export class CompositeProof extends BytearrayWrapper {
    * @returns - The key in the returned map is the statement index
    */
   getDelegatedProofs(): Map<number, BDDT16DelegatedProof | VBAccumMembershipDelegatedProof> {
-    const r = new Map<number,BDDT16DelegatedProof | VBAccumMembershipDelegatedProof>();
+    const r = new Map<number, BDDT16DelegatedProof | VBAccumMembershipDelegatedProof>();
     const delgProofs = getAllDelegatedSubproofsFromProof(this.value);
     for (const [i, [t, v]] of delgProofs.entries()) {
       let cls;
@@ -157,7 +165,7 @@ export class CompositeProof extends BytearrayWrapper {
       } else {
         throw new Error(`Unknown type ${t} of delegated proof for credential index ${i}`);
       }
-      r.set(i, new cls(v))
+      r.set(i, new cls(v));
     }
     return r;
   }

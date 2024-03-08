@@ -20,7 +20,8 @@ import {
   generateSetupParamForFieldElemVec,
   generateSetupParamForBppParams,
   generateSetupParamForSmcParams,
-  generateSetupParamForSmcParamsAndSk, generateSetupParamForBDDT16MacParameters
+  generateSetupParamForSmcParamsAndSk,
+  generateSetupParamForBDDT16MacParameters
 } from 'crypto-wasm-new';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {

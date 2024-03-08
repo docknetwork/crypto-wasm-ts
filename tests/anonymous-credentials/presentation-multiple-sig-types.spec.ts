@@ -121,6 +121,7 @@ describe.each([true, false])(
           // Check using validity proof as well
           const proof = new BDDT16MacProofOfValidity(credential.signature, skBddt16, pkBddt16, paramsBddt16);
           checkResult(credential.verifyUsingValidityProof(proof, pkBddt16, paramsBddt16));
+          checkResult(credential.verifyUsingValidityProof(proof, pkBddt16));
         }
         if (sk instanceof BBSSecretKey) {
           credentialBbs = credential;

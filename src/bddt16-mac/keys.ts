@@ -1,9 +1,5 @@
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import {
-  bddt16MacGenerateSecretKey,
-  bddt16MacGeneratePublicKeyG1,
-  bddt16MacIsPublicKeyG1Valid,
-} from 'crypto-wasm-new';
+import { bddt16MacGenerateSecretKey, bddt16MacGeneratePublicKeyG1, bddt16MacIsPublicKeyG1Valid } from 'crypto-wasm-new';
 import { BDDT16MacParams } from './params';
 
 /**
@@ -21,7 +17,7 @@ export class BDDT16MacSecretKey extends BytearrayWrapper {
 
 export class BDDT16MacPublicKeyG1 extends BytearrayWrapper {
   isValid(): boolean {
-    return bddt16MacIsPublicKeyG1Valid(this.value)
+    return bddt16MacIsPublicKeyG1Valid(this.value);
   }
 }
 
@@ -37,6 +33,6 @@ export class BDDT16KeypairG1 {
   static generate(params: BDDT16MacParams, seed?: Uint8Array): BDDT16KeypairG1 {
     const sk = BDDT16MacSecretKey.generate(seed);
     const pk = sk.generatePublicKeyG1(params);
-    return new BDDT16KeypairG1(sk, pk)
+    return new BDDT16KeypairG1(sk, pk);
   }
 }

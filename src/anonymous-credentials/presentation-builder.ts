@@ -26,7 +26,8 @@ import {
   CRYPTO_VERSION_STR,
   FlattenedSchema,
   ID_STR,
-  InequalityProtocol, MEM_CHECK_KV_STR,
+  InequalityProtocol,
+  MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
@@ -43,7 +44,8 @@ import {
 import {
   IBlindCredentialRequest,
   ICircomPredicate,
-  ICircuitPrivateVar, ICircuitPrivateVarMultiCred,
+  ICircuitPrivateVar,
+  ICircuitPrivateVarMultiCred,
   IPresentedAttributeBound,
   IPresentedAttributeInequality,
   IPresentedAttributeVE,
@@ -53,7 +55,8 @@ import {
 import { buildContextForProof, Presentation } from './presentation';
 import { AccumulatorPublicKey, AccumulatorWitness, VBMembershipWitness, VBNonMembershipWitness } from '../accumulator';
 import {
-  accumulatorStatement, buildSignatureProverStatementFromParamsRef,
+  accumulatorStatement,
+  buildSignatureProverStatementFromParamsRef,
   buildWitness,
   createWitEq,
   createWitEqForBlindedCred,
@@ -350,7 +353,18 @@ export class PresentationBuilder extends Versioned {
       v = new Map();
     }
 
-    PresentationBuilder.processVerifiableEncs(this, v, attributeName, chunkBitSize, commKeyId, encryptionKeyId, snarkPkId, commKey, encryptionKey, snarkPk);
+    PresentationBuilder.processVerifiableEncs(
+      this,
+      v,
+      attributeName,
+      chunkBitSize,
+      commKeyId,
+      encryptionKeyId,
+      snarkPkId,
+      commKey,
+      encryptionKey,
+      snarkPk
+    );
 
     this.verifEnc.set(credIdx, v);
   }
@@ -428,7 +442,12 @@ export class PresentationBuilder extends Versioned {
       r1cs !== undefined ? getR1CS(r1cs) : undefined
     );
     this.updatePredicateParams(PresentationBuilder.wasmParamId(circuitId), wasmBytes);
-    this.circomPredicatesMultiCred.push({ privateVars: circuitPrivateVars, publicVars: circuitPublicVars, circuitId, provingKeyId })
+    this.circomPredicatesMultiCred.push({
+      privateVars: circuitPrivateVars,
+      publicVars: circuitPublicVars,
+      circuitId,
+      provingKeyId
+    });
   }
 
   addBoundedPseudonym(
@@ -540,7 +559,7 @@ export class PresentationBuilder extends Versioned {
         sigParams,
         numAttribs,
         revealedAttrsEncoded,
-        this.credentials[credIndex][1],
+        this.credentials[credIndex][1]
       );
       const witness = buildWitness(cred.signature, unrevealedAttrsEncoded);
       statements.add(statement);
@@ -648,7 +667,8 @@ export class PresentationBuilder extends Versioned {
         unrevealedMsgsEncoded.set(credIndex, encodedAttrs);
       }
 
-      const encodedAttrsMultiCred: Map<number, Uint8Array> = unrevealedMsgsEncoded.get(credIndex) || new Map<number, Uint8Array>();
+      const encodedAttrsMultiCred: Map<number, Uint8Array> =
+        unrevealedMsgsEncoded.get(credIndex) || new Map<number, Uint8Array>();
       this.circomPredicatesMultiCred.forEach((pred) => {
         pred.privateVars.forEach(([name, val]) => {
           if (Array.isArray(val)) {
@@ -657,13 +677,13 @@ export class PresentationBuilder extends Versioned {
               if (i == credIndex) {
                 updateEncodedAttrs(s, encodedAttrsMultiCred);
               }
-            })
+            });
           } else {
             if (val[0] == credIndex) {
               updateEncodedAttrs(val[1], encodedAttrsMultiCred);
             }
           }
-        })
+        });
       });
       unrevealedMsgsEncoded.set(credIndex, encodedAttrsMultiCred);
 
@@ -1006,7 +1026,11 @@ export class PresentationBuilder extends Versioned {
       // Offset of attributes in the Pedersen Commitment, its 0 for BBS and 1 for BBS+ as the commitment in BBS+ is perfectly hiding.
       let pedCommWitnessOffset;
 
-      if (sigParams instanceof BBSSignatureParams || sigParams instanceof BBSPlusSignatureParamsG1 || sigParams instanceof BDDT16MacParams) {
+      if (
+        sigParams instanceof BBSSignatureParams ||
+        sigParams instanceof BBSPlusSignatureParamsG1 ||
+        sigParams instanceof BDDT16MacParams
+      ) {
         const commKey = sigParams.getParamsForIndices(blindedSubjectIndices);
         pedCommStId = statements.add(Statement.pedersenCommitmentG1(commKey, this.blindCredReq.req.commitment));
       } else {
@@ -1187,7 +1211,6 @@ export class PresentationBuilder extends Versioned {
       for (const ids of blindAttrToSId.values()) {
         encryptionStatementIndices.push(...ids);
       }
-
     }
 
     // Get all encryption statement indices and get their corresponding ciphertexts
@@ -1276,9 +1299,9 @@ export class PresentationBuilder extends Versioned {
     } else {
       let errorMsg: string;
       if (statementIdx !== undefined) {
-        errorMsg =  `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Legosnark proving key but was ${param}`;
+        errorMsg = `Predicate param id ${paramId} (for statement index ${statementIdx}) was expected to be a Legosnark proving key but was ${param}`;
       } else {
-        errorMsg =  `Predicate param id ${paramId} was expected to be a Legosnark proving key but was ${param}`;
+        errorMsg = `Predicate param id ${paramId} was expected to be a Legosnark proving key but was ${param}`;
       }
       throw new Error(errorMsg);
     }
@@ -1500,7 +1523,7 @@ export class PresentationBuilder extends Versioned {
           attrToSid.set(name, []);
         }
         attrToSid.get(name)?.push(sIdx);
-      })
+      });
     });
     if (attrToSid.size > 0) {
       credAttrToSId.set(credIdx, attrToSid);
@@ -1645,7 +1668,12 @@ export class PresentationBuilder extends Versioned {
     return [encodedAttrs, predicatesForSpec];
   }
 
-  private createCircomStatement(circuitId: string, snarkKeyId: string, setupParamsTrk: SetupParamsTracker, statementIdx?: number): Uint8Array {
+  private createCircomStatement(
+    circuitId: string,
+    snarkKeyId: string,
+    setupParamsTrk: SetupParamsTracker,
+    statementIdx?: number
+  ): Uint8Array {
     const snarkKey = this.predicateParams.get(snarkKeyId);
     const r1csId = PresentationBuilder.r1csParamId(circuitId);
     const r1cs = this.predicateParams.get(r1csId);
@@ -1761,13 +1789,15 @@ export class PresentationBuilder extends Versioned {
   ) {
     const existingVE = verEncsMap.get(attributeName);
     if (existingVE === undefined) {
-      verEncsMap.set(attributeName, [{
-        chunkBitSize,
-        commitmentGensId: commKeyId,
-        encryptionKeyId: encryptionKeyId,
-        snarkKeyId: snarkPkId,
-        protocol: VerifiableEncryptionProtocol.Saver
-      }]);
+      verEncsMap.set(attributeName, [
+        {
+          chunkBitSize,
+          commitmentGensId: commKeyId,
+          encryptionKeyId: encryptionKeyId,
+          snarkKeyId: snarkPkId,
+          protocol: VerifiableEncryptionProtocol.Saver
+        }
+      ]);
     } else {
       existingVE.push({
         chunkBitSize,
