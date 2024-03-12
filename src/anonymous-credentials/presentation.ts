@@ -146,8 +146,11 @@ export class Presentation extends Versioned {
 
   /**
    *
-   * @param credentialVerifParams - Array of keys in the order of credentials in the presentation.
-   * @param accumulatorPublicKeys - Mapping credential index -> accumulator public key
+   * @param credentialVerifParams - Map of verification parameters for credentials in the presentation. The key of the map
+   * is the credential index. Can also take array of keys in the order of credentials in the presentation for supporting old API but this will
+   * be removed in future. The verification param could be a public key or secret key. Certain kinds of credentials don't require
+   * either for (partial) verification but will require for full verification
+   * @param accumulatorPublicKeys - Mapping credential index -> accumulator verification parameters.
    * @param predicateParams - Setup params for various predicates
    * @param circomOutputs - Values for the outputs variables of the Circom programs used for predicates. They key of the map
    * is the credential index
@@ -156,7 +159,7 @@ export class Presentation extends Versioned {
    */
   verify(
     // TODO: Accept reference to public keys in case of same key for many credentials
-    credentialVerifParams: Map<number, CredentialVerificationParam | undefined> | CredentialVerificationParam[],
+    credentialVerifParams: Map<number, CredentialVerificationParam> | CredentialVerificationParam[],
     accumulatorPublicKeys?: Map<number, AccumulatorVerificationParam>,
     predicateParams?: Map<string, PredicateParamType>,
     circomOutputs?: Map<number, Uint8Array[][]>,
@@ -168,6 +171,7 @@ export class Presentation extends Versioned {
     // processed at 2nd last in the builder than they should be processed at 2nd last here as well. By convention credentials are
     // processed first, then their statuses (if present) and then any predicates.
 
+    // Dealing with old API - convert array to map
     let credVerifParams = new Map<number, CredentialVerificationParam | undefined>();
     if (credentialVerifParams instanceof Map) {
       credVerifParams = credentialVerifParams;
@@ -176,6 +180,7 @@ export class Presentation extends Versioned {
         credVerifParams.set(i, v);
       });
     }
+
     const statements = new Statements();
     const metaStatements = new MetaStatements();
 
@@ -609,7 +614,7 @@ export class Presentation extends Versioned {
   }
 
   /**
-   * Get delegated proof for
+   * Get delegated proofs for credentials and there statuses where applicable.
    * @returns - The key in the returned map is the credential index
    */
   getDelegatedProofs(): Map<number, DelegatedProof> {

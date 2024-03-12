@@ -203,7 +203,7 @@ export class PresentationBuilder extends Versioned {
   /**
    * Add a credential to this presentation. This will result in a proof of possession of this credential being created
    * @param credential
-   * @param pk
+   * @param pk - Only certain kinds of credentials need a public key for creating presentation
    */
   addCredential(credential: Credential, pk?: PublicKey): number {
     // TODO: Accept reference to public keys in case of same key for many credentials

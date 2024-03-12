@@ -38,7 +38,16 @@ import {
   VBMembershipWitness,
   VerifiableEncryptionProtocol
 } from '../../src';
-import { Credential, CredentialBuilder, isKvac, PresentationBuilder, PublicKey, Scheme, SecretKey } from '../scheme';
+import {
+  Credential,
+  CredentialBuilder,
+  isKvac,
+  isPS,
+  PresentationBuilder,
+  PublicKey,
+  Scheme,
+  SecretKey
+} from '../scheme';
 import {
   areUint8ArraysEqual,
   checkResult,
@@ -503,7 +512,7 @@ describe.each([true, false])(
 
     it('from a flat credential - `credential1`', () => {
       const builder1 = new PresentationBuilder();
-      expect(builder1.addCredential(credential1, pk1)).toEqual(0);
+      expect(builder1.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
       builder1.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
       const pres1 = builder1.finalize();
 
@@ -546,8 +555,8 @@ describe.each([true, false])(
       expect(base1ForSecretKey).toEqual(encodedBaseForSecretKey);
 
       const builder1 = new PresentationBuilder();
-      expect(builder1.addCredential(credential1, pk1)).toEqual(0);
-      expect(builder1.addCredential(credential2, pk2)).toEqual(1);
+      expect(builder1.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      expect(builder1.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
       attributeNames1.set(0, ['credentialSubject.SSN', 'credentialSubject.email']);
       attributeNames1.set(1, ['credentialSubject.sensitive.userId']);
       expect(
@@ -602,13 +611,18 @@ describe.each([true, false])(
         const credential = credBuilder.sign(sk, undefined, { requireSameFieldsAsSchema: false });
         verifyCred(credential, pk, sk);
         const builder7 = new PresentationBuilder();
-        expect(builder7.addCredential(credential, pk)).toEqual(0);
+        expect(builder7.addCredential(credential, isPS() ? pk : undefined)).toEqual(0);
         const pres7 = builder7.finalize();
 
         expect(pres7.spec.credentials.length).toEqual(1);
-        checkResult(pres7.verify([pk]));
 
+        checkResult(pres7.verify([pk]));
         checkPresentationJson(pres7, [pk]);
+
+        if (isKvac()) {
+          checkResult(pres7.verify([sk]));
+          checkPresentationJson(pres7, [sk]);
+        }
       }
     });
 
@@ -617,7 +631,7 @@ describe.each([true, false])(
       const nonce = randomFieldElement();
 
       const builder1 = new PresentationBuilder();
-      expect(builder1.addCredential(credential1, pk1)).toEqual(0);
+      expect(builder1.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
       builder1.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
 
       builder1.context = ctx;
@@ -634,7 +648,7 @@ describe.each([true, false])(
       expect(pres.verify([pk1]).verified).toBe(false);
 
       const builder2 = new PresentationBuilder();
-      expect(builder2.addCredential(credential1, pk1)).toEqual(0);
+      expect(builder2.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
       builder2.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
 
       builder2.context = ctx;
@@ -655,7 +669,7 @@ describe.each([true, false])(
       expect(pres.verify([pk1]).verified).toBe(false);
 
       const builder3 = new PresentationBuilder();
-      expect(builder3.addCredential(credential1, pk1)).toEqual(0);
+      expect(builder3.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
       builder3.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
 
       builder3.nonce = nonce;
@@ -672,7 +686,7 @@ describe.each([true, false])(
 
     it('from a nested credential - `credential2`', () => {
       const builder2 = new PresentationBuilder();
-      expect(builder2.addCredential(credential2, pk2)).toEqual(0);
+      expect(builder2.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(0);
       builder2.markAttributesRevealed(
         0,
         new Set<string>([
@@ -706,7 +720,7 @@ describe.each([true, false])(
 
     it('from a nested credential with credential status - `credential3`', () => {
       const builder3 = new PresentationBuilder();
-      expect(builder3.addCredential(credential3, pk3)).toEqual(0);
+      expect(builder3.addCredential(credential3, isPS() ? pk3 : undefined)).toEqual(0);
       builder3.markAttributesRevealed(
         0,
         new Set<string>([
@@ -752,8 +766,8 @@ describe.each([true, false])(
 
     it('from 2 credentials, `credential1` and `credential2`, and prove some attributes equal', () => {
       const builder4 = new PresentationBuilder();
-      expect(builder4.addCredential(credential1, pk1)).toEqual(0);
-      expect(builder4.addCredential(credential2, pk2)).toEqual(1);
+      expect(builder4.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      expect(builder4.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
 
       builder4.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
       builder4.markAttributesRevealed(
@@ -789,6 +803,12 @@ describe.each([true, false])(
       if (!isKvac()) {
         // Public keys in wrong order
         expect(pres4.verify([pk2, pk1]).verified).toEqual(false);
+
+        // Public keys with wrong indices
+        const pks = new Map();
+        pks.set(0, pk2);
+        pks.set(1, pk1);
+        expect(pres4.verify(pks).verified).toEqual(false);
       }
 
       checkResult(pres4.verify([pk1, pk2]));
@@ -806,8 +826,8 @@ describe.each([true, false])(
 
     it('from 2 credentials, both having credential status', () => {
       const builder5 = new PresentationBuilder();
-      expect(builder5.addCredential(credential3, pk3)).toEqual(0);
-      expect(builder5.addCredential(credential4, pk4)).toEqual(1);
+      expect(builder5.addCredential(credential3, isPS() ? pk3 : undefined)).toEqual(0);
+      expect(builder5.addCredential(credential4, isPS() ? pk4 : undefined)).toEqual(1);
 
       builder5.markAttributesRevealed(
         0,
@@ -885,10 +905,10 @@ describe.each([true, false])(
 
     it('from multiple credentials, some having credential status (revocable) and some not', () => {
       const builder6 = new PresentationBuilder();
-      expect(builder6.addCredential(credential1, pk1)).toEqual(0);
-      expect(builder6.addCredential(credential2, pk2)).toEqual(1);
-      expect(builder6.addCredential(credential3, pk3)).toEqual(2);
-      expect(builder6.addCredential(credential4, pk4)).toEqual(3);
+      expect(builder6.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      expect(builder6.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
+      expect(builder6.addCredential(credential3, isPS() ? pk3 : undefined)).toEqual(2);
+      expect(builder6.addCredential(credential4, isPS() ? pk4 : undefined)).toEqual(3);
 
       builder6.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
       builder6.markAttributesRevealed(
@@ -975,6 +995,7 @@ describe.each([true, false])(
       acc.set(2, accumulator3Pk);
       acc.set(3, accumulator4Pk);
       checkResult(pres6.verify([pk1, pk2, pk3, pk4], acc));
+      checkResult(pres6.verify(new Map([[0, pk1], [1, pk2], [2, pk3], [3, pk4]]), acc));
 
       const presJson = pres6.toJSON();
 
@@ -989,14 +1010,22 @@ describe.each([true, false])(
       checkSchemaFromJson(presJson.spec.credentials[3].schema, credential4.schema);
 
       checkPresentationJson(pres6, [pk1, pk2, pk3, pk4], acc);
+      checkPresentationJson(pres6, new Map([[0, pk1], [1, pk2], [2, pk3], [3, pk4]]), acc);
+
+      if (isKvac()) {
+        checkResult(pres6.verify([sk1, sk2, sk3, sk4], acc));
+        checkResult(pres6.verify(new Map([[0, sk1], [1, sk2], [2, sk3], [3, sk4]]), acc));
+        checkPresentationJson(pres6, [sk1, sk2, sk3, sk4], acc);
+        checkPresentationJson(pres6, new Map([[0, sk1], [1, sk2], [2, sk3], [3, sk4]]), acc);
+      }
     });
 
     it('from credential `credential1` and proving some attributes inequal to public values', () => {
 
       const builder = new PresentationBuilder();
-      expect(builder.addCredential(credential1, pk1)).toEqual(0);
-      expect(builder.addCredential(credential2, pk2)).toEqual(1);
-      expect(builder.addCredential(credential7, pk1)).toEqual(2);
+      expect(builder.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      expect(builder.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
+      expect(builder.addCredential(credential7, isPS() ? pk1 : undefined)).toEqual(2);
 
       builder.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
 
@@ -1077,7 +1106,7 @@ describe.each([true, false])(
       // ------------------- Presentation with 1 credential -----------------------------------------
       console.time(`Proof generation over 1 credential and 3 bound-check in total using ${protocol}`);
       const builder7 = new PresentationBuilder();
-      expect(builder7.addCredential(credential1, pk1)).toEqual(0);
+      expect(builder7.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
 
       builder7.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
 
@@ -1153,9 +1182,9 @@ describe.each([true, false])(
       console.time(`Proof generation over 3 credential and 5 bound-check in total using ${protocol}`);
 
       const builder8 = new PresentationBuilder();
-      expect(builder8.addCredential(credential1, pk1)).toEqual(0);
-      expect(builder8.addCredential(credential2, pk2)).toEqual(1);
-      expect(builder8.addCredential(credential3, pk3)).toEqual(2);
+      expect(builder8.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      expect(builder8.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
+      expect(builder8.addCredential(credential3, isPS() ? pk3 : undefined)).toEqual(2);
 
       builder8.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
       builder8.markAttributesRevealed(
@@ -1284,7 +1313,7 @@ describe.each([true, false])(
     function checkBoundsOnDates(protocol: BoundCheckProtocol, paramId?: string, provingParams?: BoundCheckParamType, verifyingParams?: BoundCheckParamType) {
       console.time(`Proof generation over 1 credential and 2 bound-check in total using ${protocol}`);
       const builder7 = new PresentationBuilder();
-      expect(builder7.addCredential(credential7, pk1)).toEqual(0);
+      expect(builder7.addCredential(credential7, isPS() ? pk1 : undefined)).toEqual(0);
 
       builder7.markAttributesRevealed(0, new Set<string>(['credentialSubject.name']));
 
@@ -1407,7 +1436,7 @@ describe.each([true, false])(
       const snarkPkId = 'random-3';
 
       const builder9 = new PresentationBuilder();
-      expect(builder9.addCredential(credential1, pk1)).toEqual(0);
+      expect(builder9.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
 
       builder9.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
       builder9.verifiablyEncrypt(
@@ -1469,9 +1498,9 @@ describe.each([true, false])(
       const commKeyNew = ckNew.decompress();
 
       const builder10 = new PresentationBuilder();
-      expect(builder10.addCredential(credential1, pk1)).toEqual(0);
-      expect(builder10.addCredential(credential2, pk2)).toEqual(1);
-      expect(builder10.addCredential(credential3, pk3)).toEqual(2);
+      expect(builder10.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      expect(builder10.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
+      expect(builder10.addCredential(credential3, isPS() ? pk3 : undefined)).toEqual(2);
 
       builder10.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
       builder10.markAttributesRevealed(
@@ -1602,9 +1631,9 @@ describe.each([true, false])(
       const commKey = ck.decompress();
 
       const builder11 = new PresentationBuilder();
-      expect(builder11.addCredential(credential1, pk1)).toEqual(0);
-      expect(builder11.addCredential(credential2, pk2)).toEqual(1);
-      expect(builder11.addCredential(credential3, pk3)).toEqual(2);
+      expect(builder11.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      expect(builder11.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
+      expect(builder11.addCredential(credential3, isPS() ? pk3 : undefined)).toEqual(2);
 
       builder11.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
       builder11.markAttributesRevealed(

@@ -144,8 +144,8 @@ describe.each([true, false])(
       const commKey = new PederCommKey(stringToBytes('test'));
 
       const builder = new PresentationBuilder();
-      expect(builder.addCredential(credentialBbs, pkBbs)).toEqual(0);
-      expect(builder.addCredential(credentialBbsPlus, pkBbsPlus)).toEqual(1);
+      expect(builder.addCredential(credentialBbs)).toEqual(0);
+      expect(builder.addCredential(credentialBbsPlus)).toEqual(1);
       expect(builder.addCredential(credentialPs, pkPs)).toEqual(2);
       expect(builder.addCredential(credentialBddt16)).toEqual(3);
 
@@ -224,6 +224,7 @@ describe.each([true, false])(
       checkResult(pres.verify(pks, undefined, pp));
       checkPresentationJson(pres, pks, undefined, pp);
 
+      // For KVAC, set secret key for full verification
       pks.set(3, skBddt16);
       checkResult(pres.verify(pks, undefined, pp));
       checkPresentationJson(pres, pks, undefined, pp);

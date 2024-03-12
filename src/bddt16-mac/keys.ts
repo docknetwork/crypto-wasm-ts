@@ -35,4 +35,12 @@ export class BDDT16KeypairG1 {
     const pk = sk.generatePublicKeyG1(params);
     return new BDDT16KeypairG1(sk, pk);
   }
+
+  get secretKey(): BDDT16MacSecretKey {
+    return this.sk;
+  }
+
+  get publicKey(): BDDT16MacPublicKeyG1 {
+    return this.pk;
+  }
 }

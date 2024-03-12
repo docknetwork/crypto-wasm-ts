@@ -387,7 +387,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       secret: 'my-secret-that-wont-tell-anyone'
     };
     const reqBuilder = newReqBuilder(schema2, blindedSubject);
-    expect(reqBuilder.addCredentialToPresentation(credential1, pk1)).toEqual(0);
+    expect(reqBuilder.addCredentialToPresentation(credential1, isPS() ? pk1 : undefined)).toEqual(0);
     reqBuilder.markCredentialAttributesRevealed(
       0,
       new Set<string>([
@@ -499,8 +499,8 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     ];
 
     const reqBuilder = newReqBuilder(schema3, blindedSubject);
-    expect(reqBuilder.addCredentialToPresentation(credential1, pk1)).toEqual(0);
-    expect(reqBuilder.addCredentialToPresentation(credential2, pk2)).toEqual(1);
+    expect(reqBuilder.addCredentialToPresentation(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+    expect(reqBuilder.addCredentialToPresentation(credential2, isPS() ? pk2 : undefined)).toEqual(1);
 
     reqBuilder.markCredentialAttributesRevealed(
       0,

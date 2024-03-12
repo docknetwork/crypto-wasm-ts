@@ -1,15 +1,20 @@
 import { VerifyResult } from 'crypto-wasm-new';
 import {
   AccumulatorPublicKey,
-  AccumulatorSecretKey, BDDT16Credential, BDDT16CredentialBuilder, CredentialSchema, ID_STR,
+  AccumulatorSecretKey, BDDT16Credential, BDDT16CredentialBuilder, CredentialSchema, DelegatedProof, ID_STR,
   initializeWasm, MEM_CHECK_KV_STR, MEM_CHECK_STR,
-  PositiveAccumulator, PresentationBuilder, REV_CHECK_STR, RevocationStatusProtocol, SignatureType, TYPE_STR,
-  VBMembershipWitness
+  PositiveAccumulator, Presentation,
+  PresentationBuilder,
+  REV_CHECK_STR,
+  RevocationStatusProtocol,
+  SignatureType,
+  TYPE_STR,
+  VBMembershipWitness,
+  BDDT16MacSecretKey
 } from '../../src';
-import { BDDT16MacSecretKey } from '../../src/bddt16-mac';
-import { Credential, CredentialBuilder, isKvac, PublicKey, Scheme, SecretKey } from '../scheme';
+import { Credential, CredentialBuilder, isKvac, isPS, PublicKey, Scheme, SecretKey } from '../scheme';
 import { checkResult } from '../utils';
-import { getExampleSchema, getKeys, setupPrefilledAccum, verifyCred } from './utils';
+import { checkPresentationJson, getExampleSchema, getKeys, setupPrefilledAccum, verifyCred } from './utils';
 
 describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`, () => {
   let sk: SecretKey, pk: PublicKey;
@@ -21,10 +26,12 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
   let credential4: BDDT16Credential;
   let credential5: BDDT16Credential;
 
+  // Accumulator where membership is publicly verifiable
   let accumulator1: PositiveAccumulator;
   let accumulator1Pk: AccumulatorPublicKey;
   let accumulator1Witness: VBMembershipWitness;
 
+  // Accumulator where membership verification needs secret key
   let accumulator2: PositiveAccumulator;
   let accumulator2Sk: AccumulatorSecretKey;
   let accumulator2Witness: VBMembershipWitness;
@@ -124,13 +131,17 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
   });
 
   it('works', () => {
+    // Describes a test with 5 credentials. Credentials 1, 2, and 3 are non-KVAC and 4 and 5 is KVAC.
+    // Status verification of credential 1 and credential 4 requires public key but for credential 2 and credential 5 requires secret key
+
     const builder = new PresentationBuilder();
 
-    expect(builder.addCredential(credential1, pk)).toEqual(0);
-    expect(builder.addCredential(credential2, pk)).toEqual(1);
-    expect(builder.addCredential(credential3, pk)).toEqual(2);
+    expect(builder.addCredential(credential1, isPS() ? pk : undefined)).toEqual(0);
+    expect(builder.addCredential(credential2, isPS() ? pk : undefined)).toEqual(1);
+    expect(builder.addCredential(credential3, isPS() ? pk : undefined)).toEqual(2);
     expect(builder.addCredential(credential4)).toEqual(3);
     expect(builder.addCredential(credential5)).toEqual(4);
+
     builder.addAccumInfoForCredStatus(0, accumulator1Witness, accumulator1.accumulated, accumulator1Pk, {
       blockNo: 2010334
     });
@@ -155,54 +166,94 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
     accumPks.set(3, accumulator1Pk);
 
     checkResult(pres.verify(pks, accumPks));
+    checkPresentationJson(pres, pks, accumPks);
 
+    // Check full verification using secret key
     pks.set(3, skKvac);
     pks.set(4, skKvac);
     accumPks.set(1, accumulator2Sk);
     accumPks.set(4, accumulator2Sk);
     checkResult(pres.verify(pks, accumPks));
+    let recreatedPres = checkPresentationJson(pres, pks, accumPks);
 
-    const delegatedProofs = pres.getDelegatedProofs();
+    checkDelegatedProofs(pres);
+    checkDelegatedProofs(recreatedPres);
 
-    expect(delegatedProofs.size).toEqual(isKvac() ? 5 : 3);
-    if (isKvac()) {
-      for (let j = 0; j < 3; j++) {
-        const delgCredProof = delegatedProofs.get(j);
+    function checkDelegatedProofs(presentation: Presentation) {
+
+      /**
+       * Check if the serialized versions of delegated proofs can be verified
+       * @param verifyFunc - the function that verifier
+       * @param delgCredProof
+       */
+      function checkSerialized(verifyFunc, delgCredProof?: DelegatedProof) {
+        let j = delgCredProof?.toJSON();
+        let recreated = DelegatedProof.fromJSON(j as object);
+        verifyFunc(recreated);
+      }
+
+      function onlyCredProofAvailable(delgCredProof?: DelegatedProof) {
         expect(delgCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bddt16
         });
         checkResult(delgCredProof?.credential?.proof.verify(sk) as VerifyResult);
       }
+
+      function check2(delgCredProof?: DelegatedProof) {
+        if (!isKvac()) {
+          expect(delgCredProof?.credential).not.toBeDefined();
+        }
+        expect(delgCredProof?.status).toMatchObject({
+          [ID_STR]: 'dock:accumulator:accumId124',
+          [TYPE_STR]: RevocationStatusProtocol.Vb22,
+          [REV_CHECK_STR]: MEM_CHECK_KV_STR
+        });
+        checkResult(delgCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
+      }
+
+      function check3(delgCredProof?: DelegatedProof) {
+        expect(delgCredProof?.credential).toMatchObject({
+          sigType: SignatureType.Bddt16
+        });
+        checkResult(delgCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
+        expect(delgCredProof?.status).not.toBeDefined();
+      }
+
+      function check4(delgCredProof?: DelegatedProof) {
+        expect(delgCredProof?.credential).toMatchObject({
+          sigType: SignatureType.Bddt16
+        });
+        checkResult(delgCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
+        expect(delgCredProof?.status).toMatchObject({
+          [ID_STR]: 'dock:accumulator:accumId124',
+          [TYPE_STR]: RevocationStatusProtocol.Vb22,
+          [REV_CHECK_STR]: MEM_CHECK_KV_STR
+        });
+        checkResult(delgCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
+      }
+
+      const delegatedProofs = presentation.getDelegatedProofs();
+      expect(delegatedProofs.size).toEqual(isKvac() ? 5 : 3);
+
+      if (isKvac()) {
+        for (let i = 0; i < 3; i++) {
+          const delgCredProof = delegatedProofs.get(i);
+          onlyCredProofAvailable(delgCredProof);
+          checkSerialized(onlyCredProofAvailable, delgCredProof);
+        }
+      }
+
+      const delgCredProof2 = delegatedProofs.get(1);
+      check2(delgCredProof2);
+      checkSerialized(check2, delgCredProof2);
+
+      const delgCredProof4 = delegatedProofs.get(3);
+      check3(delgCredProof4);
+      checkSerialized(check3, delgCredProof4);
+
+      const delgCredProof5 = delegatedProofs.get(4);
+      check4(delgCredProof5);
+      checkSerialized(check4, delgCredProof5);
     }
-
-    const delgCredProof2 = delegatedProofs.get(1);
-    if (!isKvac()) {
-      expect(delgCredProof2?.credential).not.toBeDefined();
-    }
-    expect(delgCredProof2?.status).toMatchObject({
-      [ID_STR]: 'dock:accumulator:accumId124',
-      [TYPE_STR]: RevocationStatusProtocol.Vb22,
-      [REV_CHECK_STR]: MEM_CHECK_KV_STR
-    });
-    checkResult(delgCredProof2?.status?.proof.verify(accumulator2Sk) as VerifyResult);
-
-    const delgCredProof4 = delegatedProofs.get(3);
-    expect(delgCredProof4?.credential).toMatchObject({
-      sigType: SignatureType.Bddt16
-    });
-    checkResult(delgCredProof4?.credential?.proof.verify(skKvac) as VerifyResult);
-    expect(delgCredProof4?.status).not.toBeDefined();
-
-    const delgCredProof5 = delegatedProofs.get(4);
-    expect(delgCredProof5?.credential).toMatchObject({
-      sigType: SignatureType.Bddt16
-    });
-    checkResult(delgCredProof5?.credential?.proof.verify(skKvac) as VerifyResult);
-    expect(delgCredProof5?.status).toMatchObject({
-      [ID_STR]: 'dock:accumulator:accumId124',
-      [TYPE_STR]: RevocationStatusProtocol.Vb22,
-      [REV_CHECK_STR]: MEM_CHECK_KV_STR
-    });
-    checkResult(delgCredProof5?.status?.proof.verify(accumulator2Sk) as VerifyResult);
   })
 })

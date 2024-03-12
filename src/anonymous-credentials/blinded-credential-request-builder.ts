@@ -137,7 +137,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     throw new Error('This method should be implemented by extending class');
   }
 
-  addCredentialToPresentation(credential: Credential, pk: PublicKey): number {
+  addCredentialToPresentation(credential: Credential, pk?: PublicKey): number {
     return this.presentationBuilder.addCredential(credential, pk);
   }
 

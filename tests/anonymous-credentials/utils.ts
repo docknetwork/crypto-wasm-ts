@@ -665,10 +665,11 @@ export function getDecodedBoundedPseudonym(
  * @param predicateParams
  * @param circomOutputs
  * @param circomOutputsMultiCred
+ * @returns The new presentation created from deserializing the serialized presentation
  */
 export function checkPresentationJson(
   pres: Presentation,
-  pks: Map<number, CredentialVerificationParam | undefined> | CredentialVerificationParam[],
+  pks: Map<number, CredentialVerificationParam> | CredentialVerificationParam[],
   accumulatorPublicKeys?: Map<number, AccumulatorVerificationParam>,
   predicateParams?: Map<string, PredicateParamType>,
   circomOutputs?: Map<number, Uint8Array[][]>,
@@ -682,6 +683,12 @@ export function checkPresentationJson(
   return recreatedPres;
 }
 
+/**
+ * Function used to write serialized params, keys, schemas, credentials and presentations which are later used for testing
+ * backward compatibility. This is usually called in tests when new versions of these objects are created
+ * @param obj
+ * @param fileName
+ */
 export function writeSerializedObject(obj: any, fileName: string) {
   let objBytes;
   if (obj instanceof BytearrayWrapper) {

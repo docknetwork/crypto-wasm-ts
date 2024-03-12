@@ -27,7 +27,7 @@ export abstract class BlindedCredentialRequest extends Versioned {
   }
 
   verify(
-    publicKeys: Map<number, CredentialVerificationParam | undefined> | CredentialVerificationParam[],
+    publicKeys: Map<number, CredentialVerificationParam> | CredentialVerificationParam[],
     accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
     predicateParams?: Map<string, PredicateParamType>,
     circomOutputs?: Map<number, Uint8Array[][]>,
