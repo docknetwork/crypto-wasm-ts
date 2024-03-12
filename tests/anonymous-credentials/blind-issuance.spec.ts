@@ -110,7 +110,7 @@ function checkBlindedSubject(req, blindedSubject) {
 
 function checkReqJson(
   req: BlindedCredentialRequest,
-  pks: Map<number, CredentialVerificationParam | undefined> | CredentialVerificationParam[],
+  pks: Map<number, CredentialVerificationParam> | CredentialVerificationParam[],
   accumulatorPublicKeys?: Map<number, AccumulatorPublicKey>,
   predicateParams?: Map<string, PredicateParamType>,
   circomOutputs?: Map<number, Uint8Array[][]>,
