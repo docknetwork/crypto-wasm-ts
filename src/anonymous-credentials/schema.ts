@@ -1335,17 +1335,7 @@ export class CredentialSchema extends Versioned {
             schemaProps[key]['items'] = schemaProps[key]['items'].slice(0, value.length);
           }
         } else if (schemaProps[key]['type'] === 'object' && typ === 'object') {
-          const schemaKeys = new Set([...Object.keys(schemaProps[key][SCHEMA_PROPS_STR])]);
-          const valKeys = new Set([...Object.keys(value)]);
-          for (const vk of valKeys) {
-            CredentialSchema.generateFromCredential(value, schemaProps[key][SCHEMA_PROPS_STR], schemaVersion);
-          }
-          // Delete extra keys not in cred
-          for (const sk of schemaKeys) {
-            if (value[sk] === undefined) {
-              delete schemaKeys[sk];
-            }
-          }
+          CredentialSchema.generateFromCredential(value, schemaProps[key][SCHEMA_PROPS_STR], schemaVersion);
         } else {
           throw new Error(
             `Incompatible types in credential and schema for key ${key}: ${schemaProps[key]['type']} !== ${typ}`
