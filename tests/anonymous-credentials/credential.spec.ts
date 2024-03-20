@@ -8,9 +8,8 @@ import {
   SCHEMA_STR,
   VB_ACCUMULATOR_22,
   SUBJECT_STR,
-  TYPE_STR, IEmbeddedJsonSchema, META_SCHEMA_STR, DefaultSchemaParsingOpts, IJsonSchema
+  TYPE_STR, IEmbeddedJsonSchema, META_SCHEMA_STR, IJsonSchema, SCHEMA_PROPS_STR
 } from '../../src';
-import { checkResult } from '../utils';
 import {
   checkEmbeddedSchema,
   checkSchemaFromJson,
@@ -23,13 +22,10 @@ import * as jsonld from 'jsonld';
 import { validate } from 'jsonschema';
 import {
   SecretKey,
-  KeyPair,
   PublicKey,
-  SignatureParams,
   Credential,
   CredentialBuilder,
-  SignatureLabelBytes,
-  Scheme, isKvac
+  Scheme,
 } from '../scheme';
 
 describe(`${Scheme} Credential signing and verification`, () => {
@@ -1163,9 +1159,90 @@ describe(`${Scheme} Credential signing and verification`, () => {
       };
 
       checkCredSerz(withSchemaRef, 11, allNonEmbeddedSchemas, fullJsonSchema10)
+
+      const fullJsonSchema11 = {
+        '$schema': 'http://json-schema.org/draft-07/schema#',
+        type: 'object',
+        properties: {
+          credentialSubject: {
+            type: 'object',
+            properties: {
+              fname: { type: 'string' },
+              lname: { type: 'string' },
+              education: {
+                type: 'object',
+                properties: { university: { type: 'string' } }
+              },
+              someNumber: { type: 'number', minimum: 0.01, multipleOf: 0.01 },
+              someInteger: { type: 'integer', minimum: -100}
+            }
+          },
+          cryptoVersion: { type: 'string' },
+          credentialSchema: { type: 'string' },
+          proof: CredentialSchema.essential().properties.proof,
+        },
+        definitions: {
+          encryptableString: { type: 'string' },
+          encryptableCompString: { type: 'string' }
+        }
+      };
+
+      checkCredSerz(withSchemaRef, 12, allNonEmbeddedSchemas, fullJsonSchema11)
     }
 
     check(false);
     check(true);
   });
+
+  it('for credential with relaxed numeric validation', () => {
+    const schema = CredentialSchema.essential();
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'string' },
+        someNumber: { type: 'number', minimum: 0.01, multipleOf: 0.01 },
+        someInteger: { type: 'integer', minimum: -100}
+      }
+    };
+    let builder = new CredentialBuilder();
+    builder.schema = new CredentialSchema(schema, { useDefaults: true });
+    builder.subject = {
+      fname: 'John',
+      lname: 'Smith',
+      education: { university: 'Example' },
+      someNumber: 2,  // Deliberately specifying the number without the dot (.)
+      someInteger: 5,
+    };
+    const ns = CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    );
+    expect(ns.schema[SUBJECT_STR]['someNumber']).toEqual({ type: 'positiveDecimalNumber', decimalPlaces: 2 })
+    expect(ns.schema[SUBJECT_STR]['someInteger']).toEqual({ type: 'integer', minimum: -100 })
+    expect(ns.jsonSchema[SCHEMA_PROPS_STR][SUBJECT_STR][SCHEMA_PROPS_STR]['someNumber']).toEqual({ type: 'number', minimum: 0.01, multipleOf: 0.01 });
+    expect(ns.jsonSchema[SCHEMA_PROPS_STR][SUBJECT_STR][SCHEMA_PROPS_STR]['someInteger']).toEqual({ type: 'integer', minimum: -100});
+
+    // Schema specifies the type as numeric but credential uses a decimal value
+    schema.properties[SUBJECT_STR] = {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'string' },
+        someInteger: { type: 'integer', minimum: -100}
+      }
+    };
+    builder = new CredentialBuilder();
+    builder.schema = new CredentialSchema(schema, { useDefaults: true });
+    builder.subject = {
+      fname: 'John',
+      lname: 'Smith',
+      education: { university: 'Example' },
+      someInteger: 5.1,
+    };
+    expect(() => CredentialSchema.generateAppropriateSchema(
+      builder.serializeForSigning(),
+      builder.schema as CredentialSchema
+    )).toThrow();
+  })
 });

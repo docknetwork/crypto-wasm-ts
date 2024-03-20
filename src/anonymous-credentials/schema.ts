@@ -424,7 +424,7 @@ export type CredVal = string | number | object | CredVal[];
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.2.0';
+  static VERSION = '0.3.0';
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
@@ -1317,9 +1317,12 @@ export class CredentialSchema extends Versioned {
           schemaProps[key]['type'] == 'number'
         ) {
           if (schemaProps[key]['type'] !== typ) {
-            throw new Error(
-              `Mismatch in credential and given schema type for key ${key}: ${schemaProps[key]['type']} !== ${typ}`
-            );
+            // If schema defines the type as "number" but credential has "integer" value then don't throw an error
+            if (!(schemaProps[key]['type'] === 'number' && typ === 'integer')) {
+              throw new Error(
+                `Mismatch in credential and given schema type for key ${key}: ${schemaProps[key]['type']} !== ${typ}`
+              );
+            }
           }
         } else if (schemaProps[key]['type'] === 'array' && typ === 'array') {
           if (schemaProps[key]['items'].length < value.length) {

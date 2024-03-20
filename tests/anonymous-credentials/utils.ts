@@ -363,12 +363,8 @@ export function getExampleBuilder(num: number, nonEmbeddedSchemas?: IJsonSchema[
     properties: {
       fname: { type: 'string' },
       lname: { type: 'string' },
-      education: {
-        type: 'object',
-        properties: {
-          university: { type: 'string' }
-        }
-      }
+      someNumber: { type: 'number', minimum: 0.01, multipleOf: 0.01 },
+      someInteger: { type: 'integer', minimum: -100}
     }
   };
 
@@ -537,6 +533,16 @@ export function getExampleBuilder(num: number, nonEmbeddedSchemas?: IJsonSchema[
     case 11:
       builder.schema = credSchema3;
       builder.subject = { fname: 'John', isbool: true };
+      break;
+    case 12:
+      builder.schema = credSchema1;
+      builder.subject = {
+        fname: 'John',
+        lname: 'Smith',
+        education: { university: 'Example' },
+        someNumber: 2,  // Deliberately specifying the number without the dot (.)
+        someInteger: 5,
+      };
       break;
     default:
       throw new Error(`Cannot find builder number ${num}`);

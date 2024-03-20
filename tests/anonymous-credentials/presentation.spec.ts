@@ -602,7 +602,7 @@ describe.each([true, false])(
     it('from a credential with relaxed schema', () => {
       // The schema does not match the credential exactly
 
-      for (let i = 1; i <= 10; i++) {
+      for (let i = 1; i <= 12; i++) {
         const builder = getExampleBuilder(i);
         check(builder, sk1, pk1);
       }
