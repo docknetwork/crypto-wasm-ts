@@ -12,8 +12,11 @@ import {
   generateBoundCheckSmcWitness,
   generateBoundCheckSmcWithKVWitness,
   generatePublicInequalityWitness,
-  generatePoKBDDT16MacWitness
+  generatePoKBDDT16MacWitness,
+  generateKBUniversalAccumulatorNonMembershipWitness,
+  generateKBUniversalAccumulatorMembershipWitness
 } from 'crypto-wasm-new';
+import { KBUniversalMembershipWitness, KBUniversalNonMembershipWitness } from '../accumulator/kb-acccumulator-witness';
 import { BBSPlusSignatureG1 } from '../bbs-plus';
 import { VBMembershipWitness, VBNonMembershipWitness } from '../accumulator';
 import { CircomInputs } from '../r1cs';
@@ -75,7 +78,7 @@ export class Witness {
   }
 
   /**
-   * Accumulator member and its witness
+   * VB Accumulator member and its witness
    * @param member
    * @param accumulatorWitness
    */
@@ -84,12 +87,33 @@ export class Witness {
   }
 
   /**
-   * Accumulator non-member and its witness
+   * VB Accumulator non-member and its witness
    * @param nonMember
    * @param accumulatorWitness
    */
   static vbAccumulatorNonMembership(nonMember: Uint8Array, accumulatorWitness: VBNonMembershipWitness): Uint8Array {
     return generateAccumulatorNonMembershipWitness(nonMember, accumulatorWitness.value);
+  }
+
+  /**
+   * KB universal Accumulator member and its witness
+   * @param member
+   * @param accumulatorWitness
+   */
+  static kbUniAccumulatorMembership(member: Uint8Array, accumulatorWitness: KBUniversalMembershipWitness): Uint8Array {
+    return generateKBUniversalAccumulatorMembershipWitness(member, accumulatorWitness.value);
+  }
+
+  /**
+   * KB universal Accumulator non-member and its witness
+   * @param nonMember
+   * @param accumulatorWitness
+   */
+  static kbUniAccumulatorNonMembership(
+    nonMember: Uint8Array,
+    accumulatorWitness: KBUniversalNonMembershipWitness
+  ): Uint8Array {
+    return generateKBUniversalAccumulatorNonMembershipWitness(nonMember, accumulatorWitness.value);
   }
 
   /**

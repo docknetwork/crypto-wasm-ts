@@ -1,3 +1,5 @@
+import { KBUniversalMembershipWitness, KBUniversalNonMembershipWitness } from '../accumulator/kb-acccumulator-witness';
+import { KBUniversalAccumulatorValue } from '../accumulator/kb-universal-accumulator';
 import { BBSPublicKey, BBSSecretKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
 import {
@@ -18,7 +20,9 @@ import {
   AccumulatorPublicKey,
   AccumulatorSecretKey,
   MembershipProvingKey,
-  NonMembershipProvingKey
+  NonMembershipProvingKey,
+  VBMembershipWitness,
+  VBNonMembershipWitness
 } from '../accumulator';
 import {
   BoundCheckBppParams,
@@ -92,6 +96,13 @@ export type CredentialVerificationParam = PublicKey | BDDT16MacSecretKey;
 // TODO: Find a better name
 export type AccumulatorVerificationParam = AccumulatorPublicKey | AccumulatorSecretKey;
 
+export type AccumulatorWitnessType =
+  | VBMembershipWitness
+  | VBNonMembershipWitness
+  | KBUniversalMembershipWitness
+  | KBUniversalNonMembershipWitness;
+export type AccumulatorValueType = Uint8Array | KBUniversalAccumulatorValue;
+
 export const VERSION_STR = 'version';
 export const CRYPTO_VERSION_STR = 'cryptoVersion';
 export const SCHEMA_STR = 'credentialSchema';
@@ -105,12 +116,14 @@ export const SUBJECT_STR = 'credentialSubject';
 export const STATUS_STR = 'credentialStatus';
 export const TYPE_STR = 'type';
 export const VB_ACCUMULATOR_22 = 'DockVBAccumulator2022';
+export const KB_UNI_ACCUMULATOR_24 = 'DockKBUniversalAccumulator2024';
 export const ID_STR = 'id';
 export const REV_CHECK_STR = 'revocationCheck';
 export const REV_ID_STR = 'revocationId';
 export const MEM_CHECK_STR = 'membership';
 export const NON_MEM_CHECK_STR = 'non-membership';
 export const MEM_CHECK_KV_STR = 'membership-kv';
+export const NON_MEM_CHECK_KV_STR = 'non-membership-kv';
 export const PROOF_STR = 'proof';
 export const BBS_CRED_PROOF_TYPE = 'Bls12381BBSSignatureDock2023';
 export const BBS_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBSSignatureDock2023';
@@ -215,7 +228,8 @@ export enum BlindSignatureType {
 }
 
 export enum RevocationStatusProtocol {
-  Vb22 = VB_ACCUMULATOR_22
+  Vb22 = VB_ACCUMULATOR_22,
+  KbUni24 = KB_UNI_ACCUMULATOR_24
 }
 
 export enum BoundCheckProtocol {

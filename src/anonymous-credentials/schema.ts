@@ -468,6 +468,7 @@ export class CredentialSchema extends Versioned {
     CRYPTO_VERSION_STR,
     SCHEMA_STR,
     `${STATUS_STR}.${ID_STR}`,
+    `${STATUS_STR}.${TYPE_STR}`,
     `${STATUS_STR}.${REV_CHECK_STR}`,
     `${STATUS_STR}.${REV_ID_STR}`
   ]);

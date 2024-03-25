@@ -1,3 +1,5 @@
+import { KBUniversalMembershipWitness, KBUniversalNonMembershipWitness } from '../accumulator/kb-acccumulator-witness';
+import { KBUniversalAccumulatorValue } from '../accumulator/kb-universal-accumulator';
 import { Versioned } from './versioned';
 import { BBSCredential, BBSPlusCredential, BDDT16Credential, PSCredential } from './credential';
 import {
@@ -17,6 +19,8 @@ import { R1CS } from 'crypto-wasm-new';
 import { CredentialSchema, getTransformedMinMax, ValueType } from './schema';
 import { getRevealedAndUnrevealed } from '../sign-verify-js-objs';
 import {
+  AccumulatorValueType,
+  AccumulatorWitnessType,
   AttributeCiphertexts,
   AttributeEquality,
   BoundCheckParamType,
@@ -29,6 +33,7 @@ import {
   InequalityProtocol,
   MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
+  NON_MEM_CHECK_KV_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
   PublicKey,
@@ -53,9 +58,8 @@ import {
   PresentationSpecification
 } from './presentation-specification';
 import { buildContextForProof, Presentation } from './presentation';
-import { AccumulatorPublicKey, AccumulatorWitness, VBMembershipWitness, VBNonMembershipWitness } from '../accumulator';
+import { AccumulatorPublicKey, VBMembershipWitness, VBNonMembershipWitness } from '../accumulator';
 import {
-  accumulatorStatement,
   buildSignatureProverStatementFromParamsRef,
   buildWitness,
   createWitEq,
@@ -115,7 +119,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential | BDDT16Crede
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.6.0';
+  static VERSION = '0.7.0';
 
   // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;
@@ -146,7 +150,7 @@ export class PresentationBuilder extends Versioned {
   attributeInequalities: Map<number, Map<string, [IPresentedAttributeInequality, Uint8Array][]>>;
 
   // Each credential has only one accumulator for status
-  credStatuses: Map<number, [AccumulatorWitness, Uint8Array, AccumulatorPublicKey | undefined, object]>;
+  credStatuses: Map<number, [AccumulatorWitnessType, AccumulatorValueType, AccumulatorPublicKey | undefined, object]>;
 
   // Bounds on attribute. The key of the map is the credential index and for the inner map is the attribute and value of map
   // denotes min, max, an identifier of the setup parameters for the protocol and the protocol name.
@@ -258,8 +262,8 @@ export class PresentationBuilder extends Versioned {
    */
   addAccumInfoForCredStatus(
     credIdx: number,
-    accumWitness: AccumulatorWitness,
-    accumulated: Uint8Array,
+    accumWitness: AccumulatorWitnessType,
+    accumulated: AccumulatorValueType,
     accumPublicKey?: AccumulatorPublicKey,
     extra: object = {}
   ) {
@@ -508,8 +512,8 @@ export class PresentationBuilder extends Versioned {
     // Store only needed encoded values of names and their indices. Maps cred index -> attribute index in schema -> encoded attribute
     const unrevealedMsgsEncoded = new Map<number, Map<number, Uint8Array>>();
 
-    // For credentials with status, i.e. using accumulators, type is [credIndex, revCheckType, encoded (non)member]
-    const credStatusAux: [number, string, Uint8Array][] = [];
+    // For credentials with status, i.e. using accumulators, type is [credIndex, protocol, revCheckType, encoded (non)member]
+    const credStatusAux: [number, string, string, Uint8Array][] = [];
 
     const setupParamsTrk = new SetupParamsTracker();
     const sigParamsByScheme = new Map();
@@ -541,11 +545,13 @@ export class PresentationBuilder extends Versioned {
           cred.credentialStatus[ID_STR] === undefined ||
           (cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_STR &&
             cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_STR &&
-            cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_KV_STR)
+            cred.credentialStatus[REV_CHECK_STR] !== MEM_CHECK_KV_STR &&
+            cred.credentialStatus[REV_CHECK_STR] !== NON_MEM_CHECK_KV_STR)
         ) {
           throw new Error(`Credential for ${credIndex} has invalid status ${cred.credentialStatus}`);
         }
         revealedNames.add(`${STATUS_STR}.${ID_STR}`);
+        revealedNames.add(`${STATUS_STR}.${TYPE_STR}`);
         revealedNames.add(`${STATUS_STR}.${REV_CHECK_STR}`);
       }
 
@@ -573,13 +579,14 @@ export class PresentationBuilder extends Versioned {
         }
         presentedStatus = {
           [ID_STR]: cred.credentialStatus[ID_STR],
-          [TYPE_STR]: RevocationStatusProtocol.Vb22,
+          [TYPE_STR]: cred.credentialStatus[TYPE_STR],
           [REV_CHECK_STR]: cred.credentialStatus[REV_CHECK_STR],
           accumulated: s[1],
           extra: s[3]
         };
         credStatusAux.push([
           credIndex,
+          cred.credentialStatus[TYPE_STR],
           cred.credentialStatus[REV_CHECK_STR],
           schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR])
         ]);
@@ -734,25 +741,100 @@ export class PresentationBuilder extends Versioned {
     }
 
     // Create statements and witnesses for accumulators used in credential status
-    credStatusAux.forEach(([i, checkType, value]) => {
+    credStatusAux.forEach(([i, protocol, checkType, value]) => {
       const s = this.credStatuses.get(i);
       if (s === undefined) {
         throw new Error(`No status details found for credential index ${i}`);
       }
       const [wit, acc, pk] = s;
-      let witness;
-      if (checkType === MEM_CHECK_STR || checkType === MEM_CHECK_KV_STR) {
-        if (!(wit instanceof VBMembershipWitness)) {
-          throw new Error(`Expected membership witness but got non-membership witness for credential index ${i}`);
+      let statement, witness;
+      if (protocol === RevocationStatusProtocol.Vb22) {
+        if (!(Array.isArray(acc) || acc instanceof Uint8Array)) {
+          throw new Error(`Accumulator value should have been a Uint8Array but was ${acc}`);
         }
-        witness = Witness.vbAccumulatorMembership(value, wit);
+        // Create witness
+        if (checkType === MEM_CHECK_STR || checkType === MEM_CHECK_KV_STR) {
+          if (!(wit instanceof VBMembershipWitness)) {
+            throw new Error(`Expected membership witness but got non-membership witness for credential index ${i}`);
+          }
+          witness = Witness.vbAccumulatorMembership(value, wit);
+        } else {
+          if (!(wit instanceof VBNonMembershipWitness)) {
+            throw new Error(`Expected non-membership witness but got membership witness for credential index ${i}`);
+          }
+          witness = Witness.vbAccumulatorNonMembership(value, wit);
+        }
+
+        // Create statement
+        let pkSp;
+        if (checkType === MEM_CHECK_STR || checkType === NON_MEM_CHECK_STR) {
+          if (!(pk instanceof AccumulatorPublicKey)) {
+            throw new Error(`Accumulator public key wasn't provided for credential index ${i}`);
+          }
+          if (!setupParamsTrk.hasAccumulatorParams()) {
+            setupParamsTrk.addAccumulatorParams();
+          }
+          pkSp = SetupParam.vbAccumulatorPublicKey(pk);
+        }
+
+        if (checkType === MEM_CHECK_STR) {
+          if (!setupParamsTrk.hasAccumulatorMemProvingKey()) {
+            setupParamsTrk.addAccumulatorMemProvingKey();
+          }
+          statement = Statement.vbAccumulatorMembershipFromSetupParamRefs(
+            setupParamsTrk.accumParamsIdx,
+            setupParamsTrk.add(pkSp),
+            setupParamsTrk.memPrkIdx,
+            acc as Uint8Array
+          );
+        } else if (checkType === NON_MEM_CHECK_STR) {
+          if (!setupParamsTrk.hasAccumulatorNonMemProvingKey()) {
+            setupParamsTrk.addAccumulatorNonMemProvingKey();
+          }
+          statement = Statement.vbAccumulatorNonMembershipFromSetupParamRefs(
+            setupParamsTrk.accumParamsIdx,
+            setupParamsTrk.add(pkSp),
+            setupParamsTrk.memPrkIdx,
+            acc as Uint8Array
+          );
+        } else if (checkType === MEM_CHECK_KV_STR) {
+          statement = Statement.vbAccumulatorMembershipKV(acc as Uint8Array);
+        } else {
+          throw new Error(`Unknown status check type ${checkType} for credential index ${i}`);
+        }
+      } else if (protocol === RevocationStatusProtocol.KbUni24) {
+        if (!(acc instanceof KBUniversalAccumulatorValue)) {
+          throw new Error(`Accumulator value should have been a KBUniversalAccumulatorValue object but was ${acc}`);
+        }
+        // Create witness
+        if (checkType === MEM_CHECK_STR || checkType === MEM_CHECK_KV_STR) {
+          if (!(wit instanceof KBUniversalMembershipWitness)) {
+            throw new Error(`Expected membership witness but got non-membership witness for credential index ${i}`);
+          }
+          witness = Witness.kbUniAccumulatorMembership(value, wit);
+        } else {
+          if (!(wit instanceof KBUniversalNonMembershipWitness)) {
+            throw new Error(`Expected non-membership witness but got membership witness for credential index ${i}`);
+          }
+          witness = Witness.kbUniAccumulatorNonMembership(value, wit);
+        }
+
+        // Create statement
+        if (checkType === MEM_CHECK_STR) {
+          statement = Statement.kbUniAccumulatorMembershipProver(acc.mem);
+        } else if (checkType === NON_MEM_CHECK_STR) {
+          statement = Statement.kbUniAccumulatorNonMembershipProver(acc.nonMem);
+        } else if (checkType === MEM_CHECK_KV_STR) {
+          statement = Statement.kbUniAccumulatorMembershipKV(acc.mem);
+        } else if (checkType === NON_MEM_CHECK_KV_STR) {
+          statement = Statement.kbUniAccumulatorNonMembershipKV(acc.nonMem);
+        } else {
+          throw new Error(`Unknown status check type ${checkType} for credential index ${i}`);
+        }
       } else {
-        if (!(wit instanceof VBNonMembershipWitness)) {
-          throw new Error(`Expected non-membership witness but got membership witness for credential index ${i}`);
-        }
-        witness = Witness.vbAccumulatorNonMembership(value, wit);
+        throw new Error(`Unknown status protocol ${protocol} for credential index ${i}`);
       }
-      const statement = accumulatorStatement(i, checkType, acc, setupParamsTrk, pk);
+
       const sIdx = statements.add(statement);
       witnesses.add(witness);
 

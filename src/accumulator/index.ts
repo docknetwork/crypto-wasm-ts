@@ -4,3 +4,4 @@ export * from './accumulatorWitness';
 export * from './proof';
 export * from './IAccumulatorState';
 export * from './IInitialElementsStore';
+export { VBWitnessUpdateInfo } from './witness-update-info';

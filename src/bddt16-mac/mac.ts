@@ -96,10 +96,13 @@ export class BDDT16Mac extends MessageEncoder {
     const sigParams = BDDT16MacParams.getMacParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
     const signature = BDDT16Mac.generate(encodedMessageList, secretKey, sigParams, false);
     const proof = new BDDT16MacProofOfValidity(signature, secretKey, publicKey, sigParams);
-    return [{
-      encodedMessages,
-      signature
-    }, proof];
+    return [
+      {
+        encodedMessages,
+        signature
+      },
+      proof
+    ];
   }
 
   /**

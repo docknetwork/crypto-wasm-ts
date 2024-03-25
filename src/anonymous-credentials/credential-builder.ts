@@ -44,7 +44,7 @@ export abstract class CredentialBuilder<
 > extends CredentialBuilderCommon {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.4.0';
+  static VERSION = '0.5.0';
 
   _encodedAttributes?: { [key: string]: Uint8Array };
   _sig?: Signature;

@@ -1,19 +1,20 @@
-import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
 import {
   CRYPTO_VERSION_STR,
   ID_STR,
+  MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
+  NON_MEM_CHECK_KV_STR,
   NON_MEM_CHECK_STR,
-  RevocationStatusProtocol,
   REV_CHECK_STR,
   REV_ID_STR,
+  RevocationStatusProtocol,
   SCHEMA_STR,
   STATUS_STR,
   SUBJECT_STR,
-  TYPE_STR,
-  MEM_CHECK_KV_STR
+  TYPE_STR
 } from './types-and-consts';
+import { Versioned } from './versioned';
 
 /**
  * Common fields and methods of `CredentialBuilder` and `BlindedCredentialBuilder`
@@ -60,14 +61,29 @@ export abstract class CredentialBuilderCommon extends Versioned {
     return this._credStatus;
   }
 
-  setCredentialStatus(registryId: string, revCheck: string, memberValue: unknown) {
-    if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR && revCheck !== MEM_CHECK_KV_STR) {
-      throw new Error(
-        `Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} or ${MEM_CHECK_KV_STR} but was ${revCheck}`
-      );
+  setCredentialStatus(registryId: string, revCheck: string, memberValue: unknown, revType?: RevocationStatusProtocol) {
+    const rType = revType ? revType : RevocationStatusProtocol.Vb22;
+    if (rType == RevocationStatusProtocol.Vb22) {
+      if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR && revCheck !== MEM_CHECK_KV_STR) {
+        throw new Error(
+          `Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} or ${MEM_CHECK_KV_STR} but was ${revCheck}`
+        );
+      }
+    }
+    if (rType == RevocationStatusProtocol.KbUni24) {
+      if (
+        revCheck !== MEM_CHECK_STR &&
+        revCheck !== NON_MEM_CHECK_STR &&
+        revCheck !== MEM_CHECK_KV_STR &&
+        revCheck !== NON_MEM_CHECK_KV_STR
+      ) {
+        throw new Error(
+          `Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} or ${MEM_CHECK_KV_STR} or ${NON_MEM_CHECK_KV_STR} but was ${revCheck}`
+        );
+      }
     }
     this._credStatus = {
-      [TYPE_STR]: RevocationStatusProtocol.Vb22,
+      [TYPE_STR]: rType,
       [ID_STR]: registryId,
       [REV_CHECK_STR]: revCheck,
       [REV_ID_STR]: memberValue

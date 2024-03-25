@@ -2,10 +2,16 @@ import b58 from 'bs58';
 import { VerifyResult } from 'crypto-wasm-new';
 import { AccumulatorSecretKey } from '../accumulator';
 import { BDDT16MacSecretKey } from '../bddt16-mac';
-import { BDDT16DelegatedProof, VBAccumMembershipDelegatedProof } from '../delegated-proofs';
+import {
+  BDDT16DelegatedProof,
+  KBUniAccumMembershipDelegatedProof,
+  KBUniAccumNonMembershipDelegatedProof,
+  VBAccumMembershipDelegatedProof
+} from '../delegated-proofs';
 import {
   ID_STR,
   MEM_CHECK_KV_STR,
+  NON_MEM_CHECK_KV_STR,
   REV_CHECK_STR,
   RevocationStatusProtocol,
   SignatureType,
@@ -22,7 +28,7 @@ export interface IDelegatedCredentialStatusProof {
   [ID_STR]: string;
   [TYPE_STR]: RevocationStatusProtocol;
   [REV_CHECK_STR]: string;
-  proof: VBAccumMembershipDelegatedProof;
+  proof: VBAccumMembershipDelegatedProof | KBUniAccumMembershipDelegatedProof | KBUniAccumNonMembershipDelegatedProof;
 }
 
 /**
@@ -36,7 +42,7 @@ export class DelegatedProof extends Versioned {
 
   constructor(credential?: IDelegatedCredentialProof, status?: IDelegatedCredentialStatusProof) {
     if (credential === undefined && status === undefined) {
-      throw new Error(`At least one of credential or status must be defined`)
+      throw new Error(`At least one of credential or status must be defined`);
     }
     super(DelegatedProof.VERSION);
     this.credential = credential;
@@ -63,15 +69,26 @@ export class DelegatedProof extends Versioned {
       if (this.status[ID_STR] === undefined) {
         throw new Error(`${ID_STR} field is required in the delegated proof`);
       }
-      if (this.status[TYPE_STR] !== RevocationStatusProtocol.Vb22 || this.status[REV_CHECK_STR] !== MEM_CHECK_KV_STR) {
-        throw new Error(`Unexpected values for ${TYPE_STR} and ${REV_CHECK_STR}: ${this.status[TYPE_STR]}, ${this.status[REV_CHECK_STR]}`);
+      if (this.status[TYPE_STR] === RevocationStatusProtocol.Vb22) {
+        if (this.status[REV_CHECK_STR] !== MEM_CHECK_KV_STR) {
+          throw new Error(
+            `Unexpected values for ${TYPE_STR} and ${REV_CHECK_STR}: ${this.status[TYPE_STR]}, ${this.status[REV_CHECK_STR]}`
+          );
+        }
+      } else if (this.status[TYPE_STR] === RevocationStatusProtocol.KbUni24) {
+        if (this.status[REV_CHECK_STR] !== MEM_CHECK_KV_STR && this.status[REV_CHECK_STR] !== NON_MEM_CHECK_KV_STR) {
+          throw new Error(
+            `Unexpected values for ${TYPE_STR} and ${REV_CHECK_STR}: ${this.status[TYPE_STR]}, ${this.status[REV_CHECK_STR]}`
+          );
+        }
+      } else {
+        throw new Error(`Unexpected value for ${TYPE_STR}: ${this.status[TYPE_STR]}`);
       }
       const rc = this.status.proof.verify(accumSecretKey);
       if (!rc.verified) {
         return rc;
       }
     }
-
     return r;
   }
 
@@ -106,16 +123,33 @@ export class DelegatedProof extends Versioned {
       };
     }
     if (j['status'] !== undefined) {
-      if (j['status'][ID_STR] === undefined || j['status'][TYPE_STR] === undefined || j['status'][REV_CHECK_STR] === undefined || j['status'].proof === undefined) {
-        throw new Error(`Expected fields ${ID_STR}, ${TYPE_STR}, ${REV_CHECK_STR} and proof but found the status object to be ${j['status']}`);
+      if (
+        j['status'][ID_STR] === undefined ||
+        j['status'][TYPE_STR] === undefined ||
+        j['status'][REV_CHECK_STR] === undefined ||
+        j['status'].proof === undefined
+      ) {
+        throw new Error(
+          `Expected fields ${ID_STR}, ${TYPE_STR}, ${REV_CHECK_STR} and proof but found the status object to be ${j['status']}`
+        );
+      }
+      let cls;
+      if (j['status'][TYPE_STR] === RevocationStatusProtocol.Vb22) {
+        cls = VBAccumMembershipDelegatedProof;
+      } else if (j['status'][TYPE_STR] === RevocationStatusProtocol.KbUni24) {
+        if (j['status'][REV_CHECK_STR] === MEM_CHECK_KV_STR) {
+          cls = KBUniAccumMembershipDelegatedProof;
+        } else if (j['status'][REV_CHECK_STR] === NON_MEM_CHECK_KV_STR) {
+          cls = KBUniAccumNonMembershipDelegatedProof;
+        }
       }
       status = {
         [ID_STR]: j['status'][ID_STR],
         [TYPE_STR]: j['status'][TYPE_STR],
         [REV_CHECK_STR]: j['status'][REV_CHECK_STR],
-        proof: new VBAccumMembershipDelegatedProof(b58.decode(j['status'].proof))
+        proof: new cls(b58.decode(j['status'].proof))
       };
     }
-    return new DelegatedProof(credential, status)
+    return new DelegatedProof(credential, status);
   }
 }

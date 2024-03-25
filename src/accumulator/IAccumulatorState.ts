@@ -20,3 +20,17 @@ export interface IAccumulatorState {
 export interface IUniversalAccumulatorState extends IAccumulatorState {
   elements(): Promise<Iterable<Uint8Array>>;
 }
+
+export interface IKBUniversalAccumulatorState extends IAccumulatorState {
+  /**
+   * Whether this element is in the domain (could be a member or not)
+   * @param element
+   */
+  inDomain(element: Uint8Array): Promise<boolean>;
+
+  /**
+   * Takes an element not in the domain and adds it.
+   * @param element
+   */
+  addToDomain(element: Uint8Array): Promise<void>;
+}

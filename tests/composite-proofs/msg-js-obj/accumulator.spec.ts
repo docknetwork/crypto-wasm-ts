@@ -16,7 +16,7 @@ import {
   ProofSpec,
   Statement,
   Statements,
-  VBWitnessUpdatePublicInfo,
+  VBWitnessUpdateInfo,
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses
@@ -36,7 +36,7 @@ describe(`${Scheme} Accumulator`, () => {
 
   // Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
   async function prefillAccumulator(
-    accumulator: Accumulator,
+    accumulator: PositiveAccumulator,
     secretKey: AccumulatorSecretKey,
     state: IAccumulatorState,
     totalMembers: number
@@ -307,13 +307,13 @@ describe(`${Scheme} Accumulator`, () => {
     // Remove members from accumulator
 
     // Prepare witness update info that needs to be shared with the members
-    const witnessUpdInfo1 = VBWitnessUpdatePublicInfo.new(
+    const witnessUpdInfo1 = VBWitnessUpdateInfo.new(
       accumulator1.accumulated,
       [],
       [allMembers1[5]],
       accumKeypair1.secretKey
     );
-    const witnessUpdInfo2 = VBWitnessUpdatePublicInfo.new(
+    const witnessUpdInfo2 = VBWitnessUpdateInfo.new(
       accumulator2.accumulated,
       [],
       [allMembers1[20]],

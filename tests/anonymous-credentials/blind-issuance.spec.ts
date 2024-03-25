@@ -264,7 +264,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     accumulator1Sk = accumKeypair1.secretKey;
     accumulator1 = PositiveAccumulator.initialize(dockAccumulatorParams());
     accumulator1State = new InMemoryState();
-    accumulator1Members = await prefillAccumulator(
+    accumulator1Members = await prefillAccumulator<Uint8Array>(
       accumulator1,
       accumKeypair1.secretKey,
       accumulator1State,

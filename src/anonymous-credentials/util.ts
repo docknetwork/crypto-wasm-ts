@@ -1,4 +1,21 @@
+import { flatten } from 'flat';
 import { AccumulatorPublicKey, AccumulatorSecretKey } from '../accumulator';
+import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
+import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
+import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
+import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '../composite-proof';
+import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
+import {
+  SaverChunkedCommitmentKey,
+  SaverChunkedCommitmentKeyUncompressed,
+  SaverEncryptionKey,
+  SaverEncryptionKeyUncompressed,
+  SaverProvingKey,
+  SaverProvingKeyUncompressed,
+  SaverVerifyingKey,
+  SaverVerifyingKeyUncompressed
+} from '../saver';
+import { SetupParamsTracker } from './setup-params-tracker';
 import {
   AccumulatorVerificationParam,
   AttributeEquality,
@@ -10,30 +27,15 @@ import {
   FlattenedSchema,
   MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
+  NON_MEM_CHECK_KV_STR,
   PredicateParamType,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
   PublicKey,
+  RevocationStatusProtocol,
   Signature,
   SignatureParams,
   SignatureParamsClass
 } from './types-and-consts';
-import {
-  SaverChunkedCommitmentKey,
-  SaverChunkedCommitmentKeyUncompressed,
-  SaverEncryptionKey,
-  SaverEncryptionKeyUncompressed,
-  SaverProvingKey,
-  SaverProvingKeyUncompressed,
-  SaverVerifyingKey,
-  SaverVerifyingKeyUncompressed
-} from '../saver';
-import { flatten } from 'flat';
-import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
-import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '../composite-proof';
-import { SetupParamsTracker } from './setup-params-tracker';
-import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
-import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
-import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
 
 export function isValueDate(value: string): boolean {
   // YYYY-MM-DD
@@ -321,10 +323,10 @@ export function buildSignatureProverStatementFromParamsRef(
   }
 
   return setupPK !== undefined
-    // @ts-ignore
-    ? buildStatement(setupParamsTrk.add(setupParams), setupParamsTrk.add(setupPK), revealedMessages, false)
-    // @ts-ignore
-    : buildStatement(setupParamsTrk.add(setupParams), revealedMessages, false);
+    ? // @ts-ignore
+      buildStatement(setupParamsTrk.add(setupParams), setupParamsTrk.add(setupPK), revealedMessages, false)
+    : // @ts-ignore
+      buildStatement(setupParamsTrk.add(setupParams), revealedMessages, false);
 }
 
 /**
@@ -400,59 +402,6 @@ export const getSignatureParamsForMsgCount = (
 
   return sigParamsEntry.params;
 };
-
-export function accumulatorStatement(
-  credIndex: number,
-  checkType: string,
-  accumulated: Uint8Array,
-  setupParamsTrk: SetupParamsTracker,
-  vk?: AccumulatorVerificationParam
-): Uint8Array {
-  let statement: Uint8Array;
-  if (!setupParamsTrk.hasAccumulatorParams()) {
-    setupParamsTrk.addAccumulatorParams();
-  }
-  if (checkType === MEM_CHECK_KV_STR) {
-    if (vk === undefined) {
-      statement = Statement.vbAccumulatorMembershipKV(accumulated);
-    } else {
-      if (vk instanceof AccumulatorSecretKey) {
-        statement = Statement.vbAccumulatorMembershipKVFullVerifier(vk, accumulated);
-      } else {
-        throw new Error(
-          `Unexpected accumulator verification param ${vk.constructor.name} passed for credential index ${credIndex}`
-        );
-      }
-    }
-  } else {
-    if (!(vk instanceof AccumulatorPublicKey)) {
-      throw new Error(`Accumulator public key wasn't provided for credential index ${credIndex}`);
-    }
-    if (checkType === MEM_CHECK_STR) {
-      if (!setupParamsTrk.hasAccumulatorMemProvingKey()) {
-        setupParamsTrk.addAccumulatorMemProvingKey();
-      }
-      statement = Statement.vbAccumulatorMembershipFromSetupParamRefs(
-        setupParamsTrk.accumParamsIdx,
-        setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(vk)),
-        setupParamsTrk.memPrkIdx,
-        accumulated
-      );
-    } else {
-      if (!setupParamsTrk.hasAccumulatorNonMemProvingKey()) {
-        setupParamsTrk.addAccumulatorNonMemProvingKey();
-      }
-      statement = Statement.vbAccumulatorNonMembershipFromSetupParamRefs(
-        setupParamsTrk.accumParamsIdx,
-        setupParamsTrk.add(SetupParam.vbAccumulatorPublicKey(vk)),
-        setupParamsTrk.nonMemPrkIdx,
-        accumulated
-      );
-    }
-  }
-
-  return statement;
-}
 
 export function saverStatement(
   forProver: boolean,

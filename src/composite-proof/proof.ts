@@ -12,7 +12,12 @@ import {
   verifyCompositeProofG1 as verifyCompositeProofG1Old,
   verifyCompositeProofG1WithDeconstructedProofSpec as verifyCompositeProofG1WithDeconstructedProofSpecOld
 } from 'crypto-wasm-old';
-import { BDDT16DelegatedProof, VBAccumMembershipDelegatedProof } from '../delegated-proofs';
+import {
+  BDDT16DelegatedProof,
+  KBUniAccumMembershipDelegatedProof,
+  KBUniAccumNonMembershipDelegatedProof,
+  VBAccumMembershipDelegatedProof
+} from '../delegated-proofs';
 import { MetaStatements, Statements } from './statement';
 import { Witnesses } from './witness';
 import { SetupParam } from './setup-param';
@@ -40,7 +45,6 @@ export class CompositeProof extends BytearrayWrapper {
    * @param proofSpec
    * @param witnesses
    * @param nonce
-   * @param useNewVersion
    */
   static generateUsingQuasiProofSpec(
     proofSpec: QuasiProofSpec,
@@ -153,8 +157,20 @@ export class CompositeProof extends BytearrayWrapper {
    * Get delegated proofs from a composite proof.
    * @returns - The key in the returned map is the statement index
    */
-  getDelegatedProofs(): Map<number, BDDT16DelegatedProof | VBAccumMembershipDelegatedProof> {
-    const r = new Map<number, BDDT16DelegatedProof | VBAccumMembershipDelegatedProof>();
+  getDelegatedProofs(): Map<
+    number,
+    | BDDT16DelegatedProof
+    | VBAccumMembershipDelegatedProof
+    | KBUniAccumMembershipDelegatedProof
+    | KBUniAccumNonMembershipDelegatedProof
+  > {
+    const r = new Map<
+      number,
+      | BDDT16DelegatedProof
+      | VBAccumMembershipDelegatedProof
+      | KBUniAccumMembershipDelegatedProof
+      | KBUniAccumNonMembershipDelegatedProof
+    >();
     const delgProofs = getAllDelegatedSubproofsFromProof(this.value);
     for (const [i, [t, v]] of delgProofs.entries()) {
       let cls;
@@ -162,6 +178,10 @@ export class CompositeProof extends BytearrayWrapper {
         cls = BDDT16DelegatedProof;
       } else if (t === 1) {
         cls = VBAccumMembershipDelegatedProof;
+      } else if (t === 2) {
+        cls = KBUniAccumMembershipDelegatedProof;
+      } else if (t === 3) {
+        cls = KBUniAccumNonMembershipDelegatedProof;
       } else {
         throw new Error(`Unknown type ${t} of delegated proof for credential index ${i}`);
       }

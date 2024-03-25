@@ -1,4 +1,4 @@
-import { IAccumulatorState, IUniversalAccumulatorState } from './IAccumulatorState';
+import { IAccumulatorState, IKBUniversalAccumulatorState, IUniversalAccumulatorState } from './IAccumulatorState';
 import { IInitialElementsStore } from './IInitialElementsStore';
 
 /**
@@ -9,6 +9,10 @@ export class InMemoryState implements IAccumulatorState {
   state: Set<string>;
   constructor() {
     this.state = new Set<string>();
+  }
+
+  get size(): number {
+    return this.state.size;
   }
 
   async add(element: Uint8Array): Promise<void> {
@@ -73,5 +77,71 @@ export class InMemoryInitialElementsStore implements IInitialElementsStore {
 
   static key(element: Uint8Array) {
     return JSON.stringify(Array.from(element));
+  }
+}
+
+/**
+ * In memory implementation of the state. For testing only
+ */
+export class InMemoryKBUniversalState implements IKBUniversalAccumulatorState {
+  memState: Set<string>;
+  nonMemState: Set<string>;
+
+  constructor() {
+    this.memState = new Set<string>();
+    this.nonMemState = new Set<string>();
+  }
+
+  get size(): number {
+    return this.memState.size;
+  }
+
+  add(element: Uint8Array): Promise<void> {
+    const key = InMemoryKBUniversalState.key(element);
+    if (this.memState.has(key)) {
+      throw new Error(`${element} already present in mem state`);
+    }
+    if (!this.nonMemState.has(key)) {
+      throw new Error(`${element} not present in non mem state`);
+    }
+    this.memState.add(key);
+    this.nonMemState.delete(key);
+    return Promise.resolve();
+  }
+
+  has(element: Uint8Array): Promise<boolean> {
+    const key = InMemoryKBUniversalState.key(element);
+    // Ideally, something present in `memState` should not be present in `nonMemState` and vice-versa
+    const b = this.memState.has(key) && !this.nonMemState.has(key);
+    return Promise.resolve(b);
+  }
+
+  remove(element: Uint8Array): Promise<void> {
+    const key = InMemoryKBUniversalState.key(element);
+    if (!this.memState.has(key)) {
+      throw new Error(`${element} not present in mem state`);
+    }
+    if (this.nonMemState.has(key)) {
+      throw new Error(`${element} already present in non mem state`);
+    }
+    this.memState.delete(key);
+    this.nonMemState.add(key);
+    return Promise.resolve();
+  }
+
+  static key(element: Uint8Array) {
+    return JSON.stringify(Array.from(element));
+  }
+
+  inDomain(element: Uint8Array): Promise<boolean> {
+    const key = InMemoryKBUniversalState.key(element);
+    const b = this.nonMemState.has(key) || this.memState.has(key);
+    return Promise.resolve(b);
+  }
+
+  async addToDomain(element: Uint8Array) {
+    const key = InMemoryKBUniversalState.key(element);
+    this.nonMemState.add(key);
+    return Promise.resolve();
   }
 }

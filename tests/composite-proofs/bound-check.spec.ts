@@ -20,24 +20,17 @@ import {
   WitnessEqualityMetaStatement,
   Witnesses
 } from '../../src';
+import { buildWitness, PublicKey, Scheme, SecretKey, Signature, SignatureParams } from '../scheme';
 import {
   checkResult,
-  getRevealedUnrevealed,
-  stringToBytes,
   getBoundCheckSnarkKeys,
   getParamsAndKeys,
-  signAndVerify, proverStmt, verifierStmt
+  getRevealedUnrevealed,
+  proverStmt,
+  signAndVerify,
+  stringToBytes,
+  verifierStmt
 } from '../utils';
-import {
-  KeyPair,
-  SecretKey,
-  PublicKey,
-  Signature,
-  SignatureParams,
-  buildWitness,
-  buildVerifierStatement,
-  Scheme, isPS, buildProverStatement
-} from '../scheme';
 
 describe(`Bound check of ${Scheme} signed messages`, () => {
   const messageCount = 5;

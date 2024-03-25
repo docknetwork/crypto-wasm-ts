@@ -30,7 +30,7 @@ import {
   universalAccumulatorVerifyMembership,
   universalAccumulatorVerifyNonMembership
 } from 'crypto-wasm-new';
-import { VBMembershipWitness, VBNonMembershipWitness } from './accumulatorWitness';
+import { AccumulatorWitness, VBMembershipWitness, VBNonMembershipWitness } from './accumulatorWitness';
 import { getUint8ArraysFromObject } from '../util';
 import { IAccumulatorState, IUniversalAccumulatorState } from './IAccumulatorState';
 import { IInitialElementsStore } from './IInitialElementsStore';
@@ -53,7 +53,7 @@ import {
  * the state object is to check if duplicate elements are not added or already absent elements are not removed or membership witness
  * for absent elements is not created. If checks in the `state` fail, they throw errors.
  */
-export abstract class Accumulator {
+export abstract class Accumulator<T> {
   value: Uint8Array | object;
   secretKey: AccumulatorSecretKey | undefined;
   params: AccumulatorParams | undefined;
@@ -194,7 +194,7 @@ export abstract class Accumulator {
   /**
    * Get the accumulated value.
    */
-  abstract get accumulated(): Uint8Array;
+  abstract get accumulated(): T;
 
   // The following functions optionally take secret key as an argument as its better to not store secret key in memory for
   // long time.
@@ -261,7 +261,7 @@ export abstract class Accumulator {
     element: Uint8Array,
     secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
-  ): Promise<VBMembershipWitness>;
+  ): Promise<AccumulatorWitness<T>>;
 
   /**
    * Calculate the membership witnesses for the given batch of elements
@@ -273,7 +273,7 @@ export abstract class Accumulator {
     elements: Uint8Array[],
     secretKey?: AccumulatorSecretKey,
     state?: IAccumulatorState
-  ): Promise<VBMembershipWitness[]>;
+  ): Promise<AccumulatorWitness<T>[]>;
 
   /**
    * Verify the membership witness.
@@ -284,7 +284,7 @@ export abstract class Accumulator {
    */
   abstract verifyMembershipWitness(
     member: Uint8Array,
-    witness: VBMembershipWitness,
+    witness: AccumulatorWitness<T>,
     pk: AccumulatorPublicKey,
     params?: AccumulatorParams
   ): boolean;
@@ -401,9 +401,9 @@ export abstract class Accumulator {
 }
 
 /**
- * Accumulator that supports only membership proofs.
+ * VB accumulator that supports only membership proofs.
  */
-export class PositiveAccumulator extends Accumulator {
+export class PositiveAccumulator extends Accumulator<Uint8Array> {
   // @ts-ignore
   value: Uint8Array;
 
@@ -441,7 +441,7 @@ export class PositiveAccumulator extends Accumulator {
    * Remove a single element from the accumulator
    * @param element
    * @param secretKey
-   * @param state- Optional. If provided, checked before removing and element is removed
+   * @param state Optional. If provided, checked before removing and element is removed
    */
   async remove(element: Uint8Array, secretKey?: AccumulatorSecretKey, state?: IAccumulatorState) {
     await this.ensurePresence(element, state);
@@ -576,12 +576,12 @@ export class PositiveAccumulator extends Accumulator {
 }
 
 /**
- * Accumulator that supports both membership proofs and non-membership proofs. For guarding against forgery of
+ * VB accumulator that supports both membership proofs and non-membership proofs. For guarding against forgery of
  * non-membership proofs (details in the paper), during initialization, it should generate several accumulator members
  * and never remove them from accumulator, nor it should allow duplicates of them to be added. Thus, several methods
  * accept an optional persistent database `IInitialElementsStore` which stores those initial elements.
  */
-export class UniversalAccumulator extends Accumulator {
+export class UniversalAccumulator extends Accumulator<Uint8Array> {
   /**
    * `f_V` is supposed to kept private by the accumulator manager. `V` is the accumulated value.
    */

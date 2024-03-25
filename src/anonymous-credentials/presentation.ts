@@ -3,6 +3,8 @@ import { VerifyResult } from 'crypto-wasm-new';
 import { flatten } from 'flat';
 import stringify from 'json-stringify-deterministic';
 import semver from 'semver/preload';
+import { AccumulatorPublicKey, AccumulatorSecretKey } from '../accumulator';
+import { KBUniversalAccumulatorValue } from '../accumulator/kb-universal-accumulator';
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { BDDT16MacParams } from '../bddt16-mac';
@@ -23,7 +25,12 @@ import {
   Statements,
   WitnessEqualityMetaStatement
 } from '../composite-proof';
-import { BDDT16DelegatedProof, VBAccumMembershipDelegatedProof } from '../delegated-proofs';
+import {
+  BDDT16DelegatedProof,
+  KBUniAccumMembershipDelegatedProof,
+  KBUniAccumNonMembershipDelegatedProof,
+  VBAccumMembershipDelegatedProof
+} from '../delegated-proofs';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 import { PSSignatureParams } from '../ps';
@@ -45,6 +52,7 @@ import {
 import { CredentialSchema, getTransformedMinMax, ValueType } from './schema';
 import { SetupParamsTracker } from './setup-params-tracker';
 import {
+  AccumulatorValueType,
   AccumulatorVerificationParam,
   AttributeCiphertexts,
   BBS_BLINDED_CRED_PROOF_TYPE,
@@ -60,6 +68,7 @@ import {
   InequalityProtocol,
   MEM_CHECK_KV_STR,
   MEM_CHECK_STR,
+  NON_MEM_CHECK_KV_STR,
   NON_MEM_CHECK_STR,
   PredicateParamType,
   PublicKey,
@@ -73,7 +82,6 @@ import {
   VerifiableEncryptionProtocol
 } from './types-and-consts';
 import {
-  accumulatorStatement,
   buildSignatureVerifierStatementFromParamsRef,
   createWitEq,
   createWitEqForBlindedCred,
@@ -188,8 +196,8 @@ export class Presentation extends Versioned {
 
     // For the following arrays of pairs, the 1st item of each pair is the credential index
 
-    // For credentials with status, i.e. using accumulators, type is [credIndex, revCheckType, accumulator]
-    const credStatusAux: [number, string, Uint8Array][] = [];
+    // For credentials with status, i.e. using accumulators, type is [credIndex, protocol, revCheckType, accumulator]
+    const credStatusAux: [number, string, string, AccumulatorValueType][] = [];
 
     // For inequality checks on credential attributes
     const ineqsAux: [number, { [key: string]: [IPresentedAttributeInequality, Uint8Array][] }][] = [];
@@ -207,6 +215,7 @@ export class Presentation extends Versioned {
     const sigParamsByScheme = new Map();
 
     const versionGt5 = semver.gt(this.version, '0.5.0');
+    const versionGt6 = semver.gt(this.version, '0.6.0');
 
     for (let credIndex = 0; credIndex < this.spec.credentials.length; credIndex++) {
       const presentedCred = this.spec.credentials[credIndex];
@@ -218,7 +227,8 @@ export class Presentation extends Versioned {
         credIndex,
         presentedCred,
         presentedCredSchema,
-        flattenedSchema[0]
+        flattenedSchema[0],
+        versionGt6
       );
 
       let sigParamsClass;
@@ -265,7 +275,12 @@ export class Presentation extends Versioned {
 
       if (presentedCred.status !== undefined) {
         // The input validation and security checks for these have been done as part of encoding revealed attributes
-        credStatusAux.push([credIndex, presentedCred.status[REV_CHECK_STR], presentedCred.status.accumulated]);
+        credStatusAux.push([
+          credIndex,
+          presentedCred.status[TYPE_STR],
+          presentedCred.status[REV_CHECK_STR],
+          presentedCred.status.accumulated
+        ]);
       }
 
       if (presentedCred.attributeInequalities !== undefined) {
@@ -292,10 +307,117 @@ export class Presentation extends Versioned {
       }
     }
 
-    credStatusAux.forEach(([i, checkType, accum]) => {
-      // let statement;
+    credStatusAux.forEach(([i, protocol, checkType, acc]) => {
+      let statement;
       const pk = accumulatorPublicKeys?.get(i);
-      const statement = accumulatorStatement(i, checkType, accum, setupParamsTrk, pk);
+      if (protocol === RevocationStatusProtocol.Vb22) {
+        if (!(Array.isArray(acc) || acc instanceof Uint8Array)) {
+          throw new Error(`Accumulator value should have been a Uint8Array but was ${acc}`);
+        }
+        let pkSp;
+        if (checkType === MEM_CHECK_STR || checkType === NON_MEM_CHECK_STR) {
+          if (!(pk instanceof AccumulatorPublicKey)) {
+            throw new Error(`Accumulator public key wasn't provided for credential index ${i}`);
+          }
+          if (!setupParamsTrk.hasAccumulatorParams()) {
+            setupParamsTrk.addAccumulatorParams();
+          }
+          pkSp = SetupParam.vbAccumulatorPublicKey(pk);
+        }
+
+        if (checkType === MEM_CHECK_STR) {
+          if (!setupParamsTrk.hasAccumulatorMemProvingKey()) {
+            setupParamsTrk.addAccumulatorMemProvingKey();
+          }
+          statement = Statement.vbAccumulatorMembershipFromSetupParamRefs(
+            setupParamsTrk.accumParamsIdx,
+            setupParamsTrk.add(pkSp),
+            setupParamsTrk.memPrkIdx,
+            acc as Uint8Array
+          );
+        } else if (checkType === NON_MEM_CHECK_STR) {
+          if (!setupParamsTrk.hasAccumulatorNonMemProvingKey()) {
+            setupParamsTrk.addAccumulatorNonMemProvingKey();
+          }
+          statement = Statement.vbAccumulatorNonMembershipFromSetupParamRefs(
+            setupParamsTrk.accumParamsIdx,
+            setupParamsTrk.add(pkSp),
+            setupParamsTrk.nonMemPrkIdx,
+            acc as Uint8Array
+          );
+        } else if (checkType === MEM_CHECK_KV_STR) {
+          if (pk === undefined) {
+            statement = Statement.vbAccumulatorMembershipKV(acc as Uint8Array);
+          } else {
+            if (pk instanceof AccumulatorSecretKey) {
+              statement = Statement.vbAccumulatorMembershipKVFullVerifier(pk, acc as Uint8Array);
+            } else {
+              throw new Error(
+                `Unexpected accumulator verification param ${pk.constructor.name} passed for credential index ${i}`
+              );
+            }
+          }
+        } else {
+          throw new Error(`Unknown status check type ${checkType} for credential index ${i}`);
+        }
+      } else if (protocol === RevocationStatusProtocol.KbUni24) {
+        if (!(acc instanceof KBUniversalAccumulatorValue)) {
+          throw new Error(`Accumulator value should have been a KBUniversalAccumulatorValue object but was ${acc}`);
+        }
+        let pkSp;
+        if (checkType === MEM_CHECK_STR || checkType === NON_MEM_CHECK_STR) {
+          if (!(pk instanceof AccumulatorPublicKey)) {
+            throw new Error(`Accumulator public key wasn't provided for credential index ${i}`);
+          }
+          if (!setupParamsTrk.hasAccumulatorParams()) {
+            setupParamsTrk.addAccumulatorParams();
+          }
+          pkSp = SetupParam.vbAccumulatorPublicKey(pk);
+        }
+
+        if (checkType === MEM_CHECK_STR) {
+          statement = Statement.kbUniAccumulatorMembershipVerifierFromSetupParamRefs(
+            setupParamsTrk.accumParamsIdx,
+            setupParamsTrk.add(pkSp),
+            acc.mem
+          );
+        } else if (checkType === NON_MEM_CHECK_STR) {
+          statement = Statement.kbUniAccumulatorNonMembershipVerifierFromSetupParamRefs(
+            setupParamsTrk.accumParamsIdx,
+            setupParamsTrk.add(pkSp),
+            acc.nonMem
+          );
+        } else if (checkType === MEM_CHECK_KV_STR) {
+          if (pk === undefined) {
+            statement = Statement.kbUniAccumulatorMembershipKV(acc.mem);
+          } else {
+            if (pk instanceof AccumulatorSecretKey) {
+              statement = Statement.kbUniAccumulatorMembershipKVFullVerifier(pk, acc.mem);
+            } else {
+              throw new Error(
+                `Unexpected accumulator verification param ${pk.constructor.name} passed for credential index ${i}`
+              );
+            }
+          }
+        } else if (checkType === NON_MEM_CHECK_KV_STR) {
+          if (pk === undefined) {
+            statement = Statement.kbUniAccumulatorNonMembershipKV(acc.nonMem);
+          } else {
+            if (pk instanceof AccumulatorSecretKey) {
+              statement = Statement.kbUniAccumulatorNonMembershipKVFullVerifier(pk, acc.nonMem);
+            } else {
+              throw new Error(
+                `Unexpected accumulator verification param ${pk.constructor.name} passed for credential index ${i}`
+              );
+            }
+          }
+        } else {
+          throw new Error(`Unknown status check type ${checkType} for credential index ${i}`);
+        }
+      } else {
+        throw new Error(`Unknown status protocol ${protocol} for credential index ${i}`);
+      }
+
       const sIdx = statements.add(statement);
       const witnessEq = new WitnessEqualityMetaStatement();
       witnessEq.addWitnessRef(i, flattenedSchemas[i][0].indexOf(`${STATUS_STR}.${REV_ID_STR}`));
@@ -661,6 +783,36 @@ export class Presentation extends Versioned {
             [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR],
             proof
           };
+        } else if (
+          presentedCred.status[TYPE_STR] === RevocationStatusProtocol.KbUni24 &&
+          (presentedCred.status[REV_CHECK_STR] === MEM_CHECK_KV_STR ||
+            presentedCred.status[REV_CHECK_STR] === NON_MEM_CHECK_KV_STR)
+        ) {
+          const proof = delegatedProofs.get(nextCredStatusStatementIdx);
+          if (proof === undefined) {
+            throw new Error(`Could not find delegated credential status proof for credential index ${i}`);
+          }
+          if (presentedCred.status[REV_CHECK_STR] === MEM_CHECK_KV_STR) {
+            if (!(proof instanceof KBUniAccumMembershipDelegatedProof)) {
+              throw new Error(
+                `Unexpected delegated credential status proof type ${proof.constructor.name} for credential index ${i}`
+              );
+            }
+          }
+          if (presentedCred.status[REV_CHECK_STR] === NON_MEM_CHECK_KV_STR) {
+            if (!(proof instanceof KBUniAccumNonMembershipDelegatedProof)) {
+              throw new Error(
+                `Unexpected delegated credential status proof type ${proof.constructor.name} for credential index ${i}`
+              );
+            }
+          }
+          statusP = {
+            [ID_STR]: presentedCred.status[ID_STR],
+            [TYPE_STR]: presentedCred.status[TYPE_STR],
+            [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR],
+            // @ts-ignore
+            proof
+          };
         }
         nextCredStatusStatementIdx++;
       }
@@ -678,12 +830,14 @@ export class Presentation extends Versioned {
    * @param presentedCred
    * @param presentedCredSchema
    * @param flattenedNames
+   * @param newVersion
    */
   private static encodeRevealed(
     credIdx: number,
     presentedCred: IPresentedCredential,
     presentedCredSchema: CredentialSchema,
-    flattenedNames: string[]
+    flattenedNames: string[],
+    newVersion: boolean
   ): Map<number, Uint8Array> {
     const revealedRaw = deepClone(presentedCred.revealedAttributes) as object;
     revealedRaw[CRYPTO_VERSION_STR] = presentedCred.version;
@@ -697,7 +851,8 @@ export class Presentation extends Versioned {
         presentedCred.status[ID_STR] === undefined ||
         (presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_STR &&
           presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_STR &&
-          presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_KV_STR)
+          presentedCred.status[REV_CHECK_STR] !== MEM_CHECK_KV_STR &&
+          presentedCred.status[REV_CHECK_STR] !== NON_MEM_CHECK_KV_STR)
       ) {
         throw new Error(`Presented credential for ${credIdx} has invalid status ${presentedCred.status}`);
       }
@@ -706,6 +861,9 @@ export class Presentation extends Versioned {
         [ID_STR]: presentedCred.status[ID_STR],
         [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR]
       };
+      if (newVersion) {
+        revealedRaw[STATUS_STR][TYPE_STR] = presentedCred.status[TYPE_STR];
+      }
     }
     const encoded = new Map<number, Uint8Array>();
     Object.entries(flatten(revealedRaw) as object).forEach(([k, v]) => {
@@ -1028,8 +1186,16 @@ export class Presentation extends Versioned {
     for (const cred of this.spec.credentials) {
       const current = deepClone(cred) as object; // Need this deep cloning because structure of revealed attributes or key `extra` isn't fixed
       if (cred.status !== undefined) {
-        // @ts-ignore
-        current.status?.accumulated = b58.encode(cred.status.accumulated);
+        if (cred.status[TYPE_STR] === RevocationStatusProtocol.Vb22) {
+          // @ts-ignore
+          current.status?.accumulated = b58.encode(cred.status.accumulated);
+        } else if (cred.status[TYPE_STR] === RevocationStatusProtocol.KbUni24) {
+          // @ts-ignore
+          current.status?.accumulated = `${b58.encode(cred.status.accumulated.mem)},${b58.encode(
+            // @ts-ignore
+            cred.status.accumulated.nonMem
+          )}`;
+        }
       }
       if (cred.circomPredicates !== undefined) {
         // @ts-ignore
@@ -1340,9 +1506,14 @@ export class Presentation extends Versioned {
 
       let status, circomPredicates, sigType;
       if (cred['status'] !== undefined) {
-        if (Object.values(RevocationStatusProtocol).includes(cred['status']['type'])) {
+        if (Object.values(RevocationStatusProtocol).includes(cred['status'][TYPE_STR])) {
           status = deepClone(cred['status']) as object;
-          status['accumulated'] = b58.decode(cred['status']['accumulated']);
+          if (status[TYPE_STR] === RevocationStatusProtocol.Vb22) {
+            status['accumulated'] = b58.decode(cred['status']['accumulated']);
+          } else if (status[TYPE_STR] === RevocationStatusProtocol.KbUni24) {
+            const parts = status['accumulated'].split(',');
+            status['accumulated'] = new KBUniversalAccumulatorValue(b58.decode(parts[0]), b58.decode(parts[1]));
+          }
         } else {
           throw new Error(`status type should be one of ${RevocationStatusProtocol} but was ${cred['status']['type']}`);
         }

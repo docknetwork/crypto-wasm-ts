@@ -1,18 +1,17 @@
-import { checkResult, getParamsAndKeys, stringToBytes } from '../utils';
-import { initializeWasm, CompositeProof, MetaStatements, ProofSpec, Statements, Witnesses } from '../../src';
+import { generateRandomG1Element } from 'crypto-wasm-new';
+import { CompositeProof, initializeWasm, MetaStatements, ProofSpec, Statements, Witnesses } from '../../src';
 import {
   BlindSignature,
-  KeyPair,
-  SignatureParams,
+  encodeMessageForSigningIfNotPS,
+  encodeMessageForSigningIfPS,
   getStatementForBlindSigRequest,
   getWitnessForBlindSigRequest,
-  isBBSPlus,
-  encodeMessageForSigningIfPS,
+  isBBS,
+  isKvac,
   isPS,
-  encodeMessageForSigningIfNotPS,
-  Scheme, isBBS, isKvac
+  Scheme
 } from '../scheme';
-import { generateRandomG1Element } from 'crypto-wasm-new';
+import { checkResult, getParamsAndKeys, stringToBytes } from '../utils';
 
 describe(`${Scheme} Getting a blind signature, i.e. signature where signer is not aware of certain attributes of the user`, () => {
   it('works', async () => {

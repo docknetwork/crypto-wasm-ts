@@ -17,6 +17,7 @@ import {
   STATUS_STR,
   SUBJECT_STR
 } from '../../src';
+import { KBUniversalAccumulator } from '../../src/accumulator/kb-universal-accumulator';
 import {
   Credential,
   CredentialBuilder,
@@ -33,7 +34,7 @@ import { checkResult, stringToBytes } from '../utils';
 import fs from 'fs';
 import { BytearrayWrapper } from '../../src/bytearray-wrapper';
 import { BDDT16MacParams, BDDT16MacSecretKey } from '../../src/bddt16-mac';
-import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
+import { InMemoryKBUniversalState, InMemoryState } from '../../src/accumulator/in-memory-persistence';
 
 export function getExampleSchema(num): IEmbeddedJsonSchema {
   const schema = CredentialSchema.essential();
@@ -559,8 +560,8 @@ export function checkSchemaFromJson(schemaJson: string, schema: CredentialSchema
 }
 
 // Prefill the given accumulator with `totalMembers` members. The members are creates in a certain way for these tests
-export async function prefillAccumulator(
-  accumulator: Accumulator,
+export async function prefillAccumulator<T>(
+  accumulator: Accumulator<T>,
   secretKey: AccumulatorSecretKey,
   state: IAccumulatorState,
   credSchema: CredentialSchema,
@@ -763,7 +764,7 @@ export async function setupPrefilledAccum(totalMembers: number, memberIdx: numbe
   const pk = kp.publicKey;
   const accumulator = PositiveAccumulator.initialize(dockAccumulatorParams());
   const state = new InMemoryState();
-  const allMembers = await prefillAccumulator(
+  const allMembers = await prefillAccumulator<Uint8Array>(
     accumulator,
     sk,
     state,
@@ -787,4 +788,20 @@ export async function setupPrefilledAccum(totalMembers: number, memberIdx: numbe
     )
   ).toEqual(true);
   return [sk, pk, accumulator, witness]
+}
+
+export async function setupKBUniAccumulator(
+  totalMembers: number, memberValPrefix: string, schema: CredentialSchema, seed?: Uint8Array
+) {
+  const kp = KBUniversalAccumulator.generateKeypair(dockAccumulatorParams(), seed);
+  const sk = kp.secretKey;
+  const pk = kp.publicKey;
+  const state = new InMemoryKBUniversalState();
+  const domain: Uint8Array[] = [];
+  for (let i = 1; i <= totalMembers; i++) {
+    const userId = `${memberValPrefix}${i}`;
+    domain.push(schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, userId));
+  }
+  const accumulator = await KBUniversalAccumulator.initialize(domain, dockAccumulatorParams(), sk, state);
+  return [sk, pk, accumulator, domain, state]
 }

@@ -10,13 +10,9 @@ import {
   Witnesses, Statement
 } from '../../src';
 import {
-  KeyPair,
   Scheme,
-  Signature,
-  SignatureParams,
-  buildVerifierStatement,
   buildWitness,
-  encodeMessageForSigningIfPS, isPS, buildProverStatement, isKvac
+  encodeMessageForSigningIfPS, isKvac
 } from '../scheme';
 
 describe(`Proving knowledge of 2 ${Scheme}  signatures over attributes and equality of a specific attribute`, () => {

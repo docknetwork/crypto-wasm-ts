@@ -5,7 +5,7 @@ import {
   initializeWasm,
   PositiveAccumulator,
   VBMembershipWitness,
-  VBWitnessUpdatePublicInfo
+  VBWitnessUpdateInfo
 } from '../src';
 import { InMemoryState } from '../src/accumulator/in-memory-persistence';
 import { stringToBytes } from './utils';
@@ -69,7 +69,7 @@ describe('Prefilled positive accumulator', () => {
     expect(verifAccumulator.verifyMembershipWitness(member2, witness2, keypair.publicKey, params)).toEqual(true);
 
     // Manager decides to remove a member, the new accumulated value will be published along with witness update info
-    const witnessUpdInfo = VBWitnessUpdatePublicInfo.new(accumulator.accumulated, [], [member2], keypair.secretKey);
+    const witnessUpdInfo = VBWitnessUpdateInfo.new(accumulator.accumulated, [], [member2], keypair.secretKey);
     await accumulator.remove(member2, keypair.secretKey, state);
 
     verifAccumulator = PositiveAccumulator.fromAccumulated(accumulator.accumulated);

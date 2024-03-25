@@ -1,3 +1,4 @@
+import { KBUniversalAccumulatorValue } from '../accumulator/kb-universal-accumulator';
 import {
   AttributeEquality,
   BlindedAttributeEquality,
@@ -10,7 +11,8 @@ import {
   VerifiableEncryptionProtocol,
   REV_CHECK_STR,
   TYPE_STR,
-  InequalityProtocol
+  InequalityProtocol,
+  AccumulatorValueType
 } from './types-and-consts';
 import b58 from 'bs58';
 import { CredentialSchema } from './schema';
@@ -19,7 +21,7 @@ export interface IPresentedStatus {
   [ID_STR]: string;
   [TYPE_STR]: RevocationStatusProtocol;
   [REV_CHECK_STR]: string;
-  accumulated: Uint8Array;
+  accumulated: AccumulatorValueType;
   extra: object;
 }
 
@@ -247,7 +249,16 @@ export class PresentationSpecification {
       }
       if (pc.status !== undefined) {
         curJ['status'] = { ...pc.status };
-        curJ['status'].accumulated = b58.encode(pc.status.accumulated);
+        if (pc.status[TYPE_STR] === RevocationStatusProtocol.Vb22) {
+          curJ['status'].accumulated = b58.encode(pc.status.accumulated as Uint8Array);
+        }
+        if (pc.status[TYPE_STR] === RevocationStatusProtocol.KbUni24) {
+          // @ts-ignore
+          curJ['status'].accumulated = `${b58.encode(pc.status.accumulated.mem)},${b58.encode(
+            // @ts-ignore
+            pc.status.accumulated.nonMem
+          )}`;
+        }
       }
       if (pc.attributeInequalities !== undefined) {
         curJ['attributeInequalities'] = pc.attributeInequalities;

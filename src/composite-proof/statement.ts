@@ -44,7 +44,17 @@ import {
   generatePoKBDDT16MacFullVerifierStatement,
   generatePoKBDDT16MacFullVerifierStatementFromParamRefs,
   generateAccumulatorKVFullVerifierMembershipStatement,
-  generateAccumulatorKVMembershipStatement
+  generateAccumulatorKVMembershipStatement,
+  generateKBUniversalAccumulatorKVNonMembershipStatement,
+  generateKBUniversalAccumulatorKVFullVerifierNonMembershipStatement,
+  generateKBUniversalAccumulatorKVFullVerifierMembershipStatement,
+  generateKBUniversalAccumulatorKVMembershipStatement,
+  generateKBUniversalAccumulatorMembershipProverStatement,
+  generateKBUniversalAccumulatorMembershipVerifierStatement,
+  generateKBUniversalAccumulatorMembershipVerifierStatementFromParamRefs,
+  generateKBUniversalAccumulatorNonMembershipProverStatement,
+  generateKBUniversalAccumulatorNonMembershipVerifierStatement,
+  generateKBUniversalAccumulatorNonMembershipVerifierStatementFromParamRefs
 } from 'crypto-wasm-new';
 // import { generatePoKBBSSignatureStatement, generatePoKBBSPlusSignatureStatement, generatePoKBBSSignatureStatementFromParamRefs, generatePoKBBSPlusSignatureStatementFromParamRefs } from 'crypto-wasm-old/lib/composite_proof_system_wasm';
 // @ts-ignore
@@ -354,7 +364,7 @@ export class Statement {
   }
 
   /**
-   * Create statement for proving knowledge of accumulator membership
+   * Create statement for proving knowledge of VB accumulator membership
    * @param params
    * @param publicKey
    * @param provingKey
@@ -387,13 +397,13 @@ export class Statement {
   }
 
   /**
-   * Create statement for proving knowledge of accumulator non-membership
+   * Create statement for proving knowledge of VB accumulator non-membership
    * @param params
    * @param publicKey
    * @param provingKey
    * @param accumulated
    */
-  static vccumulatorNonMembership(
+  static vbAccumulatorNonMembership(
     params: AccumulatorParams,
     publicKey: AccumulatorPublicKey,
     provingKey: NonMembershipProvingKey,
@@ -425,6 +435,102 @@ export class Statement {
 
   static vbAccumulatorMembershipKVFullVerifier(secretKey: AccumulatorSecretKey, accumulated: Uint8Array): Uint8Array {
     return generateAccumulatorKVFullVerifierMembershipStatement(secretKey.value, accumulated);
+  }
+
+  /**
+   * Create statement for proving knowledge of KB universal accumulator membership
+   * @param accumulated
+   */
+  static kbUniAccumulatorMembershipProver(accumulated: Uint8Array): Uint8Array {
+    return generateKBUniversalAccumulatorMembershipProverStatement(accumulated);
+  }
+
+  /**
+   * Create statement for verifying knowledge of KB universal accumulator membership
+   * @param params
+   * @param publicKey
+   * @param accumulated
+   */
+  static kbUniAccumulatorMembershipVerifier(
+    params: AccumulatorParams,
+    publicKey: AccumulatorPublicKey,
+    accumulated: Uint8Array
+  ): Uint8Array {
+    return generateKBUniversalAccumulatorMembershipVerifierStatement(params.value, publicKey.value, accumulated);
+  }
+
+  /**
+   * Same as `Statement.kbUniAccumulatorMembershipVerifier` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param params
+   * @param publicKey
+   * @param accumulated
+   */
+  static kbUniAccumulatorMembershipVerifierFromSetupParamRefs(
+    params: number,
+    publicKey: number,
+    accumulated: Uint8Array
+  ): Uint8Array {
+    return generateKBUniversalAccumulatorMembershipVerifierStatementFromParamRefs(params, publicKey, accumulated);
+  }
+
+  /**
+   * Create statement for proving knowledge of ¸ non-membership
+   * @param accumulated
+   */
+  static kbUniAccumulatorNonMembershipProver(accumulated: Uint8Array): Uint8Array {
+    return generateKBUniversalAccumulatorNonMembershipProverStatement(accumulated);
+  }
+
+  /**
+   * Create statement for verifying knowledge of KB universal accumulator non-membership
+   * @param params
+   * @param publicKey
+   * @param accumulated
+   */
+  static kbUniAccumulatorNonMembershipVerifier(
+    params: AccumulatorParams,
+    publicKey: AccumulatorPublicKey,
+    accumulated: Uint8Array
+  ): Uint8Array {
+    return generateKBUniversalAccumulatorNonMembershipVerifierStatement(params.value, publicKey.value, accumulated);
+  }
+
+  /**
+   * Same as `Statement.kbUniAccumulatorNonMembershipVerifier` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param params
+   * @param publicKey
+   * @param accumulated
+   */
+  static kbUniAccumulatorNonMembershipVerifierFromSetupParamRefs(
+    params: number,
+    publicKey: number,
+    accumulated: Uint8Array
+  ): Uint8Array {
+    return generateKBUniversalAccumulatorNonMembershipVerifierStatementFromParamRefs(params, publicKey, accumulated);
+  }
+
+  static kbUniAccumulatorMembershipKV(accumulated: Uint8Array): Uint8Array {
+    return generateKBUniversalAccumulatorKVMembershipStatement(accumulated);
+  }
+
+  static kbUniAccumulatorMembershipKVFullVerifier(
+    secretKey: AccumulatorSecretKey,
+    accumulated: Uint8Array
+  ): Uint8Array {
+    return generateKBUniversalAccumulatorKVFullVerifierMembershipStatement(secretKey.value, accumulated);
+  }
+
+  static kbUniAccumulatorNonMembershipKV(accumulated: Uint8Array): Uint8Array {
+    return generateKBUniversalAccumulatorKVNonMembershipStatement(accumulated);
+  }
+
+  static kbUniAccumulatorNonMembershipKVFullVerifier(
+    secretKey: AccumulatorSecretKey,
+    accumulated: Uint8Array
+  ): Uint8Array {
+    return generateKBUniversalAccumulatorKVFullVerifierNonMembershipStatement(secretKey.value, accumulated);
   }
 
   /**

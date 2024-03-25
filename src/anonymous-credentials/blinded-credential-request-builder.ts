@@ -7,6 +7,7 @@ import {
 import { CredentialSchema } from './schema';
 import { BBSCredential, BBSPlusCredential, PSCredential } from './credential';
 import {
+  AccumulatorWitnessType,
   AttributeEquality,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
@@ -58,7 +59,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 export abstract class BlindedCredentialRequestBuilder<SigParams> extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.2.0';
+  static VERSION = '0.3.0';
 
   // The schema of the whole (unblinded credential). This should include all attributes, i.e. blinded and unblinded
   _schema?: CredentialSchema;
@@ -151,7 +152,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
 
   addAccumInfoForCredStatus(
     credIdx: number,
-    accumWitness: AccumulatorWitness,
+    accumWitness: AccumulatorWitnessType,
     accumulated: Uint8Array,
     accumPublicKey: AccumulatorPublicKey,
     extra: object = {}
