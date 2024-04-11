@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 
-import { Credential, isKvac, isPS, PublicKey, Scheme, SecretKey } from '../scheme';
+import { Credential, isKvac, PresentationBuilder, PublicKey, Scheme, SecretKey } from '../scheme';
 import { checkResult } from '../utils';
-import {initializeWasm} from '../../src';
+import { AccumulatorPublicKey, initializeWasm, VBMembershipWitness } from '../../src';
+import { checkPresentationJson } from './utils';
 
 describe(`${Scheme} Credential creation and verification from JSON`, () => {
   const fileNamePrefix = Scheme.toLowerCase();
@@ -24,6 +25,25 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
       checkResult(isKvac() ? cred.verifyUsingSecretKey(sk) : cred.verify(pk));
       expect(credentialJson).toEqual(cred.toJSON());
       expect(cred.schema.version).toEqual(schemaVersion);
+
+      // Create presentation from the serialized credential
+      const builder = new PresentationBuilder();
+      expect(builder.addCredential(cred, pk)).toEqual(0);
+      let accPk;
+      const acc = new Map();
+      if (i === 3) {
+        const accPkBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_pk.bin`);
+        const accWitBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness.bin`);
+        const accVal = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value.bin`);
+        accPk = AccumulatorPublicKey.fromBytes(accPkBin);
+        const accWit = new VBMembershipWitness(accWitBin);
+        builder.addAccumInfoForCredStatus(0, accWit, accVal, accPk, {});
+        acc.set(0, accPk);
+      }
+      const pres = builder.finalize();
+      expect(pres.spec.credentials.length).toEqual(1);
+      checkResult(pres.verify([pk], acc));
+      checkPresentationJson(pres, [pk], acc);
     }
   }
 
