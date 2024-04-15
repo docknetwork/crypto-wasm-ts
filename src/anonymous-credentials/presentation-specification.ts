@@ -253,11 +253,7 @@ export class PresentationSpecification {
           curJ['status'].accumulated = b58.encode(pc.status.accumulated as Uint8Array);
         }
         if (pc.status[TYPE_STR] === RevocationStatusProtocol.KbUni24) {
-          // @ts-ignore
-          curJ['status'].accumulated = `${b58.encode(pc.status.accumulated.mem)},${b58.encode(
-            // @ts-ignore
-            pc.status.accumulated.nonMem
-          )}`;
+          curJ['status'].accumulated = b58.encode((pc.status.accumulated as KBUniversalAccumulatorValue).toBytes());
         }
       }
       if (pc.attributeInequalities !== undefined) {

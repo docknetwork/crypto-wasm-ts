@@ -1,24 +1,32 @@
 import {
   IKBUniversalAccumulator,
   kbUniversalAccumulatorAdd,
-  kbUniversalAccumulatorRemove,
   kbUniversalAccumulatorAddBatch,
   kbUniversalAccumulatorBatchUpdates,
   kbUniversalAccumulatorComputeExtended,
   kbUniversalAccumulatorInitialise,
   kbUniversalAccumulatorMembershipWitness,
-  kbUniversalAccumulatorRemoveBatch,
-  kbUniversalAccumulatorVerifyMembership,
   kbUniversalAccumulatorMembershipWitnessesForBatch,
   kbUniversalAccumulatorNonMembershipWitness,
-  kbUniversalAccumulatorVerifyNonMembership,
   kbUniversalAccumulatorNonMembershipWitnessesForBatch,
-  kbUpdateBothWitnessesPostBatchUpdates
+  kbUniversalAccumulatorRemove,
+  kbUniversalAccumulatorRemoveBatch,
+  kbUniversalAccumulatorVerifyMembership,
+  kbUniversalAccumulatorVerifyNonMembership,
+  kbUpdateBothWitnessesPostBatchUpdates,
+  publicInfoForBothKBUniversalWitnessUpdate,
+  publicInfoForKBUniversalMemWitnessUpdate,
+  publicInfoForKBUniversalNonMemWitnessUpdate,
+  publicInfoForKBUniversalNonMemWitnessUpdateOnDomainExtension
 } from 'crypto-wasm-new';
 import { Accumulator } from './accumulator';
 import { IKBUniversalAccumulatorState } from './IAccumulatorState';
 import { KBUniversalMembershipWitness, KBUniversalNonMembershipWitness } from './kb-acccumulator-witness';
 import { AccumulatorParams, AccumulatorPublicKey, AccumulatorSecretKey } from './params-and-keys';
+import {
+  KBUniversalMembershipWitnessUpdateInfo,
+  KBUniversalNonMembershipWitnessUpdateInfo
+} from './witness-update-info';
 
 /**
  * KB universal accumulator. Its composed of 2 accumulators, one for accumulating elements that are "members" and one
@@ -227,7 +235,6 @@ export class KBUniversalAccumulator extends Accumulator<KBUniversalAccumulatorVa
     nonMembers: Uint8Array[],
     additions: Uint8Array[],
     removals: Uint8Array[],
-    accumulatorValueBeforeUpdates: KBUniversalAccumulatorValue,
     secretKey?: AccumulatorSecretKey
   ): [KBUniversalMembershipWitness[], KBUniversalNonMembershipWitness[]] {
     const m = memWitnesses.map((m) => m.value);
@@ -240,10 +247,66 @@ export class KBUniversalAccumulator extends Accumulator<KBUniversalAccumulatorVa
       nonMembers,
       additions,
       removals,
-      accumulatorValueBeforeUpdates.asInternalType,
+      this.value.asInternalType,
       sk.value
     );
     return [mw.map((v) => new KBUniversalMembershipWitness(v)), nmw.map((v) => new KBUniversalNonMembershipWitness(v))];
+  }
+
+  witnessUpdateInfoForMembershipWitness(
+    additions: Uint8Array[],
+    removals: Uint8Array[],
+    secretKey?: AccumulatorSecretKey
+  ): KBUniversalMembershipWitnessUpdateInfo {
+    const sk = this.getSecretKey(secretKey);
+    return new KBUniversalMembershipWitnessUpdateInfo(
+      publicInfoForKBUniversalMemWitnessUpdate(
+        this.value.asInternalType,
+        additions,
+        removals,
+        sk.value
+      )
+    );
+  }
+
+  witnessUpdateInfoForNonMembershipWitness(
+    additions: Uint8Array[],
+    removals: Uint8Array[],
+    secretKey?: AccumulatorSecretKey
+  ): KBUniversalNonMembershipWitnessUpdateInfo {
+    const sk = this.getSecretKey(secretKey);
+    return new KBUniversalNonMembershipWitnessUpdateInfo(
+      publicInfoForKBUniversalNonMemWitnessUpdate(
+        this.value.asInternalType,
+        additions,
+        removals,
+        sk.value
+      )
+    );
+  }
+
+  witnessUpdateInfoForNonMembershipWitnessAfterDomainExtension(
+    newElements: Uint8Array[],
+    secretKey?: AccumulatorSecretKey
+  ): KBUniversalNonMembershipWitnessUpdateInfo {
+    const sk = this.getSecretKey(secretKey);
+    return new KBUniversalNonMembershipWitnessUpdateInfo(
+      publicInfoForKBUniversalNonMemWitnessUpdateOnDomainExtension(
+        this.value.asInternalType,
+        newElements,
+        sk.value
+      )
+    );
+  }
+
+  witnessUpdateInfoForBothWitnessTypes(
+    additions: Uint8Array[],
+    removals: Uint8Array[],
+    secretKey?: AccumulatorSecretKey
+  ): [KBUniversalMembershipWitnessUpdateInfo, KBUniversalNonMembershipWitnessUpdateInfo] {
+    const sk = this.getSecretKey(secretKey);
+    const [m, nm] = publicInfoForBothKBUniversalWitnessUpdate(this.value.asInternalType, additions, removals, sk.value);
+    return [new KBUniversalMembershipWitnessUpdateInfo(m), new KBUniversalNonMembershipWitnessUpdateInfo(nm)]
   }
 
   protected async checkBeforeAdd(element: Uint8Array, state?: IKBUniversalAccumulatorState) {
@@ -300,5 +363,19 @@ export class KBUniversalAccumulatorValue {
 
   static fromInternalType(o: IKBUniversalAccumulator): KBUniversalAccumulatorValue {
     return new KBUniversalAccumulatorValue(o.mem, o.non_mem);
+  }
+
+  toBytes(): Uint8Array {
+    const merged = new Uint8Array(this.mem.length + this.nonMem.length);
+    merged.set(this.mem);
+    merged.set(this.nonMem, this.mem.length);
+    return merged;
+  }
+
+  static fromBytes(bytes: Uint8Array): KBUniversalAccumulatorValue {
+    // Create 2 Uint8Array from this hex. The 2 are guaranteed to be of the same length
+    const mem = bytes.subarray(0, bytes.length / 2);
+    const nonMem = bytes.subarray(bytes.length / 2);
+    return new KBUniversalAccumulatorValue(mem, nonMem);
   }
 }

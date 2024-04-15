@@ -1,14 +1,17 @@
 import {
   kbUniversalUpdateMembershipWitnessPostAdd,
   kbUniversalUpdateMembershipWitnessPostRemove,
+  kbUniversalUpdateNonMembershipWitnessPostAdd,
   kbUniversalUpdateNonMembershipWitnessPostRemove,
   kbUpdateMembershipWitnessesPostBatchUpdates,
+  kbUpdateNonMembershipWitnessesPostBatchUpdates,
+  kbUpdateNonMembershipWitnessesPostDomainExtension,
   updateKBUniversalMembershipWitnessUsingPublicInfoAfterBatchUpdate,
   updateKBUniversalMembershipWitnessUsingPublicInfoAfterMultipleBatchUpdates,
-  kbUniversalUpdateNonMembershipWitnessPostAdd,
-  kbUpdateNonMembershipWitnessesPostBatchUpdates,
   updateKBUniversalNonMembershipWitnessUsingPublicInfoAfterBatchUpdate,
-  updateKBUniversalNonMembershipWitnessUsingPublicInfoAfterMultipleBatchUpdates
+  updateKBUniversalNonMembershipWitnessUsingPublicInfoAfterDomainExtension,
+  updateKBUniversalNonMembershipWitnessUsingPublicInfoAfterMultipleBatchUpdates,
+  updateKBUniversalNonMembershipWitnessUsingPublicInfoAfterMultipleDomainExtensions
 } from 'crypto-wasm-new';
 import { getUint8ArraysFromObject } from '../util';
 import { AccumulatorWitness } from './accumulatorWitness';
@@ -16,8 +19,7 @@ import { KBUniversalAccumulatorValue } from './kb-universal-accumulator';
 import { AccumulatorSecretKey } from './params-and-keys';
 import {
   KBUniversalMembershipWitnessUpdateInfo,
-  KBUniversalNonMembershipWitnessUpdateInfo,
-  WitnessUpdateInfo
+  KBUniversalNonMembershipWitnessUpdateInfo
 } from './witness-update-info';
 
 export class KBUniversalMembershipWitness extends AccumulatorWitness<KBUniversalAccumulatorValue> {
@@ -153,6 +155,23 @@ export class KBUniversalNonMembershipWitness extends AccumulatorWitness<KBUniver
     ).map((m) => new KBUniversalNonMembershipWitness(m));
   }
 
+  static updateMultiplePostDomainExtension(
+    witnesses: KBUniversalNonMembershipWitness[],
+    members: Uint8Array[],
+    newElements: Uint8Array[],
+    accumulatorValueBeforeUpdates: KBUniversalAccumulatorValue,
+    secretKey: AccumulatorSecretKey
+  ): KBUniversalNonMembershipWitness[] {
+    const wits = witnesses.map((m) => m.value);
+    return kbUpdateNonMembershipWitnessesPostDomainExtension(
+      wits,
+      members,
+      newElements,
+      accumulatorValueBeforeUpdates.asInternalType,
+      secretKey.value
+    ).map((m) => new KBUniversalNonMembershipWitness(m));
+  }
+
   updateUsingPublicInfoPostBatchUpdate(
     nonMember: Uint8Array,
     additions: Uint8Array[],
@@ -179,6 +198,32 @@ export class KBUniversalNonMembershipWitness extends AccumulatorWitness<KBUniver
       nonMember,
       additions,
       removals,
+      publicInfo.map((i) => i.value)
+    );
+  }
+
+  updateUsingPublicInfoPostDomainExtension(
+    nonMember: Uint8Array,
+    newElements: Uint8Array[],
+    publicInfo: KBUniversalNonMembershipWitnessUpdateInfo
+  ): void {
+    this.value = updateKBUniversalNonMembershipWitnessUsingPublicInfoAfterDomainExtension(
+      this.value,
+      nonMember,
+      newElements,
+      publicInfo.value
+    );
+  }
+
+  updateUsingPublicInfoPostMultipleDomainExtensions(
+    nonMember: Uint8Array,
+    newElements: Uint8Array[][],
+    publicInfo: KBUniversalNonMembershipWitnessUpdateInfo[]
+  ): void {
+    this.value = updateKBUniversalNonMembershipWitnessUsingPublicInfoAfterMultipleDomainExtensions(
+      this.value,
+      nonMember,
+      newElements,
       publicInfo.map((i) => i.value)
     );
   }

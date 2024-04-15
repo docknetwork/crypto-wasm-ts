@@ -1191,10 +1191,7 @@ export class Presentation extends Versioned {
           current.status?.accumulated = b58.encode(cred.status.accumulated);
         } else if (cred.status[TYPE_STR] === RevocationStatusProtocol.KbUni24) {
           // @ts-ignore
-          current.status?.accumulated = `${b58.encode(cred.status.accumulated.mem)},${b58.encode(
-            // @ts-ignore
-            cred.status.accumulated.nonMem
-          )}`;
+          current.status?.accumulated = b58.encode((cred.status.accumulated as KBUniversalAccumulatorValue).toBytes());
         }
       }
       if (cred.circomPredicates !== undefined) {
@@ -1511,8 +1508,7 @@ export class Presentation extends Versioned {
           if (status[TYPE_STR] === RevocationStatusProtocol.Vb22) {
             status['accumulated'] = b58.decode(cred['status']['accumulated']);
           } else if (status[TYPE_STR] === RevocationStatusProtocol.KbUni24) {
-            const parts = status['accumulated'].split(',');
-            status['accumulated'] = new KBUniversalAccumulatorValue(b58.decode(parts[0]), b58.decode(parts[1]));
+            status['accumulated'] = KBUniversalAccumulatorValue.fromBytes(b58.decode(status['accumulated']));
           }
         } else {
           throw new Error(`status type should be one of ${RevocationStatusProtocol} but was ${cred['status']['type']}`);

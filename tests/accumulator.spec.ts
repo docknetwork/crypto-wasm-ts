@@ -1,23 +1,26 @@
 import { generateRandomFieldElement } from 'crypto-wasm-new';
 import {
-  initializeWasm,
-  IInitialElementsStore,
   Accumulator,
+  AccumulatorKeypair,
+  AccumulatorParams,
+  IInitialElementsStore,
+  initializeWasm,
+  KBUniversalAccumulator,
+  KBUniversalAccumulatorValue,
+  KBUniversalMembershipWitness,
+  KBUniversalMembershipWitnessUpdateInfo,
+  KBUniversalNonMembershipWitnessUpdateInfo,
   PositiveAccumulator,
   UniversalAccumulator,
   VBMembershipWitness,
-  VBWitnessUpdateInfo,
-  AccumulatorParams,
-  AccumulatorKeypair,
+  VBWitnessUpdateInfo
 } from '../src';
 import {
-  InMemoryInitialElementsStore, InMemoryKBUniversalState,
+  InMemoryInitialElementsStore,
+  InMemoryKBUniversalState,
   InMemoryState,
   InMemoryUniversalState
 } from '../src/accumulator/in-memory-persistence';
-import { KBUniversalMembershipWitness } from '../src/accumulator/kb-acccumulator-witness';
-import { KBUniversalAccumulator } from '../src/accumulator/kb-universal-accumulator';
-import { KBUniversalMembershipWitnessUpdateInfo } from '../src/accumulator/witness-update-info';
 import { areUint8ArraysEqual, stringToBytes } from './utils';
 
 function getAccum(accumulator: any): PositiveAccumulator | UniversalAccumulator | KBUniversalAccumulator {
@@ -307,6 +310,7 @@ describe('Accumulators type', () => {
     // Cannot extend the domain with an existing element
     expect(() => uniAccumulator.extend([newElement], keypair.secretKey, uniState)).rejects.toThrow();
 
+    const oldVal = uniAccumulator.value;
     const newElements = [generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement()];
     for (const e of newElements) {
       expect(await uniState.inDomain(e)).toEqual(false);
@@ -315,9 +319,17 @@ describe('Accumulators type', () => {
     for (const e of newElements) {
       expect(await uniState.inDomain(e)).toEqual(true);
     }
+    expect(uniAccumulator.value.mem).toEqual(oldVal.mem);
+    expect(uniAccumulator.value.nonMem).not.toEqual(oldVal.nonMem);
 
     // Cannot extend the domain with existing elements
     expect(() => uniAccumulator.extend(newElements, keypair.secretKey, uniState)).rejects.toThrow();
+
+    const val = uniAccumulator.value;
+    const valAsBytes = val.toBytes();
+    const recons = KBUniversalAccumulatorValue.fromBytes(valAsBytes);
+    expect(areUint8ArraysEqual(val.mem, recons.mem)).toEqual(true);
+    expect(areUint8ArraysEqual(val.nonMem, recons.nonMem)).toEqual(true);
   });
 
   it('Positive accumulator', async () => {
@@ -376,18 +388,18 @@ describe('Accumulators type', () => {
     const accumulator = await KBUniversalAccumulator.initialize(domain, params, keypair.secretKey, state);
     await runCommonTestsForMembership(keypair, params, accumulator, state, domain);
 
-    async function check(nonMember: Uint8Array) {
+    async function checkNonMemWit(nonMember: Uint8Array) {
       expect(await state.has(nonMember)).toEqual(false);
       expect(await state.inDomain(nonMember)).toEqual(true);
       const wit = await accumulator.nonMembershipWitness(nonMember, keypair.secretKey, state);
       let tempAccumulator = getAccum(accumulator) as KBUniversalAccumulator;
       expect(tempAccumulator.verifyNonMembershipWitness(nonMember, wit, keypair.publicKey, params)).toEqual(true);
-      return wit
+      return wit;
     }
 
-    const nm1Wit = await check(domain[0]);
-    const nm2Wit = await check(domain[1]);
-    const nm3Wit = await check(domain[2]);
+    const nm1Wit = await checkNonMemWit(domain[0]);
+    const nm2Wit = await checkNonMemWit(domain[1]);
+    const nm3Wit = await checkNonMemWit(domain[2]);
 
     const [nm1Wit_, nm2Wit_, nm3Wit_] = await accumulator.nonMembershipWitnessesForBatch(
       [domain[0], domain[1], domain[2]],
@@ -397,5 +409,55 @@ describe('Accumulators type', () => {
     expect(areUint8ArraysEqual(nm1Wit.value, nm1Wit_.value)).toEqual(true);
     expect(areUint8ArraysEqual(nm2Wit.value, nm2Wit_.value)).toEqual(true);
     expect(areUint8ArraysEqual(nm3Wit.value, nm3Wit_.value)).toEqual(true);
+
+    const newElements = [generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement()];
+    await accumulator.extend(newElements, keypair.secretKey, state);
+    await accumulator.addBatch(newElements.slice(0, 3), keypair.secretKey, state);
+
+    const member = newElements[3];
+    await accumulator.add(member, keypair.secretKey, state);
+    const memWit = await accumulator.membershipWitness(member, keypair.secretKey, state);
+    expect(accumulator.verifyMembershipWitness(member, memWit, keypair.publicKey, params)).toEqual(true);
+
+    const nonMember = domain[0];
+    const nonMemWit = await accumulator.nonMembershipWitness(nonMember, keypair.secretKey, state);
+
+    const additions = [domain[1], domain[2]];
+    const removals = [newElements[0], newElements[1]];
+
+    const witUpdMem = KBUniversalMembershipWitnessUpdateInfo.new(accumulator.accumulated, additions, removals, keypair.secretKey);
+    const witUpdNonMem = KBUniversalNonMembershipWitnessUpdateInfo.new(accumulator.accumulated, additions, removals, keypair.secretKey);
+    const [witUpdMem_, witUpdNonMem_] = accumulator.witnessUpdateInfoForBothWitnessTypes(additions, removals, keypair.secretKey)
+    expect(areUint8ArraysEqual(witUpdMem.value, witUpdMem_.value)).toEqual(true);
+    expect(areUint8ArraysEqual(witUpdNonMem.value, witUpdNonMem_.value)).toEqual(true);
+
+    await accumulator.addRemoveBatches(additions, removals, keypair.secretKey, state);
+
+    memWit.updateUsingPublicInfoPostBatchUpdate(member, additions, removals, witUpdMem);
+    expect(accumulator.verifyMembershipWitness(member, memWit, keypair.publicKey, params)).toEqual(true);
+
+    nonMemWit.updateUsingPublicInfoPostBatchUpdate(nonMember, additions, removals, witUpdNonMem);
+    expect(accumulator.verifyNonMembershipWitness(nonMember, nonMemWit, keypair.publicKey, params)).toEqual(true);
+
+    const newElements1 = [generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement()];
+    const witUpdNonMem1 = accumulator.witnessUpdateInfoForNonMembershipWitnessAfterDomainExtension(newElements1, keypair.secretKey);
+    await accumulator.extend(newElements1, keypair.secretKey, state);
+
+    expect(accumulator.verifyNonMembershipWitness(nonMember, nonMemWit, keypair.publicKey, params)).toEqual(false);
+    nonMemWit.updateUsingPublicInfoPostDomainExtension(nonMember, newElements1, witUpdNonMem1);
+    expect(accumulator.verifyNonMembershipWitness(nonMember, nonMemWit, keypair.publicKey, params)).toEqual(true);
+
+    const newElements2 = [generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement()];
+    const newElements3 = [generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement(), generateRandomFieldElement()];
+
+    const witUpdNonMem2 = accumulator.witnessUpdateInfoForNonMembershipWitnessAfterDomainExtension(newElements2, keypair.secretKey);
+    await accumulator.extend(newElements2, keypair.secretKey, state);
+
+    const witUpdNonMem3 = accumulator.witnessUpdateInfoForNonMembershipWitnessAfterDomainExtension(newElements3, keypair.secretKey);
+    await accumulator.extend(newElements3, keypair.secretKey, state);
+
+    expect(accumulator.verifyNonMembershipWitness(nonMember, nonMemWit, keypair.publicKey, params)).toEqual(false);
+    nonMemWit.updateUsingPublicInfoPostMultipleDomainExtensions(nonMember, [newElements2, newElements3], [witUpdNonMem2,  witUpdNonMem3]);
+    expect(accumulator.verifyNonMembershipWitness(nonMember, nonMemWit, keypair.publicKey, params)).toEqual(true);
   });
 });

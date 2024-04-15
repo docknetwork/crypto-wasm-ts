@@ -1,7 +1,7 @@
 import {
   publicInfoForWitnessUpdate,
   publicInfoForKBUniversalMemWitnessUpdate,
-  publicInfoForKBUniversalNonMemWitnessUpdate
+  publicInfoForKBUniversalNonMemWitnessUpdate, publicInfoForKBUniversalNonMemWitnessUpdateOnDomainExtension
 } from 'crypto-wasm-new';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { jsonObjToUint8Array } from '../util';
@@ -47,6 +47,13 @@ export class KBUniversalMembershipWitnessUpdateInfo extends WitnessUpdateInfo {
     return new KBUniversalMembershipWitnessUpdateInfo(jsonObjToUint8Array(json));
   }
 
+  /**
+   * Accumulator manager creates the membership witness update info corresponding to the additions and removals.
+   * @param accumulatorValueBeforeUpdates
+   * @param additions
+   * @param removals
+   * @param sk
+   */
   static new(
     accumulatorValueBeforeUpdates: KBUniversalAccumulatorValue,
     additions: Uint8Array[],
@@ -69,6 +76,13 @@ export class KBUniversalNonMembershipWitnessUpdateInfo extends WitnessUpdateInfo
     return new KBUniversalNonMembershipWitnessUpdateInfo(jsonObjToUint8Array(json));
   }
 
+  /**
+   * Accumulator manager creates the non-membership witness update info corresponding to the additions and removals.
+   * @param accumulatorValueBeforeUpdates
+   * @param additions
+   * @param removals
+   * @param sk
+   */
   static new(
     accumulatorValueBeforeUpdates: KBUniversalAccumulatorValue,
     additions: Uint8Array[],
@@ -80,6 +94,26 @@ export class KBUniversalNonMembershipWitnessUpdateInfo extends WitnessUpdateInfo
         accumulatorValueBeforeUpdates.asInternalType,
         additions,
         removals,
+        sk.value
+      )
+    );
+  }
+
+  /**
+   * Accumulator manager creates the non-membership witness update info corresponding to the domain extension.
+   * @param accumulatorValueBeforeExtension
+   * @param newElements - the elements with which the domain was extended
+   * @param sk
+   */
+  static newAfterDomainExtension(
+    accumulatorValueBeforeExtension: KBUniversalAccumulatorValue,
+    newElements: Uint8Array[],
+    sk: AccumulatorSecretKey
+  ): KBUniversalNonMembershipWitnessUpdateInfo {
+    return new KBUniversalNonMembershipWitnessUpdateInfo(
+      publicInfoForKBUniversalNonMemWitnessUpdateOnDomainExtension(
+        accumulatorValueBeforeExtension.asInternalType,
+        newElements,
         sk.value
       )
     );
