@@ -32,7 +32,8 @@ export interface IDelegatedCredentialStatusProof {
 }
 
 /**
- * Delegated proof for a KVAC. It can contain proof for either the credential or the status or both
+ * Delegated proof for a KVAC. It can contain proof for either the credential or the status or both. A delegated proof
+ * is (usually) part of a larger proof and validating it requires the knowledge of secret key.
  */
 export class DelegatedProof extends Versioned {
   static VERSION = '0.1.0';

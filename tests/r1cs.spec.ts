@@ -1,6 +1,13 @@
 import { generateFieldElementFromNumber } from 'crypto-wasm-new';
-import { checkLegoProvingKey, fromLeToBigInt, getWasmBytes, parseR1CSFile } from './utils';
-import { initializeWasm, CircomCircuit, CircomInputs, processParsedR1CSFile, R1CSSnarkSetup } from '../src';
+import { checkLegoProvingKey, getWasmBytes, parseR1CSFile } from './utils';
+import {
+  initializeWasm,
+  CircomCircuit,
+  CircomInputs,
+  processParsedR1CSFile,
+  R1CSSnarkSetup,
+  fromLeToBigInt
+} from '../src';
 
 describe('For R1CS from Circom', () => {
   beforeAll(async () => {

@@ -1,11 +1,39 @@
-import { Versioned } from './versioned';
+import { generateRandomFieldElement, R1CS } from 'crypto-wasm-new';
+import { unflatten } from 'flat';
+import { AccumulatorPublicKey } from '../accumulator';
+import { BBSSignatureParams } from '../bbs';
+import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
+import { BDDT16MacParams } from '../bddt16-mac';
+import { BytearrayWrapper } from '../bytearray-wrapper';
+import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
+import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
+import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
+import {
+  SaverChunkedCommitmentKey,
+  SaverChunkedCommitmentKeyUncompressed,
+  SaverEncryptionKey,
+  SaverEncryptionKeyUncompressed,
+  SaverProvingKey,
+  SaverProvingKeyUncompressed
+} from '../saver';
+import {
+  BBSBlindedCredentialRequest,
+  BBSPlusBlindedCredentialRequest,
+  BDDT16BlindedCredentialRequest
+} from './blinded-credential-request';
+import { BBSCredential, BBSPlusCredential, PSCredential } from './credential';
+import { Presentation } from './presentation';
 import {
   IProverBoundedPseudonymInBlindedCredReq,
   IProverCircomPredicate,
   PresentationBuilder
 } from './presentation-builder';
+import {
+  IPresentedAttributeBound,
+  IPresentedAttributeInequality,
+  IPresentedAttributeVE
+} from './presentation-specification';
 import { CredentialSchema } from './schema';
-import { BBSCredential, BBSPlusCredential, PSCredential } from './credential';
 import {
   AccumulatorWitnessType,
   AttributeEquality,
@@ -16,40 +44,19 @@ import {
   BlindSignatureType,
   BoundCheckParamType,
   BoundType,
+  ID_STR, MEM_CHECK_KV_STR,
+  MEM_CHECK_STR, NON_MEM_CHECK_KV_STR,
+  NON_MEM_CHECK_STR,
   PublicKey,
+  REV_CHECK_STR,
+  REV_ID_STR,
+  RevocationStatusProtocol,
   SignatureParams,
+  STATUS_STR,
   SUBJECT_STR,
-  VerifiableEncryptionProtocol
+  TYPE_STR
 } from './types-and-consts';
-import { AccumulatorPublicKey, AccumulatorWitness } from '../accumulator';
-import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
-import {
-  SaverChunkedCommitmentKey,
-  SaverChunkedCommitmentKeyUncompressed,
-  SaverEncryptionKey,
-  SaverEncryptionKeyUncompressed,
-  SaverProvingKey,
-  SaverProvingKeyUncompressed
-} from '../saver';
-import { generateRandomFieldElement, R1CS } from 'crypto-wasm-new';
-import {
-  BBSBlindedCredentialRequest,
-  BBSPlusBlindedCredentialRequest,
-  BDDT16BlindedCredentialRequest
-} from './blinded-credential-request';
-import { unflatten } from 'flat';
-import { BBSSignatureParams } from '../bbs';
-import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
-import { BytearrayWrapper } from '../bytearray-wrapper';
-import {
-  IPresentedAttributeBound,
-  IPresentedAttributeInequality,
-  IPresentedAttributeVE
-} from './presentation-specification';
-import { Presentation } from './presentation';
-import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
-import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
-import { BDDT16MacParams } from '../bddt16-mac';
+import { Versioned } from './versioned';
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 
@@ -59,13 +66,19 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 export abstract class BlindedCredentialRequestBuilder<SigParams> extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.3.0';
+  static VERSION = '0.4.0';
 
   // The schema of the whole (unblinded credential). This should include all attributes, i.e. blinded and unblinded
   _schema?: CredentialSchema;
 
   // The attributes of the credential subject that will be blinded (hidden from the issuer)
   _subjectToBlind?: object | object[];
+
+  // The credential status if blinded
+  _statusToBlind?: object;
+
+  // Any top level attributes to blind
+  _topLevelAttributesToBlind: Map<string, unknown>;
 
   protected sigParams?: SignatureParams;
 
@@ -99,6 +112,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     this.verifEnc = new Map();
     this.circomPredicates = [];
     this.boundedPseudonyms = [];
+    this._topLevelAttributesToBlind = new Map();
   }
 
   set subjectToBlind(subject: object | object[]) {
@@ -117,6 +131,50 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   // @ts-ignore
   get schema(): CredentialSchema | undefined {
     return this._schema;
+  }
+
+  /**
+   * Blind some of the credential status values
+   * @param registryId - this won't be blinded
+   * @param revCheck - this won't be blinded
+   * @param memberValue - Only this will be blinded.
+   * @param revType
+   */
+  statusToBlind(registryId: string, revCheck: string, memberValue: unknown, revType= RevocationStatusProtocol.Vb22) {
+    if (revType === RevocationStatusProtocol.Vb22) {
+      if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR && revCheck !== MEM_CHECK_KV_STR) {
+        throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} or ${MEM_CHECK_KV_STR} but was ${revCheck}`);
+      }
+    }
+    if (revType == RevocationStatusProtocol.KbUni24) {
+      if (
+        revCheck !== MEM_CHECK_STR &&
+        revCheck !== NON_MEM_CHECK_STR &&
+        revCheck !== MEM_CHECK_KV_STR &&
+        revCheck !== NON_MEM_CHECK_KV_STR
+      ) {
+        throw new Error(
+          `Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} or ${MEM_CHECK_KV_STR} or ${NON_MEM_CHECK_KV_STR} but was ${revCheck}`
+        );
+      }
+    }
+    this._statusToBlind = {
+      [TYPE_STR]: revType,
+      [ID_STR]: registryId,
+      [REV_CHECK_STR]: revCheck,
+      [REV_ID_STR]: memberValue
+    };
+  }
+
+  /**
+   * Blind top level fields. The issuer should not set these blinded fields at all, not even nested.
+   * @param name
+   * @param value
+   */
+  topLevelAttributesToBlind(name: string, value: unknown) {
+    if (value !== undefined) {
+      this._topLevelAttributesToBlind.set(name, value);
+    }
   }
 
   /**
@@ -415,18 +473,43 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     const schema = this.schema as CredentialSchema;
     const subject = this.subjectToBlind as object | object[];
     const flattenedSchema = schema.flatten();
-    const encodedSubject = new Map<number, Uint8Array>();
+    const encodedAttributes = new Map<number, Uint8Array>();
     const attrNameToIndex = new Map<string, number>();
-    const subjectWithoutVals = {};
-    for (const [name, value] of schema.encoder.encodeMessageObjectAsMap({ [SUBJECT_STR]: subject }).entries()) {
-      const index = flattenedSchema[0].indexOf(name);
-      encodedSubject.set(index, value);
-      attrNameToIndex.set(name, index);
-      subjectWithoutVals[name] = null;
+    // Will contain the attribute names that are blinded
+    const attributesWithoutVals = {};
+
+    // Create an object representing all attributes, from subject and top level
+    const attrs = { [SUBJECT_STR]: subject };
+    for (const [k, v] of this._topLevelAttributesToBlind.entries()) {
+      attrs[k] = v;
     }
-    const blindedAttributes = unflatten(subjectWithoutVals) as object;
+    // Encode the blinded attributes
+    for (const [name, value] of schema.encoder.encodeMessageObjectAsMap(attrs).entries()) {
+      const index = flattenedSchema[0].indexOf(name);
+      encodedAttributes.set(index, value);
+      attrNameToIndex.set(name, index);
+      attributesWithoutVals[name] = null;
+    }
+
+    let unBlindedAttributes: object | undefined;
+    if (this._statusToBlind !== undefined) {
+      const name = `${STATUS_STR}.${REV_ID_STR}`;
+      const index = flattenedSchema[0].indexOf(name);
+      encodedAttributes.set(index, schema.encoder.encodeMessage(name, this._statusToBlind[REV_ID_STR]));
+      attrNameToIndex.set(name, index);
+      attributesWithoutVals[name] = null;
+      unBlindedAttributes = {
+        [STATUS_STR]: {
+          [TYPE_STR]: this._statusToBlind[TYPE_STR],
+          [ID_STR]: this._statusToBlind[ID_STR],
+          [REV_CHECK_STR]: this._statusToBlind[REV_CHECK_STR],
+        }
+      }
+    }
+
+    const blindedAttributes = unflatten(attributesWithoutVals) as object;
     // Compute commitment (commitments for PS)
-    const commitment = this.computeCommitment(encodedSubject, flattenedSchema[0].length, sigParams);
+    const commitment = this.computeCommitment(encodedAttributes, flattenedSchema[0].length, sigParams);
     this.presentationBuilder.blindCredReq = {
       req: {
         // @ts-ignore
@@ -435,10 +518,11 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
         schema,
         blindedAttributes,
         commitment,
-        blindedAttributeEqualities: this.attributeEqualities
+        blindedAttributeEqualities: this.attributeEqualities,
+        unBlindedAttributes
       },
       sigParams: this.sigParams as SignatureParams,
-      encodedSubject,
+      encodedAttributes,
       attrNameToIndex,
       flattenedSchema,
       blinding: this.getBlinding(),

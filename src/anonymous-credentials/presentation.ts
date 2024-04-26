@@ -2,6 +2,7 @@ import b58 from 'bs58';
 import { VerifyResult } from 'crypto-wasm-new';
 import { flatten } from 'flat';
 import stringify from 'json-stringify-deterministic';
+import _ from 'lodash';
 import semver from 'semver/preload';
 import { AccumulatorPublicKey, AccumulatorSecretKey } from '../accumulator';
 import { KBUniversalAccumulatorValue } from '../accumulator/kb-universal-accumulator';
@@ -75,7 +76,7 @@ import {
   REV_CHECK_STR,
   REV_ID_STR,
   RevocationStatusProtocol,
-  SCHEMA_STR,
+  SCHEMA_STR, SignatureParams,
   SignatureType,
   STATUS_STR,
   TYPE_STR,
@@ -85,7 +86,6 @@ import {
   buildSignatureVerifierStatementFromParamsRef,
   createWitEq,
   createWitEqForBlindedCred,
-  deepClone,
   flattenPredicatesInSpec,
   flattenTill2ndLastKey,
   getSignatureParamsForMsgCount,
@@ -598,9 +598,9 @@ export class Presentation extends Versioned {
       blindedSubjectIndices = blindedSubjectIndices.sort((a, b) => a - b);
       const sigType = this.spec.blindCredentialRequest.sigType;
       const numAttribs = flattenedSchema[0].length;
-      let sigParams;
+      let sigParams: SignatureParams;
       // Offset of attributes in the Pedersen Commitment, its 0 for BBS and 1 for BBS+ as the commitment in BBS+ is perfectly hiding.
-      let pedCommWitnessOffset;
+      let pedCommWitnessOffset: number;
 
       if (sigType === BBS_BLINDED_CRED_PROOF_TYPE) {
         sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BBSSignatureParams, numAttribs);
@@ -839,7 +839,7 @@ export class Presentation extends Versioned {
     flattenedNames: string[],
     newVersion: boolean
   ): Map<number, Uint8Array> {
-    const revealedRaw = deepClone(presentedCred.revealedAttributes) as object;
+    const revealedRaw = _.cloneDeep(presentedCred.revealedAttributes) as object;
     revealedRaw[CRYPTO_VERSION_STR] = presentedCred.version;
     revealedRaw[SCHEMA_STR] = presentedCred.schema;
     if (presentedCredSchema.hasStatus()) {
@@ -866,12 +866,12 @@ export class Presentation extends Versioned {
       }
     }
     const encoded = new Map<number, Uint8Array>();
+    // Match text of form "<string>.<number>"
+    const re = /.+\.\d+/i;
     Object.entries(flatten(revealedRaw) as object).forEach(([k, v]) => {
       const i = flattenedNames.indexOf(k);
       if (i === -1) {
-        // Match text of form "<string>.<number>"
-        const re = /.+\.\d+/i;
-        if (k.match(re) !== null && v !== null) {
+        if (k.match(re) !== null && (v !== null && v !== undefined)) {
           // Was an array item that was not revealed
           throw new Error(`Attribute name ${k} not found in schema`);
         }
@@ -1170,7 +1170,7 @@ export class Presentation extends Versioned {
       circomPredicates: ICircomPredicate<ICircuitPrivateVar | ICircuitPrivateVarMultiCred>[]
     ): object {
       return circomPredicates.map((v) => {
-        const r = deepClone(v) as object;
+        const r = _.cloneDeep(v) as object;
         // @ts-ignore
         r.publicVars = v.publicVars.map((pv) => {
           return {
@@ -1184,7 +1184,7 @@ export class Presentation extends Versioned {
 
     const creds: object[] = [];
     for (const cred of this.spec.credentials) {
-      const current = deepClone(cred) as object; // Need this deep cloning because structure of revealed attributes or key `extra` isn't fixed
+      const current = _.cloneDeep(cred) as object; // Need this deep cloning because structure of revealed attributes or key `extra` isn't fixed
       if (cred.status !== undefined) {
         if (cred.status[TYPE_STR] === RevocationStatusProtocol.Vb22) {
           // @ts-ignore
@@ -1203,7 +1203,7 @@ export class Presentation extends Versioned {
 
     let blindCredentialRequest, blindedAttributeCiphertexts;
     if (this.spec.blindCredentialRequest !== undefined) {
-      blindCredentialRequest = deepClone(this.spec.blindCredentialRequest) as object;
+      blindCredentialRequest = _.cloneDeep(this.spec.blindCredentialRequest) as object;
       blindCredentialRequest.schema = this.spec.blindCredentialRequest.schema.toJsonString();
       blindCredentialRequest.commitment = b58.encode(this.spec.blindCredentialRequest.commitment);
       if (this.blindedAttributeCiphertexts !== undefined) {
@@ -1441,7 +1441,7 @@ export class Presentation extends Versioned {
     const nnc = nonce ? b58.decode(nonce) : undefined;
 
     function formatCircomPreds(pred: object): ICircomPredicate<ICircuitPrivateVar | ICircuitPrivateVarMultiCred>[] {
-      const circomPredicates = deepClone(pred) as object[];
+      const circomPredicates = _.cloneDeep(pred) as object[];
       circomPredicates.forEach((cp) => {
         if (cp['protocol'] !== undefined && !Object.values(CircomProtocol).includes(cp['protocol'])) {
           throw new Error(`Unrecognized protocol ${cp['protocol']} for Circom`);
@@ -1504,7 +1504,7 @@ export class Presentation extends Versioned {
       let status, circomPredicates, sigType;
       if (cred['status'] !== undefined) {
         if (Object.values(RevocationStatusProtocol).includes(cred['status'][TYPE_STR])) {
-          status = deepClone(cred['status']) as object;
+          status = _.cloneDeep(cred['status']) as object;
           if (status[TYPE_STR] === RevocationStatusProtocol.Vb22) {
             status['accumulated'] = b58.decode(cred['status']['accumulated']);
           } else if (status[TYPE_STR] === RevocationStatusProtocol.KbUni24) {
@@ -1560,7 +1560,7 @@ export class Presentation extends Versioned {
 
     let bac;
     if (spec['blindCredentialRequest'] !== undefined) {
-      const req = deepClone(spec['blindCredentialRequest']) as object;
+      const req = _.cloneDeep(spec['blindCredentialRequest']) as object;
       if (!Object.values(BlindSignatureType).includes(req['sigType'])) {
         throw new Error(`sigType should be one of ${BlindSignatureType} but was ${req['sigType']}`);
       }

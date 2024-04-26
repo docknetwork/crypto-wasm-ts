@@ -1,7 +1,7 @@
+import b58 from 'bs58';
 import { generateFieldElementFromBytes, generateRandomFieldElement } from 'crypto-wasm-new';
 import { flatten } from 'flat';
 import { LegoProvingKey } from './legosnark';
-import b58 from 'bs58';
 
 export function convertDateToTimestamp(v: Date | string | unknown) {
   let timestamp: number | undefined;
@@ -161,4 +161,20 @@ export function getProvingAndVerifiyingKeyBytes(
     vkBytes = provingKey.getVerifyingKey().bytes;
   }
   return [pkBytes, vkBytes];
+}
+
+/**
+ * Convert little-endian bytearray to BigInt
+ * @param arr
+ * @param readTill
+ * @returns
+ */
+export function fromLeToBigInt(arr: Uint8Array, readTill = arr.length): bigint {
+  let r = BigInt(0);
+  let m = BigInt(1);
+  for (let i = 0; i < readTill; i++) {
+    r += m * BigInt(arr[i]);
+    m <<= BigInt(8);
+  }
+  return r;
 }

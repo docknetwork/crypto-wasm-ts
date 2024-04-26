@@ -82,8 +82,8 @@ export function flattenPredicatesInSpec(obj: object): [string[], object[][]] {
   for (const k of Object.keys(temp)) {
     let matched = k.match(re);
     if (!Array.isArray(matched)) {
-      if (temp[k] !== null) {
-        // If temp[k] == null then encountered an array item which had no predicate
+      if (temp[k] !== null && temp[k] !== undefined) {
+        // If temp[k] is null or undefined then encountered an array item which had no predicate
         throw new Error(`Regex couldn't match key ${k}`);
       }
     } else {
@@ -159,10 +159,6 @@ export function createWitEqForBlindedCred(
     witnessEq.addWitnessRef(cIdx, i);
   }
   return witnessEq;
-}
-
-export function deepClone(obj: unknown): unknown {
-  return JSON.parse(JSON.stringify(obj));
 }
 
 export function paramsClassBySignature(signature: Signature): SignatureParamsClass | null {

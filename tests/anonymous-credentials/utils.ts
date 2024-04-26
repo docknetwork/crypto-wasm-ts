@@ -340,6 +340,26 @@ export function getExampleSchema(num): IEmbeddedJsonSchema {
         }
       };
       break;
+    case 13:
+      schema.properties[SUBJECT_STR] = {
+        type: 'object',
+        properties: {
+          fname: { type: 'string' },
+          lname: { type: 'string' },
+          timeOfBirth: { type: 'integer', minimum: 0 },
+          sensitive: {
+            type: 'object',
+            properties: {
+              email: { type: 'string' },
+              userId: { $ref: '#/definitions/encryptableCompString' }
+            }
+          },
+        }
+      };
+      schema.properties[STATUS_STR] = CredentialSchema.statusAsJsonSchema();
+      schema.properties['validFrom'] = { type: 'integer', minimum: 0 };
+      schema.properties['validUntil'] = { type: 'integer', minimum: 0 };
+      break;
     default:
       throw Error(`Cannot find example schema number ${num}`);
   }

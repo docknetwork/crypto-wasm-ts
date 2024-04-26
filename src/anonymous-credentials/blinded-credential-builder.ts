@@ -2,7 +2,7 @@ import { CredentialBuilderCommon } from './credential-builder-common';
 import { IBlindCredentialRequest } from './presentation-specification';
 import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES, STATUS_STR,
   BDDT16_MAC_PARAMS_LABEL_BYTES
 } from './types-and-consts';
 import { BBSCredential, BBSPlusCredential, BDDT16Credential } from './credential';
@@ -18,7 +18,7 @@ import { BDDT16BlindMac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-m
 export abstract class BlindedCredentialBuilder extends CredentialBuilderCommon {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.2.0';
+  static VERSION = '0.3.0';
 
   blindedCredReq: IBlindCredentialRequest;
 
@@ -31,12 +31,36 @@ export abstract class BlindedCredentialBuilder extends CredentialBuilderCommon {
   protected getTotalAttributesAndEncodedKnownAttributes(): [number, Map<number, Uint8Array>] {
     const schema = this.schema as CredentialSchema;
     const flattenedSchema = schema.flatten();
-    const knownAttributes = this.serializeForSigning();
+    let knownAttributes = this.serializeForSigning();
+    if (this.blindedCredReq.unBlindedAttributes !== undefined) {
+      if (typeof this.blindedCredReq.unBlindedAttributes !== 'object') {
+        throw new Error(`Unblinded attributes were supposed to an object but found ${this.blindedCredReq.unBlindedAttributes}`)
+      }
+      knownAttributes = {...knownAttributes, ...this.blindedCredReq.unBlindedAttributes};
+    }
     const encodedAttributes = new Map<number, Uint8Array>();
     Object.entries(schema.encoder.encodeMessageObjectAsObject(knownAttributes)).forEach(([name, value]) => {
       encodedAttributes.set(flattenedSchema[0].indexOf(name), value);
     });
     return [flattenedSchema[0].length, encodedAttributes];
+  }
+
+  protected processUnBlindedAttributes() {
+    if (this.blindedCredReq.unBlindedAttributes !== undefined) {
+      if (typeof this.blindedCredReq.unBlindedAttributes !== 'object') {
+        throw new Error(`Unblinded attributes were supposed to an object but found ${this.blindedCredReq.unBlindedAttributes}`)
+      }
+      for (const [name, value] of Object.entries(this.blindedCredReq.unBlindedAttributes)) {
+        if (name === STATUS_STR) {
+          if (this.credStatus !== undefined) {
+            throw new Error('credStatus was set by the signer when it was provided in request as well')
+          }
+          this.credStatus = value;
+        } else {
+          throw new Error(`Unsupported for blinded attribute ${name}`);
+        }
+      }
+    }
   }
 }
 
@@ -58,6 +82,7 @@ export class BBSBlindedCredentialBuilder extends BlindedCredentialBuilder {
     const [totalAttrs, encodedAttrs] = this.getTotalAttributesAndEncodedKnownAttributes();
     const params = BBSSignatureParams.getSigParamsOfRequiredSize(totalAttrs, sigParams);
     const sig = BBSBlindSignature.generate(this.blindedCredReq.commitment, encodedAttrs, secretKey, params, false);
+    this.processUnBlindedAttributes();
     return new BBSBlindedCredential(
       this.version,
       this.schema as CredentialSchema,
@@ -94,6 +119,7 @@ export class BBSPlusBlindedCredentialBuilder extends BlindedCredentialBuilder {
       params,
       false
     );
+    this.processUnBlindedAttributes();
     return new BBSPlusBlindedCredential(
       this.version,
       this.schema as CredentialSchema,
@@ -124,6 +150,7 @@ export class BDDT16BlindedCredentialBuilder extends BlindedCredentialBuilder {
     const [totalAttrs, encodedAttrs] = this.getTotalAttributesAndEncodedKnownAttributes();
     const params = BDDT16MacParams.getMacParamsOfRequiredSize(totalAttrs, sigParams);
     const sig = BDDT16BlindMac.generate(this.blindedCredReq.commitment, encodedAttrs, secretKey, params, false);
+    this.processUnBlindedAttributes();
     return new BDDT16BlindedCredential(
       this.version,
       this.schema as CredentialSchema,

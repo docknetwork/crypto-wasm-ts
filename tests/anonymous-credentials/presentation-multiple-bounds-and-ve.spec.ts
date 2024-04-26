@@ -1,13 +1,10 @@
 import {
   Credential,
-  CredentialBuilder, isKvac,
-  KeyPair,
+  CredentialBuilder,
   PresentationBuilder,
   PublicKey,
   Scheme,
   SecretKey,
-  SignatureLabelBytes,
-  SignatureParams
 } from '../scheme';
 import {
   initializeWasm,
@@ -28,7 +25,6 @@ import {
 } from '../../src';
 import { checkResult, getBoundCheckSnarkKeys, readByteArrayFromFile, stringToBytes } from '../utils';
 import { checkCiphertext, checkPresentationJson, getKeys, verifyCred } from './utils';
-import { BDDT16MacSecretKey } from '../../src/bddt16-mac';
 
 // Setting it to false will make the test run the SNARK setups making tests quite slow
 const loadSnarkSetupFromFiles = true;

@@ -152,6 +152,8 @@ export interface IBlindCredentialRequest {
   // Equalities between the blinded attributes and credential attributes
   blindedAttributeEqualities?: BlindedAttributeEquality[];
   pseudonyms?: { [key: string]: IPresentedBoundedPseudonymInBlindedCredReq };
+  // Attributes user is telling the signer to add to the credential (should be part of schema)
+  unBlindedAttributes?: object;
 }
 
 /**

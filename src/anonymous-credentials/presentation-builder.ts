@@ -175,7 +175,7 @@ export class PresentationBuilder extends Versioned {
   blindCredReq?: {
     req: IBlindCredentialRequest;
     sigParams: SignatureParams;
-    encodedSubject: Map<number, Uint8Array>;
+    encodedAttributes: Map<number, Uint8Array>;
     attrNameToIndex: Map<string, number>;
     flattenedSchema: FlattenedSchema;
     blinding?: Uint8Array;
@@ -755,12 +755,12 @@ export class PresentationBuilder extends Versioned {
         // Create witness
         if (checkType === MEM_CHECK_STR || checkType === MEM_CHECK_KV_STR) {
           if (!(wit instanceof VBMembershipWitness)) {
-            throw new Error(`Expected membership witness but got non-membership witness for credential index ${i}`);
+            throw new Error(`Expected membership witness but got ${typeof wit} for credential index ${i}`);
           }
           witness = Witness.vbAccumulatorMembership(value, wit);
         } else {
           if (!(wit instanceof VBNonMembershipWitness)) {
-            throw new Error(`Expected non-membership witness but got membership witness for credential index ${i}`);
+            throw new Error(`Expected non-membership witness but got ${typeof wit} for credential index ${i}`);
           }
           witness = Witness.vbAccumulatorNonMembership(value, wit);
         }
@@ -809,12 +809,12 @@ export class PresentationBuilder extends Versioned {
         // Create witness
         if (checkType === MEM_CHECK_STR || checkType === MEM_CHECK_KV_STR) {
           if (!(wit instanceof KBUniversalMembershipWitness)) {
-            throw new Error(`Expected membership witness but got non-membership witness for credential index ${i}`);
+            throw new Error(`Expected membership witness but got ${typeof wit} for credential index ${i}`);
           }
           witness = Witness.kbUniAccumulatorMembership(value, wit);
         } else {
           if (!(wit instanceof KBUniversalNonMembershipWitness)) {
-            throw new Error(`Expected non-membership witness but got membership witness for credential index ${i}`);
+            throw new Error(`Expected non-membership witness but got ${typeof wit} for credential index ${i}`);
           }
           witness = Witness.kbUniAccumulatorNonMembership(value, wit);
         }
@@ -1098,11 +1098,11 @@ export class PresentationBuilder extends Versioned {
     let blindAttrToSId = new Map<string, number[]>();
     if (this.blindCredReq !== undefined) {
       const sigParams = this.blindCredReq.sigParams;
-      const encodedSubject = this.blindCredReq.encodedSubject;
-      // Sorted list of subject attribute indices
-      const blindedSubjectIndices = Array.from(encodedSubject.keys()).sort((a, b) => a - b);
-      // List of subject attribute values corresponding to blindedSubjectIndices
-      const blindedSubjectValues = blindedSubjectIndices.map((i) => encodedSubject.get(i) as Uint8Array);
+      const encodedAttributes = this.blindCredReq.encodedAttributes;
+      // Sorted list of attribute indices
+      const blindedAttributeIndices = Array.from(encodedAttributes.keys()).sort((a, b) => a - b);
+      // List of subject attribute values corresponding to blindedAttributeIndices
+      const blindedAttributeValues = blindedAttributeIndices.map((i) => encodedAttributes.get(i) as Uint8Array);
       // Statement index corresponding to the Pedersen commitment of the blinded attributes
       let pedCommStId;
       // Offset of attributes in the Pedersen Commitment, its 0 for BBS and 1 for BBS+ as the commitment in BBS+ is perfectly hiding.
@@ -1113,17 +1113,17 @@ export class PresentationBuilder extends Versioned {
         sigParams instanceof BBSPlusSignatureParamsG1 ||
         sigParams instanceof BDDT16MacParams
       ) {
-        const commKey = sigParams.getParamsForIndices(blindedSubjectIndices);
+        const commKey = sigParams.getParamsForIndices(blindedAttributeIndices);
         pedCommStId = statements.add(Statement.pedersenCommitmentG1(commKey, this.blindCredReq.req.commitment));
       } else {
         throw new Error('Not yet implemented for PS');
       }
 
       if (sigParams instanceof BBSSignatureParams) {
-        witnesses.add(Witness.pedersenCommitment(blindedSubjectValues));
+        witnesses.add(Witness.pedersenCommitment(blindedAttributeValues));
         pedCommWitnessOffset = 0;
       } else if (sigParams instanceof BBSPlusSignatureParamsG1 || sigParams instanceof BDDT16MacParams) {
-        witnesses.add(Witness.pedersenCommitment([this.blindCredReq.blinding as Uint8Array, ...blindedSubjectValues]));
+        witnesses.add(Witness.pedersenCommitment([this.blindCredReq.blinding as Uint8Array, ...blindedAttributeValues]));
         pedCommWitnessOffset = 1;
       } else {
         throw new Error('Blind signing not yet implemented for PS');
@@ -1132,19 +1132,19 @@ export class PresentationBuilder extends Versioned {
       // Get the attribute index in the Pedersen commitment witness
       const getAttrIndexInPedComm = (attr: number | string): number => {
         if (typeof attr === 'number') {
-          return blindedSubjectIndices.indexOf(attr) + pedCommWitnessOffset;
+          return blindedAttributeIndices.indexOf(attr) + pedCommWitnessOffset;
         } else {
           const index = this.blindCredReq?.attrNameToIndex.get(attr);
           if (index === undefined) {
             throw new Error(`Missing attribute ${attr} in subject to index map`);
           }
-          return blindedSubjectIndices.indexOf(index) + pedCommWitnessOffset;
+          return blindedAttributeIndices.indexOf(index) + pedCommWitnessOffset;
         }
       };
 
       // Get the attribute value where the given index is in the Pedersen commitment witness
       const getAttrValue = (attrIdx: number): Uint8Array => {
-        return blindedSubjectValues[attrIdx - pedCommWitnessOffset];
+        return blindedAttributeValues[attrIdx - pedCommWitnessOffset];
       };
 
       // Create meta-statements for enforcing equalities between blinded attributes and other credential attributes

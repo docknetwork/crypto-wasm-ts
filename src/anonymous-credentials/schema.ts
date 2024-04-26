@@ -1,5 +1,6 @@
 import pointer from 'json-pointer';
 import stringify from 'json-stringify-deterministic';
+import _ from 'lodash';
 import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../encoder';
 import { isPositiveInteger } from '../util';
@@ -17,7 +18,7 @@ import {
   SUBJECT_STR,
   TYPE_STR
 } from './types-and-consts';
-import { deepClone, flattenTill2ndLastKey, isValueDate, isValueDateTime } from './util';
+import { flattenTill2ndLastKey, isValueDate, isValueDateTime } from './util';
 import semver from 'semver/preload';
 
 /**
@@ -1196,7 +1197,7 @@ export class CredentialSchema extends Versioned {
   // @ts-ignore
   static generateAppropriateSchema(cred: object, schema: CredentialSchema): CredentialSchema {
     // This JSON parse and stringify is to make `newJsonSchema` a copy of `schema.jsonSchema` and not a reference
-    const newJsonSchema = deepClone(schema.getEmbeddedJsonSchema()) as IEmbeddedJsonSchema;
+    const newJsonSchema = _.cloneDeep(schema.getEmbeddedJsonSchema()) as IEmbeddedJsonSchema;
     const props = newJsonSchema.properties;
     CredentialSchema.generateFromCredential(cred, props, schema.version);
     if (schema.hasEmbeddedJsonSchema()) {

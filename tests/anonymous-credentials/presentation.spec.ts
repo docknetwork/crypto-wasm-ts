@@ -538,6 +538,16 @@ describe.each([true, false])(
       checkSchemaFromJson(presJson.spec.credentials[0].schema, credential1.schema);
 
       checkPresentationJson(pres1, [pk1]);
+
+      // Changing revealed attributes should fail the presentation verification
+      pres1.spec.credentials[0].revealedAttributes['credentialSubject'].fname = 'Alice';
+      expect(pres1.spec.credentials[0].revealedAttributes).toEqual({
+        credentialSubject: {
+          fname: 'Alice',
+          lname: 'Smith'
+        }
+      })
+      expect(pres1.verify([pk1]).verified).toEqual(false);
     });
 
     it('from credential1 and credential2 - presenting pseudonyms', () => {

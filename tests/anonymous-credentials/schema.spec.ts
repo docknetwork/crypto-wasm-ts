@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import {
   initializeWasm,
   CRYPTO_VERSION_STR,
@@ -12,7 +13,7 @@ import {
   SUBJECT_STR,
   ValueType,
   VERSION_STR,
-  TYPE_STR, IEmbeddedJsonSchema, FULL_SCHEMA_STR, SCHEMA_PROPS_STR, deepClone
+  TYPE_STR, IEmbeddedJsonSchema, FULL_SCHEMA_STR, SCHEMA_PROPS_STR
 } from '../../src';
 import { getExampleSchema } from './utils';
 import { CredentialBuilder } from '../scheme';
@@ -849,7 +850,7 @@ describe('Credential Schema', () => {
     }
 
     for (const withSchemaRef of [true, false]) {
-      for (let i = 1; i <= 12; i++) {
+      for (let i = 1; i <= 13; i++) {
         const schema = getExampleSchema(i);
         let cs: CredentialSchema;
         if (withSchemaRef) {
@@ -986,7 +987,7 @@ describe('Credential Schema', () => {
   });
 
   it('to and from JSON', async () => {
-    for (let i = 1; i <= 12; i++) {
+    for (let i = 1; i <= 13; i++) {
       const schema = getExampleSchema(i);
       const schemaRef = `https://example.com?hash=abc123ff${i}`;
 
@@ -1040,7 +1041,7 @@ describe('Credential Schema', () => {
         await checkRecreated(CredentialSchema.fromJSON(j));
 
         // Remove full json schema from the given schema json and load full schema from elsewhere
-        const schemaJsonWithoutFullSchema = deepClone(j);
+        const schemaJsonWithoutFullSchema = _.cloneDeep(j);
         // @ts-ignore
         delete schemaJsonWithoutFullSchema[FULL_SCHEMA_STR];
         // @ts-ignore

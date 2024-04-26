@@ -44,7 +44,10 @@ import {
   BoundCheckSmcWithKVSetup,
   DefaultSchemaParsingOpts,
   META_SCHEMA_STR,
-  InequalityProtocol, CredentialVerificationParam, BDDT16BlindedCredentialRequestBuilder, BDDT16BlindedCredential
+  InequalityProtocol,
+  CredentialVerificationParam,
+  BDDT16BlindedCredentialRequestBuilder,
+  BDDT16BlindedCredential,
 } from '../../src';
 import {
   SignatureParams,
@@ -53,7 +56,7 @@ import {
   Credential,
   Scheme,
   isBBS,
-  isPS, isKvac
+  isPS, isKvac, CredentialBuilder
 } from '../scheme';
 
 import {
@@ -100,10 +103,13 @@ function newReqBuilder(
   return reqBuilder;
 }
 
-function checkBlindedSubject(req, blindedSubject) {
+function checkBlindedAttributes(req, blindedSubject, hasBlindedStatus = false) {
   const expectedBlindedAttributes = {};
   for (const name of Object.keys(flatten({ [SUBJECT_STR]: blindedSubject }))) {
     expectedBlindedAttributes[name] = null;
+  }
+  if (hasBlindedStatus) {
+    expectedBlindedAttributes[`${STATUS_STR}.${REV_ID_STR}`] = null;
   }
   expect(req.blindedAttributes).toEqual(unflatten(expectedBlindedAttributes));
 }
@@ -126,14 +132,15 @@ function checkReqJson(
   expect(recreatedReq.toJSON()).toEqual(reqJson);
 }
 
-function checkBlindedCredJson(blindedCred: BlindedCredential<any>, sk: SecretKey, pk: PublicKey, blindedSubject: object, blinding?) {
+function checkBlindedCredJson(blindedCred: BlindedCredential<any>, sk: SecretKey, pk: PublicKey, blindedSubject: object, blinding?: Uint8Array, blindedStatus?: object, blindedTopLevelFields?: Map<string, unknown>) {
   const credJson = blindedCred.toJSON();
   const recreatedCred = isKvac() ? BDDT16BlindedCredential.fromJSON(credJson) : isBBS() ? BBSBlindedCredential.fromJSON(credJson) : BBSPlusBlindedCredential.fromJSON(credJson);
   // @ts-ignore
   const cred = isBBS()
     ? // @ts-ignore
-      recreatedCred.toCredential(blindedSubject)
-    : recreatedCred.toCredential(blindedSubject, blinding);
+      recreatedCred.toCredential(blindedSubject, blindedStatus, blindedTopLevelFields)
+    // @ts-ignore
+    : recreatedCred.toCredential(blindedSubject, blinding, blindedStatus, blindedTopLevelFields);
   verifyCred(cred, pk, sk);
   expect(recreatedCred.toJSON()).toEqual(credJson);
 }
@@ -331,7 +338,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     checkReqJson(req, []);
 
-    checkBlindedSubject(req, blindedSubject);
+    checkBlindedAttributes(req, blindedSubject);
 
     const blindedCredBuilder = req.generateBlindedCredentialBuilder();
     blindedCredBuilder.subject = {
@@ -379,6 +386,186 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     checkBlindedCredJson(blindedCred, sk1, pk1, blindedSubject, blinding);
   });
 
+  it('should be able to request a blinded-credential with the same revocation id and accumulator as in another credential', async () => {
+    // The goal here is that the blinded credential will be considered revoked when the presented credential is revoked. eg, user has a credential `C1` and
+    // he wants to get another credential `C2` in such a way that when `C1` is  revoked, `C2` will be considered revoked as well but the issuer
+    // of `C2` will not learn the revocation id of `C1`. Thus `C2` is chained to `C1`
+    const blindedSubject = {
+      sensitive: {
+        email: 'alice@example.com',
+        SSN: '456-789012-1'
+      },
+      education: {
+        studentId: 's-23-456789',
+        university: {
+          registrationNumber: 'XYZ-456-123'
+        }
+      }
+    };
+    const revId = 'tran:2022-YZ4-250';
+    const reqBuilder = newReqBuilder(schema1, blindedSubject);
+    reqBuilder.statusToBlind('dock:accumulator:accumId124', MEM_CHECK_STR, revId);
+
+    expect(reqBuilder.addCredentialToPresentation(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+
+    // Prove that revocation id in the requested blinded credential is same as in the presented credential. This is
+    // needed to convince that the blinded credential's revocation status will stay the same as the presented credential's.
+    reqBuilder.markBlindedAttributesEqual([`${STATUS_STR}.${REV_ID_STR}`, [[0, `${STATUS_STR}.${REV_ID_STR}`]]]);
+
+    reqBuilder.addAccumInfoForCredStatus(0, accumulator1Witness, accumulator1.accumulated, accumulator1Pk, {
+      blockNo: 2010334
+    });
+    const [req, blinding] = finalize(reqBuilder);
+
+    const acc = new Map();
+    acc.set(0, accumulator1Pk);
+    checkResult(req.verify([pk1], acc));
+
+    checkReqJson(req, [pk1], acc);
+
+    checkBlindedAttributes(req, blindedSubject, true);
+
+    const blindedCredBuilder = req.generateBlindedCredentialBuilder();
+    blindedCredBuilder.subject = {
+      fname: 'John',
+      lname: 'Smith',
+      education: {
+        university: {
+          name: 'Example University'
+        },
+        transcript: {
+          rank: 100,
+          CGPA: 2.57,
+          scores: {
+            english: 60,
+            mathematics: 70,
+            science: 50,
+            history: 45,
+            geography: 40
+          }
+        }
+      }
+    };
+
+    const blindedCred = blindedCredBuilder.sign(sk1);
+    const credential = isBBS()
+      ? blindedCred.toCredential(blindedSubject, {[REV_ID_STR]: revId})
+      : blindedCred.toCredential(blindedSubject, blinding, {[REV_ID_STR]: revId});
+    verifyCred(credential, pk1, sk1);
+    expect(credential.credentialStatus).toEqual(credential1.credentialStatus);
+
+    checkBlindedCredJson(blindedCred, sk1, pk1, blindedSubject, blinding, {[REV_ID_STR]: revId});
+
+    // Using a different rev id fails
+    const wrongRevId = 'tran:2022-YZ4-150';
+    expect(revId).not.toEqual(wrongRevId);
+    const credentialInvalid = isBBS()
+      ? blindedCred.toCredential(blindedSubject, {[REV_ID_STR]: wrongRevId})
+      : blindedCred.toCredential(blindedSubject, blinding, {[REV_ID_STR]: wrongRevId});
+    if (isKvac()) {
+      expect(credentialInvalid.verifyUsingSecretKey(sk1).verified).toEqual(false);
+    } else {
+      expect(credentialInvalid.verify(pk1).verified).toEqual(false);
+    }
+  });
+
+  it('should be able to request a blinded-credential with the same top level attributes as in another credential', async () => {
+    // The goal here is that the blinded credential should have the same top level attributes as the credential presented during its issuance.
+    // In this test, the blinded credential's attributes "validFrom" and "validUntil" are the same as in the credential being presented during issuance
+    let schema;
+    if (withSchemaRef) {
+      schema = new CredentialSchema(
+        nonEmbeddedSchema,
+        DefaultSchemaParsingOpts,
+        true,
+        undefined,
+        getExampleSchema(13)
+      );
+    } else {
+      schema = new CredentialSchema(getExampleSchema(13));
+    }
+
+    const revId = 'tran:2022-YZ4-250';
+
+    let credBuilder = new CredentialBuilder();
+    credBuilder.schema = schema;
+    credBuilder.subject = {
+      fname: 'John',
+      lname: 'Smith',
+      timeOfBirth: 1662010849619,
+      sensitive: {
+        email: 'john.smith@example.com',
+        userId: 'user:123-xyz-#',
+      },
+    };
+    credBuilder.setTopLevelField('validFrom', 1662010840000);
+    credBuilder.setTopLevelField('validUntil', 1662010849999);
+    credBuilder.setCredentialStatus('dock:accumulator:accumId124', MEM_CHECK_STR, revId);
+    const credential4 = credBuilder.sign(sk1);
+    verifyCred(credential4, pk1, sk1);
+
+    const blindedSubject = {
+      sensitive: {
+        email: 'alice@example.com',
+        userId: '456-789012-1'
+      },
+    };
+    const reqBuilder = newReqBuilder(schema, blindedSubject);
+    reqBuilder.statusToBlind('dock:accumulator:accumId124', MEM_CHECK_STR, revId);
+    reqBuilder.topLevelAttributesToBlind('validFrom', 1662010840000);
+    reqBuilder.topLevelAttributesToBlind('validUntil', 1662010849999);
+
+    expect(reqBuilder.addCredentialToPresentation(credential4, isPS() ? pk1 : undefined)).toEqual(0);
+    // Prove that revocation id in the requested blinded credential is same as in the presented credential
+    reqBuilder.markBlindedAttributesEqual([`${STATUS_STR}.${REV_ID_STR}`, [[0, `${STATUS_STR}.${REV_ID_STR}`]]]);
+
+    // Prove that attributes "validFrom" and "validUntil" in the requested blinded credential are the same as in the presented credential
+    reqBuilder.markBlindedAttributesEqual(['validFrom', [[0, 'validFrom']]]);
+    reqBuilder.markBlindedAttributesEqual(['validUntil', [[0, 'validUntil']]]);
+
+    reqBuilder.addAccumInfoForCredStatus(0, accumulator1Witness, accumulator1.accumulated, accumulator1Pk, {
+      blockNo: 2010334
+    });
+    const [req, blinding] = finalize(reqBuilder);
+
+    const acc = new Map();
+    acc.set(0, accumulator1Pk);
+    checkResult(req.verify([pk1], acc));
+
+    checkReqJson(req, [pk1], acc);
+
+    const blindedCredBuilder = req.generateBlindedCredentialBuilder();
+    blindedCredBuilder.subject = {
+      fname: 'Alice',
+      lname: 'Smith',
+      timeOfBirth: 1662010849619,
+    };
+
+    const blindedCred = blindedCredBuilder.sign(sk1);
+    const blindedTopLevelFields = new Map<string, unknown>();
+    blindedTopLevelFields.set('validFrom', 1662010840000);
+    blindedTopLevelFields.set('validUntil', 1662010849999);
+    const credential5 = isBBS()
+      ? blindedCred.toCredential(blindedSubject, {[REV_ID_STR]: revId}, blindedTopLevelFields)
+      : blindedCred.toCredential(blindedSubject, blinding, {[REV_ID_STR]: revId}, blindedTopLevelFields);
+    verifyCred(credential5, pk1, sk1);
+
+    checkBlindedCredJson(blindedCred, sk1, pk1, blindedSubject, blinding, {[REV_ID_STR]: revId}, blindedTopLevelFields);
+
+    // Using a different top level fields fails
+    const wrongTopLevelFields = new Map<string, unknown>();
+    wrongTopLevelFields.set('validFrom', 1662010840001);
+    wrongTopLevelFields.set('validUntil', 1662010849990);
+    const credentialInvalid = isBBS()
+      ? blindedCred.toCredential(blindedSubject, {[REV_ID_STR]: revId}, wrongTopLevelFields)
+      : blindedCred.toCredential(blindedSubject, blinding, {[REV_ID_STR]: revId}, wrongTopLevelFields);
+    if (isKvac()) {
+      expect(credentialInvalid.verifyUsingSecretKey(sk1).verified).toEqual(false);
+    } else {
+      expect(credentialInvalid.verify(pk1).verified).toEqual(false);
+    }
+  })
+
   it('should be able to request a blinded-credential while presenting another credential and proving some attributes equal', () => {
     const blindedSubject = {
       email: 'john.smith@example.com',
@@ -421,7 +608,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     checkReqJson(req, [pk1], acc);
 
-    checkBlindedSubject(req, blindedSubject);
+    checkBlindedAttributes(req, blindedSubject);
 
     const blindedCredBuilder = req.generateBlindedCredentialBuilder();
     blindedCredBuilder.subject = {
@@ -719,7 +906,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       )
     ).toEqual(2);
 
-    checkBlindedSubject(req, blindedSubject);
+    checkBlindedAttributes(req, blindedSubject);
 
     const blindedCredBuilder = req.generateBlindedCredentialBuilder();
     blindedCredBuilder.subject = [
@@ -905,7 +1092,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       )
     ).toEqual(1);
 
-    checkBlindedSubject(req, blindedSubject);
+    checkBlindedAttributes(req, blindedSubject);
 
     const blindedCredBuilder = req.generateBlindedCredentialBuilder();
     blindedCredBuilder.subject = {
@@ -1201,7 +1388,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       blindedAttributes: blindedAttributeNames2
     });
 
-    checkBlindedSubject(req, blindedSubject);
+    checkBlindedAttributes(req, blindedSubject);
 
     const blindedCredBuilder = req.generateBlindedCredentialBuilder();
     blindedCredBuilder.subject = [

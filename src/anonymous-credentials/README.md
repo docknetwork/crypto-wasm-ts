@@ -24,8 +24,8 @@ A credential always contains a schema as one of the attribute (inline, not a ref
 
 A [CredentialBuilder](./credential-builder.ts) is used to build a credential by setting various attributes and 
 then signed using the issuer's secret key resulting in a [Credential](./credential.ts) which can then be verified using the 
-public key of the issuer. A credential might have a status field indicating whether the credential can be revoked or not. Currently only 1 
-mechanism is supported and that is accumulator but the status property is oblivious to that.
+public key of the issuer. A credential might have a `status` field indicating whether the credential can be revoked or not. Currently only 1 
+mechanism is supported and that is accumulator but the s`tatus` property is oblivious to that.
 
 See these [tests](../../tests/anonymous-credentials/credential.spec.ts) for examples of credential issuance, verification and (de)serialization.
 
@@ -53,7 +53,25 @@ The user while requesting such a credential might need to prove the possession o
 
 See these [tests](../../tests/anonymous-credentials/blind-issuance.spec.ts) for examples of using these predicates.
 
+## KVAC Credentials
 
+KVAC stands for Keyed-Verification Anonymous Credentials. Verifying them requires the secret key of the signer (issuer) or a proof 
+given by the signer unlike regular credentials where signer's public key is required. For presentations created from KVAC, 
+they can't be "fully" verified without the signer's secret key. These presentations can be considered to be composed of 2 parts, 
+one which can be verified without the secret key and the other which needs the secret key. The latter is what we call [DelegatedProof](./delegated-proof.ts) 
+as it will be delegated to the signer to verify. The expected usage of KVAC presentations is for the verifier to verify the part 
+that does not require the usage of secret key and send the other part to the signer to verify thus making the verifications always 
+require the signer. This is useful when the signer wants to be aware of anytime its issued credential is used, eg. charging for it. 
+Note that the `DelegatedProof` does not contain any revealed attributes or predicates or unique ids so the signer cannot  
+learn any identifying information from it. Not all kinds of credentials support this capability and currently only 
+[BDDT16Credential](./credential.ts) supports it. Note that it does not support the `verify` method which expects signer's 
+public key but instead supports `verifyUsingValidityProof` method which requires a [BDDT16MacProofOfValidity](../bddt16-mac/mac.ts) 
+that can be created by the signer. Unlike regular credentials, `BDDT16Credential` contain a [MAC](https://en.wikipedia.org/wiki/Message_authentication_code) 
+and not a signature which require the secret key for verification. 
+
+This principle also applies to credential revocation (`status` field) where the revocation status can only be checked by the issuer.
+
+See these [tests](../../tests/anonymous-credentials/delegated-proofs.spec.ts) for examples.
 
 *Note that lot of classes mentioned above are abstract as this project supports multiple signature schemes.* 
 
