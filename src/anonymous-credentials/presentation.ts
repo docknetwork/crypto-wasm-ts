@@ -158,7 +158,7 @@ export class Presentation extends Versioned {
    * is the credential index. Can also take array of keys in the order of credentials in the presentation for supporting old API but this will
    * be removed in future. The verification param could be a public key or secret key. Certain kinds of credentials don't require
    * either for (partial) verification but will require for full verification
-   * @param accumulatorPublicKeys - Mapping credential index -> accumulator verification parameters.
+   * @param accumulatorVerifParams - Mapping credential index -> accumulator verification parameters.
    * @param predicateParams - Setup params for various predicates
    * @param circomOutputs - Values for the outputs variables of the Circom programs used for predicates. They key of the map
    * is the credential index
@@ -168,7 +168,7 @@ export class Presentation extends Versioned {
   verify(
     // TODO: Accept reference to public keys in case of same key for many credentials
     credentialVerifParams: Map<number, CredentialVerificationParam> | CredentialVerificationParam[],
-    accumulatorPublicKeys?: Map<number, AccumulatorVerificationParam>,
+    accumulatorVerifParams?: Map<number, AccumulatorVerificationParam>,
     predicateParams?: Map<string, PredicateParamType>,
     circomOutputs?: Map<number, Uint8Array[][]>,
     blindedAttributesCircomOutputs?: Uint8Array[][],
@@ -309,7 +309,7 @@ export class Presentation extends Versioned {
 
     credStatusAux.forEach(([i, protocol, checkType, acc]) => {
       let statement;
-      const pk = accumulatorPublicKeys?.get(i);
+      const pk = accumulatorVerifParams?.get(i);
       if (protocol === RevocationStatusProtocol.Vb22) {
         if (!(Array.isArray(acc) || acc instanceof Uint8Array)) {
           throw new Error(`Accumulator value should have been a Uint8Array but was ${acc}`);

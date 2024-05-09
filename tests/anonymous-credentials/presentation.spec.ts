@@ -789,9 +789,9 @@ describe.each([true, false])(
         ])
       );
 
-      builder4.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
-      builder4.markAttributesEqual([0, 'credentialSubject.city'], [1, 'credentialSubject.location.city']);
-      builder4.markAttributesEqual([0, 'credentialSubject.height'], [1, 'credentialSubject.physical.height']);
+      builder4.enforceAttributeEquality([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
+      builder4.enforceAttributeEquality([0, 'credentialSubject.city'], [1, 'credentialSubject.location.city']);
+      builder4.enforceAttributeEquality([0, 'credentialSubject.height'], [1, 'credentialSubject.physical.height']);
 
       const pres4 = builder4.finalize();
 
@@ -855,8 +855,8 @@ describe.each([true, false])(
         ])
       );
 
-      builder5.markAttributesEqual([0, 'credentialSubject.sensitive.SSN'], [1, 'credentialSubject.sensitive.SSN']);
-      builder5.markAttributesEqual([0, 'credentialSubject.lname'], [1, 'credentialSubject.lname']);
+      builder5.enforceAttributeEquality([0, 'credentialSubject.sensitive.SSN'], [1, 'credentialSubject.sensitive.SSN']);
+      builder5.enforceAttributeEquality([0, 'credentialSubject.lname'], [1, 'credentialSubject.lname']);
 
       builder5.addAccumInfoForCredStatus(0, accumulator3Witness, accumulator3.accumulated, accumulator3Pk, {
         blockNo: 2010334
@@ -945,11 +945,11 @@ describe.each([true, false])(
         ])
       );
 
-      builder6.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
-      builder6.markAttributesEqual([0, 'credentialSubject.city'], [1, 'credentialSubject.location.city']);
-      builder6.markAttributesEqual([0, 'credentialSubject.height'], [1, 'credentialSubject.physical.height']);
-      builder6.markAttributesEqual([2, 'credentialSubject.sensitive.SSN'], [3, 'credentialSubject.sensitive.SSN']);
-      builder6.markAttributesEqual([2, 'credentialSubject.lname'], [3, 'credentialSubject.lname']);
+      builder6.enforceAttributeEquality([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
+      builder6.enforceAttributeEquality([0, 'credentialSubject.city'], [1, 'credentialSubject.location.city']);
+      builder6.enforceAttributeEquality([0, 'credentialSubject.height'], [1, 'credentialSubject.physical.height']);
+      builder6.enforceAttributeEquality([2, 'credentialSubject.sensitive.SSN'], [3, 'credentialSubject.sensitive.SSN']);
+      builder6.enforceAttributeEquality([2, 'credentialSubject.lname'], [3, 'credentialSubject.lname']);
 
       builder6.addAccumInfoForCredStatus(2, accumulator3Witness, accumulator3.accumulated, accumulator3Pk, {
         blockNo: 2010334
@@ -1037,7 +1037,7 @@ describe.each([true, false])(
       expect(builder.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
       expect(builder.addCredential(credential7, isPS() ? pk1 : undefined)).toEqual(2);
 
-      builder.markAttributesEqual([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
+      builder.enforceAttributeEquality([0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']);
 
       const inEqualEmail = 'alice@example.com';
       const inEqualEmail2 = 'bob@example.com';
@@ -1210,14 +1210,14 @@ describe.each([true, false])(
         ])
       );
 
-      builder8.markAttributesEqual(
+      builder8.enforceAttributeEquality(
         [0, 'credentialSubject.SSN'],
         [1, 'credentialSubject.sensitive.SSN'],
         [2, 'credentialSubject.sensitive.SSN']
       );
-      builder8.markAttributesEqual([0, 'credentialSubject.timeOfBirth'], [1, 'credentialSubject.timeOfBirth']);
-      builder8.markAttributesEqual([0, 'credentialSubject.BMI'], [1, 'credentialSubject.physical.BMI']);
-      builder8.markAttributesEqual([0, 'credentialSubject.score'], [1, 'credentialSubject.score']);
+      builder8.enforceAttributeEquality([0, 'credentialSubject.timeOfBirth'], [1, 'credentialSubject.timeOfBirth']);
+      builder8.enforceAttributeEquality([0, 'credentialSubject.BMI'], [1, 'credentialSubject.physical.BMI']);
+      builder8.enforceAttributeEquality([0, 'credentialSubject.score'], [1, 'credentialSubject.score']);
 
       builder8.addAccumInfoForCredStatus(2, accumulator3Witness, accumulator3.accumulated, accumulator3Pk, {
         blockNo: 2010334
@@ -1526,12 +1526,12 @@ describe.each([true, false])(
         ])
       );
 
-      builder10.markAttributesEqual(
+      builder10.enforceAttributeEquality(
         [0, 'credentialSubject.SSN'],
         [1, 'credentialSubject.sensitive.SSN'],
         [2, 'credentialSubject.sensitive.SSN']
       );
-      builder10.markAttributesEqual([0, 'credentialSubject.userId'], [1, 'credentialSubject.sensitive.userId']);
+      builder10.enforceAttributeEquality([0, 'credentialSubject.userId'], [1, 'credentialSubject.sensitive.userId']);
 
       builder10.addAccumInfoForCredStatus(2, accumulator3Witness, accumulator3.accumulated, accumulator3Pk, {
         blockNo: 2010334
@@ -1659,15 +1659,15 @@ describe.each([true, false])(
         ])
       );
 
-      builder11.markAttributesEqual(
+      builder11.enforceAttributeEquality(
         [0, 'credentialSubject.SSN'],
         [1, 'credentialSubject.sensitive.SSN'],
         [2, 'credentialSubject.sensitive.SSN']
       );
-      builder11.markAttributesEqual([0, 'credentialSubject.timeOfBirth'], [1, 'credentialSubject.timeOfBirth']);
-      builder11.markAttributesEqual([0, 'credentialSubject.BMI'], [1, 'credentialSubject.physical.BMI']);
-      builder11.markAttributesEqual([0, 'credentialSubject.score'], [1, 'credentialSubject.score']);
-      builder11.markAttributesEqual([0, 'credentialSubject.userId'], [1, 'credentialSubject.sensitive.userId']);
+      builder11.enforceAttributeEquality([0, 'credentialSubject.timeOfBirth'], [1, 'credentialSubject.timeOfBirth']);
+      builder11.enforceAttributeEquality([0, 'credentialSubject.BMI'], [1, 'credentialSubject.physical.BMI']);
+      builder11.enforceAttributeEquality([0, 'credentialSubject.score'], [1, 'credentialSubject.score']);
+      builder11.enforceAttributeEquality([0, 'credentialSubject.userId'], [1, 'credentialSubject.sensitive.userId']);
 
       builder11.addAccumInfoForCredStatus(2, accumulator3Witness, accumulator3.accumulated, accumulator3Pk, {
         blockNo: 2010334

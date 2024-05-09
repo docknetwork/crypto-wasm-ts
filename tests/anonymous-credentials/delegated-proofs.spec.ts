@@ -230,7 +230,8 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
     checkResult(pres.verify(pks, accumPks));
     checkPresentationJson(pres, pks, accumPks);
 
-    // Check full verification using secret key
+    // Check full verification using secret key. This will be done by a verifier who has the secret key and is useful in
+    // situations when issuer and verifier are the same entity (or share the secret key)
     pks.set(3, skKvac);
     pks.set(4, skKvac);
     accumPks.set(1, accumulator2Sk);

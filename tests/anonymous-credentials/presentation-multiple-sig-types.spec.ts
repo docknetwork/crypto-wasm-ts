@@ -154,13 +154,13 @@ describe.each([true, false])(
       builder.markAttributesRevealed(2, new Set<string>(['credentialSubject.location.city']));
       builder.markAttributesRevealed(3, new Set<string>(['credentialSubject.location.country']));
 
-      builder.markAttributesEqual(
+      builder.enforceAttributeEquality(
         [0, 'credentialSubject.sensitive.SSN'],
         [1, 'credentialSubject.sensitive.SSN'],
         [2, 'credentialSubject.sensitive.SSN'],
         [3, 'credentialSubject.sensitive.SSN']
       );
-      builder.markAttributesEqual(
+      builder.enforceAttributeEquality(
         [0, 'credentialSubject.sensitive.email'],
         [1, 'credentialSubject.sensitive.email'],
         [2, 'credentialSubject.sensitive.email'],

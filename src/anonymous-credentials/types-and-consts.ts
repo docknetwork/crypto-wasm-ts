@@ -38,7 +38,8 @@ import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
 
 export type StringOrObject = string | object;
-// Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation.
+// Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation and the
+// second item is the fully qualified attribute name.
 export type AttributeRef = [number, string];
 // Array of references to attributes that are equal
 export type AttributeEquality = AttributeRef[];
@@ -72,6 +73,7 @@ export type BoundCheckParamType =
   | BoundCheckSmcWithKVVerifierParams
   | BoundCheckSmcWithKVVerifierParamsUncompressed;
 
+// The first item is the fully qualified attribute name
 export type BlindedAttributeEquality = [string, AttributeRef[]];
 
 export type DateType = Date | string;
@@ -91,9 +93,14 @@ export type SignatureParamsClass =
   | typeof BBSPlusSignatureParamsG1
   | typeof PSSignatureParams
   | typeof BDDT16MacParams;
-// TODO: Find a better name
+
+// A parameter to verify the credential. This could be a public key or the secret key. Secret key is used to verify credentials
+// in situations where the issuer and verifier are the same entity (or share the secret key). Thus, such credentials are not
+// publicly verifiable
 export type CredentialVerificationParam = PublicKey | BDDT16MacSecretKey;
-// TODO: Find a better name
+// A parameter to verify the proof of accumulator (non)membership in zero-knowledge. This could be a public key or the secret key.
+// Secret key is used to verify the proof in situations where the revocation authority and verifier are the same entity (or share the secret key).
+// Thus, such proofs are not publicly verifiable
 export type AccumulatorVerificationParam = AccumulatorPublicKey | AccumulatorSecretKey;
 
 export type AccumulatorWitnessType =

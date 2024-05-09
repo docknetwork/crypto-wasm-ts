@@ -410,7 +410,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     // Prove that revocation id in the requested blinded credential is same as in the presented credential. This is
     // needed to convince that the blinded credential's revocation status will stay the same as the presented credential's.
-    reqBuilder.markBlindedAttributesEqual([`${STATUS_STR}.${REV_ID_STR}`, [[0, `${STATUS_STR}.${REV_ID_STR}`]]]);
+    reqBuilder.enforceEqualityOnBlindedAttribute([`${STATUS_STR}.${REV_ID_STR}`, [[0, `${STATUS_STR}.${REV_ID_STR}`]]]);
 
     reqBuilder.addAccumInfoForCredStatus(0, accumulator1Witness, accumulator1.accumulated, accumulator1Pk, {
       blockNo: 2010334
@@ -517,11 +517,11 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     expect(reqBuilder.addCredentialToPresentation(credential4, isPS() ? pk1 : undefined)).toEqual(0);
     // Prove that revocation id in the requested blinded credential is same as in the presented credential
-    reqBuilder.markBlindedAttributesEqual([`${STATUS_STR}.${REV_ID_STR}`, [[0, `${STATUS_STR}.${REV_ID_STR}`]]]);
+    reqBuilder.enforceEqualityOnBlindedAttribute([`${STATUS_STR}.${REV_ID_STR}`, [[0, `${STATUS_STR}.${REV_ID_STR}`]]]);
 
     // Prove that attributes "validFrom" and "validUntil" in the requested blinded credential are the same as in the presented credential
-    reqBuilder.markBlindedAttributesEqual(['validFrom', [[0, 'validFrom']]]);
-    reqBuilder.markBlindedAttributesEqual(['validUntil', [[0, 'validUntil']]]);
+    reqBuilder.enforceEqualityOnBlindedAttribute(['validFrom', [[0, 'validFrom']]]);
+    reqBuilder.enforceEqualityOnBlindedAttribute(['validUntil', [[0, 'validUntil']]]);
 
     reqBuilder.addAccumInfoForCredStatus(0, accumulator1Witness, accumulator1.accumulated, accumulator1Pk, {
       blockNo: 2010334
@@ -582,8 +582,8 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
         'credentialSubject.education.university.registrationNumber'
       ])
     );
-    reqBuilder.markBlindedAttributesEqual(['credentialSubject.SSN', [[0, 'credentialSubject.sensitive.SSN']]]);
-    reqBuilder.markBlindedAttributesEqual(['credentialSubject.email', [[0, 'credentialSubject.sensitive.email']]]);
+    reqBuilder.enforceEqualityOnBlindedAttribute(['credentialSubject.SSN', [[0, 'credentialSubject.sensitive.SSN']]]);
+    reqBuilder.enforceEqualityOnBlindedAttribute(['credentialSubject.email', [[0, 'credentialSubject.sensitive.email']]]);
     reqBuilder.addAccumInfoForCredStatus(0, accumulator1Witness, accumulator1.accumulated, accumulator1Pk, {
       blockNo: 2010334
     });
@@ -698,11 +698,11 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     );
     reqBuilder.markCredentialAttributesRevealed(1, new Set<string>(['credentialSubject.country']));
 
-    reqBuilder.markCredentialAttributesEqual([0, 'credentialSubject.fname'], [1, 'credentialSubject.fname']);
-    reqBuilder.markCredentialAttributesEqual([0, 'credentialSubject.lname'], [1, 'credentialSubject.lname']);
+    reqBuilder.enforceCredentialAttributesEqual([0, 'credentialSubject.fname'], [1, 'credentialSubject.fname']);
+    reqBuilder.enforceCredentialAttributesEqual([0, 'credentialSubject.lname'], [1, 'credentialSubject.lname']);
 
-    reqBuilder.markBlindedAttributesEqual(['credentialSubject.0.name', [[0, 'credentialSubject.fname']]]);
-    reqBuilder.markBlindedAttributesEqual(['credentialSubject.1.name', [[1, 'credentialSubject.lname']]]);
+    reqBuilder.enforceEqualityOnBlindedAttribute(['credentialSubject.0.name', [[0, 'credentialSubject.fname']]]);
+    reqBuilder.enforceEqualityOnBlindedAttribute(['credentialSubject.1.name', [[1, 'credentialSubject.lname']]]);
 
     reqBuilder.addAccumInfoForCredStatus(0, accumulator1Witness, accumulator1.accumulated, accumulator1Pk, {
       blockNo: 2010334
@@ -974,7 +974,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     expect(reqBuilder.addCredentialToPresentation(credential1, pk1)).toEqual(0);
     reqBuilder.markCredentialAttributesRevealed(0, new Set<string>(['credentialSubject.education.university.name']));
 
-    reqBuilder.markBlindedAttributesEqual([
+    reqBuilder.enforceEqualityOnBlindedAttribute([
       'credentialSubject.sensitive.email',
       [[0, 'credentialSubject.sensitive.email']]
     ]);

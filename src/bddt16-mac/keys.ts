@@ -3,7 +3,7 @@ import { bddt16MacGenerateSecretKey, bddt16MacGeneratePublicKeyG1, bddt16MacIsPu
 import { BDDT16MacParams } from './params';
 
 /**
- * BDDT16 MAC secret key.
+ * BDDT16 MAC secret key. Used to create and verify the MAC
  */
 export class BDDT16MacSecretKey extends BytearrayWrapper {
   static generate(seed?: Uint8Array) {
@@ -15,6 +15,9 @@ export class BDDT16MacSecretKey extends BytearrayWrapper {
   }
 }
 
+/**
+ * This public key cannot be used to verify the MAC itself but used in verifying the proof of validity of MAC, i.e. `BDDT16MacProofOfValidity`
+ */
 export class BDDT16MacPublicKeyG1 extends BytearrayWrapper {
   isValid(): boolean {
     return bddt16MacIsPublicKeyG1Valid(this.value);

@@ -200,12 +200,21 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     return this.presentationBuilder.addCredential(credential, pk);
   }
 
+  /**
+   * Reveal attributes of the presented credential
+   * @param credIdx
+   * @param attributeNames
+   */
   markCredentialAttributesRevealed(credIdx: number, attributeNames: Set<string>) {
     this.presentationBuilder.markAttributesRevealed(credIdx, attributeNames);
   }
 
-  markCredentialAttributesEqual(...equality: AttributeEquality) {
-    this.presentationBuilder.markAttributesEqual(...equality);
+  /**
+   * Enforce equality on attributes of the presented credential
+   * @param equality
+   */
+  enforceCredentialAttributesEqual(...equality: AttributeEquality) {
+    this.presentationBuilder.enforceAttributeEquality(...equality);
   }
 
   addAccumInfoForCredStatus(
@@ -331,13 +340,20 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
   }
 
   /**
-   * Mark a blinded attribute equal to one or more credential attributes
+   * Enforce that a blinded attribute is equal to one or more credential attributes
    * @param equality
    */
-  markBlindedAttributesEqual(equality: BlindedAttributeEquality) {
+  enforceEqualityOnBlindedAttribute(equality: BlindedAttributeEquality) {
     this.attributeEqualities.push(equality);
   }
 
+  /**
+   * Enforce that the blinded attribute `attributeName` is inequal to the public value `inEqualTo`
+   * @param attributeName
+   * @param inEqualTo
+   * @param paramId
+   * @param param
+   */
   enforceInequalityOnBlindedAttribute(
     attributeName: string,
     inEqualTo: any,

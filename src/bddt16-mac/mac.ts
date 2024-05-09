@@ -261,7 +261,7 @@ export interface BDDT16BlindMacRequest {
 
 /**
  * This MAC cannot be verified without the secret key but the signer can give a proof to the user that the MAC is
- * correct, i.e. it was created with the public key of the secret key.
+ * correct, i.e. it was created using the secret key.
  */
 export class BDDT16MacProofOfValidity extends BytearrayWrapper {
   constructor(mac: BDDT16Mac, secretKey: BDDT16MacSecretKey, publicKey: BDDT16MacPublicKeyG1, params: BDDT16MacParams) {

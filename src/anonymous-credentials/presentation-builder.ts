@@ -215,10 +215,10 @@ export class PresentationBuilder extends Versioned {
     return this.credentials.length - 1;
   }
 
-  // TODO: Since all attr names below will have the full name (incl. top level attrib, check that no predicate on revealed attrs)
+  // TODO: Since all attr names below will have the fully qualified name (incl. top level attrib, check that no predicate on revealed attrs)
 
-  // NOTE: This and several methods below expect nested attributes names with "dot"s as separators. Passing the nested structure is also
-  // possible but will need more parsing and thus can be handled later.
+  // NOTE: This and several methods below expect nested attributes names as fully qualified name, i.e. with "dot"s as separators.
+  // Passing the nested structure is also possible but will need more parsing and thus can be handled later.
 
   /**
    *
@@ -238,11 +238,11 @@ export class PresentationBuilder extends Versioned {
   }
 
   /**
-   *
+   * Enforce equality between attributes of the credential without revealing them.
    * @param equality - Array of reference to attribute where each reference is a pair with 1st item being credential index
    * and 2nd being attribute index in the flattened attribute list.
    */
-  markAttributesEqual(...equality: AttributeEquality) {
+  enforceAttributeEquality(...equality: AttributeEquality) {
     if (equality.length < 2) {
       throw new Error(`Need atleast 2 attribute references but found ${equality.length}`);
     }
