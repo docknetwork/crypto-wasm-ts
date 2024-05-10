@@ -3,11 +3,11 @@ import { VerifyResult } from 'crypto-wasm-new';
 import { AccumulatorSecretKey } from '../accumulator';
 import { BDDT16MacSecretKey } from '../bddt16-mac';
 import {
-  BDDT16DelegatedProof,
-  KBUniAccumMembershipDelegatedProof,
-  KBUniAccumNonMembershipDelegatedProof,
-  VBAccumMembershipDelegatedProof
-} from '../delegated-proofs';
+  BDDT16KeyedProof,
+  KBUniAccumMembershipKeyedProof,
+  KBUniAccumNonMembershipKeyedProof,
+  VBAccumMembershipKeyedProof
+} from '../keyed-proofs';
 import {
   ID_STR,
   MEM_CHECK_KV_STR,
@@ -19,33 +19,33 @@ import {
 } from './types-and-consts';
 import { Versioned } from './versioned';
 
-export interface IDelegatedCredentialProof {
+export interface IKeyedCredentialProof {
   sigType: SignatureType;
-  proof: BDDT16DelegatedProof;
+  proof: BDDT16KeyedProof;
 }
 
-export interface IDelegatedCredentialStatusProof {
+export interface IKeyedCredentialStatusProof {
   [ID_STR]: string;
   [TYPE_STR]: RevocationStatusProtocol;
   [REV_CHECK_STR]: string;
-  proof: VBAccumMembershipDelegatedProof | KBUniAccumMembershipDelegatedProof | KBUniAccumNonMembershipDelegatedProof;
+  proof: VBAccumMembershipKeyedProof | KBUniAccumMembershipKeyedProof | KBUniAccumNonMembershipKeyedProof;
 }
 
 /**
- * Delegated proof for a KVAC. It can contain proof for either the credential or the status or both. A delegated proof
+ * Keyed proof for a KVAC. It can contain proof for either the credential or the status or both. A keyed proof
  * is (usually) part of a larger proof and validating it requires the knowledge of secret key.
  */
-export class DelegatedProof extends Versioned {
+export class KeyedProof extends Versioned {
   static VERSION = '0.1.0';
 
-  readonly credential?: IDelegatedCredentialProof;
-  readonly status?: IDelegatedCredentialStatusProof;
+  readonly credential?: IKeyedCredentialProof;
+  readonly status?: IKeyedCredentialStatusProof;
 
-  constructor(credential?: IDelegatedCredentialProof, status?: IDelegatedCredentialStatusProof) {
+  constructor(credential?: IKeyedCredentialProof, status?: IKeyedCredentialStatusProof) {
     if (credential === undefined && status === undefined) {
       throw new Error(`At least one of credential or status must be defined`);
     }
-    super(DelegatedProof.VERSION);
+    super(KeyedProof.VERSION);
     this.credential = credential;
     this.status = status;
   }
@@ -68,7 +68,7 @@ export class DelegatedProof extends Versioned {
         throw new Error('Secret key not provided for accumulator');
       }
       if (this.status[ID_STR] === undefined) {
-        throw new Error(`${ID_STR} field is required in the delegated proof`);
+        throw new Error(`${ID_STR} field is required in the keyed proof`);
       }
       if (this.status[TYPE_STR] === RevocationStatusProtocol.Vb22) {
         if (this.status[REV_CHECK_STR] !== MEM_CHECK_KV_STR) {
@@ -112,7 +112,7 @@ export class DelegatedProof extends Versioned {
     return d;
   }
 
-  static fromJSON(j: object): DelegatedProof {
+  static fromJSON(j: object): KeyedProof {
     let credential, status;
     if (j['credential'] !== undefined) {
       if (j['credential'].sigType === undefined || j['credential'].proof === undefined) {
@@ -120,7 +120,7 @@ export class DelegatedProof extends Versioned {
       }
       credential = {
         sigType: j['credential'].sigType,
-        proof: new BDDT16DelegatedProof(b58.decode(j['credential'].proof))
+        proof: new BDDT16KeyedProof(b58.decode(j['credential'].proof))
       };
     }
     if (j['status'] !== undefined) {
@@ -136,12 +136,12 @@ export class DelegatedProof extends Versioned {
       }
       let cls;
       if (j['status'][TYPE_STR] === RevocationStatusProtocol.Vb22) {
-        cls = VBAccumMembershipDelegatedProof;
+        cls = VBAccumMembershipKeyedProof;
       } else if (j['status'][TYPE_STR] === RevocationStatusProtocol.KbUni24) {
         if (j['status'][REV_CHECK_STR] === MEM_CHECK_KV_STR) {
-          cls = KBUniAccumMembershipDelegatedProof;
+          cls = KBUniAccumMembershipKeyedProof;
         } else if (j['status'][REV_CHECK_STR] === NON_MEM_CHECK_KV_STR) {
-          cls = KBUniAccumNonMembershipDelegatedProof;
+          cls = KBUniAccumNonMembershipKeyedProof;
         }
       }
       status = {
@@ -151,6 +151,6 @@ export class DelegatedProof extends Versioned {
         proof: new cls(b58.decode(j['status'].proof))
       };
     }
-    return new DelegatedProof(credential, status);
+    return new KeyedProof(credential, status);
   }
 }

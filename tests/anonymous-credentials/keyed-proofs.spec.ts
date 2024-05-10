@@ -6,7 +6,7 @@ import {
   BDDT16CredentialBuilder,
   BDDT16MacSecretKey,
   CredentialSchema,
-  DelegatedProof,
+  KeyedProof,
   dockAccumulatorParams,
   ID_STR,
   initializeWasm,
@@ -38,7 +38,7 @@ import {
   verifyCred
 } from './utils';
 
-describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`, () => {
+describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, () => {
   let sk: SecretKey, pk: PublicKey;
   let skKvac: BDDT16MacSecretKey;
 
@@ -241,30 +241,30 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
     checkResult(pres.verify(pks, accumPks));
     let recreatedPres = checkPresentationJson(pres, pks, accumPks);
 
-    checkDelegatedProofs(pres);
-    checkDelegatedProofs(recreatedPres);
+    checkKeyedProofs(pres);
+    checkKeyedProofs(recreatedPres);
 
-    function checkDelegatedProofs(presentation: Presentation) {
+    function checkKeyedProofs(presentation: Presentation) {
 
       /**
-       * Check if the serialized versions of delegated proofs can be verified
+       * Check if the serialized versions of keyed proofs can be verified
        * @param verifyFunc - the function that verifier
        * @param delgCredProof
        */
-      function checkSerialized(verifyFunc, delgCredProof?: DelegatedProof) {
+      function checkSerialized(verifyFunc, delgCredProof?: KeyedProof) {
         let j = delgCredProof?.toJSON();
-        let recreated = DelegatedProof.fromJSON(j as object);
+        let recreated = KeyedProof.fromJSON(j as object);
         verifyFunc(recreated);
       }
 
-      function onlyCredProofAvailable(delgCredProof?: DelegatedProof) {
+      function onlyCredProofAvailable(delgCredProof?: KeyedProof) {
         expect(delgCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bddt16
         });
         checkResult(delgCredProof?.credential?.proof.verify(sk) as VerifyResult);
       }
 
-      function check2(delgCredProof?: DelegatedProof) {
+      function check2(delgCredProof?: KeyedProof) {
         if (!isKvac()) {
           expect(delgCredProof?.credential).not.toBeDefined();
         }
@@ -276,7 +276,7 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
         checkResult(delgCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
       }
 
-      function check3(delgCredProof?: DelegatedProof) {
+      function check3(delgCredProof?: KeyedProof) {
         expect(delgCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bddt16
         });
@@ -284,7 +284,7 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
         expect(delgCredProof?.status).not.toBeDefined();
       }
 
-      function check4(delgCredProof?: DelegatedProof) {
+      function check4(delgCredProof?: KeyedProof) {
         expect(delgCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bddt16
         });
@@ -297,7 +297,7 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
         checkResult(delgCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
       }
 
-      function check5(delgCredProof?: DelegatedProof) {
+      function check5(delgCredProof?: KeyedProof) {
         if (!isKvac()) {
           expect(delgCredProof?.credential).not.toBeDefined();
         }
@@ -309,7 +309,7 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
         checkResult(delgCredProof?.status?.proof.verify(accumulator3Sk) as VerifyResult);
       }
 
-      function check6(delgCredProof?: DelegatedProof) {
+      function check6(delgCredProof?: KeyedProof) {
         if (!isKvac()) {
           expect(delgCredProof?.credential).not.toBeDefined();
         }
@@ -321,34 +321,34 @@ describe(`Delegated proof verification with BDDT16 MAC and ${Scheme} signatures`
         checkResult(delgCredProof?.status?.proof.verify(accumulator3Sk) as VerifyResult);
       }
 
-      const delegatedProofs = presentation.getDelegatedProofs();
-      expect(delegatedProofs.size).toEqual(isKvac() ? 7 : 5);
+      const keyedProofs = presentation.getKeyedProofs();
+      expect(keyedProofs.size).toEqual(isKvac() ? 7 : 5);
 
       if (isKvac()) {
         for (let i = 0; i < 3; i++) {
-          const delgCredProof = delegatedProofs.get(i);
+          const delgCredProof = keyedProofs.get(i);
           onlyCredProofAvailable(delgCredProof);
           checkSerialized(onlyCredProofAvailable, delgCredProof);
         }
       }
 
-      const delgCredProof2 = delegatedProofs.get(1);
+      const delgCredProof2 = keyedProofs.get(1);
       check2(delgCredProof2);
       checkSerialized(check2, delgCredProof2);
 
-      const delgCredProof4 = delegatedProofs.get(3);
+      const delgCredProof4 = keyedProofs.get(3);
       check3(delgCredProof4);
       checkSerialized(check3, delgCredProof4);
 
-      const delgCredProof5 = delegatedProofs.get(4);
+      const delgCredProof5 = keyedProofs.get(4);
       check4(delgCredProof5);
       checkSerialized(check4, delgCredProof5);
 
-      const delgCredProof6 = delegatedProofs.get(5);
+      const delgCredProof6 = keyedProofs.get(5);
       check5(delgCredProof6);
       checkSerialized(check5, delgCredProof6);
 
-      const delgCredProof7 = delegatedProofs.get(6);
+      const delgCredProof7 = keyedProofs.get(6);
       check6(delgCredProof7);
       checkSerialized(check6, delgCredProof7);
     }

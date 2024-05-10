@@ -18,4 +18,4 @@ export * from './types';
 export { getR1CS } from './r1cs/file';
 export { processParsedR1CSFile } from './r1cs/file';
 export { ParsedR1CSFile } from './r1cs/file';
-export * from './delegated-proofs';
+export * from './keyed-proofs';

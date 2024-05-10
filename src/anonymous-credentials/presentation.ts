@@ -27,18 +27,18 @@ import {
   WitnessEqualityMetaStatement
 } from '../composite-proof';
 import {
-  BDDT16DelegatedProof,
-  KBUniAccumMembershipDelegatedProof,
-  KBUniAccumNonMembershipDelegatedProof,
-  VBAccumMembershipDelegatedProof
-} from '../delegated-proofs';
+  BDDT16KeyedProof,
+  KBUniAccumMembershipKeyedProof,
+  KBUniAccumNonMembershipKeyedProof,
+  VBAccumMembershipKeyedProof
+} from '../keyed-proofs';
 import { LegoVerifyingKey, LegoVerifyingKeyUncompressed } from '../legosnark';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 import { PSSignatureParams } from '../ps';
 import { Pseudonym, PseudonymBases } from '../Pseudonym';
 import { SaverCiphertext } from '../saver';
 import { flattenObjectToKeyValuesList } from '../util';
-import { DelegatedProof, IDelegatedCredentialProof, IDelegatedCredentialStatusProof } from './delegated-proof';
+import { KeyedProof, IKeyedCredentialProof, IKeyedCredentialStatusProof } from './keyed-proof';
 import {
   IBoundedPseudonymCommitKey,
   ICircomPredicate,
@@ -736,25 +736,25 @@ export class Presentation extends Versioned {
   }
 
   /**
-   * Get delegated proofs for credentials and there statuses where applicable.
+   * Get keyed proofs for credentials and there statuses where applicable.
    * @returns - The key in the returned map is the credential index
    */
-  getDelegatedProofs(): Map<number, DelegatedProof> {
-    const r = new Map<number, DelegatedProof>();
-    const delegatedProofs = this.proof.getDelegatedProofs();
+  getKeyedProofs(): Map<number, KeyedProof> {
+    const r = new Map<number, KeyedProof>();
+    const keyedProofs = this.proof.getKeyedProofs();
     let nextCredStatusStatementIdx = this.spec.credentials.length;
     for (let i = 0; i < this.spec.credentials.length; i++) {
       const presentedCred = this.spec.credentials[i];
-      let credP: IDelegatedCredentialProof | undefined, statusP: IDelegatedCredentialStatusProof | undefined;
+      let credP: IKeyedCredentialProof | undefined, statusP: IKeyedCredentialStatusProof | undefined;
 
       if (presentedCred.sigType === SignatureType.Bddt16) {
-        const proof = delegatedProofs.get(i);
+        const proof = keyedProofs.get(i);
         if (proof === undefined) {
-          throw new Error(`Could not find delegated credential proof for credential index ${i}`);
+          throw new Error(`Could not find keyed credential proof for credential index ${i}`);
         }
-        if (!(proof instanceof BDDT16DelegatedProof)) {
+        if (!(proof instanceof BDDT16KeyedProof)) {
           throw new Error(
-            `Unexpected delegated credential proof type ${proof.constructor.name} for credential index ${i}`
+            `Unexpected keyed credential proof type ${proof.constructor.name} for credential index ${i}`
           );
         }
         credP = {
@@ -768,13 +768,13 @@ export class Presentation extends Versioned {
           presentedCred.status[TYPE_STR] === RevocationStatusProtocol.Vb22 &&
           presentedCred.status[REV_CHECK_STR] === MEM_CHECK_KV_STR
         ) {
-          const proof = delegatedProofs.get(nextCredStatusStatementIdx);
+          const proof = keyedProofs.get(nextCredStatusStatementIdx);
           if (proof === undefined) {
-            throw new Error(`Could not find delegated credential status proof for credential index ${i}`);
+            throw new Error(`Could not find keyed credential status proof for credential index ${i}`);
           }
-          if (!(proof instanceof VBAccumMembershipDelegatedProof)) {
+          if (!(proof instanceof VBAccumMembershipKeyedProof)) {
             throw new Error(
-              `Unexpected delegated credential status proof type ${proof.constructor.name} for credential index ${i}`
+              `Unexpected keyed credential status proof type ${proof.constructor.name} for credential index ${i}`
             );
           }
           statusP = {
@@ -788,21 +788,21 @@ export class Presentation extends Versioned {
           (presentedCred.status[REV_CHECK_STR] === MEM_CHECK_KV_STR ||
             presentedCred.status[REV_CHECK_STR] === NON_MEM_CHECK_KV_STR)
         ) {
-          const proof = delegatedProofs.get(nextCredStatusStatementIdx);
+          const proof = keyedProofs.get(nextCredStatusStatementIdx);
           if (proof === undefined) {
-            throw new Error(`Could not find delegated credential status proof for credential index ${i}`);
+            throw new Error(`Could not find keyed credential status proof for credential index ${i}`);
           }
           if (presentedCred.status[REV_CHECK_STR] === MEM_CHECK_KV_STR) {
-            if (!(proof instanceof KBUniAccumMembershipDelegatedProof)) {
+            if (!(proof instanceof KBUniAccumMembershipKeyedProof)) {
               throw new Error(
-                `Unexpected delegated credential status proof type ${proof.constructor.name} for credential index ${i}`
+                `Unexpected keyed credential status proof type ${proof.constructor.name} for credential index ${i}`
               );
             }
           }
           if (presentedCred.status[REV_CHECK_STR] === NON_MEM_CHECK_KV_STR) {
-            if (!(proof instanceof KBUniAccumNonMembershipDelegatedProof)) {
+            if (!(proof instanceof KBUniAccumNonMembershipKeyedProof)) {
               throw new Error(
-                `Unexpected delegated credential status proof type ${proof.constructor.name} for credential index ${i}`
+                `Unexpected keyed credential status proof type ${proof.constructor.name} for credential index ${i}`
               );
             }
           }
@@ -818,7 +818,7 @@ export class Presentation extends Versioned {
       }
 
       if (credP !== undefined || statusP !== undefined) {
-        r.set(i, new DelegatedProof(credP, statusP));
+        r.set(i, new KeyedProof(credP, statusP));
       }
     }
     return r;

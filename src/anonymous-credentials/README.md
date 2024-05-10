@@ -62,11 +62,11 @@ See these [tests](../../tests/anonymous-credentials/blind-issuance.spec.ts) for 
 KVAC stands for Keyed-Verification Anonymous Credentials. Verifying them requires the secret key of the signer (issuer) or a proof 
 given by the signer unlike regular credentials where signer's public key is required. For presentations created from KVAC, 
 they can't be "fully" verified without the signer's secret key. These presentations can be considered to be composed of 2 parts, 
-one which can be verified without the secret key and the other which needs the secret key. The latter is what we call [DelegatedProof](./delegated-proof.ts) 
-as it will be delegated to the signer to verify. The expected usage of KVAC presentations is for the verifier to verify the part 
+one which can be verified without the secret key and the other which needs the secret key. The latter is what we call [KeyedProof](./keyed-proof.ts) 
+as it will be keyed to the signer to verify. The expected usage of KVAC presentations is for the verifier to verify the part 
 that does not require the usage of secret key and send the other part to the signer to verify thus making the verifications always 
 require the signer. This is useful when the signer wants to be aware of anytime its issued credential is used, eg. charging for it. 
-Note that the `DelegatedProof` does not contain any revealed attributes or predicates or unique ids so the signer cannot  
+Note that the `KeyedProof` does not contain any revealed attributes or predicates or unique ids so the signer cannot  
 learn any identifying information from it. Not all kinds of credentials support this capability and currently only 
 [BDDT16Credential](./credential.ts) supports it. Note that it does not support the `verify` method which expects signer's 
 public key but instead supports `verifyUsingValidityProof` method which requires a [BDDT16MacProofOfValidity](../bddt16-mac/mac.ts) 
@@ -75,7 +75,7 @@ and not a signature which require the secret key for verification.
 
 This principle also applies to credential revocation (`status` field) where the revocation status can only be checked by the issuer.
 
-See these [tests](../../tests/anonymous-credentials/delegated-proofs.spec.ts) for examples.
+See these [tests](../../tests/anonymous-credentials/keyed-proofs.spec.ts) for examples.
 
 *Note that lot of classes mentioned above are abstract as this project supports multiple signature schemes.* 
 

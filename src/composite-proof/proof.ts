@@ -1,7 +1,7 @@
 import {
   generateCompositeProofG1,
   generateCompositeProofG1WithDeconstructedProofSpec,
-  getAllDelegatedSubproofsFromProof,
+  getAllKeyedSubproofsFromProof,
   saverGetCiphertextFromProof,
   saverGetCiphertextsFromProof,
   verifyCompositeProofG1,
@@ -13,11 +13,11 @@ import {
   verifyCompositeProofG1WithDeconstructedProofSpec as verifyCompositeProofG1WithDeconstructedProofSpecOld
 } from 'crypto-wasm-old';
 import {
-  BDDT16DelegatedProof,
-  KBUniAccumMembershipDelegatedProof,
-  KBUniAccumNonMembershipDelegatedProof,
-  VBAccumMembershipDelegatedProof
-} from '../delegated-proofs';
+  BDDT16KeyedProof,
+  KBUniAccumMembershipKeyedProof,
+  KBUniAccumNonMembershipKeyedProof,
+  VBAccumMembershipKeyedProof
+} from '../keyed-proofs';
 import { MetaStatements, Statements } from './statement';
 import { Witnesses } from './witness';
 import { SetupParam } from './setup-param';
@@ -154,36 +154,36 @@ export class CompositeProof extends BytearrayWrapper {
   }
 
   /**
-   * Get delegated proofs from a composite proof.
+   * Get keyed proofs from a composite proof.
    * @returns - The key in the returned map is the statement index
    */
-  getDelegatedProofs(): Map<
+  getKeyedProofs(): Map<
     number,
-    | BDDT16DelegatedProof
-    | VBAccumMembershipDelegatedProof
-    | KBUniAccumMembershipDelegatedProof
-    | KBUniAccumNonMembershipDelegatedProof
+    | BDDT16KeyedProof
+    | VBAccumMembershipKeyedProof
+    | KBUniAccumMembershipKeyedProof
+    | KBUniAccumNonMembershipKeyedProof
   > {
     const r = new Map<
       number,
-      | BDDT16DelegatedProof
-      | VBAccumMembershipDelegatedProof
-      | KBUniAccumMembershipDelegatedProof
-      | KBUniAccumNonMembershipDelegatedProof
+      | BDDT16KeyedProof
+      | VBAccumMembershipKeyedProof
+      | KBUniAccumMembershipKeyedProof
+      | KBUniAccumNonMembershipKeyedProof
     >();
-    const delgProofs = getAllDelegatedSubproofsFromProof(this.value);
+    const delgProofs = getAllKeyedSubproofsFromProof(this.value);
     for (const [i, [t, v]] of delgProofs.entries()) {
       let cls;
       if (t === 0) {
-        cls = BDDT16DelegatedProof;
+        cls = BDDT16KeyedProof;
       } else if (t === 1) {
-        cls = VBAccumMembershipDelegatedProof;
+        cls = VBAccumMembershipKeyedProof;
       } else if (t === 2) {
-        cls = KBUniAccumMembershipDelegatedProof;
+        cls = KBUniAccumMembershipKeyedProof;
       } else if (t === 3) {
-        cls = KBUniAccumNonMembershipDelegatedProof;
+        cls = KBUniAccumNonMembershipKeyedProof;
       } else {
-        throw new Error(`Unknown type ${t} of delegated proof for credential index ${i}`);
+        throw new Error(`Unknown type ${t} of keyed proof for credential index ${i}`);
       }
       r.set(i, new cls(v));
     }
