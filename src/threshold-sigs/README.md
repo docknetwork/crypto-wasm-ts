@@ -10,5 +10,7 @@ There are 3 protocols to be run among signers
 3. The actual signing protocol which is run every time when messages need to be signed. Implemented [here for BBS+](./bbs-plus.ts) and [here for BBS](./bbs.ts). 
    The implementation assumes that a batch of signatures need to be produced because the protocol requires 2 rounds of communication so its better to produce many 
    signatures in just 2 rounds than having 2 round for each signature.
+   Moreover, messages need to be known only after end of round 2 so both multiple instances of these rounds can be run by the signers proactively and their 
+   output stored so that when request for a signature comes with a message, signers don't need to interact 
 
 Look at [this test](../../tests/threshold-sigs.spec.ts) for an example.

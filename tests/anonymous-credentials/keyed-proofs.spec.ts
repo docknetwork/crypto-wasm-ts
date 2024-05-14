@@ -249,76 +249,76 @@ describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, ()
       /**
        * Check if the serialized versions of keyed proofs can be verified
        * @param verifyFunc - the function that verifier
-       * @param delgCredProof
+       * @param keyedCredProof
        */
-      function checkSerialized(verifyFunc, delgCredProof?: KeyedProof) {
-        let j = delgCredProof?.toJSON();
+      function checkSerialized(verifyFunc, keyedCredProof?: KeyedProof) {
+        let j = keyedCredProof?.toJSON();
         let recreated = KeyedProof.fromJSON(j as object);
         verifyFunc(recreated);
       }
 
-      function onlyCredProofAvailable(delgCredProof?: KeyedProof) {
-        expect(delgCredProof?.credential).toMatchObject({
+      function onlyCredProofAvailable(keyedCredProof?: KeyedProof) {
+        expect(keyedCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bddt16
         });
-        checkResult(delgCredProof?.credential?.proof.verify(sk) as VerifyResult);
+        checkResult(keyedCredProof?.credential?.proof.verify(sk) as VerifyResult);
       }
 
-      function check2(delgCredProof?: KeyedProof) {
+      function check2(keyedCredProof?: KeyedProof) {
         if (!isKvac()) {
-          expect(delgCredProof?.credential).not.toBeDefined();
+          expect(keyedCredProof?.credential).not.toBeDefined();
         }
-        expect(delgCredProof?.status).toMatchObject({
+        expect(keyedCredProof?.status).toMatchObject({
           [ID_STR]: 'dock:accumulator:accumId124',
           [TYPE_STR]: RevocationStatusProtocol.Vb22,
           [REV_CHECK_STR]: MEM_CHECK_KV_STR
         });
-        checkResult(delgCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
+        checkResult(keyedCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
       }
 
-      function check3(delgCredProof?: KeyedProof) {
-        expect(delgCredProof?.credential).toMatchObject({
+      function check3(keyedCredProof?: KeyedProof) {
+        expect(keyedCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bddt16
         });
-        checkResult(delgCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
-        expect(delgCredProof?.status).not.toBeDefined();
+        checkResult(keyedCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
+        expect(keyedCredProof?.status).not.toBeDefined();
       }
 
-      function check4(delgCredProof?: KeyedProof) {
-        expect(delgCredProof?.credential).toMatchObject({
+      function check4(keyedCredProof?: KeyedProof) {
+        expect(keyedCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bddt16
         });
-        checkResult(delgCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
-        expect(delgCredProof?.status).toMatchObject({
+        checkResult(keyedCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
+        expect(keyedCredProof?.status).toMatchObject({
           [ID_STR]: 'dock:accumulator:accumId124',
           [TYPE_STR]: RevocationStatusProtocol.Vb22,
           [REV_CHECK_STR]: MEM_CHECK_KV_STR
         });
-        checkResult(delgCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
+        checkResult(keyedCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
       }
 
-      function check5(delgCredProof?: KeyedProof) {
+      function check5(keyedCredProof?: KeyedProof) {
         if (!isKvac()) {
-          expect(delgCredProof?.credential).not.toBeDefined();
+          expect(keyedCredProof?.credential).not.toBeDefined();
         }
-        expect(delgCredProof?.status).toMatchObject({
+        expect(keyedCredProof?.status).toMatchObject({
           [ID_STR]: 'dock:accumulator:accumId125',
           [TYPE_STR]: RevocationStatusProtocol.KbUni24,
           [REV_CHECK_STR]: MEM_CHECK_KV_STR
         });
-        checkResult(delgCredProof?.status?.proof.verify(accumulator3Sk) as VerifyResult);
+        checkResult(keyedCredProof?.status?.proof.verify(accumulator3Sk) as VerifyResult);
       }
 
-      function check6(delgCredProof?: KeyedProof) {
+      function check6(keyedCredProof?: KeyedProof) {
         if (!isKvac()) {
-          expect(delgCredProof?.credential).not.toBeDefined();
+          expect(keyedCredProof?.credential).not.toBeDefined();
         }
-        expect(delgCredProof?.status).toMatchObject({
+        expect(keyedCredProof?.status).toMatchObject({
           [ID_STR]: 'dock:accumulator:accumId125',
           [TYPE_STR]: RevocationStatusProtocol.KbUni24,
           [REV_CHECK_STR]: NON_MEM_CHECK_KV_STR
         });
-        checkResult(delgCredProof?.status?.proof.verify(accumulator3Sk) as VerifyResult);
+        checkResult(keyedCredProof?.status?.proof.verify(accumulator3Sk) as VerifyResult);
       }
 
       const keyedProofs = presentation.getKeyedProofs();
@@ -326,31 +326,31 @@ describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, ()
 
       if (isKvac()) {
         for (let i = 0; i < 3; i++) {
-          const delgCredProof = keyedProofs.get(i);
-          onlyCredProofAvailable(delgCredProof);
-          checkSerialized(onlyCredProofAvailable, delgCredProof);
+          const keyedCredProof = keyedProofs.get(i);
+          onlyCredProofAvailable(keyedCredProof);
+          checkSerialized(onlyCredProofAvailable, keyedCredProof);
         }
       }
 
-      const delgCredProof2 = keyedProofs.get(1);
-      check2(delgCredProof2);
-      checkSerialized(check2, delgCredProof2);
+      const keyedCredProof2 = keyedProofs.get(1);
+      check2(keyedCredProof2);
+      checkSerialized(check2, keyedCredProof2);
 
-      const delgCredProof4 = keyedProofs.get(3);
-      check3(delgCredProof4);
-      checkSerialized(check3, delgCredProof4);
+      const keyedCredProof4 = keyedProofs.get(3);
+      check3(keyedCredProof4);
+      checkSerialized(check3, keyedCredProof4);
 
-      const delgCredProof5 = keyedProofs.get(4);
-      check4(delgCredProof5);
-      checkSerialized(check4, delgCredProof5);
+      const keyedCredProof5 = keyedProofs.get(4);
+      check4(keyedCredProof5);
+      checkSerialized(check4, keyedCredProof5);
 
-      const delgCredProof6 = keyedProofs.get(5);
-      check5(delgCredProof6);
-      checkSerialized(check5, delgCredProof6);
+      const keyedCredProof6 = keyedProofs.get(5);
+      check5(keyedCredProof6);
+      checkSerialized(check5, keyedCredProof6);
 
-      const delgCredProof7 = keyedProofs.get(6);
-      check6(delgCredProof7);
-      checkSerialized(check6, delgCredProof7);
+      const keyedCredProof7 = keyedProofs.get(6);
+      check6(keyedCredProof7);
+      checkSerialized(check6, keyedCredProof7);
     }
   })
 })

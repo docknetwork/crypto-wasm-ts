@@ -9,10 +9,6 @@ import {
   VerifyResult
 } from 'crypto-wasm-new';
 import {
-  verifyCompositeProofG1 as verifyCompositeProofG1Old,
-  verifyCompositeProofG1WithDeconstructedProofSpec as verifyCompositeProofG1WithDeconstructedProofSpecOld
-} from 'crypto-wasm-old';
-import {
   BDDT16KeyedProof,
   KBUniAccumMembershipKeyedProof,
   KBUniAccumNonMembershipKeyedProof,
@@ -65,28 +61,23 @@ export class CompositeProof extends BytearrayWrapper {
    * Verify this composite proof using a `ProofSpec`
    * @param proofSpec
    * @param nonce
-   * @param useNewVersion - Whether to use the new version of the wasm library
    */
-  verify(proofSpec: ProofSpec, nonce?: Uint8Array, useNewVersion = true): VerifyResult {
-    return useNewVersion
-      ? verifyCompositeProofG1(this.value, proofSpec.value, nonce)
-      : verifyCompositeProofG1Old(this.value, proofSpec.value, nonce);
+  verify(proofSpec: ProofSpec, nonce?: Uint8Array): VerifyResult {
+    return verifyCompositeProofG1(this.value, proofSpec.value, nonce);
   }
 
   /**
    * Verify this composite proof using a `QuasiProofSpecG1`
    * @param proofSpec
    * @param nonce
-   * @param useNewVersion - Whether to use the new version of the wasm library
    */
-  verifyUsingQuasiProofSpec(proofSpec: QuasiProofSpec, nonce?: Uint8Array, useNewVersion = true): VerifyResult {
+  verifyUsingQuasiProofSpec(proofSpec: QuasiProofSpec, nonce?: Uint8Array): VerifyResult {
     return this.verifyWithDeconstructedProofSpec(
       proofSpec.statements,
       proofSpec.metaStatements,
       proofSpec.setupParams,
       proofSpec.context,
-      nonce,
-      useNewVersion
+      nonce
     );
   }
 
@@ -130,27 +121,17 @@ export class CompositeProof extends BytearrayWrapper {
     metaStatements: MetaStatements,
     setupParams?: SetupParam[],
     context?: Uint8Array,
-    nonce?: Uint8Array,
-    useNewVersion = true
+    nonce?: Uint8Array
   ): VerifyResult {
     const params = (setupParams ?? new Array<SetupParam>()).map((s) => s.value);
-    return useNewVersion
-      ? verifyCompositeProofG1WithDeconstructedProofSpec(
-          this.value,
-          statements.values,
-          metaStatements.values,
-          params,
-          context,
-          nonce
-        )
-      : verifyCompositeProofG1WithDeconstructedProofSpecOld(
-          this.value,
-          statements.values,
-          metaStatements.values,
-          params,
-          context,
-          nonce
-        );
+    return verifyCompositeProofG1WithDeconstructedProofSpec(
+      this.value,
+      statements.values,
+      metaStatements.values,
+      params,
+      context,
+      nonce
+    );
   }
 
   /**
@@ -171,8 +152,8 @@ export class CompositeProof extends BytearrayWrapper {
       | KBUniAccumMembershipKeyedProof
       | KBUniAccumNonMembershipKeyedProof
     >();
-    const delgProofs = getAllKeyedSubproofsFromProof(this.value);
-    for (const [i, [t, v]] of delgProofs.entries()) {
+    const keyedProofs = getAllKeyedSubproofsFromProof(this.value);
+    for (const [i, [t, v]] of keyedProofs.entries()) {
       let cls;
       if (t === 0) {
         cls = BDDT16KeyedProof;

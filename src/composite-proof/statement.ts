@@ -56,14 +56,6 @@ import {
   generateKBUniversalAccumulatorNonMembershipVerifierStatement,
   generateKBUniversalAccumulatorNonMembershipVerifierStatementFromParamRefs
 } from 'crypto-wasm-new';
-// import { generatePoKBBSSignatureStatement, generatePoKBBSPlusSignatureStatement, generatePoKBBSSignatureStatementFromParamRefs, generatePoKBBSPlusSignatureStatementFromParamRefs } from 'crypto-wasm-old/lib/composite_proof_system_wasm';
-// @ts-ignore
-import {
-  generatePoKBBSSignatureStatement,
-  generatePoKBBSPlusSignatureStatement,
-  generatePoKBBSSignatureStatementFromParamRefs,
-  generatePoKBBSPlusSignatureStatementFromParamRefs
-} from 'crypto-wasm-old';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
   getChunkBitSize,
@@ -131,15 +123,6 @@ export class Statement {
     return generatePedersenCommitmentG1StatementFromParamRefs(commitmentKeyRef, commitment);
   }
 
-  static bbsSignatureOld(
-    sigParams: BBSSignatureParams,
-    publicKey: BBSPlusPublicKeyG2,
-    revealedMessages: Map<number, Uint8Array>,
-    encodeMessages: boolean
-  ): Uint8Array {
-    return generatePoKBBSSignatureStatement(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
-  }
-
   static bbsSignatureProver(
     sigParams: BBSSignatureParams,
     revealedMessages: Map<number, Uint8Array>,
@@ -162,15 +145,6 @@ export class Statement {
     encodeMessages: boolean
   ): Uint8Array {
     return generatePoKBBSSignatureVerifierStatement(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
-  }
-
-  static bbsPlusSignatureOld(
-    sigParams: BBSPlusSignatureParamsG1,
-    publicKey: BBSPlusPublicKeyG2,
-    revealedMessages: Map<number, Uint8Array>,
-    encodeMessages: boolean
-  ): Uint8Array {
-    return generatePoKBBSPlusSignatureStatement(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
   }
 
   static bbsPlusSignatureProver(
@@ -229,15 +203,6 @@ export class Statement {
     return generatePoKBBSSignatureProverStatementFromParamRefs(sigParamsRef, revealedMessages, encodeMessages);
   }
 
-  static bbsSignatureFromSetupParamRefsOld(
-    sigParamsRef: number,
-    publicKeyRef: number,
-    revealedMessages: Map<number, Uint8Array>,
-    encodeMessages: boolean
-  ): Uint8Array {
-    return generatePoKBBSSignatureStatementFromParamRefs(sigParamsRef, publicKeyRef, revealedMessages, encodeMessages);
-  }
-
   /**
    * Same as `Statement.bbsSignatureVerifier` but does not take the parameters directly but a reference to them as indices in the
    * array of `SetupParam`
@@ -260,19 +225,6 @@ export class Statement {
     );
   }
 
-  static bbsPlusSignatureFromSetupParamRefsOld(
-    sigParamsRef: number,
-    publicKeyRef: number,
-    revealedMessages: Map<number, Uint8Array>,
-    encodeMessages: boolean
-  ): Uint8Array {
-    return generatePoKBBSPlusSignatureStatementFromParamRefs(
-      sigParamsRef,
-      publicKeyRef,
-      revealedMessages,
-      encodeMessages
-    );
-  }
 
   static bbsPlusSignatureProverFromSetupParamRefs(
     sigParamsRef: number,

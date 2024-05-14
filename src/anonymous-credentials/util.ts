@@ -1,5 +1,4 @@
 import { flatten } from 'flat';
-import { AccumulatorPublicKey, AccumulatorSecretKey } from '../accumulator';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
@@ -17,7 +16,6 @@ import {
 } from '../saver';
 import { SetupParamsTracker } from './setup-params-tracker';
 import {
-  AccumulatorVerificationParam,
   AttributeEquality,
   AttributeRef,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
@@ -25,13 +23,9 @@ import {
   BDDT16_MAC_PARAMS_LABEL_BYTES,
   CredentialVerificationParam,
   FlattenedSchema,
-  MEM_CHECK_KV_STR,
-  MEM_CHECK_STR,
-  NON_MEM_CHECK_KV_STR,
   PredicateParamType,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
   PublicKey,
-  RevocationStatusProtocol,
   Signature,
   SignatureParams,
   SignatureParamsClass
@@ -193,7 +187,6 @@ export function buildSignatureVerifierStatementFromParamsRef(
   messageCount: number,
   revealedMessages: Map<number, Uint8Array>,
   credVerParam?: CredentialVerificationParam,
-  useNewVersion = true
 ): Uint8Array {
   let setupSigP: SetupParam,
     setupPK: SetupParam | undefined,
@@ -221,16 +214,12 @@ export function buildSignatureVerifierStatementFromParamsRef(
     case BBSSignatureParams:
       setupSigP = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount) as BBSSignatureParams);
       setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(getPk());
-      buildStatement = useNewVersion
-        ? Statement.bbsSignatureVerifierFromSetupParamRefs
-        : Statement.bbsSignatureFromSetupParamRefsOld;
+      buildStatement = Statement.bbsSignatureVerifierFromSetupParamRefs;
       return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
     case BBSPlusSignatureParamsG1:
       setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(getPk());
       setupSigP = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount) as BBSPlusSignatureParamsG1);
-      buildStatement = useNewVersion
-        ? Statement.bbsPlusSignatureVerifierFromSetupParamRefs
-        : Statement.bbsPlusSignatureFromSetupParamRefsOld;
+      buildStatement = Statement.bbsPlusSignatureVerifierFromSetupParamRefs;
       return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
     case PSSignatureParams:
       let psPK = getPk() as PSPublicKey;

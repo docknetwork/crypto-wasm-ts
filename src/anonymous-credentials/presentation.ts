@@ -214,7 +214,6 @@ export class Presentation extends Versioned {
     const setupParamsTrk = new SetupParamsTracker();
     const sigParamsByScheme = new Map();
 
-    const versionGt5 = semver.gt(this.version, '0.5.0');
     const versionGt6 = semver.gt(this.version, '0.6.0');
 
     for (let credIndex = 0; credIndex < this.spec.credentials.length; credIndex++) {
@@ -268,7 +267,6 @@ export class Presentation extends Versioned {
         numAttribs,
         revealedEncoded,
         credVerifParams.get(credIndex),
-        versionGt5
       );
       statements.add(statement);
       flattenedSchemas.push(flattenedSchema);
@@ -732,7 +730,7 @@ export class Presentation extends Versioned {
 
     const ctx = buildContextForProof(this.version, this.spec, this.context);
     const proofSpec = new QuasiProofSpec(statements, metaStatements, setupParamsTrk.setupParams, ctx);
-    return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce, versionGt5);
+    return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce);
   }
 
   /**

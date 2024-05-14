@@ -19,9 +19,6 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
   const fileNamePrefix = Scheme.toLowerCase();
   const chunkBitSize = 16;
 
-  // For skipping older tests before introducing KVAC
-  const skipIfKvac = isKvac() ? it.skip : it;
-
   beforeAll(async () => {
     await initializeWasm();
   });
@@ -180,32 +177,6 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     expect(pres2Json).toEqual(pres2.toJSON());
   }
 
-  skipIfKvac('check version 0.1.0', () => {
-    check('0.0.2', '0.1.0', 'bound-check-legogroth16-vk');
-  });
-
-  skipIfKvac('check version 0.1.0 with circom predicates', async () => {
-    await checkCircom('0.1.0', 'circom-set_membership_5_public-vk');
-  });
-
-  skipIfKvac('check version 0.4.0', () => {
-    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
-    check('0.4.0', '0.4.0', 'bound-check-legogroth16-vk2');
-  });
-
-  skipIfKvac('check version 0.4.0 with circom predicates', async () => {
-    await checkCircom('0.4.0', 'circom-set_membership_5_public-2-vk');
-  });
-
-  skipIfKvac('check version 0.5.0', () => {
-    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
-    check('0.4.0', '0.5.0', 'bound-check-legogroth16-vk2');
-  });
-
-  skipIfKvac('check version 0.5.0 with circom predicates', async () => {
-    await checkCircom('0.5.0', 'circom-set_membership_5_public-2-vk');
-  });
-
   it('check version 0.6.0', () => {
     // Legosnark keys changed due type of certain values changed from `u64` to `u32`
     check('0.4.0', '0.6.0', 'bound-check-legogroth16-vk2');
@@ -213,5 +184,10 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
 
   it('check version 0.6.0 with circom predicates', async () => {
     await checkCircom('0.6.0', 'circom-set_membership_5_public-2-vk');
+  });
+
+  it('check version 0.7.0', () => {
+    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
+    check('0.4.0', '0.7.0', 'bound-check-legogroth16-vk2');
   });
 });

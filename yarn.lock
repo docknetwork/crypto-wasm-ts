@@ -1516,13 +1516,6 @@ cross-spawn@^7.0.2, cross-spawn@^7.0.3:
   dependencies:
     buffer "^6.0.3"
 
-"crypto-wasm-old@npm:@docknetwork/crypto-wasm@0.23.0":
-  version "0.23.0"
-  resolved "https://registry.yarnpkg.com/@docknetwork/crypto-wasm/-/crypto-wasm-0.23.0.tgz#5ae04db0f7990fb6fc9c7ad3f0a1cb7255518169"
-  integrity sha512-/bDSy05HkIZIZL9HDHowjCKxTDf9Cf04e1ElIY0o/q9ewbxHQ4/r8Ppv5V5bOnVkxcFG9lWQQstKXQDV86UWRw==
-  dependencies:
-    buffer "^6.0.3"
-
 data-uri-to-buffer@^4.0.0:
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/data-uri-to-buffer/-/data-uri-to-buffer-4.0.0.tgz#b5db46aea50f6176428ac05b73be39a57701a64b"
