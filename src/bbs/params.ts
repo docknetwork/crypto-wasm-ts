@@ -1,4 +1,4 @@
-import { bbsCommitMsgs } from 'crypto-wasm-new';
+import { bbsCommitMsgs, bbsCommitMsgsConstantTime } from 'crypto-wasm-new';
 import {
   bbsGenerateSignatureParams,
   bbsSignatureParamsToBytes,
@@ -38,6 +38,10 @@ export class BBSSignatureParams implements ISignatureParams {
    */
   commitToMessages(messageToCommit: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
     return bbsCommitMsgs(messageToCommit, this.value, encodeMessages);
+  }
+
+  commitToMessagesConstantTime(messageToCommit: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
+    return bbsCommitMsgsConstantTime(messageToCommit, this.value, encodeMessages);
   }
 
   toBytes(): Uint8Array {

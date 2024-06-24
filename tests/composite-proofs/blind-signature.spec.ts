@@ -89,7 +89,7 @@ describe(`${Scheme} Getting a blind signature, i.e. signature where signer is no
       : BlindSignature.fromRequest(request, sk, params);
 
     // User unblind the signature
-    const sig = isPS() ? blindSig.unblind(blindings, pk) : isBBS() ? blindSig : blindSig.unblind(blinding);
+    const sig = isPS() ? blindSig.unblind(blindings, pk, h) : isBBS() ? blindSig : blindSig.unblind(blinding);
 
     // Combine blinded and revealed messages in an array
     const messages = Array(blindedMessages.size + revealedMessages.size);

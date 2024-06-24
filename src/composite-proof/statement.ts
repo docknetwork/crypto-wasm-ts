@@ -54,7 +54,21 @@ import {
   generateKBUniversalAccumulatorMembershipVerifierStatementFromParamRefs,
   generateKBUniversalAccumulatorNonMembershipProverStatement,
   generateKBUniversalAccumulatorNonMembershipVerifierStatement,
-  generateKBUniversalAccumulatorNonMembershipVerifierStatementFromParamRefs
+  generateKBUniversalAccumulatorNonMembershipVerifierStatementFromParamRefs,
+  generatePoKBBSSignatureProverStatementConstantTime,
+  generatePoKBBSSignatureVerifierStatementConstantTime,
+  generatePoKBBSPlusSignatureProverStatementConstantTime,
+  generatePoKBBSPlusSignatureVerifierStatementConstantTime,
+  generatePoKPSSignatureStatementConstantTime,
+  generatePoKBBSSignatureProverStatementFromParamRefsConstantTime,
+  generatePoKBBSSignatureVerifierStatementFromParamRefsConstantTime,
+  generatePoKBBSPlusSignatureProverStatementFromParamRefsConstantTime,
+  generatePoKBBSPlusSignatureVerifierStatementFromParamRefsConstantTime,
+  generatePoKBDDT16MacStatementConstantTime,
+  generatePoKBDDT16MacFullVerifierStatementConstantTime,
+  generatePoKBDDT16MacStatementFromParamRefsConstantTime,
+  generatePoKBDDT16MacFullVerifierStatementFromParamRefsConstantTime,
+  generatePoKPSSignatureStatementFromParamRefsConstantTime
 } from 'crypto-wasm-new';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import {
@@ -123,6 +137,12 @@ export class Statement {
     return generatePedersenCommitmentG1StatementFromParamRefs(commitmentKeyRef, commitment);
   }
 
+  /**
+   * Create statement for proving knowledge of BBS signature
+   * @param sigParams
+   * @param revealedMessages
+   * @param encodeMessages
+   */
   static bbsSignatureProver(
     sigParams: BBSSignatureParams,
     revealedMessages: Map<number, Uint8Array>,
@@ -133,6 +153,20 @@ export class Statement {
 
   /**
    * Create statement for proving knowledge of BBS signature
+   * @param sigParams
+   * @param revealedMessages
+   * @param encodeMessages
+   */
+  static bbsSignatureProverConstantTime(
+    sigParams: BBSSignatureParams,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSSignatureProverStatementConstantTime(sigParams.value, revealedMessages, encodeMessages);
+  }
+
+  /**
+   * Create statement for verifying knowledge of BBS signature
    * @param sigParams
    * @param publicKey
    * @param revealedMessages
@@ -147,6 +181,28 @@ export class Statement {
     return generatePoKBBSSignatureVerifierStatement(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
   }
 
+  /**
+   * Create statement for verifying knowledge of BBS signature
+   * @param sigParams
+   * @param publicKey
+   * @param revealedMessages
+   * @param encodeMessages
+   */
+  static bbsSignatureVerifierConstantTime(
+    sigParams: BBSSignatureParams,
+    publicKey: BBSPlusPublicKeyG2,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSSignatureVerifierStatementConstantTime(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
+  }
+
+  /**
+   * Create statement for proving knowledge of BBS+ signature
+   * @param sigParams
+   * @param revealedMessages
+   * @param encodeMessages
+   */
   static bbsPlusSignatureProver(
     sigParams: BBSPlusSignatureParamsG1,
     revealedMessages: Map<number, Uint8Array>,
@@ -157,6 +213,20 @@ export class Statement {
 
   /**
    * Create statement for proving knowledge of BBS+ signature
+   * @param sigParams
+   * @param revealedMessages
+   * @param encodeMessages
+   */
+  static bbsPlusSignatureProverConstantTime(
+    sigParams: BBSPlusSignatureParamsG1,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSPlusSignatureProverStatementConstantTime(sigParams.value, revealedMessages, encodeMessages);
+  }
+
+  /**
+   * Create statement for verifying knowledge of BBS+ signature
    * @param sigParams
    * @param publicKey
    * @param revealedMessages
@@ -169,6 +239,27 @@ export class Statement {
     encodeMessages: boolean
   ): Uint8Array {
     return generatePoKBBSPlusSignatureVerifierStatement(
+      sigParams.value,
+      publicKey.value,
+      revealedMessages,
+      encodeMessages
+    );
+  }
+
+  /**
+   * Create statement for verifying knowledge of BBS+ signature
+   * @param sigParams
+   * @param publicKey
+   * @param revealedMessages
+   * @param encodeMessages
+   */
+  static bbsPlusSignatureVerifierConstantTime(
+    sigParams: BBSPlusSignatureParamsG1,
+    publicKey: BBSPlusPublicKeyG2,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSPlusSignatureVerifierStatementConstantTime(
       sigParams.value,
       publicKey.value,
       revealedMessages,
@@ -195,12 +286,53 @@ export class Statement {
     return generatePoKPSSignatureStatement(sigParams.value, publicKey.value, revealedMessages);
   }
 
+  /**
+   * Create statement for proving knowledge of Pointcheval-Sanders signature
+   * @param sigParams
+   * @param publicKey
+   * @param revealedMessages
+   */
+  static psSignatureConstantTime(
+    sigParams: PSSignatureParams,
+    publicKey: PSPublicKey,
+    revealedMessages: Map<number, Uint8Array>
+  ): Uint8Array {
+    if (sigParams.supportedMessageCount() !== publicKey.supportedMessageCount()) {
+      throw new Error(
+        `Public key is incompatible with signature params: public key supports ${publicKey.supportedMessageCount()} messages while signature params support ${sigParams.supportedMessageCount()}`
+      );
+    }
+    return generatePoKPSSignatureStatementConstantTime(sigParams.value, publicKey.value, revealedMessages);
+  }
+
+  /**
+   * Same as `Statement.bbsSignatureProver` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param sigParamsRef
+   * @param revealedMessages
+   * @param encodeMessages
+   */
   static bbsSignatureProverFromSetupParamRefs(
     sigParamsRef: number,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
     return generatePoKBBSSignatureProverStatementFromParamRefs(sigParamsRef, revealedMessages, encodeMessages);
+  }
+
+  /**
+   * Same as `Statement.bbsSignatureProver` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param sigParamsRef
+   * @param revealedMessages
+   * @param encodeMessages
+   */
+  static bbsSignatureProverFromSetupParamRefsConstantTime(
+    sigParamsRef: number,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSSignatureProverStatementFromParamRefsConstantTime(sigParamsRef, revealedMessages, encodeMessages);
   }
 
   /**
@@ -225,13 +357,56 @@ export class Statement {
     );
   }
 
+  /**
+   * Same as `Statement.bbsSignatureVerifier` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param sigParamsRef
+   * @param publicKeyRef
+   * @param revealedMessages
+   * @param encodeMessages
+   */
+  static bbsSignatureVerifierFromSetupParamRefsConstantTime(
+    sigParamsRef: number,
+    publicKeyRef: number,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSSignatureVerifierStatementFromParamRefsConstantTime(
+      sigParamsRef,
+      publicKeyRef,
+      revealedMessages,
+      encodeMessages
+    );
+  }
 
+  /**
+   * Same as `Statement.bbsPlusSignatureProver` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param sigParamsRef
+   * @param revealedMessages
+   * @param encodeMessages
+   */
   static bbsPlusSignatureProverFromSetupParamRefs(
     sigParamsRef: number,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
     return generatePoKBBSPlusSignatureProverStatementFromParamRefs(sigParamsRef, revealedMessages, encodeMessages);
+  }
+
+  /**
+   * Same as `Statement.bbsPlusSignatureProver` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param sigParamsRef
+   * @param revealedMessages
+   * @param encodeMessages
+   */
+  static bbsPlusSignatureProverFromSetupParamRefsConstantTime(
+    sigParamsRef: number,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSPlusSignatureProverStatementFromParamRefsConstantTime(sigParamsRef, revealedMessages, encodeMessages);
   }
 
   /**
@@ -256,12 +431,42 @@ export class Statement {
     );
   }
 
+  /**
+   * Same as `Statement.bbsPlusSignatureVerifier` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param sigParamsRef
+   * @param publicKeyRef
+   * @param revealedMessages
+   * @param encodeMessages
+   */
+  static bbsPlusSignatureVerifierFromSetupParamRefsConstantTime(
+    sigParamsRef: number,
+    publicKeyRef: number,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSPlusSignatureVerifierStatementFromParamRefsConstantTime(
+      sigParamsRef,
+      publicKeyRef,
+      revealedMessages,
+      encodeMessages
+    );
+  }
+
   static bddt16Mac(
     macParams: BDDT16MacParams,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
     return generatePoKBDDT16MacStatement(macParams.value, revealedMessages, encodeMessages);
+  }
+
+  static bddt16MacConstantTime(
+    macParams: BDDT16MacParams,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBDDT16MacStatementConstantTime(macParams.value, revealedMessages, encodeMessages);
   }
 
   static bddt16MacFullVerifier(
@@ -278,12 +483,34 @@ export class Statement {
     );
   }
 
+  static bddt16MacFullVerifierConstantTime(
+    macParams: BDDT16MacParams,
+    secretKey: BDDT16MacSecretKey,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBDDT16MacFullVerifierStatementConstantTime(
+      macParams.value,
+      secretKey.value,
+      revealedMessages,
+      encodeMessages
+    );
+  }
+
   static bddt16MacFromSetupParamRefs(
     macParamsRef: number,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
     return generatePoKBDDT16MacStatementFromParamRefs(macParamsRef, revealedMessages, encodeMessages);
+  }
+
+  static bddt16MacFromSetupParamRefsConstantTime(
+    macParamsRef: number,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBDDT16MacStatementFromParamRefsConstantTime(macParamsRef, revealedMessages, encodeMessages);
   }
 
   static bddt16MacFullVerifierFromSetupParamRefs(
@@ -293,6 +520,20 @@ export class Statement {
     encodeMessages: boolean
   ): Uint8Array {
     return generatePoKBDDT16MacFullVerifierStatementFromParamRefs(
+      macParamsRef,
+      secretKey.value,
+      revealedMessages,
+      encodeMessages
+    );
+  }
+
+  static bddt16MacFullVerifierFromSetupParamRefsConstantTime(
+    macParamsRef: number,
+    secretKey: BDDT16MacSecretKey,
+    revealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBDDT16MacFullVerifierStatementFromParamRefsConstantTime(
       macParamsRef,
       secretKey.value,
       revealedMessages,
@@ -313,6 +554,21 @@ export class Statement {
     revealedMessages: Map<number, Uint8Array>
   ): Uint8Array {
     return generatePoKPSSignatureStatementFromParamRefs(sigParamsRef, publicKeyRef, revealedMessages);
+  }
+
+  /**
+   * Same as `Statement.psSignature` but does not take the parameters directly but a reference to them as indices in the
+   * array of `SetupParam`
+   * @param sigParamsRef
+   * @param publicKeyRef
+   * @param revealedMessages
+   */
+  static psSignatureFromSetupParamRefsConstantTime(
+    sigParamsRef: number,
+    publicKeyRef: number,
+    revealedMessages: Map<number, Uint8Array>
+  ): Uint8Array {
+    return generatePoKPSSignatureStatementFromParamRefsConstantTime(sigParamsRef, publicKeyRef, revealedMessages);
   }
 
   /**

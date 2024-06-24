@@ -887,10 +887,11 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       msgs: Uint8Array[],
       pk: PublicKey,
       sk: SecretKey,
-      sigParams: SignatureParams
+      sigParams: SignatureParams,
+      h?: Uint8Array
     ): [Signature, Uint8Array[]] {
       const revealed = isPS()
-        ? blindedSig.unblind(blindings, pk)
+        ? blindedSig.unblind(blindings, pk, h as Uint8Array)
         : isBBS()
         ? blindedSig
         : blindedSig.unblind(blinding);
@@ -955,7 +956,8 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       holderAttrs1,
       Issuer1Pk,
       Issuer1Sk,
-      Issuer12SigParams
+      Issuer12SigParams,
+      h
     );
     // Holder checks that attribute at index 1 is in the accumulator
     const memCheck1 = Accum1.verifyMembershipWitness(
@@ -1033,7 +1035,8 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       holderMessages2,
       Issuer2Pk,
       Issuer2Sk,
-      Issuer12SigParams
+      Issuer12SigParams,
+      h
     );
     const memCheck2 = Accum2.verifyMembershipWitness(revocationId2, membershipWitness2, Accum2Pk, Accum2Params);
     if (!memCheck2) {
@@ -1121,7 +1124,8 @@ describe(`A demo showing combined use of ${Scheme} signatures and accumulators u
       holderMessages3,
       Issuer3Pk,
       Issuer3Sk,
-      Issuer3SigParams
+      Issuer3SigParams,
+      h
     );
     const memCheck3 = Accum3.verifyMembershipWitness(revocationId3, membershipWitness3, Accum3Pk);
     if (!memCheck3) {

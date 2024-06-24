@@ -14,7 +14,11 @@ import {
   generatePublicInequalityWitness,
   generatePoKBDDT16MacWitness,
   generateKBUniversalAccumulatorNonMembershipWitness,
-  generateKBUniversalAccumulatorMembershipWitness
+  generateKBUniversalAccumulatorMembershipWitness,
+  generatePoKPSSignatureWitnessConstantTime,
+  generatePoKBBSSignatureWitnessConstantTime,
+  generatePoKBBSPlusSignatureWitnessConstantTime,
+  generatePoKBDDT16MacWitnessConstantTime
 } from 'crypto-wasm-new';
 import { KBUniversalMembershipWitness, KBUniversalNonMembershipWitness } from '../accumulator/kb-acccumulator-witness';
 import { BBSPlusSignatureG1 } from '../bbs-plus';
@@ -46,6 +50,15 @@ export class Witness {
   }
 
   /**
+   * Signature and messages of PS signature
+   * @param signature
+   * @param unrevealedMessages
+   */
+  static psSignatureConstantTime(signature: PSSignature, unrevealedMessages: Map<number, Uint8Array>): Uint8Array {
+    return generatePoKPSSignatureWitnessConstantTime(signature.value, unrevealedMessages);
+  }
+
+  /**
    * Signature and messages of BBS signature
    * @param signature
    * @param unrevealedMessages
@@ -57,6 +70,20 @@ export class Witness {
     encodeMessages: boolean
   ): Uint8Array {
     return generatePoKBBSSignatureWitness(signature.value, unrevealedMessages, encodeMessages);
+  }
+
+  /**
+   * Signature and messages of BBS signature
+   * @param signature
+   * @param unrevealedMessages
+   * @param encodeMessages
+   */
+  static bbsSignatureConstantTime(
+    signature: BBSSignature,
+    unrevealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSSignatureWitnessConstantTime(signature.value, unrevealedMessages, encodeMessages);
   }
 
   /**
@@ -73,8 +100,26 @@ export class Witness {
     return generatePoKBBSPlusSignatureWitness(signature.value, unrevealedMessages, encodeMessages);
   }
 
+  /**
+   * Signature and messages of BBS+ signature
+   * @param signature
+   * @param unrevealedMessages
+   * @param encodeMessages
+   */
+  static bbsPlusSignatureConstantTime(
+    signature: BBSPlusSignatureG1,
+    unrevealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
+    return generatePoKBBSPlusSignatureWitnessConstantTime(signature.value, unrevealedMessages, encodeMessages);
+  }
+
   static bddt16Mac(mac: BDDT16Mac, unrevealedMessages: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
     return generatePoKBDDT16MacWitness(mac.value, unrevealedMessages, encodeMessages);
+  }
+
+  static bddt16MacConstantTime(mac: BDDT16Mac, unrevealedMessages: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
+    return generatePoKBDDT16MacWitnessConstantTime(mac.value, unrevealedMessages, encodeMessages);
   }
 
   /**

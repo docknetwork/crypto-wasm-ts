@@ -3,7 +3,7 @@ import {
   bddt16GenerateMacParams,
   bddt16IsMacParamsValid,
   bddt16MacAdaptParamsForMsgCount,
-  bddt16MacCommitMsgs,
+  bddt16MacCommitMsgs, bddt16MacCommitMsgsConstantTime,
   Bddt16MacParams,
   bddt16MacParamsFromBytes,
   bddt16MacParamsToBytes,
@@ -107,6 +107,21 @@ export class BDDT16MacParams implements ISignatureParams {
     blinding: Uint8Array = generateRandomFieldElement()
   ): [Uint8Array, Uint8Array] {
     const commitment = bddt16MacCommitMsgs(messageToCommit, blinding, this.value, encodeMessages);
+    return [commitment, blinding];
+  }
+
+  /**
+   * Commit to given messages and return the pair [blinding, commitment]
+   * @param messageToCommit
+   * @param encodeMessages
+   * @param blinding - If not provided, a random blinding is generated
+   */
+  commitToMessagesConstantTime(
+    messageToCommit: Map<number, Uint8Array>,
+    encodeMessages: boolean,
+    blinding: Uint8Array = generateRandomFieldElement()
+  ): [Uint8Array, Uint8Array] {
+    const commitment = bddt16MacCommitMsgsConstantTime(messageToCommit, blinding, this.value, encodeMessages);
     return [commitment, blinding];
   }
 

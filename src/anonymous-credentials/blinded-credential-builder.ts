@@ -18,7 +18,7 @@ import { BDDT16BlindMac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-m
 export abstract class BlindedCredentialBuilder extends CredentialBuilderCommon {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.3.0';
+  static VERSION = '0.4.0';
 
   blindedCredReq: IBlindCredentialRequest;
 

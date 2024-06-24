@@ -196,7 +196,7 @@ describe(`${Scheme} Requesting blind signatures`, () => {
 
       // User unblinds the blind signature
       const revealedSig = isPS()
-        ? blindSignature.signature.unblind(blindings, sigPk)
+        ? blindSignature.signature.unblind(blindings, sigPk, h)
         : isBBS()
         ? new BBSSignature(blindSignature.signature.value)
         : blindSignature.signature.unblind(blinding);

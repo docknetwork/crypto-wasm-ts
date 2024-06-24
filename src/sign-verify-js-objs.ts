@@ -8,7 +8,7 @@ import { BBSBlindSignatureRequest, BBSSignatureParams } from './bbs';
 import { PSBlindSignatureRequest, PSSignatureParams } from './ps';
 import { Witness } from './composite-proof/witness';
 import { ISignatureParams, MessageStructure } from './types';
-import { encodeMessageForSigning } from 'crypto-wasm-new';
+import { encodeMessageForSigningInConstantTime } from 'crypto-wasm-new';
 import { BDDT16BlindMacRequest, BDDT16MacParams } from './bddt16-mac';
 
 export function flattenMessageStructure(msgStructure: MessageStructure): object {
@@ -39,7 +39,7 @@ export function encodeRevealedMessageObject(
   encoder: Encoder
 ): { encodedByName: { [key: string]: Uint8Array }; encodedByIndex: Map<number, Uint8Array>; total: number } {
   const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
-  const encodedByName = encoder.encodeMessageObjectAsObject(revealedMessages);
+  const encodedByName = encoder.encodeMessageObjectAsObjectConstantTime(revealedMessages);
 
   const encodedByIndex = new Map<number, Uint8Array>();
   flattenedAllNames.forEach((n, i) => {
@@ -69,6 +69,7 @@ export function encodeRevealedMessageObject(
 
 /**
  * Gives `SignatureParams` that can sign `msgCount` number of messages.
+ * @param SignatureParamsClass
  * @param msgCount
  * @param labelOrParams
  */
@@ -351,7 +352,7 @@ export function getBlindedIndicesAndRevealedMessages(
   if (revealedMessages) {
     encodedRevealedMessages = new Map();
     for (const [idx, msg] of revealedMessages) {
-      encodedRevealedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
+      encodedRevealedMessages.set(idx, encodeMessages ? encodeMessageForSigningInConstantTime(msg) : msg);
     }
   }
   blindedIndices.sort((a, b) => a - b);

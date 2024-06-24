@@ -1,4 +1,9 @@
-import { encodeMessageForSigning, fieldElementAsBytes, generateFieldElementFromNumber } from 'crypto-wasm-new';
+import {
+  encodeMessageForSigning,
+  encodeMessageForSigningInConstantTime,
+  fieldElementAsBytes,
+  generateFieldElementFromNumber
+} from 'crypto-wasm-new';
 import { convertDateToTimestamp, flattenObjectToKeyValuesList, isPositiveInteger } from './util';
 import LZUTF8 from 'lzutf8';
 import { BytearrayWrapper } from './bytearray-wrapper';
@@ -29,6 +34,15 @@ export abstract class MessageEncoder extends BytearrayWrapper {
    */
   static encodeMessageForSigning(message: Uint8Array): Uint8Array {
     return encodeMessageForSigning(message);
+  }
+
+  /**
+   * This is an irreversible encoding as a hash function is used to convert a message of
+   * arbitrary length to a fixed length encoding.
+   * @param message
+   */
+  static encodeMessageForSigningConstantTime(message: Uint8Array): Uint8Array {
+    return encodeMessageForSigningInConstantTime(message);
   }
 
   /**
@@ -124,8 +138,9 @@ export class Encoder {
    * @param name
    * @param value
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   * @param encodingFunc
    */
-  encodeMessage(name: string, value: unknown, strict = false): Uint8Array {
+  private _encodeMessage(name: string, value: unknown, strict = false, encodingFunc: (value: Uint8Array) => Uint8Array): Uint8Array {
     const encoder = this.encoders?.get(name) || this.defaultEncoder;
     if (encoder !== undefined) {
       if (typeof value === undefined) {
@@ -134,7 +149,7 @@ export class Encoder {
       return encoder(value);
     } else {
       if (!strict && value instanceof Uint8Array) {
-        return MessageEncoder.encodeMessageForSigning(value);
+        return encodingFunc(value);
       } else {
         throw new Error(
           `Cannot encode message with name ${name} and value ${value} as neither was any encoder provided nor it was an Uint8Array. Its type was ${typeof value}`
@@ -147,16 +162,101 @@ export class Encoder {
    * Encode messages given as JS object. It flattens the object into a sorted list and encodes each value as per the known
    * encoding functions.
    * Returns 2 arrays, 1st with message names and 2nd with encoded values.
+   * @param encodingFunc
+   * @param messages
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   */
+  private _encodeMessageObject(encodingFunc: (name: string, value: unknown, strict: boolean) => Uint8Array, messages: object, strict = false): [string[], Uint8Array[]] {
+    const [names, values] = flattenObjectToKeyValuesList(messages);
+    const encoded: Uint8Array[] = [];
+    for (let i = 0; i < names.length; i++) {
+      encoded.push(encodingFunc.call(this, names[i], values[i], strict));
+    }
+    return [names, encoded];
+  }
+
+  /**
+   * Encode messages given as JS object. It flattens the object into a sorted list and encodes each value as per the known
+   * encoding functions.
+   * Returns an object with names as keys and encoded messages as values.
+   * @param encodingFunc
+   * @param messages
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   */
+  private _encodeMessageObjectAsObject(encodingFunc: (messages: object, strict: boolean) => [string[], Uint8Array[]], messages: object, strict = false): { [name: string]: Uint8Array } {
+    const [names, values] = encodingFunc.call(this, messages, strict);
+
+    return Object.fromEntries(names.map((name, idx) => [name, values[idx]]));
+  }
+
+  /**
+   * Encode messages given as JS object. It flattens the object into a sorted list and encodes each value as per the known
+   * encoding functions.
+   * Returns a Map with names as keys and encoded messages as values.
+   * @param encodingFunc
+   * @param messages
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   */
+  private _encodeMessageObjectAsMap(encodingFunc: (messages: object, strict: boolean) => [string[], Uint8Array[]], messages: object, strict = false): Map<string, Uint8Array> {
+    const [names, values] = encodingFunc.call(this, messages, strict);
+
+    return new Map(names.map((name, idx) => [name, values[idx]]));
+  }
+
+  private _encodeDefault(encodingFunc: (value: Uint8Array) => Uint8Array, value: unknown, strict = false): Uint8Array {
+    if (this.defaultEncoder !== undefined) {
+      return this.defaultEncoder(value);
+    } else {
+      if (!strict && value instanceof Uint8Array) {
+        return encodingFunc(value);
+      } else {
+        throw new Error(
+          `Cannot encode value ${value} as neither was default encoder present nor it was an Uint8Array. Its type was ${typeof value}`
+        );
+      }
+    }
+  }
+
+  /**
+   * Encode a message with given name and value. Will throw an error if no appropriate encoder found.
+   * @param name
+   * @param value
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   */
+  encodeMessage(name: string, value: unknown, strict = false): Uint8Array {
+    return this._encodeMessage(name, value, strict, MessageEncoder.encodeMessageForSigning);
+  }
+
+  /**
+   * Encode a message with given name and value. Will throw an error if no appropriate encoder found.
+   * @param name
+   * @param value
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   */
+  encodeMessageConstantTime(name: string, value: unknown, strict = false): Uint8Array {
+    return this._encodeMessage(name, value, strict, MessageEncoder.encodeMessageForSigningConstantTime);
+  }
+
+  /**
+   * Encode messages given as JS object. It flattens the object into a sorted list and encodes each value as per the known
+   * encoding functions.
+   * Returns 2 arrays, 1st with message names and 2nd with encoded values.
    * @param messages
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
   encodeMessageObject(messages: object, strict = false): [string[], Uint8Array[]] {
-    const [names, values] = flattenObjectToKeyValuesList(messages);
-    const encoded: Uint8Array[] = [];
-    for (let i = 0; i < names.length; i++) {
-      encoded.push(this.encodeMessage(names[i], values[i], strict));
-    }
-    return [names, encoded];
+    return this._encodeMessageObject(this.encodeMessage, messages, strict);
+  }
+
+  /**
+   * Encode messages given as JS object. It flattens the object into a sorted list and encodes each value as per the known
+   * encoding functions.
+   * Returns 2 arrays, 1st with message names and 2nd with encoded values.
+   * @param messages
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   */
+  encodeMessageObjectConstantTime(messages: object, strict = false): [string[], Uint8Array[]] {
+    return this._encodeMessageObject(this.encodeMessageConstantTime, messages, strict);
   }
 
   /**
@@ -167,9 +267,18 @@ export class Encoder {
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
   encodeMessageObjectAsObject(messages: object, strict = false): { [name: string]: Uint8Array } {
-    const [names, values] = this.encodeMessageObject(messages, strict);
+    return this._encodeMessageObjectAsObject(this.encodeMessageObject, messages, strict)
+  }
 
-    return Object.fromEntries(names.map((name, idx) => [name, values[idx]]));
+  /**
+   * Encode messages given as JS object. It flattens the object into a sorted list and encodes each value as per the known
+   * encoding functions.
+   * Returns an object with names as keys and encoded messages as values.
+   * @param messages
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   */
+  encodeMessageObjectAsObjectConstantTime(messages: object, strict = false): { [name: string]: Uint8Array } {
+    return this._encodeMessageObjectAsObject(this.encodeMessageObjectConstantTime, messages, strict)
   }
 
   /**
@@ -180,24 +289,39 @@ export class Encoder {
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
   encodeMessageObjectAsMap(messages: object, strict = false): Map<string, Uint8Array> {
-    const [names, values] = this.encodeMessageObject(messages, strict);
+    return this._encodeMessageObjectAsMap(this.encodeMessageObject, messages, strict);
+  }
 
-    return new Map(names.map((name, idx) => [name, values[idx]]));
+  /**
+   * Encode messages given as JS object. It flattens the object into a sorted list and encodes each value as per the known
+   * encoding functions.
+   * Returns a Map with names as keys and encoded messages as values.
+   * @param messages
+   * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
+   */
+  encodeMessageObjectAsMapConstantTime(messages: object, strict = false): Map<string, Uint8Array> {
+    return this._encodeMessageObjectAsMap(this.encodeMessageObjectConstantTime, messages, strict);
   }
 
   encodeDefault(value: unknown, strict = false): Uint8Array {
-    if (this.defaultEncoder !== undefined) {
-      return this.defaultEncoder(value);
-    } else {
-      if (!strict && value instanceof Uint8Array) {
-        return MessageEncoder.encodeMessageForSigning(value);
-      } else {
-        throw new Error(
-          `Cannot encode value ${value} as neither was default encoder present nor it was an Uint8Array. Its type was ${typeof value}`
-        );
-      }
-    }
+    // if (this.defaultEncoder !== undefined) {
+    //   return this.defaultEncoder(value);
+    // } else {
+    //   if (!strict && value instanceof Uint8Array) {
+    //     return MessageEncoder.encodeMessageForSigning(value);
+    //   } else {
+    //     throw new Error(
+    //       `Cannot encode value ${value} as neither was default encoder present nor it was an Uint8Array. Its type was ${typeof value}`
+    //     );
+    //   }
+    // }
+    return this._encodeDefault(MessageEncoder.encodeMessageForSigning, value, strict)
   }
+
+  encodeDefaultConstantTime(value: unknown, strict = false): Uint8Array {
+    return this._encodeDefault(MessageEncoder.encodeMessageForSigningConstantTime, value, strict)
+  }
+
   /**
    * Returns an encoding function to be used on a message that is a positive integer.
    */
@@ -341,13 +465,24 @@ export class Encoder {
   }
 
   /**
-   * Returns an encoding function to convert utf-8 string message. It might fail of the encoding target cannot be made a string
+   * Returns an encoding function to convert utf-8 string message. It might fail if the encoding target cannot be made a string
    */
   static defaultEncodeFunc(): EncodeFunc {
     const te = new TextEncoder();
     return (v: unknown) => {
       // @ts-ignore
       return MessageEncoder.encodeMessageForSigning(te.encode(v.toString()));
+    };
+  }
+
+  /**
+   * Returns an encoding function to convert utf-8 string message. It might fail if the encoding target cannot be made a string
+   */
+  static defaultEncodeFuncConstantTime(): EncodeFunc {
+    const te = new TextEncoder();
+    return (v: unknown) => {
+      // @ts-ignore
+      return MessageEncoder.encodeMessageForSigningConstantTime(te.encode(v.toString()));
     };
   }
 
