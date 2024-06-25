@@ -267,7 +267,6 @@ export class Presentation extends Versioned {
         numAttribs,
         revealedEncoded,
         credVerifParams.get(credIndex),
-        semver.gt(this._version, '0.7.0')
       );
       statements.add(statement);
       flattenedSchemas.push(flattenedSchema);

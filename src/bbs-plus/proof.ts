@@ -10,11 +10,7 @@ import {
   bbsPlusChallengeContributionFromProof,
   bbsPlusVerifyProofOfKnowledgeOfSignature,
   BbsPlusPoKSigProtocol,
-  VerifyResult,
-  bbsPlusInitializeProofOfKnowledgeOfSignatureConstantTime,
-  bbsPlusChallengeContributionFromProtocolConstantTime,
-  bbsPlusVerifyProofOfKnowledgeOfSignatureConstantTime,
-  bbsPlusChallengeContributionFromProofConstantTime
+  VerifyResult
 } from 'crypto-wasm-new';
 import { BBSPlusPublicKeyG2 } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
@@ -41,7 +37,7 @@ export class BBSPlusPoKSignatureProtocol {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const protocol = bbsPlusInitializeProofOfKnowledgeOfSignatureConstantTime(
+    const protocol = bbsPlusInitializeProofOfKnowledgeOfSignature(
       signature.value,
       params.value,
       messages,
@@ -61,7 +57,7 @@ export class BBSPlusPoKSignatureProtocol {
     encodeMessages: boolean,
     revealedMsgs: Map<number, Uint8Array> = new Map()
   ): Uint8Array {
-    return bbsPlusChallengeContributionFromProtocolConstantTime(this.value, revealedMsgs, params.value, encodeMessages);
+    return bbsPlusChallengeContributionFromProtocol(this.value, revealedMsgs, params.value, encodeMessages);
   }
 }
 
@@ -73,7 +69,7 @@ export class BBSPlusPoKSigProof extends BytearrayWrapper {
     encodeMessages: boolean,
     revealedMsgs: Map<number, Uint8Array> = new Map()
   ): VerifyResult {
-    return bbsPlusVerifyProofOfKnowledgeOfSignatureConstantTime(
+    return bbsPlusVerifyProofOfKnowledgeOfSignature(
       this.value,
       revealedMsgs,
       challenge,
@@ -88,6 +84,6 @@ export class BBSPlusPoKSigProof extends BytearrayWrapper {
     encodeMessages: boolean,
     revealedMsgs: Map<number, Uint8Array> = new Map()
   ): Uint8Array {
-    return bbsPlusChallengeContributionFromProofConstantTime(this.value, revealedMsgs, params.value, encodeMessages);
+    return bbsPlusChallengeContributionFromProof(this.value, revealedMsgs, params.value, encodeMessages);
   }
 }

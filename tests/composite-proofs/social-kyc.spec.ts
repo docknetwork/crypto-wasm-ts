@@ -134,7 +134,7 @@ describe(`Social KYC (Know Your Customer) with ${Scheme} credentials`, () => {
     const sig: Signature = isBBS()
       ? blindSig
       : isPS()
-      ? blindSig.unblind(blindings!, pk, h)
+      ? blindSig.unblind(blindings!, pk)
       : blindSig.unblind(blinding!);
 
     // Combine blinded and known attributes in an array

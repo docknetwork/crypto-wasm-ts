@@ -1,9 +1,9 @@
 import { BBSPlusSignatureParamsG1 } from './params';
 import {
-  bbsPlusBlindSignG1, bbsPlusBlindSignG1ConstantTime,
-  bbsPlusSignG1, bbsPlusSignG1ConstantTime,
+  bbsPlusBlindSignG1,
+  bbsPlusSignG1,
   bbsPlusUnblindSigG1,
-  bbsPlusVerifyG1, bbsPlusVerifyG1ConstantTime,
+  bbsPlusVerifyG1,
   generateRandomFieldElement,
   VerifyResult
 } from 'crypto-wasm-new';
@@ -34,7 +34,7 @@ export class BBSPlusSignatureG1 extends MessageEncoder {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsPlusSignG1ConstantTime(messages, secretKey.value, params.value, encodeMessages);
+    const sig = bbsPlusSignG1(messages, secretKey.value, params.value, encodeMessages);
     return new BBSPlusSignatureG1(sig);
   }
 
@@ -58,7 +58,7 @@ export class BBSPlusSignatureG1 extends MessageEncoder {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    return bbsPlusVerifyG1ConstantTime(messages, this.value, publicKey.value, params.value, encodeMessages);
+    return bbsPlusVerifyG1(messages, this.value, publicKey.value, params.value, encodeMessages);
   }
 
   static signMessageObject(
@@ -67,7 +67,7 @@ export class BBSPlusSignatureG1 extends MessageEncoder {
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
     encoder: Encoder
   ): SignedMessages<BBSPlusSignatureG1> {
-    const encodedMessages = encoder.encodeMessageObjectAsObjectConstantTime(messages);
+    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
     const encodedMessageList = Object.values(encodedMessages);
 
     const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
@@ -86,16 +86,14 @@ export class BBSPlusSignatureG1 extends MessageEncoder {
    * @param publicKey
    * @param labelOrParams
    * @param encoder
-   * @param useConstantTimeEncoding
    */
   verifyMessageObject(
     messages: object,
     publicKey: BBSPlusPublicKeyG1,
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
-    encoder: Encoder,
-    useConstantTimeEncoding = true,
-): VerifyResult {
-    const [_, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
+    encoder: Encoder
+  ): VerifyResult {
+    const [_, encodedValues] = encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
     const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(msgCount, labelOrParams);
@@ -137,7 +135,7 @@ export class BBSPlusBlindSignatureG1 extends MessageEncoder {
         } must be less than ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsPlusBlindSignG1ConstantTime(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
+    const sig = bbsPlusBlindSignG1(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
     return new BBSPlusBlindSignatureG1(sig);
   }
 
@@ -182,7 +180,7 @@ export class BBSPlusBlindSignatureG1 extends MessageEncoder {
     blinding?: Uint8Array,
     revealedMessages?: Map<number, Uint8Array>
   ): [Uint8Array, BBSPlusBlindSignatureRequest] {
-    const [commitment, b] = params.commitToMessagesConstantTime(messagesToBlind, encodeMessages, blinding);
+    const [commitment, b] = params.commitToMessages(messagesToBlind, encodeMessages, blinding);
     const [blindedIndices, encodedRevealedMessages] = getBlindedIndicesAndRevealedMessages(
       messagesToBlind,
       encodeMessages,

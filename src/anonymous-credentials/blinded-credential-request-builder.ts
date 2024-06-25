@@ -66,7 +66,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 export abstract class BlindedCredentialRequestBuilder<SigParams> extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.5.0';
+  static VERSION = '0.4.0';
 
   // The schema of the whole (unblinded credential). This should include all attributes, i.e. blinded and unblinded
   _schema?: CredentialSchema;

@@ -87,7 +87,7 @@ export class PSSignature extends MessageEncoder {
     labelOrParams: Uint8Array | PSSignatureParams,
     encoder: Encoder
   ): SignedMessages<PSSignature> {
-    const encodedMessages = encoder.encodeMessageObjectAsObjectConstantTime(messages);
+    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
     const encodedMessageList = Object.values(encodedMessages);
     const msgCount = encodedMessageList.length;
 
@@ -110,19 +110,18 @@ export class PSSignature extends MessageEncoder {
    * Verifies the signature on the given messages. Takes the messages as a JS object, flattens it, encodes the values similar
    * to signing and then verifies the signature.
    * @param messages
+   * @param signature
    * @param publicKey
    * @param labelOrParams
    * @param encoder
-   * @param useConstantTimeEncoding
    */
   verifyMessageObject(
     messages: object,
     publicKey: PSPublicKey,
     labelOrParams: Uint8Array | PSSignatureParams,
-    encoder: Encoder,
-    useConstantTimeEncoding = true,
+    encoder: Encoder
   ): VerifyResult {
-    const [_, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
+    const [_, encodedValues] = encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
     const sigParams = PSSignatureParams.getSigParamsOfRequiredSize(msgCount, labelOrParams);
@@ -163,8 +162,8 @@ export class PSBlindSignature extends BytearrayWrapper {
    * @param indexedBlindings
    * @param pk
    */
-  unblind(indexedBlindings: Map<number, Uint8Array>, pk: PSPublicKey, h: Uint8Array): PSSignature {
-    return new PSSignature(psUnblindSignature(this.value, indexedBlindings, pk.value, h));
+  unblind(indexedBlindings: Map<number, Uint8Array>, pk: PSPublicKey): PSSignature {
+    return new PSSignature(psUnblindSignature(this.value, indexedBlindings, pk.value));
   }
 
   /**

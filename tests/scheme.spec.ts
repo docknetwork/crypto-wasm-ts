@@ -237,7 +237,7 @@ describe(`${Scheme} signature`, () => {
         )
       : BlindSignature.fromRequest(request, sk, params);
 
-    const sig = isPS() ? blindSig.unblind(blindings, pk, h) : isBBS() ? blindSig : blindSig.unblind(blinding);
+    const sig = isPS() ? blindSig.unblind(blindings, pk) : isBBS() ? blindSig : blindSig.unblind(blinding);
     expect((isKvac() ? sig.verify(messages, sk, params, true) : sig.verify(messages, pk, params, true)).verified).toEqual(true);
   });
 
@@ -370,7 +370,7 @@ describe(`${Scheme} signature`, () => {
           blindings
         );
 
-        const sig = BlindSignature.fromRequest(req, sk, h).unblind(blindings, pk, h);
+        const sig = BlindSignature.fromRequest(req, sk, h).unblind(blindings, pk);
 
         pSigs.set(++idx, sig);
       }

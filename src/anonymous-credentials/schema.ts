@@ -425,7 +425,7 @@ export type CredVal = string | number | object | CredVal[];
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.4.0';
+  static VERSION = '0.3.0';
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
@@ -501,15 +501,13 @@ export class CredentialSchema extends Versioned {
    * when deserializing to get the exact object that was serialized which is necessary when verifying signatures
    * @param overrides - Override any properties of the schema
    * @param fullJsonSchema - When `jsonSchema` does not contain the properties, this object is expected to contain them.
-   * @param useConstantTimeEncoder
    */
   constructor(
     jsonSchema: IEmbeddedJsonSchema | IJsonSchema,
     parsingOpts: Partial<ISchemaParsingOpts> = DefaultSchemaParsingOpts,
     addMissingParsingOpts = true,
     overrides?: Partial<ISchemaOverrides>,
-    fullJsonSchema?: IEmbeddedJsonSchema,
-    useConstantTimeEncoder = true
+    fullJsonSchema?: IEmbeddedJsonSchema
   ) {
     // This functions flattens schema object twice but the repetition can be avoided. Keeping this deliberately for code clarity.
     let pOpts;
@@ -542,14 +540,14 @@ export class CredentialSchema extends Versioned {
     this.jsonSchema = jsonSchema;
     this.parsingOptions = pOpts;
     this.fullJsonSchema = fullJsonSchema;
-    this.initEncoder(useConstantTimeEncoder);
+    this.initEncoder();
   }
 
   /**
    * Initialize the encoder as per the internal representation of schema, i.e. `ISchema`
    */
-  initEncoder(useConstantTimeEncoder = true) {
-    const defaultEncoder = useConstantTimeEncoder ? Encoder.defaultEncodeFuncConstantTime() : Encoder.defaultEncodeFunc();
+  initEncoder() {
+    const defaultEncoder = Encoder.defaultEncodeFunc();
     const encoders = new Map<string, EncodeFunc>();
     const [names, values] = this.flatten();
     for (let i = 0; i < names.length; i++) {
@@ -578,7 +576,6 @@ export class CredentialSchema extends Versioned {
           f = Encoder.decimalNumberEncoder(value['minimum'], value['decimalPlaces']);
           break;
         default:
-          // For other types including string type, use default encoder
           f = defaultEncoder;
       }
       encoders.set(names[i], f);
@@ -794,13 +791,11 @@ export class CredentialSchema extends Versioned {
         throw new Error(`Full json schema wasn't provided when a non-embedded schema was provided ${jsonSchema}`);
       }
     }
-    // For older version, a variable time message encoder was mistakenly used
-    const useConstantTimeEncoder = semver.gte(version, '0.4.0');
     // Note: `parsingOptions` might still be in an incorrect format which can fail the next call
     // Note: Passing `addMissingParsingOpts` as false to recreate the exact same object that was serialized. This is important
     // when verifying signatures.
     // @ts-ignore
-    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, full, useConstantTimeEncoder);
+    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, full);
   }
 
   /**
