@@ -47,7 +47,8 @@ import {
   InequalityProtocol,
   CredentialVerificationParam,
   BDDT16BlindedCredentialRequestBuilder,
-  BDDT16BlindedCredential,
+  BDDT16BlindedCredential, BlindedCredentialBuilder,
+  CredentialBuilder as CB
 } from '../../src';
 import {
   SignatureParams,
@@ -297,6 +298,10 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       schema3 = new CredentialSchema(getExampleSchema(7));
     }
   });
+
+  it('BlindedCredentialBuilder version should be same as CredentialBuilder version', () => {
+    expect(BlindedCredentialBuilder.VERSION).toEqual(CB.VERSION)
+  })
 
   it('should be able to request a credential when some attributes are blinded', async () => {
     const blindedSubject = {

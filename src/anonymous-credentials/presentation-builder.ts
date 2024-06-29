@@ -1,3 +1,4 @@
+import semver from 'semver/preload';
 import { KBUniversalMembershipWitness, KBUniversalNonMembershipWitness } from '../accumulator/kb-acccumulator-witness';
 import { KBUniversalAccumulatorValue } from '../accumulator/kb-universal-accumulator';
 import { Versioned } from './versioned';
@@ -39,7 +40,7 @@ import {
   PublicKey,
   REV_CHECK_STR,
   REV_ID_STR,
-  RevocationStatusProtocol,
+  RevocationStatusProtocol, SCHEMA_FIELDS,
   SCHEMA_STR,
   SignatureParams,
   STATUS_STR,
@@ -119,7 +120,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential | BDDT16Crede
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.7.0';
+  static VERSION = '0.8.0';
 
   // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;
@@ -539,7 +540,12 @@ export class PresentationBuilder extends Versioned {
       // CredentialBuilder version, schema and 2 fields of revocation - registry id (denoting the accumulator) and the check
       // type, i.e. "membership" or "non-membership" are always revealed.
       revealedNames.add(CRYPTO_VERSION_STR);
-      revealedNames.add(SCHEMA_STR);
+      if (semver.gte(cred.version, '0.6.0')) {
+        SCHEMA_FIELDS.forEach((s) => revealedNames?.add(s));
+      } else {
+        revealedNames.add(SCHEMA_STR);
+      }
+
       if (cred.credentialStatus !== undefined) {
         if (
           cred.credentialStatus[ID_STR] === undefined ||

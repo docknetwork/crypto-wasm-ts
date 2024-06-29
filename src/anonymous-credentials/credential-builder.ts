@@ -4,7 +4,7 @@ import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BDDT16_MAC_PARAMS_LABEL_BYTES
+  BDDT16_MAC_PARAMS_LABEL_BYTES, CRYPTO_VERSION_STR, SUBJECT_STR, STATUS_STR
 } from './types-and-consts';
 import { BBSCredential, BBSPlusCredential, BDDT16Credential, Credential, PSCredential } from './credential';
 import { flatten } from 'flat';
@@ -44,7 +44,7 @@ export abstract class CredentialBuilder<
 > extends CredentialBuilderCommon {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.5.0';
+  static VERSION = '0.6.0';
 
   _encodedAttributes?: { [key: string]: Uint8Array };
   _sig?: Signature;
@@ -97,6 +97,39 @@ export abstract class CredentialBuilder<
 
   /**
    * When schema doesn't match the credential, create a new appropriate schema and update the credential. Returns the
+   * serialized credential. Legacy version. Used by SDK for some older credential versions
+   * @param signingOpts
+   */
+  updateSchemaIfNeededLegacy(signingOpts?: Partial<ISigningOpts>): object {
+    const cred = {
+      [CRYPTO_VERSION_STR]: this._version,
+      [SCHEMA_STR]: this.schema?.toJsonString(),
+      [SUBJECT_STR]: this._subject
+    };
+    for (const [k, v] of this._topLevelFields.entries()) {
+      cred[k] = v;
+    }
+    if (this._credStatus !== undefined) {
+      cred[STATUS_STR] = this._credStatus;
+    }
+
+    this.applyDefaultProofMetadataIfNeeded(cred);
+    const schema = this.schema as CredentialSchema;
+    if (signingOpts && !CredentialBuilder.hasSameFieldsAsSchema(cred, schema)) {
+      if (signingOpts.requireSameFieldsAsSchema) {
+        throw new Error('Credential does not have the fields as schema');
+      } else {
+        // Generate new schema
+        this.schema = CredentialSchema.generateAppropriateSchema(cred, schema);
+        // @ts-ignore
+        cred[SCHEMA_STR] = this.schema?.toJsonString();
+      }
+    }
+    return cred;
+  }
+
+  /**
+   * When schema doesn't match the credential, create a new appropriate schema and update the credential. Returns the
    * serialized credential
    * @param signingOpts
    */
@@ -109,7 +142,7 @@ export abstract class CredentialBuilder<
       } else {
         // Generate new schema
         this.schema = CredentialSchema.generateAppropriateSchema(cred, schema);
-        cred[SCHEMA_STR] = this.schema?.toJsonString();
+        cred[SCHEMA_STR] = this.schema?.toJSON();
       }
     }
     return cred;

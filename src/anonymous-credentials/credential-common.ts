@@ -1,6 +1,7 @@
+import semver from 'semver/preload';
 import { Versioned } from './versioned';
 import { CredentialSchema } from './schema';
-import { PROOF_STR } from './types-and-consts';
+import { PROOF_STR, SCHEMA_STR, STATUS_STR, SUBJECT_STR } from './types-and-consts';
 import b58 from 'bs58';
 import { isEmptyObject } from '../util';
 
@@ -41,11 +42,12 @@ export abstract class CredentialCommon<Sig> extends Versioned {
 
   toJSON(): object {
     const j = {};
-    j['cryptoVersion'] = this._version;
-    j['credentialSchema'] = this.schema.toJsonString();
-    j['credentialSubject'] = this.subject;
+    const schema = semver.gte(this.version, '0.6.0') ? this.schema.toJSON() : this.schema.toJsonString();
+    j['cryptoVersion'] = this.version;
+    j[SCHEMA_STR] = schema;
+    j[SUBJECT_STR] = this.subject;
     if (this.credentialStatus !== undefined) {
-      j['credentialStatus'] = this.credentialStatus;
+      j[STATUS_STR] = this.credentialStatus;
     }
     for (const [k, v] of this.topLevelFields.entries()) {
       j[k] = v;

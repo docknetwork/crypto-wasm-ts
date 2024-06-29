@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import semver from 'semver/preload';
 
 import { Credential, isKvac, PresentationBuilder, PublicKey, Scheme, SecretKey } from '../scheme';
 import { checkResult } from '../utils';
@@ -13,9 +14,11 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
   });
 
   function check(credVersion: string, schemaVersion: string) {
-    for (let i = 1; i <= 3; i++) {
-      const pkBin = isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk${i}.bin`);
-      const skBin = !isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_sk${i}.bin`);
+    const count = semver.gt(credVersion, '0.5.0') ? 5 : 3;
+    for (let i = 1; i <= count; i++) {
+      let keyIdx = i !== 5 ? i : 1;
+      const pkBin = isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk${keyIdx}.bin`);
+      const skBin = !isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_sk${keyIdx}.bin`);
       let credentialJson = fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_credential${i}-${credVersion}.json`, 'utf8');
       credentialJson = JSON.parse(credentialJson);
       // @ts-ignore
@@ -29,7 +32,7 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
       // Create presentation from the serialized credential
       const builder = new PresentationBuilder();
       expect(builder.addCredential(cred, pk)).toEqual(0);
-      let accPk;
+      let accPk, accPk4;
       const acc = new Map();
       if (i === 3) {
         const accPkBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_pk.bin`);
@@ -39,6 +42,15 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
         const accWit = new VBMembershipWitness(accWitBin);
         builder.addAccumInfoForCredStatus(0, accWit, accVal, accPk, {});
         acc.set(0, accPk);
+      }
+      if (i === 4) {
+        const accPkBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_pk4.bin`);
+        const accWitBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness4.bin`);
+        const accVal = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value4.bin`);
+        accPk4 = AccumulatorPublicKey.fromBytes(accPkBin);
+        const accWit = new VBMembershipWitness(accWitBin);
+        builder.addAccumInfoForCredStatus(0, accWit, accVal, accPk4, {});
+        acc.set(0, accPk4);
       }
       const pres = builder.finalize();
       expect(pres.spec.credentials.length).toEqual(1);
@@ -55,5 +67,13 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
 
   it('check version 0.4.0', () => {
     check('0.4.0', '0.2.0');
+  })
+
+  it('check version 0.5.0', () => {
+    check('0.5.0', '0.3.0');
+  })
+
+  it('check version 0.6.0', () => {
+    check('0.6.0', '0.4.0');
   })
 })

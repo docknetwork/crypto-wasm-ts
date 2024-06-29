@@ -12,7 +12,7 @@ import {
   REV_CHECK_STR,
   TYPE_STR,
   InequalityProtocol,
-  AccumulatorValueType
+  AccumulatorValueType, VERSION_STR, SCHEMA_DETAILS_STR
 } from './types-and-consts';
 import b58 from 'bs58';
 import { CredentialSchema } from './schema';
@@ -92,7 +92,7 @@ export interface IPresentedAttributeInequality {
 export interface IPresentedCredential {
   sigType?: SignatureType;
   version: string;
-  schema: string;
+  schema: string | {[ID_STR]: string, [TYPE_STR]: string, [VERSION_STR]: string, [SCHEMA_DETAILS_STR]: string};
   // Attributes being revealed to the verifier
   revealedAttributes: object;
   // Credential status used for checking revocation

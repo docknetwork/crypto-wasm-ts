@@ -251,3 +251,7 @@ export function proverStmt(params: SignatureParams, revealedMsgs: Map<number, Ui
 export function verifierStmt(params: SignatureParams, revealedMsgs: Map<number, Uint8Array>, pk?: PublicKey, encode = false) {
   return isKvac() ? buildVerifierStatement(params, revealedMsgs, encode) : buildVerifierStatement(params, pk, revealedMsgs, encode);
 }
+
+export function logObject(obj) {
+  console.dir(obj, {depth: null})
+}

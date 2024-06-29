@@ -218,7 +218,8 @@ export class Presentation extends Versioned {
 
     for (let credIndex = 0; credIndex < this.spec.credentials.length; credIndex++) {
       const presentedCred = this.spec.credentials[credIndex];
-      const presentedCredSchema = CredentialSchema.fromJSON(JSON.parse(presentedCred.schema));
+      const credVersionGte6 = semver.gte(presentedCred.version, '0.6.0');
+      const presentedCredSchema = credVersionGte6 ? CredentialSchema.fromJSON(presentedCred.schema as object) : CredentialSchema.fromJSON(JSON.parse(presentedCred.schema as string));
       const flattenedSchema = presentedCredSchema.flatten();
       const numAttribs = flattenedSchema[0].length;
 
@@ -1202,7 +1203,7 @@ export class Presentation extends Versioned {
     let blindCredentialRequest, blindedAttributeCiphertexts;
     if (this.spec.blindCredentialRequest !== undefined) {
       blindCredentialRequest = _.cloneDeep(this.spec.blindCredentialRequest) as object;
-      blindCredentialRequest.schema = this.spec.blindCredentialRequest.schema.toJsonString();
+      blindCredentialRequest.schema = this.spec.blindCredentialRequest.schema.toJSON();
       blindCredentialRequest.commitment = b58.encode(this.spec.blindCredentialRequest.commitment);
       if (this.blindedAttributeCiphertexts !== undefined) {
         blindedAttributeCiphertexts = {};
@@ -1562,7 +1563,7 @@ export class Presentation extends Versioned {
       if (!Object.values(BlindSignatureType).includes(req['sigType'])) {
         throw new Error(`sigType should be one of ${BlindSignatureType} but was ${req['sigType']}`);
       }
-      req['schema'] = CredentialSchema.fromJSON(JSON.parse(req['schema']));
+      req['schema'] = CredentialSchema.fromJSON(req['schema']);
       req['commitment'] = b58.decode(req['commitment']);
       if (blindedAttributeCiphertexts !== undefined) {
         bac = {};

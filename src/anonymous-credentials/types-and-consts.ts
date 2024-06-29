@@ -114,10 +114,12 @@ export const VERSION_STR = 'version';
 export const CRYPTO_VERSION_STR = 'cryptoVersion';
 export const SCHEMA_STR = 'credentialSchema';
 
+export const JSON_SCHEMA_STR = 'jsonSchema';
 export const FULL_SCHEMA_STR = 'fullJsonSchema';
 export const SCHEMA_TYPE_STR = 'JsonSchemaValidator2018';
 
 export const SCHEMA_PROPS_STR = 'properties';
+export const SCHEMA_DETAILS_STR = 'details';
 
 export const SUBJECT_STR = 'credentialSubject';
 export const STATUS_STR = 'credentialStatus';
@@ -184,6 +186,10 @@ export const BPP_GENS_LABEL_BYTES = te.encode(BPP_GENS_LABEL);
 // Label used for generating commitment key for proving inequality
 export const INEQUALITY_COMM_KEY_LABEL = 'DockInequalityDiscreteLog2023';
 export const INEQUALITY_COMM_KEY_LABEL_BYTES = te.encode(INEQUALITY_COMM_KEY_LABEL);
+
+export const EMPTY_SCHEMA_ID = 'data:application/json;charset=utf-8,';
+
+export const SCHEMA_FIELDS = [`${SCHEMA_STR}.${SCHEMA_DETAILS_STR}`, `${SCHEMA_STR}.${ID_STR}`, `${SCHEMA_STR}.${TYPE_STR}`, `${SCHEMA_STR}.${VERSION_STR}`];
 
 export function dockAccumulatorParams(): AccumulatorParams {
   return Accumulator.generateParams(ACCUMULATOR_PARAMS_LABEL_BYTES);

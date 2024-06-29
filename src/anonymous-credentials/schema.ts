@@ -5,18 +5,18 @@ import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../encoder';
 import { isPositiveInteger } from '../util';
 import {
-  CRYPTO_VERSION_STR,
+  CRYPTO_VERSION_STR, EMPTY_SCHEMA_ID,
   FlattenedSchema,
   FULL_SCHEMA_STR,
-  ID_STR,
+  ID_STR, JSON_SCHEMA_STR,
   REV_CHECK_STR,
-  REV_ID_STR,
+  REV_ID_STR, SCHEMA_DETAILS_STR, SCHEMA_FIELDS,
   SCHEMA_PROPS_STR,
   SCHEMA_STR,
   SCHEMA_TYPE_STR,
   STATUS_STR,
   SUBJECT_STR,
-  TYPE_STR
+  TYPE_STR, VERSION_STR
 } from './types-and-consts';
 import { flattenTill2ndLastKey, isValueDate, isValueDateTime } from './util';
 import semver from 'semver/preload';
@@ -425,7 +425,7 @@ export type CredVal = string | number | object | CredVal[];
 export class CredentialSchema extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.3.0';
+  static VERSION = '0.4.0';
 
   private static readonly STR_TYPE = 'string';
   private static readonly STR_REV_TYPE = 'stringReversible';
@@ -439,7 +439,15 @@ export class CredentialSchema extends Versioned {
   // CredentialBuilder subject/claims cannot have any of these names
   static RESERVED_NAMES = new Set([CRYPTO_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
 
-  static IMPLICIT_FIELDS = { [CRYPTO_VERSION_STR]: { type: 'string' }, [SCHEMA_STR]: { type: 'string' } };
+  // Implicit fields for schema version < 0.4.0
+  static OLD_IMPLICIT_FIELDS = { [CRYPTO_VERSION_STR]: { type: 'string' }, [SCHEMA_STR]: { type: 'string' } };
+  // Implicit fields for schema version >= 0.4.0
+  static IMPLICIT_FIELDS = { [CRYPTO_VERSION_STR]: { type: 'string' }, [SCHEMA_STR]: {
+      [ID_STR]: { type: 'string' },
+      [TYPE_STR]: { type: 'string' },
+      [VERSION_STR]: { type: 'string' },
+      [SCHEMA_DETAILS_STR]: { type: 'string' },
+    } };
 
   // Custom definitions for JSON schema syntax
   static JSON_SCHEMA_CUSTOM_DEFS = {
@@ -468,6 +476,10 @@ export class CredentialSchema extends Versioned {
   static IGNORE_GENERIC_VALIDATION = new Set([
     CRYPTO_VERSION_STR,
     SCHEMA_STR,
+    `${SCHEMA_STR}.${ID_STR}`,
+    `${SCHEMA_STR}.${TYPE_STR}`,
+    `${SCHEMA_STR}.${VERSION_STR}`,
+    `${SCHEMA_STR}.${SCHEMA_DETAILS_STR}`,
     `${STATUS_STR}.${ID_STR}`,
     `${STATUS_STR}.${TYPE_STR}`,
     `${STATUS_STR}.${REV_CHECK_STR}`,
@@ -583,7 +595,12 @@ export class CredentialSchema extends Versioned {
 
     // Implicitly present fields
     encoders.set(CRYPTO_VERSION_STR, defaultEncoder);
-    encoders.set(SCHEMA_STR, defaultEncoder);
+    // In older credential format, schema was JSON string, but in new credential format, schema is an object
+    if (semver.gte(this.version, '0.4.0')) {
+      SCHEMA_FIELDS.forEach((s) => encoders.set(s, defaultEncoder));
+    } else {
+      encoders.set(SCHEMA_STR, defaultEncoder);
+    }
 
     // Only supply default encoder if user requests to use defaults
     this.encoder = new Encoder(encoders, this.parsingOptions.useDefaults ? defaultEncoder : undefined);
@@ -749,14 +766,17 @@ export class CredentialSchema extends Versioned {
   }
 
   flatten(): FlattenedSchema {
-    return CredentialSchema.flattenSchemaObj(this.schema);
+    return CredentialSchema.flattenSchemaObj(this.schema, semver.gte(this.version, '0.4.0'));
   }
 
   hasStatus(): boolean {
     return this.schema[STATUS_STR] !== undefined;
   }
 
-  toJSON(): object {
+  /**
+   * Older version of toJSON, i.e. versions < 0.4.0
+   */
+  toJSONOlder(): object {
     const embedded = this.hasEmbeddedJsonSchema();
     const j = {
       [ID_STR]: CredentialSchema.convertToDataUri(this.jsonSchema, this.version),
@@ -770,25 +790,68 @@ export class CredentialSchema extends Versioned {
     return j;
   }
 
+  toJSON(): object {
+    const j = {
+      // If the JSON schema has no id, set it to an empty data uri
+      [ID_STR]: this.jsonSchema['$id'] || EMPTY_SCHEMA_ID,
+      [TYPE_STR]: SCHEMA_TYPE_STR,
+      [VERSION_STR]: this._version
+    };
+    const details = {
+      parsingOptions: this.parsingOptions,
+      [JSON_SCHEMA_STR]: this.jsonSchema,
+    };
+    if (!this.hasEmbeddedJsonSchema()) {
+      details[FULL_SCHEMA_STR] = this.fullJsonSchema;
+    }
+    j[SCHEMA_DETAILS_STR] = stringify(details);
+    return j;
+  }
+
   static fromJSON(j: object): CredentialSchema {
     // @ts-ignore
-    const { id, type, parsingOptions, version, fullJsonSchema } = j;
+    const { id, type, version } = j;
     if (type !== SCHEMA_TYPE_STR) {
       throw new Error(`Schema type was "${type}", expected: "${SCHEMA_TYPE_STR}"`);
     }
-    const jsonSchema = this.convertFromDataUri(id);
-    let full: IEmbeddedJsonSchema | undefined;
-    if (fullJsonSchema !== undefined) {
-      if (CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
-        throw new Error(`Actual schema was provided even when the given jsonSchema was an embedded one`);
-      }
-      full = this.convertFromDataUri(fullJsonSchema) as IEmbeddedJsonSchema;
-      if (!CredentialSchema.isEmbeddedJsonSchema(full)) {
-        throw new Error(`Expected actual schema to be an embedded one but got ${full}`);
+    let parsingOptions, jsonSchema, full: IEmbeddedJsonSchema | undefined;
+    if (semver.lt(version, '0.4.0')) {
+      // @ts-ignore
+      parsingOptions = j.parsingOptions;
+      const fullJsonSchema = j[FULL_SCHEMA_STR];
+      jsonSchema = this.convertFromDataUri(id);
+      if (fullJsonSchema !== undefined) {
+        if (CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+          throw new Error(`Actual schema was provided even when the given jsonSchema was an embedded one`);
+        }
+        full = this.convertFromDataUri(fullJsonSchema) as IEmbeddedJsonSchema;
+        if (!CredentialSchema.isEmbeddedJsonSchema(full)) {
+          throw new Error(`Expected actual schema to be an embedded one but got ${full}`);
+        }
+      } else {
+        if (!CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+          throw new Error(`Full json schema wasn't provided when a non-embedded schema was provided ${jsonSchema}`);
+        }
       }
     } else {
-      if (!CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
-        throw new Error(`Full json schema wasn't provided when a non-embedded schema was provided ${jsonSchema}`);
+      if (j[SCHEMA_DETAILS_STR] === undefined) {
+        throw new Error(`Did not find key ${SCHEMA_DETAILS_STR} in schema version ${version}`);
+      }
+      const details = JSON.parse(j[SCHEMA_DETAILS_STR]);
+      parsingOptions = details.parsingOptions;
+      jsonSchema = details[JSON_SCHEMA_STR];
+      full = details[FULL_SCHEMA_STR];
+      if (full !== undefined) {
+        if (CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+          throw new Error(`Actual schema was provided even when the given jsonSchema was an embedded one`);
+        }
+        if (!CredentialSchema.isEmbeddedJsonSchema(full)) {
+          throw new Error(`Expected actual schema to be an embedded one but got ${full}`);
+        }
+      } else {
+        if (!CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+          throw new Error(`Full json schema wasn't provided when a non-embedded schema was provided ${jsonSchema}`);
+        }
       }
     }
     // Note: `parsingOptions` might still be in an incorrect format which can fail the next call
@@ -808,19 +871,40 @@ export class CredentialSchema extends Versioned {
     schemaGetter: (url: string) => Promise<IEmbeddedJsonSchema>
   ): Promise<CredentialSchema> {
     // @ts-ignore
-    const { id, type, parsingOptions, version } = j;
+    const { id, type, version } = j;
     if (type !== SCHEMA_TYPE_STR) {
       throw new Error(`Schema type was "${type}", expected: "${SCHEMA_TYPE_STR}"`);
     }
-    const jsonSchema = this.convertFromDataUri(id);
-    let fullJsonSchema: IEmbeddedJsonSchema | undefined;
-    if (!CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+    let parsingOptions, jsonSchema, fullJsonSchema: IEmbeddedJsonSchema | undefined;
+    if (version !== undefined && semver.lt(version, '0.4.0')) {
       // @ts-ignore
-      fullJsonSchema = await schemaGetter(jsonSchema.$id);
-      if (!(fullJsonSchema[SCHEMA_PROPS_STR] instanceof Object)) {
-        throw new Error(
-          `Expected the fetched schema to have key ${SCHEMA_PROPS_STR} set and as an Object but was ${fullJsonSchema[SCHEMA_PROPS_STR]}`
-        );
+      parsingOptions = j.parsingOptions;
+      jsonSchema = this.convertFromDataUri(id);
+      if (!CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+        // @ts-ignore
+        fullJsonSchema = await schemaGetter(jsonSchema.$id);
+        if (!(fullJsonSchema[SCHEMA_PROPS_STR] instanceof Object)) {
+          throw new Error(
+            `Expected the fetched schema to have key ${SCHEMA_PROPS_STR} set and as an Object but was ${fullJsonSchema[SCHEMA_PROPS_STR]}`
+          );
+        }
+      }
+    } else {
+      // Either the version was explicitly passed or a new schema is being created (credential signing)
+      if (j[SCHEMA_DETAILS_STR] === undefined) {
+        throw new Error(`Did not find key ${SCHEMA_DETAILS_STR} in schema version ${version}`);
+      }
+      const details = JSON.parse(j[SCHEMA_DETAILS_STR]);
+      parsingOptions = details.parsingOptions;
+      jsonSchema = details[JSON_SCHEMA_STR];
+      if (!CredentialSchema.isEmbeddedJsonSchema(jsonSchema)) {
+        // @ts-ignore
+        fullJsonSchema = await schemaGetter(jsonSchema.$id);
+        if (!(fullJsonSchema[SCHEMA_PROPS_STR] instanceof Object)) {
+          throw new Error(
+            `Expected the fetched schema to have key ${SCHEMA_PROPS_STR} set and as an Object but was ${fullJsonSchema[SCHEMA_PROPS_STR]}`
+          );
+        }
       }
     }
     return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, fullJsonSchema);
@@ -831,7 +915,7 @@ export class CredentialSchema extends Versioned {
    */
   toJsonString(): string {
     // Version < 0.2.0 used JSON.stringify to create a JSON string
-    return semver.lt(this.version, '0.2.0') ? JSON.stringify(this.toJSON()) : stringify(this.toJSON());
+    return semver.lt(this.version, '0.2.0') ? JSON.stringify(this.toJSONOlder()) : stringify(this.toJSONOlder());
   }
 
   /**
@@ -1183,8 +1267,8 @@ export class CredentialSchema extends Versioned {
     return m[1].length;
   }
 
-  static flattenSchemaObj(schema: object): FlattenedSchema {
-    return flattenTill2ndLastKey({ ...this.IMPLICIT_FIELDS, ...schema });
+  static flattenSchemaObj(schema: object, versionGte040 = true): FlattenedSchema {
+    return versionGte040 ? flattenTill2ndLastKey({ ...this.IMPLICIT_FIELDS, ...schema }) : flattenTill2ndLastKey({ ...this.OLD_IMPLICIT_FIELDS, ...schema });
   }
 
   /**
@@ -1196,7 +1280,7 @@ export class CredentialSchema extends Versioned {
    */
   // @ts-ignore
   static generateAppropriateSchema(cred: object, schema: CredentialSchema): CredentialSchema {
-    // This JSON parse and stringify is to make `newJsonSchema` a copy of `schema.jsonSchema` and not a reference
+    // Make `newJsonSchema` a copy of `schema.jsonSchema`
     const newJsonSchema = _.cloneDeep(schema.getEmbeddedJsonSchema()) as IEmbeddedJsonSchema;
     const props = newJsonSchema.properties;
     CredentialSchema.generateFromCredential(cred, props, schema.version);

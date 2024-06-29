@@ -8,7 +8,7 @@ import {
   SCHEMA_STR,
   VB_ACCUMULATOR_22,
   SUBJECT_STR,
-  TYPE_STR, IEmbeddedJsonSchema, META_SCHEMA_STR, IJsonSchema, SCHEMA_PROPS_STR
+  TYPE_STR, IEmbeddedJsonSchema, META_SCHEMA_STR, IJsonSchema, SCHEMA_PROPS_STR, EMPTY_SCHEMA_ID
 } from '../../src';
 import {
   checkEmbeddedSchema,
@@ -38,6 +38,9 @@ describe(`${Scheme} Credential signing and verification`, () => {
 
   function checkJsonConvForCred(cred: Credential, sk: SecretKey, pk: PublicKey): Credential {
     const credJson = cred.toJSON();
+    if (!cred.schema.hasEmbeddedJsonSchema()) {
+      expect(credJson[SCHEMA_STR][ID_STR]).not.toEqual(EMPTY_SCHEMA_ID);
+    }
     // Check that the credential JSON contains the schema in JSON-schema format
     checkSchemaFromJson(credJson[SCHEMA_STR], cred.schema);
 
@@ -199,11 +202,14 @@ describe(`${Scheme} Credential signing and verification`, () => {
         }
       });
 
+      const credJson = cred.toJSON();
       expect(recreatedCred.schema.getEmbeddedJsonSchema()).toEqual(schema);
       if (withSchemaRef) {
+        expect(credJson[SCHEMA_STR][ID_STR]).toEqual(schemaRef);
         expect(recreatedCred.schema.jsonSchema).toEqual(nonEmbeddedSchema);
         expect(recreatedCred.schema.fullJsonSchema).toEqual(schema);
       } else {
+        expect(credJson[SCHEMA_STR][ID_STR]).toEqual(EMPTY_SCHEMA_ID);
         expect(recreatedCred.schema.jsonSchema).toEqual(schema);
         expect(recreatedCred.schema.fullJsonSchema).not.toBeDefined();
       }
@@ -616,7 +622,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof
         },
         definitions: {
@@ -667,7 +681,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof
         },
         definitions: {
@@ -704,7 +726,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof
         },
         definitions: {
@@ -751,7 +781,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof
         },
         definitions: {
@@ -798,7 +836,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof
         },
         definitions: {
@@ -846,7 +892,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof,
           issuer: {
             type: 'object',
@@ -933,7 +987,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof
         },
         definitions: {
@@ -998,7 +1060,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof
         },
         definitions: {
@@ -1043,7 +1113,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof
         },
         definitions: {
@@ -1086,7 +1164,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof
         },
         definitions: {
@@ -1118,7 +1204,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             required: []
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof,
           '@context': {
             type: 'array',
@@ -1149,7 +1243,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof,
         },
         definitions: {
@@ -1178,7 +1280,15 @@ describe(`${Scheme} Credential signing and verification`, () => {
             }
           },
           cryptoVersion: { type: 'string' },
-          credentialSchema: { type: 'string' },
+          credentialSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              type: { type: 'string' },
+              version: { type: 'string' },
+              details: { type: 'string' },
+            }
+          },
           proof: CredentialSchema.essential().properties.proof,
         },
         definitions: {

@@ -64,7 +64,7 @@ import {
   getExampleSchema,
   getKeys,
   setupPrefilledAccum,
-  verifyCred
+  verifyCred,
 } from './utils';
 
 // Setting it to false will make the test run the SNARK setups making tests quite slow
@@ -183,7 +183,7 @@ describe.each([true, false])(
       [sk1, pk1] = getKeys('seed1');
       [sk2, pk2] = getKeys('seed2');
       [sk3, pk3] = getKeys('seed3');
-      [sk4, pk4] = getKeys();
+      [sk4, pk4] = getKeys('seed4');
 
       const schema1 = getExampleSchema(9);
       const builder1 = new CredentialBuilder();
@@ -328,8 +328,9 @@ describe.each([true, false])(
       credential4 = builder4.sign(sk4);
       verifyCred(credential4, pk4, sk4);
 
+      const seed1 = stringToBytes('secret-seed-for-accum-4');
       // @ts-ignore
-      [accumulator4Sk, accumulator4Pk, accumulator4, accumulator4Witness] = await setupPrefilledAccum(300, 249, 'tran:2022-YZ4-', credSchema4);
+      [accumulator4Sk, accumulator4Pk, accumulator4, accumulator4Witness] = await setupPrefilledAccum(300, 249, 'tran:2022-YZ4-', credSchema4, seed1);
 
       const schema5 = CredentialSchema.essential();
       const subjectItem = {

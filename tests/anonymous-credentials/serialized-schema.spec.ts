@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import semver from 'semver/preload';
 
 import { initializeWasm, CredentialSchema } from '../../src';
 
@@ -13,7 +14,7 @@ describe('Credential Schema creation from JSON', () => {
     for (let i = 0; i < schemas.length; i++) {
       const recreated = CredentialSchema.fromJSON(schemas[i]);
       expect(recreated.version).toEqual(version);
-      expect(schemas[i]).toEqual(recreated.toJSON());
+      expect(schemas[i]).toEqual(semver.gte(version, '0.4.0') ? recreated.toJSON() : recreated.toJSONOlder());
     }
   }
 
@@ -35,5 +36,13 @@ describe('Credential Schema creation from JSON', () => {
 
   it('check version 0.2.0', () => {
     check('0.2.0')
+  })
+
+  it('check version 0.3.0', () => {
+    check('0.3.0')
+  })
+
+  it('check version 0.4.0', () => {
+    check('0.4.0')
   })
 })

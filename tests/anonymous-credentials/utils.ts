@@ -1,3 +1,4 @@
+import semver from 'semver/preload';
 import {
   Accumulator,
   AccumulatorPublicKey,
@@ -5,14 +6,14 @@ import {
   AttributeBoundPseudonym,
   AttributeCiphertexts, BDDT16Credential,
   CredentialSchema, CredentialVerificationParam, dockAccumulatorParams,
-  dockSaverEncryptionGensUncompressed,
+  dockSaverEncryptionGensUncompressed, EMPTY_SCHEMA_ID,
   IAccumulatorState,
   IEmbeddedJsonSchema,
   IJsonSchema, PositiveAccumulator,
   PredicateParamType,
   PseudonymBases, REV_ID_STR,
   SaverCiphertext,
-  SaverDecryptor,
+  SaverDecryptor, SCHEMA_DETAILS_STR,
   SCHEMA_TYPE_STR,
   STATUS_STR,
   SUBJECT_STR
@@ -572,9 +573,19 @@ export function getExampleBuilder(num: number, nonEmbeddedSchemas?: IJsonSchema[
 }
 
 export function checkSchemaFromJson(schemaJson: string, schema: CredentialSchema) {
-  let schm = JSON.parse(schemaJson);
-  expect(CredentialSchema.convertFromDataUri(schm.id)).toEqual(schema.jsonSchema);
-  expect(schm.parsingOptions).toEqual(schema.parsingOptions);
+  let schm = semver.gte(schema.version, '0.4.0') ? schemaJson : JSON.parse(schemaJson);
+  if (semver.gte(schema.version, '0.4.0')) {
+    const details = JSON.parse(schm[SCHEMA_DETAILS_STR]);
+    expect(details.jsonSchema).toEqual(schema.jsonSchema);
+    if (schema.jsonSchema['$id'] !== undefined) {
+      expect(schm.id).toEqual(schema.jsonSchema['$id']);
+    } else {
+      expect(schm.id).toEqual(EMPTY_SCHEMA_ID);
+    }
+  } else {
+    expect(CredentialSchema.convertFromDataUri(schm.id)).toEqual(schema.jsonSchema);
+    expect(schm.parsingOptions).toEqual(schema.parsingOptions);
+  }
   expect(schm.version).toEqual(schema.version);
   expect(schm.type).toEqual(SCHEMA_TYPE_STR);
 }

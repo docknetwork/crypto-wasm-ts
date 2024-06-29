@@ -1,3 +1,4 @@
+import semver from 'semver/preload';
 import { CredentialSchema } from './schema';
 import {
   BBS_CRED_PROOF_TYPE,
@@ -20,7 +21,6 @@ import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { CredentialCommon } from './credential-common';
-import { BDDT16CredentialBuilder } from './credential-builder';
 import {
   BDDT16Mac,
   BDDT16MacParams,
@@ -33,12 +33,13 @@ export abstract class Credential<PublicKey, Signature, SignatureParams> extends 
   abstract verify(publicKey: PublicKey, signatureParams?: SignatureParams): VerifyResult;
 
   serializeForSigning(): object {
+    const schema = semver.gte(this.version, '0.6.0') ? this.schema?.toJSON() : this.schema?.toJsonString();
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {
       [CRYPTO_VERSION_STR]: this.version,
-      // Converting the schema to a JSON string rather than keeping it JSO object to avoid creating extra fields while
+      // Converting the schema to a JSON string rather than keeping it JSON object to avoid creating extra fields while
       // signing which makes the implementation more expensive as one sig param is needed for each field.
-      [SCHEMA_STR]: this.schema?.toJsonString(),
+      [SCHEMA_STR]: schema,
       [SUBJECT_STR]: this.subject
     };
     for (const [k, v] of this.topLevelFields.entries()) {
