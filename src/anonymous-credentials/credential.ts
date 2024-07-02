@@ -13,8 +13,8 @@ import {
   SCHEMA_STR,
   STATUS_STR,
   SUBJECT_STR,
-  BDDT16_CRED_PROOF_TYPE,
-  BDDT16_MAC_PARAMS_LABEL_BYTES
+  BBDT16_CRED_PROOF_TYPE,
+  BBDT16_MAC_PARAMS_LABEL_BYTES
 } from './types-and-consts';
 import { VerifyResult } from 'crypto-wasm-new';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
@@ -22,12 +22,12 @@ import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { CredentialCommon } from './credential-common';
 import {
-  BDDT16Mac,
-  BDDT16MacParams,
-  BDDT16MacProofOfValidity,
-  BDDT16MacPublicKeyG1,
-  BDDT16MacSecretKey
-} from '../bddt16-mac';
+  BBDT16Mac,
+  BBDT16MacParams,
+  BBDT16MacProofOfValidity,
+  BBDT16MacPublicKeyG1,
+  BBDT16MacSecretKey
+} from '../bbdt16-mac';
 
 export abstract class Credential<PublicKey, Signature, SignatureParams> extends CredentialCommon<Signature> {
   abstract verify(publicKey: PublicKey, signatureParams?: SignatureParams): VerifyResult;
@@ -222,8 +222,8 @@ export class PSCredential extends Credential<PSPublicKey, PSSignature, PSSignatu
   }
 }
 
-export class BDDT16Credential extends Credential<undefined, BDDT16Mac, BDDT16MacParams> {
-  verify(publicKey: undefined, signatureParams?: BDDT16MacParams): VerifyResult {
+export class BBDT16Credential extends Credential<undefined, BBDT16Mac, BBDT16MacParams> {
+  verify(publicKey: undefined, signatureParams?: BBDT16MacParams): VerifyResult {
     throw new Error(`Not applicable`);
   }
 
@@ -232,27 +232,27 @@ export class BDDT16Credential extends Credential<undefined, BDDT16Mac, BDDT16Mac
    * @param secretKey
    * @param signatureParams
    */
-  verifyUsingSecretKey(secretKey: BDDT16MacSecretKey, signatureParams?: BDDT16MacParams): VerifyResult {
+  verifyUsingSecretKey(secretKey: BBDT16MacSecretKey, signatureParams?: BBDT16MacParams): VerifyResult {
     const cred = this.serializeForSigning();
     return this.signature.verifyMessageObject(
       cred,
       secretKey,
-      signatureParams ?? BDDT16_MAC_PARAMS_LABEL_BYTES,
+      signatureParams ?? BBDT16_MAC_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
   }
 
   verifyUsingValidityProof(
-    proof: BDDT16MacProofOfValidity,
-    publicKey: BDDT16MacPublicKeyG1,
-    signatureParams?: BDDT16MacParams
+    proof: BBDT16MacProofOfValidity,
+    publicKey: BBDT16MacPublicKeyG1,
+    signatureParams?: BBDT16MacParams
   ): VerifyResult {
     const cred = this.serializeForSigning();
     return proof.verifyWithMessageObject(
       this.signature,
       cred,
       publicKey,
-      signatureParams ?? BDDT16_MAC_PARAMS_LABEL_BYTES,
+      signatureParams ?? BBDT16_MAC_PARAMS_LABEL_BYTES,
       this.schema.encoder
     );
   }
@@ -265,12 +265,12 @@ export class BDDT16Credential extends Credential<undefined, BDDT16Mac, BDDT16Mac
   static applyDefaultProofMetadataIfNeeded(s: object) {
     if (!s[PROOF_STR]) {
       s[PROOF_STR] = {
-        type: BDDT16_CRED_PROOF_TYPE
+        type: BBDT16_CRED_PROOF_TYPE
       };
     }
   }
 
-  static fromJSON(j: object, proofValue?: string): BDDT16Credential {
+  static fromJSON(j: object, proofValue?: string): BBDT16Credential {
     const [cryptoVersion, credentialSchema, credentialSubject, topLevelFields, sig, credentialStatus] = this.parseJSON(
       j,
       proofValue
@@ -281,12 +281,12 @@ export class BDDT16Credential extends Credential<undefined, BDDT16Mac, BDDT16Mac
       credentialSchema,
       credentialSubject,
       topLevelFields,
-      new BDDT16Mac(sig),
+      new BBDT16Mac(sig),
       credentialStatus
     );
   }
 
   static getSigType(): SignatureType {
-    return SignatureType.Bddt16;
+    return SignatureType.Bbdt16;
   }
 }

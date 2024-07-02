@@ -1,5 +1,5 @@
 import {
-  BDDT16MacProofOfValidity,
+  BBDT16MacProofOfValidity,
   CompositeProof,
   createWitnessEqualityMetaStatement,
   Encoder,
@@ -18,7 +18,7 @@ import {
   Witnesses
 } from '../../../src';
 import { PederCommKey } from '../../../src/ped-com';
-import { buildWitness, isBDDT16, isKvac, Scheme } from '../../scheme';
+import { buildWitness, isBBDT16, isKvac, Scheme } from '../../scheme';
 import { checkResult, getParamsAndKeys, stringToBytes } from '../../utils';
 import {
   attributes1,
@@ -64,9 +64,9 @@ describe(`Signing and proof of knowledge of ${Scheme} signatures`, () => {
       expect(isValidMsgStructure(attributes, attributesStruct)).toEqual(true);
 
       const signed = signAndVerify(attributes, encoder, label, sk, pk);
-      if (isBDDT16()) {
+      if (isBBDT16()) {
         const pk = sk.generatePublicKeyG1(params);
-        const proof = new BDDT16MacProofOfValidity(signed.signature, sk, pk, params);
+        const proof = new BBDT16MacProofOfValidity(signed.signature, sk, pk, params);
         checkResult(proof.verifyWithMessageObject(signed.signature, attributes, pk, label, encoder));
       }
 

@@ -1,9 +1,9 @@
 import b58 from 'bs58';
 import { VerifyResult } from 'crypto-wasm-new';
 import { AccumulatorSecretKey } from '../accumulator';
-import { BDDT16MacSecretKey } from '../bddt16-mac';
+import { BBDT16MacSecretKey } from '../bbdt16-mac';
 import {
-  BDDT16KeyedProof,
+  BBDT16KeyedProof,
   KBUniAccumMembershipKeyedProof,
   KBUniAccumNonMembershipKeyedProof,
   VBAccumMembershipKeyedProof
@@ -21,7 +21,7 @@ import { Versioned } from './versioned';
 
 export interface IKeyedCredentialProof {
   sigType: SignatureType;
-  proof: BDDT16KeyedProof;
+  proof: BBDT16KeyedProof;
 }
 
 export interface IKeyedCredentialStatusProof {
@@ -50,7 +50,7 @@ export class KeyedProof extends Versioned {
     this.status = status;
   }
 
-  verify(credentialSecretKey?: BDDT16MacSecretKey, accumSecretKey?: AccumulatorSecretKey): VerifyResult {
+  verify(credentialSecretKey?: BBDT16MacSecretKey, accumSecretKey?: AccumulatorSecretKey): VerifyResult {
     const r = { verified: true, error: '' };
 
     if (this.credential !== undefined) {
@@ -120,7 +120,7 @@ export class KeyedProof extends Versioned {
       }
       credential = {
         sigType: j['credential'].sigType,
-        proof: new BDDT16KeyedProof(b58.decode(j['credential'].proof))
+        proof: new BBDT16KeyedProof(b58.decode(j['credential'].proof))
       };
     }
     if (j['status'] !== undefined) {

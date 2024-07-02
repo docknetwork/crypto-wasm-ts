@@ -1,7 +1,7 @@
 import { BBSPlusBlindSignatureG1 } from '../bbs-plus';
 import { BBSBlindSignature, BBSSignature } from '../bbs';
-import { BBSCredential, BBSPlusCredential, BDDT16Credential } from './credential';
-import { BBSPlusBlinding, BDDT16Blinding } from './blinded-credential-request-builder';
+import { BBSCredential, BBSPlusCredential, BBDT16Credential } from './credential';
+import { BBSPlusBlinding, BBDT16Blinding } from './blinded-credential-request-builder';
 import * as _ from 'lodash';
 import { CredentialCommon } from './credential-common';
 import {
@@ -9,12 +9,12 @@ import {
   BBS_CRED_PROOF_TYPE,
   BBS_PLUS_BLINDED_CRED_PROOF_TYPE,
   BBS_PLUS_CRED_PROOF_TYPE,
-  BDDT16_BLINDED_CRED_PROOF_TYPE,
-  BDDT16_CRED_PROOF_TYPE,
+  BBDT16_BLINDED_CRED_PROOF_TYPE,
+  BBDT16_CRED_PROOF_TYPE,
   PROOF_STR,
   TYPE_STR
 } from './types-and-consts';
-import { BDDT16BlindMac } from '../bddt16-mac';
+import { BBDT16BlindMac } from '../bbdt16-mac';
 
 /**
  * A blinded credential created by the signer. Has to be converted to a (unblinded) credential
@@ -73,7 +73,7 @@ export abstract class BlindedCredential<BlindSig> extends CredentialCommon<Blind
 
   protected static validateProofType(typ: string) {
     if (
-      ![BBS_BLINDED_CRED_PROOF_TYPE, BBS_PLUS_BLINDED_CRED_PROOF_TYPE, BDDT16_BLINDED_CRED_PROOF_TYPE].includes(typ)
+      ![BBS_BLINDED_CRED_PROOF_TYPE, BBS_PLUS_BLINDED_CRED_PROOF_TYPE, BBDT16_BLINDED_CRED_PROOF_TYPE].includes(typ)
     ) {
       throw new Error(`Invalid proof type ${typ}`);
     }
@@ -190,7 +190,7 @@ export class BBSPlusBlindedCredential extends BlindedCredential<BBSPlusBlindSign
   }
 }
 
-export class BDDT16BlindedCredential extends BlindedCredential<BDDT16BlindMac> {
+export class BBDT16BlindedCredential extends BlindedCredential<BBDT16BlindMac> {
   /**
    * Convert to unblinded credential which can be verified with the secret key
    * @param blindedSubject
@@ -199,10 +199,10 @@ export class BDDT16BlindedCredential extends BlindedCredential<BDDT16BlindMac> {
    * @param blindedTopLevelFields - Any top level fields that are blinded. Ensure that these are not set by the issuer.
    * @returns
    */
-  toCredential(blindedSubject: object | object[], blinding: BDDT16Blinding, blindedStatus?: object, blindedTopLevelFields?: Map<string, unknown>): BDDT16Credential {
-    const [updatedSubject, credStatus, topLevelFields] = this.getUpdatedAttributes(BDDT16_CRED_PROOF_TYPE, blindedSubject, blindedStatus, blindedTopLevelFields);
+  toCredential(blindedSubject: object | object[], blinding: BBDT16Blinding, blindedStatus?: object, blindedTopLevelFields?: Map<string, unknown>): BBDT16Credential {
+    const [updatedSubject, credStatus, topLevelFields] = this.getUpdatedAttributes(BBDT16_CRED_PROOF_TYPE, blindedSubject, blindedStatus, blindedTopLevelFields);
     const unblindedSig = this.signature.unblind(blinding.value);
-    return new BDDT16Credential(
+    return new BBDT16Credential(
       this.version,
       this.schema,
       updatedSubject,
@@ -212,7 +212,7 @@ export class BDDT16BlindedCredential extends BlindedCredential<BDDT16BlindMac> {
     );
   }
 
-  static fromJSON(j: object, proofValue?: string): BDDT16BlindedCredential {
+  static fromJSON(j: object, proofValue?: string): BBDT16BlindedCredential {
     const [cryptoVersion, credentialSchema, credentialSubject, topLevelFields, sig, credentialStatus] = this.parseJSON(
       j,
       proofValue
@@ -223,7 +223,7 @@ export class BDDT16BlindedCredential extends BlindedCredential<BDDT16BlindMac> {
       credentialSchema,
       credentialSubject,
       topLevelFields,
-      new BDDT16BlindMac(sig),
+      new BBDT16BlindMac(sig),
       credentialStatus
     );
   }
@@ -231,7 +231,7 @@ export class BDDT16BlindedCredential extends BlindedCredential<BDDT16BlindMac> {
   static applyDefaultProofMetadataIfNeeded(s: object) {
     if (!s[PROOF_STR]) {
       s[PROOF_STR] = {
-        type: BDDT16_BLINDED_CRED_PROOF_TYPE
+        type: BBDT16_BLINDED_CRED_PROOF_TYPE
       };
     }
   }

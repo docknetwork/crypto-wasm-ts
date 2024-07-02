@@ -9,7 +9,7 @@ import { PSBlindSignatureRequest, PSSignatureParams } from './ps';
 import { Witness } from './composite-proof/witness';
 import { ISignatureParams, MessageStructure } from './types';
 import { encodeMessageForSigning } from 'crypto-wasm-new';
-import { BDDT16BlindMacRequest, BDDT16MacParams } from './bddt16-mac';
+import { BBDT16BlindMacRequest, BBDT16MacParams } from './bbdt16-mac';
 
 export function flattenMessageStructure(msgStructure: MessageStructure): object {
   return flatten(msgStructure);
@@ -311,24 +311,24 @@ export function getPSWitnessesForBlindSigRequest(
 }
 
 /**
- * Get the `BBS+` statement to be used in composite proof for the blind signature request
+ * Get the `BBDT16` statement to be used in composite proof for the blind signature request
  * @param request
  * @param macParams
  */
-export function getBDDT16StatementForBlindMacRequest(
-  request: BDDT16BlindMacRequest,
-  macParams: BDDT16MacParams
+export function getBBDT16StatementForBlindMacRequest(
+  request: BBDT16BlindMacRequest,
+  macParams: BBDT16MacParams
 ): Uint8Array {
   const commKey = macParams.getParamsForIndices(request.blindedIndices);
   return Statement.pedersenCommitmentG1(commKey, request.commitment);
 }
 
 /**
- * Get the `BBS+` witness to be used in composite proof for the blind signature request
+ * Get the `BBDT16` witness to be used in composite proof for the blind signature request
  * @param messages
  * @param blinding
  */
-export function getBDDT16WitnessForBlindMacRequest(
+export function getBBDT16WitnessForBlindMacRequest(
   messages: Map<number, Uint8Array>,
   blinding: Uint8Array
 ): Uint8Array {

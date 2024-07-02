@@ -69,11 +69,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: yarn install --frozen-lockfile
       - run: yarn test
-  test_bddt16:
-    name: Test BDDT16
+  test_bbdt16:
+    name: Test BBDT16
     runs-on: ${{matrix.os}}
     env:
-      TEST_SIGNATURE_SCHEME: 'BDDT16'
+      TEST_SIGNATURE_SCHEME: 'BBDT16'
     strategy:
       matrix:
         node-version: [18.x, 20.x ]

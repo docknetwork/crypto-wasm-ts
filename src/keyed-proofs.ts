@@ -6,14 +6,14 @@ import {
   verifyKBUniAccumNonMembershipKeyedProof
 } from 'crypto-wasm-new';
 import { AccumulatorSecretKey } from './accumulator';
-import { BDDT16MacSecretKey } from './bddt16-mac';
+import { BBDT16MacSecretKey } from './bbdt16-mac';
 import { BytearrayWrapper } from './bytearray-wrapper';
 
 /**
- * Keyed proof of BDDT16 MAC.
+ * Keyed proof of BBDT16 MAC.
  */
-export class BDDT16KeyedProof extends BytearrayWrapper {
-  verify(secretKey: BDDT16MacSecretKey): VerifyResult {
+export class BBDT16KeyedProof extends BytearrayWrapper {
+  verify(secretKey: BBDT16MacSecretKey): VerifyResult {
     return verifyBDDT16KeyedProof(this.value, secretKey.value);
   }
 }

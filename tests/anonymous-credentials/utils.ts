@@ -4,7 +4,7 @@ import {
   AccumulatorPublicKey,
   AccumulatorSecretKey, AccumulatorVerificationParam,
   AttributeBoundPseudonym,
-  AttributeCiphertexts, BDDT16Credential,
+  AttributeCiphertexts, BBDT16Credential,
   CredentialSchema, CredentialVerificationParam, dockAccumulatorParams,
   dockSaverEncryptionGensUncompressed, EMPTY_SCHEMA_ID,
   IAccumulatorState,
@@ -34,7 +34,7 @@ import * as _ from 'lodash';
 import { checkResult, stringToBytes } from '../utils';
 import fs from 'fs';
 import { BytearrayWrapper } from '../../src/bytearray-wrapper';
-import { BDDT16MacParams, BDDT16MacSecretKey } from '../../src/bddt16-mac';
+import { BBDT16MacParams, BBDT16MacSecretKey } from '../../src/bbdt16-mac';
 import { InMemoryKBUniversalState, InMemoryState } from '../../src/accumulator/in-memory-persistence';
 
 export function getExampleSchema(num): IEmbeddedJsonSchema {
@@ -777,15 +777,15 @@ export function checkEmbeddedSchema(withSchemaRef: boolean, schema: CredentialSc
 export function getKeys(seed?: string): [SecretKey, PublicKey] {
   const params = SignatureParams.generate(100, SignatureLabelBytes);
   const s = seed ? stringToBytes(seed) : undefined;
-  const isKvac = params instanceof BDDT16MacParams;
+  const isKvac = params instanceof BBDT16MacParams;
   const keypair = !isKvac ? KeyPair.generate(params, s) : undefined;
-  const sk = !isKvac ? keypair.sk : BDDT16MacSecretKey.generate(s);
+  const sk = !isKvac ? keypair.sk : BBDT16MacSecretKey.generate(s);
   const pk = !isKvac ? keypair.pk : undefined;
   return [sk, pk];
 }
 
 export function verifyCred(cred: Credential, pk: PublicKey, sk: SecretKey) {
-  const isKvac = cred instanceof BDDT16Credential;
+  const isKvac = cred instanceof BBDT16Credential;
   checkResult(!isKvac ? cred.verify(pk) : cred.verifyUsingSecretKey(sk));
 }
 

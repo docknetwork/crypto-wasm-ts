@@ -46,8 +46,8 @@ import {
   META_SCHEMA_STR,
   InequalityProtocol,
   CredentialVerificationParam,
-  BDDT16BlindedCredentialRequestBuilder,
-  BDDT16BlindedCredential, BlindedCredentialBuilder,
+  BBDT16BlindedCredentialRequestBuilder,
+  BBDT16BlindedCredential, BlindedCredentialBuilder,
   CredentialBuilder as CB
 } from '../../src';
 import {
@@ -78,7 +78,7 @@ import {
 } from '../utils';
 import { flatten, unflatten } from 'flat';
 import { InMemoryState } from '../../src/accumulator/in-memory-persistence';
-import { BDDT16BlindedCredentialRequest, BBSBlindedCredentialRequest, BBSPlusBlindedCredentialRequest, BlindedCredentialRequest } from '../../src';
+import { BBDT16BlindedCredentialRequest, BBSBlindedCredentialRequest, BBSPlusBlindedCredentialRequest, BlindedCredentialRequest } from '../../src';
 
 const loadSnarkSetupFromFiles = true;
 
@@ -98,7 +98,7 @@ function newReqBuilder(
   schema: CredentialSchema,
   subjectToBlind: object
 ): BlindedCredentialRequestBuilder<SignatureParams> {
-  const reqBuilder = isKvac() ? new BDDT16BlindedCredentialRequestBuilder() : isBBS() ? new BBSBlindedCredentialRequestBuilder() : new BBSPlusBlindedCredentialRequestBuilder();
+  const reqBuilder = isKvac() ? new BBDT16BlindedCredentialRequestBuilder() : isBBS() ? new BBSBlindedCredentialRequestBuilder() : new BBSPlusBlindedCredentialRequestBuilder();
   reqBuilder.schema = schema;
   reqBuilder.subjectToBlind = subjectToBlind;
   return reqBuilder;
@@ -124,7 +124,7 @@ function checkReqJson(
   blindedAttributesCircomOutputs?: Uint8Array[][]
 ) {
   const reqJson = req.toJSON();
-  const recreatedReq = isKvac() ? BDDT16BlindedCredentialRequest.fromJSON(reqJson) : isBBS()
+  const recreatedReq = isKvac() ? BBDT16BlindedCredentialRequest.fromJSON(reqJson) : isBBS()
     ? BBSBlindedCredentialRequest.fromJSON(reqJson)
     : BBSPlusBlindedCredentialRequest.fromJSON(reqJson);
   checkResult(
@@ -135,7 +135,7 @@ function checkReqJson(
 
 function checkBlindedCredJson(blindedCred: BlindedCredential<any>, sk: SecretKey, pk: PublicKey, blindedSubject: object, blinding?: Uint8Array, blindedStatus?: object, blindedTopLevelFields?: Map<string, unknown>) {
   const credJson = blindedCred.toJSON();
-  const recreatedCred = isKvac() ? BDDT16BlindedCredential.fromJSON(credJson) : isBBS() ? BBSBlindedCredential.fromJSON(credJson) : BBSPlusBlindedCredential.fromJSON(credJson);
+  const recreatedCred = isKvac() ? BBDT16BlindedCredential.fromJSON(credJson) : isBBS() ? BBSBlindedCredential.fromJSON(credJson) : BBSPlusBlindedCredential.fromJSON(credJson);
   // @ts-ignore
   const cred = isBBS()
     ? // @ts-ignore

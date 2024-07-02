@@ -2,12 +2,11 @@ import { VerifyResult } from 'crypto-wasm-new';
 import {
   AccumulatorPublicKey,
   AccumulatorSecretKey,
-  BDDT16Credential,
-  BDDT16CredentialBuilder,
-  BDDT16MacSecretKey,
+  BBDT16Credential,
+  BBDT16CredentialBuilder,
+  BBDT16MacSecretKey,
   CredentialSchema,
   KeyedProof,
-  dockAccumulatorParams,
   ID_STR,
   initializeWasm,
   MEM_CHECK_KV_STR,
@@ -38,15 +37,15 @@ import {
   verifyCred
 } from './utils';
 
-describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, () => {
+describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, () => {
   let sk: SecretKey, pk: PublicKey;
-  let skKvac: BDDT16MacSecretKey;
+  let skKvac: BBDT16MacSecretKey;
 
   let credential1: Credential;
   let credential2: Credential;
   let credential3: Credential;
-  let credential4: BDDT16Credential;
-  let credential5: BDDT16Credential;
+  let credential4: BBDT16Credential;
+  let credential5: BBDT16Credential;
   let credential6: Credential;
   let credential7: Credential;
 
@@ -70,7 +69,7 @@ describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, ()
     await initializeWasm();
 
     [sk, pk] = getKeys('seed1');
-    skKvac = BDDT16MacSecretKey.generate();
+    skKvac = BBDT16MacSecretKey.generate();
 
     const schema = new CredentialSchema(getExampleSchema(5));
     const subject = {
@@ -137,7 +136,7 @@ describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, ()
     credential3 = builder3.sign(sk);
     verifyCred(credential3, pk, sk);
 
-    const builder4 = new BDDT16CredentialBuilder();
+    const builder4 = new BBDT16CredentialBuilder();
     builder4.schema = schema;
     builder4.subject = subject;
     builder4.setCredentialStatus('dock:accumulator:accumId123', MEM_CHECK_STR, 'user:A-123');
@@ -145,7 +144,7 @@ describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, ()
     credential4 = builder4.sign(skKvac);
     verifyCred(credential4, undefined, skKvac);
 
-    const builder5 = new BDDT16CredentialBuilder();
+    const builder5 = new BBDT16CredentialBuilder();
     builder5.schema = schema;
     builder5.subject = subject;
     builder5.setCredentialStatus('dock:accumulator:accumId124', MEM_CHECK_KV_STR, 'user:A-124');
@@ -259,7 +258,7 @@ describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, ()
 
       function onlyCredProofAvailable(keyedCredProof?: KeyedProof) {
         expect(keyedCredProof?.credential).toMatchObject({
-          sigType: SignatureType.Bddt16
+          sigType: SignatureType.Bbdt16
         });
         checkResult(keyedCredProof?.credential?.proof.verify(sk) as VerifyResult);
       }
@@ -278,7 +277,7 @@ describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, ()
 
       function check3(keyedCredProof?: KeyedProof) {
         expect(keyedCredProof?.credential).toMatchObject({
-          sigType: SignatureType.Bddt16
+          sigType: SignatureType.Bbdt16
         });
         checkResult(keyedCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
         expect(keyedCredProof?.status).not.toBeDefined();
@@ -286,7 +285,7 @@ describe(`Keyed proof verification with BDDT16 MAC and ${Scheme} signatures`, ()
 
       function check4(keyedCredProof?: KeyedProof) {
         expect(keyedCredProof?.credential).toMatchObject({
-          sigType: SignatureType.Bddt16
+          sigType: SignatureType.Bbdt16
         });
         checkResult(keyedCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
         expect(keyedCredProof?.status).toMatchObject({

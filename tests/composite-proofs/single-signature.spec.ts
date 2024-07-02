@@ -68,7 +68,7 @@ describe(`${Scheme} Proving knowledge of 1 signature over the attributes`, () =>
     checkResult(proof.verify(verifierProofSpec, nonce));
 
     if (isKvac()) {
-      const statement3 = Statement.bddt16MacFullVerifier(params, sk, revealedMsgs, true);
+      const statement3 = Statement.bbdt16MacFullVerifier(params, sk, revealedMsgs, true);
       const verifierStatements = new Statements(statement3);
       const verifierProofSpec = new ProofSpec(verifierStatements, new MetaStatements(), [], context);
       expect(verifierProofSpec.isValid()).toEqual(true);

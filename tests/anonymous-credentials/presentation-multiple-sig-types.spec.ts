@@ -27,15 +27,15 @@ import {
   PSSecretKey,
   PSSignatureParams,
   SignatureType,
-  BDDT16Credential,
-  BDDT16_MAC_PARAMS_LABEL_BYTES,
-  BDDT16CredentialBuilder,
-  BDDT16MacProofOfValidity, BDDT16MacPublicKeyG1, BDDT16KeypairG1
+  BBDT16Credential,
+  BBDT16_MAC_PARAMS_LABEL_BYTES,
+  BBDT16CredentialBuilder,
+  BBDT16MacProofOfValidity, BBDT16MacPublicKeyG1, BBDT16KeypairG1
 } from '../../src';
 import { checkResult, stringToBytes } from '../utils';
 import { checkPresentationJson, getExampleSchema } from './utils';
 import { PederCommKey } from '../../src/ped-com';
-import { BDDT16MacParams, BDDT16MacSecretKey } from '../../src/bddt16-mac';
+import { BBDT16MacParams, BBDT16MacSecretKey } from '../../src/bbdt16-mac';
 import { isKvac } from '../scheme';
 
 describe.each([true, false])(
@@ -44,12 +44,12 @@ describe.each([true, false])(
     let skBbs: BBSSecretKey, pkBbs: BBSPublicKey;
     let skBbsPlus: BBSPlusSecretKey, pkBbsPlus: BBSPlusPublicKeyG2;
     let skPs: PSSecretKey, pkPs: PSPublicKey;
-    let skBddt16: BDDT16MacSecretKey, pkBddt16: BDDT16MacPublicKeyG1;
+    let skBbdt16: BBDT16MacSecretKey, pkBbdt16: BBDT16MacPublicKeyG1;
 
     let credentialBbs: BBSCredential;
     let credentialBbsPlus: BBSPlusCredential;
     let credentialPs: PSCredential;
-    let credentialBddt16: BDDT16Credential;
+    let credentialBbdt16: BBDT16Credential;
 
     const nonEmbeddedSchema = {
       $id: 'https://example.com?hash=abc123ff',
@@ -62,13 +62,13 @@ describe.each([true, false])(
       const paramsBbs = BBSSignatureParams.generate(1, BBS_SIGNATURE_PARAMS_LABEL_BYTES);
       const paramsBbsPlus = BBSPlusSignatureParamsG1.generate(1, BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES);
       const paramsPs = PSSignatureParams.generate(100, PS_SIGNATURE_PARAMS_LABEL_BYTES);
-      const paramsBddt16 = BDDT16MacParams.generate(1, BDDT16_MAC_PARAMS_LABEL_BYTES);
+      const paramsBbdt16 = BBDT16MacParams.generate(1, BBDT16_MAC_PARAMS_LABEL_BYTES);
       const keypairBbs = BBSKeypair.generate(paramsBbs, stringToBytes('seed1'));
       const keypairBbsPlus = BBSPlusKeypairG2.generate(paramsBbsPlus, stringToBytes('seed2'));
       const keypairPs = PSKeypair.generate(paramsPs, stringToBytes('seed3'));
-      const keypairBddt16 = BDDT16KeypairG1.generate(paramsBddt16, stringToBytes('seed4'));
-      skBddt16 = keypairBddt16.sk;
-      pkBddt16 = keypairBddt16.pk;
+      const keypairBbdt16 = BBDT16KeypairG1.generate(paramsBbdt16, stringToBytes('seed4'));
+      skBbdt16 = keypairBbdt16.sk;
+      pkBbdt16 = keypairBbdt16.pk;
       skBbs = keypairBbs.sk;
       pkBbs = keypairBbs.pk;
       skBbsPlus = keypairBbsPlus.sk;
@@ -80,7 +80,7 @@ describe.each([true, false])(
         [BBSCredentialBuilder, skBbs, pkBbs],
         [BBSPlusCredentialBuilder, skBbsPlus, pkBbsPlus],
         [PSCredentialBuilder, skPs, pkPs],
-        [BDDT16CredentialBuilder, skBddt16, undefined]
+        [BBDT16CredentialBuilder, skBbdt16, undefined]
       ]) {
         const schema = getExampleSchema(11);
         // @ts-ignore
@@ -113,15 +113,15 @@ describe.each([true, false])(
           score: -13.5
         };
         const credential = builder.sign(sk);
-        if (!(sk instanceof BDDT16MacSecretKey)) {
+        if (!(sk instanceof BBDT16MacSecretKey)) {
           checkResult(credential.verify(pk));
         } else {
           checkResult(credential.verifyUsingSecretKey(sk));
 
           // Check using validity proof as well
-          const proof = new BDDT16MacProofOfValidity(credential.signature, skBddt16, pkBddt16, paramsBddt16);
-          checkResult(credential.verifyUsingValidityProof(proof, pkBddt16, paramsBddt16));
-          checkResult(credential.verifyUsingValidityProof(proof, pkBddt16));
+          const proof = new BBDT16MacProofOfValidity(credential.signature, skBbdt16, pkBbdt16, paramsBbdt16);
+          checkResult(credential.verifyUsingValidityProof(proof, pkBbdt16, paramsBbdt16));
+          checkResult(credential.verifyUsingValidityProof(proof, pkBbdt16));
         }
         if (sk instanceof BBSSecretKey) {
           credentialBbs = credential;
@@ -132,8 +132,8 @@ describe.each([true, false])(
         if (sk instanceof PSSecretKey) {
           credentialPs = credential;
         }
-        if (sk instanceof BDDT16MacSecretKey) {
-          credentialBddt16 = credential;
+        if (sk instanceof BBDT16MacSecretKey) {
+          credentialBbdt16 = credential;
         }
       }
 
@@ -147,7 +147,7 @@ describe.each([true, false])(
       expect(builder.addCredential(credentialBbs)).toEqual(0);
       expect(builder.addCredential(credentialBbsPlus)).toEqual(1);
       expect(builder.addCredential(credentialPs, pkPs)).toEqual(2);
-      expect(builder.addCredential(credentialBddt16)).toEqual(3);
+      expect(builder.addCredential(credentialBbdt16)).toEqual(3);
 
       builder.markAttributesRevealed(0, new Set<string>(['credentialSubject.fname', 'credentialSubject.lname']));
       builder.markAttributesRevealed(1, new Set<string>(['credentialSubject.isbool']));
@@ -180,7 +180,7 @@ describe.each([true, false])(
       expect(pres.spec.credentials[0].sigType).toEqual(SignatureType.Bbs);
       expect(pres.spec.credentials[1].sigType).toEqual(SignatureType.BbsPlus);
       expect(pres.spec.credentials[2].sigType).toEqual(SignatureType.Ps);
-      expect(pres.spec.credentials[3].sigType).toEqual(SignatureType.Bddt16);
+      expect(pres.spec.credentials[3].sigType).toEqual(SignatureType.Bbdt16);
 
       expect(pres.spec.credentials[0].revealedAttributes).toEqual({
         credentialSubject: {
@@ -225,7 +225,7 @@ describe.each([true, false])(
       checkPresentationJson(pres, pks, undefined, pp);
 
       // For KVAC, set secret key for full verification
-      pks.set(3, skBddt16);
+      pks.set(3, skBbdt16);
       checkResult(pres.verify(pks, undefined, pp));
       checkPresentationJson(pres, pks, undefined, pp);
     });

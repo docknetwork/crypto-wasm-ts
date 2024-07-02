@@ -1,6 +1,6 @@
 {
   "name": "@docknetwork/crypto-wasm-ts",
-  "version": "0.62.0",
+  "version": "0.63.0",
   "description": "Typescript abstractions over Dock's Rust crypto library's WASM wrapper",
   "homepage": "https://github.com/docknetwork/crypto-wasm-ts",
   "main": "lib/index.js",
@@ -19,8 +19,8 @@
     "test-bbs": "TEST_SIGNATURE_SCHEME=BBS yarn jest",
     "test-bbs+": "TEST_SIGNATURE_SCHEME=BBS+ yarn jest",
     "test-ps": "TEST_SIGNATURE_SCHEME=PS yarn jest",
-    "test-bddt16": "TEST_SIGNATURE_SCHEME=BDDT16 yarn jest",
-    "test-all": "TEST_SIGNATURE_SCHEME=BBS yarn jest; TEST_SIGNATURE_SCHEME=BBS+ yarn jest; TEST_SIGNATURE_SCHEME=PS yarn jest; TEST_SIGNATURE_SCHEME=BDDT16 yarn jest"
+    "test-bbdt16": "TEST_SIGNATURE_SCHEME=BBDT16 yarn jest",
+    "test-all": "TEST_SIGNATURE_SCHEME=BBS yarn jest; TEST_SIGNATURE_SCHEME=BBS+ yarn jest; TEST_SIGNATURE_SCHEME=PS yarn jest; TEST_SIGNATURE_SCHEME=BBDT16 yarn jest"
   },
   "license": "Apache-2.0",
   "private": false,

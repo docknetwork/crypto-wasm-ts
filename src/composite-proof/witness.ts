@@ -22,7 +22,7 @@ import { VBMembershipWitness, VBNonMembershipWitness } from '../accumulator';
 import { CircomInputs } from '../r1cs';
 import { PSSignature } from '../ps';
 import { BBSSignature } from '../bbs';
-import { BDDT16Mac } from '../bddt16-mac';
+import { BBDT16Mac } from '../bbdt16-mac';
 
 /**
  * Private data known only to the prover whose knowledge is being proved in a proof.
@@ -73,7 +73,7 @@ export class Witness {
     return generatePoKBBSPlusSignatureWitness(signature.value, unrevealedMessages, encodeMessages);
   }
 
-  static bddt16Mac(mac: BDDT16Mac, unrevealedMessages: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
+  static bbdt16Mac(mac: BBDT16Mac, unrevealedMessages: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
     return generatePoKBDDT16MacWitness(mac.value, unrevealedMessages, encodeMessages);
   }
 

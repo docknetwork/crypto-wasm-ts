@@ -10,14 +10,14 @@ import {
   VerifyResult
 } from 'crypto-wasm-new';
 import { MessageStructure, SignedMessages } from '../types';
-import { BDDT16MacParams } from './params';
-import { BDDT16MacSecretKey, BDDT16MacPublicKeyG1 } from './keys';
+import { BBDT16MacParams } from './params';
+import { BBDT16MacSecretKey, BBDT16MacPublicKeyG1 } from './keys';
 import { encodeRevealedMessageObject, getBlindedIndicesAndRevealedMessages } from '../sign-verify-js-objs';
 
 /**
- * Proof of knowledge of BDDT16 MAC protocol
+ * Proof of knowledge of BBDT16 MAC protocol
  */
-export class BDDT16Mac extends MessageEncoder {
+export class BBDT16Mac extends MessageEncoder {
   /**
    * Signer creates a new MAC
    * @param messages - Ordered list of messages. Order and contents should be kept same for both signer and verifier
@@ -27,10 +27,10 @@ export class BDDT16Mac extends MessageEncoder {
    */
   static generate(
     messages: Uint8Array[],
-    secretKey: BDDT16MacSecretKey,
-    params: BDDT16MacParams,
+    secretKey: BBDT16MacSecretKey,
+    params: BBDT16MacParams,
     encodeMessages: boolean
-  ): BDDT16Mac {
+  ): BBDT16Mac {
     if (messages.length !== params.supportedMessageCount()) {
       throw new Error(
         `Number of messages ${
@@ -39,7 +39,7 @@ export class BDDT16Mac extends MessageEncoder {
       );
     }
     const mac = bddt16MacGenerate(messages, secretKey.value, params.value, encodeMessages);
-    return new BDDT16Mac(mac);
+    return new BBDT16Mac(mac);
   }
 
   /**
@@ -51,8 +51,8 @@ export class BDDT16Mac extends MessageEncoder {
    */
   verify(
     messages: Uint8Array[],
-    secretKey: BDDT16MacSecretKey,
-    params: BDDT16MacParams,
+    secretKey: BBDT16MacSecretKey,
+    params: BBDT16MacParams,
     encodeMessages: boolean
   ): VerifyResult {
     if (messages.length !== params.supportedMessageCount()) {
@@ -67,15 +67,15 @@ export class BDDT16Mac extends MessageEncoder {
 
   static signMessageObject(
     messages: Object,
-    secretKey: BDDT16MacSecretKey,
-    labelOrParams: Uint8Array | BDDT16MacParams,
+    secretKey: BBDT16MacSecretKey,
+    labelOrParams: Uint8Array | BBDT16MacParams,
     encoder: Encoder
-  ): SignedMessages<BDDT16Mac> {
+  ): SignedMessages<BBDT16Mac> {
     const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
     const encodedMessageList = Object.values(encodedMessages);
 
-    const sigParams = BDDT16MacParams.getMacParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
-    const signature = BDDT16Mac.generate(encodedMessageList, secretKey, sigParams, false);
+    const sigParams = BBDT16MacParams.getMacParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
+    const signature = BBDT16Mac.generate(encodedMessageList, secretKey, sigParams, false);
 
     return {
       encodedMessages,
@@ -85,17 +85,17 @@ export class BDDT16Mac extends MessageEncoder {
 
   static getSignedMessageObjectWithProof(
     messages: Object,
-    secretKey: BDDT16MacSecretKey,
-    publicKey: BDDT16MacPublicKeyG1,
-    labelOrParams: Uint8Array | BDDT16MacParams,
+    secretKey: BBDT16MacSecretKey,
+    publicKey: BBDT16MacPublicKeyG1,
+    labelOrParams: Uint8Array | BBDT16MacParams,
     encoder: Encoder
-  ): [SignedMessages<BDDT16Mac>, BDDT16MacProofOfValidity] {
+  ): [SignedMessages<BBDT16Mac>, BBDT16MacProofOfValidity] {
     const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
     const encodedMessageList = Object.values(encodedMessages);
 
-    const sigParams = BDDT16MacParams.getMacParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
-    const signature = BDDT16Mac.generate(encodedMessageList, secretKey, sigParams, false);
-    const proof = new BDDT16MacProofOfValidity(signature, secretKey, publicKey, sigParams);
+    const sigParams = BBDT16MacParams.getMacParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
+    const signature = BBDT16Mac.generate(encodedMessageList, secretKey, sigParams, false);
+    const proof = new BBDT16MacProofOfValidity(signature, secretKey, publicKey, sigParams);
     return [
       {
         encodedMessages,
@@ -115,19 +115,19 @@ export class BDDT16Mac extends MessageEncoder {
    */
   verifyMessageObject(
     messages: object,
-    secretKey: BDDT16MacSecretKey,
-    labelOrParams: Uint8Array | BDDT16MacParams,
+    secretKey: BBDT16MacSecretKey,
+    labelOrParams: Uint8Array | BBDT16MacParams,
     encoder: Encoder
   ): VerifyResult {
     const [_, encodedValues] = encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
-    const sigParams = BDDT16MacParams.getMacParamsOfRequiredSize(msgCount, labelOrParams);
+    const sigParams = BBDT16MacParams.getMacParamsOfRequiredSize(msgCount, labelOrParams);
     return this.verify(encodedValues, secretKey, sigParams, false);
   }
 }
 
-export class BDDT16BlindMac extends MessageEncoder {
+export class BBDT16BlindMac extends MessageEncoder {
   /**
    * Generates a blind MAC over the commitment of unrevealed messages and revealed messages
    * @param commitment - Commitment over unrevealed messages sent by the requester of the blind MAC. Its assumed that
@@ -140,10 +140,10 @@ export class BDDT16BlindMac extends MessageEncoder {
   static generate(
     commitment: Uint8Array,
     revealedMessages: Map<number, Uint8Array>,
-    secretKey: BDDT16MacSecretKey,
-    params: BDDT16MacParams,
+    secretKey: BBDT16MacSecretKey,
+    params: BBDT16MacParams,
     encodeMessages: boolean
-  ): BDDT16BlindMac {
+  ): BBDT16BlindMac {
     if (revealedMessages.size >= params.supportedMessageCount()) {
       throw new Error(
         `Number of messages ${
@@ -152,7 +152,7 @@ export class BDDT16BlindMac extends MessageEncoder {
       );
     }
     const sig = bddt16BlindMacGenerate(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
-    return new BDDT16BlindMac(sig);
+    return new BBDT16BlindMac(sig);
   }
 
   /**
@@ -160,13 +160,13 @@ export class BDDT16BlindMac extends MessageEncoder {
    * @param request
    * @param secretKey
    * @param params
-   * @returns {BDDT16BlindMac}
+   * @returns {BBDT16BlindMac}
    */
   static fromRequest(
-    { commitment, revealedMessages }: BDDT16BlindMacRequest,
-    secretKey: BDDT16MacSecretKey,
-    params: BDDT16MacParams
-  ): BDDT16BlindMac {
+    { commitment, revealedMessages }: BBDT16BlindMacRequest,
+    secretKey: BBDT16MacSecretKey,
+    params: BBDT16MacParams
+  ): BBDT16BlindMac {
     return this.generate(commitment, revealedMessages ?? new Map(), secretKey, params, false);
   }
 
@@ -174,9 +174,9 @@ export class BDDT16BlindMac extends MessageEncoder {
    * Unblind the blind MAC to get a regular MAC that can be verified
    * @param blinding
    */
-  unblind(blinding: Uint8Array): BDDT16Mac {
+  unblind(blinding: Uint8Array): BBDT16Mac {
     const sig = bddt16UnblindMac(this.value, blinding);
-    return new BDDT16Mac(sig);
+    return new BBDT16Mac(sig);
   }
 
   /**
@@ -191,11 +191,11 @@ export class BDDT16BlindMac extends MessageEncoder {
    */
   static generateRequest(
     messagesToBlind: Map<number, Uint8Array>,
-    params: BDDT16MacParams,
+    params: BBDT16MacParams,
     encodeMessages: boolean,
     blinding?: Uint8Array,
     revealedMessages?: Map<number, Uint8Array>
-  ): [Uint8Array, BDDT16BlindMacRequest] {
+  ): [Uint8Array, BBDT16BlindMacRequest] {
     const [commitment, b] = params.commitToMessages(messagesToBlind, encodeMessages, blinding);
     const [blindedIndices, encodedRevealedMessages] = getBlindedIndicesAndRevealedMessages(
       messagesToBlind,
@@ -215,20 +215,20 @@ export class BDDT16BlindMac extends MessageEncoder {
    * @param encoder
    */
   static blindSignMessageObject(
-    blindSigRequest: BDDT16BlindMacRequest,
+    blindSigRequest: BBDT16BlindMacRequest,
     revealedMessages: object,
-    secretKey: BDDT16MacSecretKey,
+    secretKey: BBDT16MacSecretKey,
     msgStructure: MessageStructure,
-    labelOrParams: Uint8Array | BDDT16MacParams,
+    labelOrParams: Uint8Array | BBDT16MacParams,
     encoder: Encoder
-  ): SignedMessages<BDDT16BlindMac> {
+  ): SignedMessages<BBDT16BlindMac> {
     const {
       encodedByName: encodedMessages,
       encodedByIndex: revealedMessagesEncoded,
       total
     } = encodeRevealedMessageObject(revealedMessages, blindSigRequest.blindedIndices.length, msgStructure, encoder);
 
-    const macParams = BDDT16MacParams.getMacParamsOfRequiredSize(total, labelOrParams);
+    const macParams = BBDT16MacParams.getMacParamsOfRequiredSize(total, labelOrParams);
     const signature = this.generate(blindSigRequest.commitment, revealedMessagesEncoded, secretKey, macParams, false);
 
     return {
@@ -239,9 +239,9 @@ export class BDDT16BlindMac extends MessageEncoder {
 }
 
 /**
- * Structure to send to the signer to request a blind MAC for BDDT16 scheme.
+ * Structure to send to the signer to request a blind MAC for BBDT16 scheme.
  */
-export interface BDDT16BlindMacRequest {
+export interface BBDT16BlindMacRequest {
   /**
    * The commitment to the blinded messages
    */
@@ -263,17 +263,17 @@ export interface BDDT16BlindMacRequest {
  * This MAC cannot be verified without the secret key but the signer can give a proof to the user that the MAC is
  * correct, i.e. it was created using the secret key.
  */
-export class BDDT16MacProofOfValidity extends BytearrayWrapper {
-  constructor(mac: BDDT16Mac, secretKey: BDDT16MacSecretKey, publicKey: BDDT16MacPublicKeyG1, params: BDDT16MacParams) {
+export class BBDT16MacProofOfValidity extends BytearrayWrapper {
+  constructor(mac: BBDT16Mac, secretKey: BBDT16MacSecretKey, publicKey: BBDT16MacPublicKeyG1, params: BBDT16MacParams) {
     const proof = bddt16MacProofOfValidity(mac.value, secretKey.value, publicKey.value, params.value);
     super(proof);
   }
 
   verify(
-    mac: BDDT16Mac,
+    mac: BBDT16Mac,
     messages: Uint8Array[],
-    publicKey: BDDT16MacPublicKeyG1,
-    params: BDDT16MacParams,
+    publicKey: BBDT16MacPublicKeyG1,
+    params: BBDT16MacParams,
     encodeMessages: boolean
   ): VerifyResult {
     if (messages.length !== params.supportedMessageCount()) {
@@ -294,16 +294,16 @@ export class BDDT16MacProofOfValidity extends BytearrayWrapper {
   }
 
   verifyWithMessageObject(
-    mac: BDDT16Mac,
+    mac: BBDT16Mac,
     messages: object,
-    publicKey: BDDT16MacPublicKeyG1,
-    labelOrParams: Uint8Array | BDDT16MacParams,
+    publicKey: BBDT16MacPublicKeyG1,
+    labelOrParams: Uint8Array | BBDT16MacParams,
     encoder: Encoder
   ): VerifyResult {
     const [_, encodedValues] = encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
-    const params = BDDT16MacParams.getMacParamsOfRequiredSize(msgCount, labelOrParams);
+    const params = BBDT16MacParams.getMacParamsOfRequiredSize(msgCount, labelOrParams);
     return this.verify(mac, encodedValues, publicKey, params, false);
   }
 }

@@ -1,6 +1,6 @@
 import { encodeMessageForSigning, generateRandomG1Element } from 'crypto-wasm-new';
 import {
-  BDDT16MacProofOfValidity,
+  BBDT16MacProofOfValidity,
   bytesToChallenge,
   initializeWasm,
   PSBlindSignature,
@@ -408,7 +408,7 @@ describe(`${Scheme} signature`, () => {
       const [mac, result] = signAndVerify(messages, params, sk, pk, false);
       checkResult(result);
 
-      const proof = new BDDT16MacProofOfValidity(mac, sk, pk, params);
+      const proof = new BBDT16MacProofOfValidity(mac, sk, pk, params);
       checkResult(proof.verify(mac, messages, pk, params, false));
     })
   }

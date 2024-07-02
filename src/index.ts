@@ -2,7 +2,7 @@ export { initializeWasm, isWasmInitialized, requireWasmInitialized } from './ini
 export * from './util';
 export * from './bbs-plus';
 export * from './bbs';
-export * from './bddt16-mac';
+export * from './bbdt16-mac';
 export * from './accumulator';
 export * from './composite-proof';
 export * from './saver';

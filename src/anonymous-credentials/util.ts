@@ -1,7 +1,7 @@
 import { flatten } from 'flat';
 import { BBSPublicKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureG1, BBSPlusSignatureParamsG1 } from '../bbs-plus';
-import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
+import { BBDT16Mac, BBDT16MacParams, BBDT16MacSecretKey } from '../bbdt16-mac';
 import { SetupParam, Statement, Witness, WitnessEqualityMetaStatement } from '../composite-proof';
 import { PSPublicKey, PSSignature, PSSignatureParams } from '../ps';
 import {
@@ -20,7 +20,7 @@ import {
   AttributeRef,
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BDDT16_MAC_PARAMS_LABEL_BYTES,
+  BBDT16_MAC_PARAMS_LABEL_BYTES,
   CredentialVerificationParam,
   FlattenedSchema,
   PredicateParamType,
@@ -162,8 +162,8 @@ export function paramsClassBySignature(signature: Signature): SignatureParamsCla
     return BBSPlusSignatureParamsG1;
   } else if (signature instanceof PSSignature) {
     return PSSignatureParams;
-  } else if (signature instanceof BDDT16Mac) {
-    return BDDT16MacParams;
+  } else if (signature instanceof BBDT16Mac) {
+    return BBDT16MacParams;
   } else {
     return null;
   }
@@ -235,17 +235,17 @@ export function buildSignatureVerifierStatementFromParamsRef(
       setupSigP = SetupParam.psSignatureParams(sigParams.adapt(messageCount) as PSSignatureParams);
       buildStatement = Statement.psSignatureFromSetupParamRefs;
       return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
-    case BDDT16MacParams:
-      setupSigP = SetupParam.bddt16MacParams(sigParams.adapt(messageCount) as BDDT16MacParams);
-      if (credVerParam instanceof BDDT16MacSecretKey) {
-        return Statement.bddt16MacFullVerifierFromSetupParamRefs(
+    case BBDT16MacParams:
+      setupSigP = SetupParam.bbdt16MacParams(sigParams.adapt(messageCount) as BBDT16MacParams);
+      if (credVerParam instanceof BBDT16MacSecretKey) {
+        return Statement.bbdt16MacFullVerifierFromSetupParamRefs(
           setupParamsTrk.add(setupSigP),
           credVerParam,
           revealedMessages,
           false
         );
       } else {
-        return Statement.bddt16MacFromSetupParamRefs(setupParamsTrk.add(setupSigP), revealedMessages, false);
+        return Statement.bbdt16MacFromSetupParamRefs(setupParamsTrk.add(setupSigP), revealedMessages, false);
       }
     default:
       throw new Error(`Signature params are invalid ${sigParams}`);
@@ -299,9 +299,9 @@ export function buildSignatureProverStatementFromParamsRef(
       setupParams = SetupParam.psSignatureParams(sigParams.adapt(messageCount) as PSSignatureParams);
       buildStatement = Statement.psSignatureFromSetupParamRefs;
       break;
-    case BDDT16MacParams:
-      setupParams = SetupParam.bddt16MacParams(sigParams.adapt(messageCount) as BDDT16MacParams);
-      buildStatement = Statement.bddt16MacFromSetupParamRefs;
+    case BBDT16MacParams:
+      setupParams = SetupParam.bbdt16MacParams(sigParams.adapt(messageCount) as BBDT16MacParams);
+      buildStatement = Statement.bbdt16MacFromSetupParamRefs;
       break;
     default:
       throw new Error(`Signature params are invalid ${sigParams.constructor.name}`);
@@ -327,8 +327,8 @@ export function getDefaultLabelBytesForSignatureParams(signatureParamsClass: Sig
       return BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES;
     case PSSignatureParams:
       return PS_SIGNATURE_PARAMS_LABEL_BYTES;
-    case BDDT16MacParams:
-      return BDDT16_MAC_PARAMS_LABEL_BYTES;
+    case BBDT16MacParams:
+      return BBDT16_MAC_PARAMS_LABEL_BYTES;
     default:
       return null;
   }
@@ -341,8 +341,8 @@ export function buildWitness(signature: Signature, unrevealedMessages: Map<numbe
     return Witness.bbsPlusSignature(signature, unrevealedMessages, false);
   } else if (signature instanceof PSSignature) {
     return Witness.psSignature(signature, unrevealedMessages);
-  } else if (signature instanceof BDDT16Mac) {
-    return Witness.bddt16Mac(signature, unrevealedMessages, false);
+  } else if (signature instanceof BBDT16Mac) {
+    return Witness.bbdt16Mac(signature, unrevealedMessages, false);
   } else {
     // @ts-ignore
     throw new Error(`Signature is invalid ${signature.constructor.name}`);

@@ -9,7 +9,7 @@ import {
   VerifyResult
 } from 'crypto-wasm-new';
 import {
-  BDDT16KeyedProof,
+  BBDT16KeyedProof,
   KBUniAccumMembershipKeyedProof,
   KBUniAccumNonMembershipKeyedProof,
   VBAccumMembershipKeyedProof
@@ -140,14 +140,14 @@ export class CompositeProof extends BytearrayWrapper {
    */
   getKeyedProofs(): Map<
     number,
-    | BDDT16KeyedProof
+    | BBDT16KeyedProof
     | VBAccumMembershipKeyedProof
     | KBUniAccumMembershipKeyedProof
     | KBUniAccumNonMembershipKeyedProof
   > {
     const r = new Map<
       number,
-      | BDDT16KeyedProof
+      | BBDT16KeyedProof
       | VBAccumMembershipKeyedProof
       | KBUniAccumMembershipKeyedProof
       | KBUniAccumNonMembershipKeyedProof
@@ -156,7 +156,7 @@ export class CompositeProof extends BytearrayWrapper {
     for (const [i, [t, v]] of keyedProofs.entries()) {
       let cls;
       if (t === 0) {
-        cls = BDDT16KeyedProof;
+        cls = BBDT16KeyedProof;
       } else if (t === 1) {
         cls = VBAccumMembershipKeyedProof;
       } else if (t === 2) {

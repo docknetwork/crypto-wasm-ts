@@ -65,15 +65,16 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
     check('0.0.2', '0.0.1');
   })
 
-  it('check version 0.4.0', () => {
+  // NOTE: The following tests are skipped because the scheme name was changed.
+  skipIfKvac('check version 0.4.0', () => {
     check('0.4.0', '0.2.0');
   })
 
-  it('check version 0.5.0', () => {
+  skipIfKvac('check version 0.5.0', () => {
     check('0.5.0', '0.3.0');
   })
 
-  it('check version 0.6.0', () => {
+  skipIfKvac('check version 0.6.0', () => {
     check('0.6.0', '0.4.0');
   })
 })

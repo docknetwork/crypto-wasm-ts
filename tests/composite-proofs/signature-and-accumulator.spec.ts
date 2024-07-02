@@ -123,7 +123,7 @@ describe(`Proving knowledge of 1 ${Scheme} signature and a certain message in th
     checkResult(proof.verify(verifierProofSpec, nonce));
 
     if (isKvac()) {
-      const statement4 = Statement.bddt16MacFullVerifier(sigParams, sigSk, revealedMsgs, false);
+      const statement4 = Statement.bbdt16MacFullVerifier(sigParams, sigSk, revealedMsgs, false);
       const verifierStatements = new Statements(statement4);
       if (isKvAccum) {
         verifierStatements.add(Statement.vbAccumulatorMembershipKVFullVerifier(accumKeypair.secretKey, accumulator.accumulated))

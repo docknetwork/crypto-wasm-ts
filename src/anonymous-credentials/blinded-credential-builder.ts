@@ -4,14 +4,14 @@ import { IBlindCredentialRequest } from './presentation-specification';
 import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES, STATUS_STR,
-  BDDT16_MAC_PARAMS_LABEL_BYTES
+  BBDT16_MAC_PARAMS_LABEL_BYTES
 } from './types-and-consts';
-import { BBSCredential, BBSPlusCredential, BDDT16Credential } from './credential';
+import { BBSCredential, BBSPlusCredential, BBDT16Credential } from './credential';
 import { BBSBlindSignature, BBSSecretKey, BBSSignatureParams } from '../bbs';
 import { BBSPlusBlindSignatureG1, BBSPlusSecretKey, BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { CredentialSchema } from './schema';
-import { BBSBlindedCredential, BBSPlusBlindedCredential, BDDT16BlindedCredential } from './blinded-credential';
-import { BDDT16BlindMac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
+import { BBSBlindedCredential, BBSPlusBlindedCredential, BBDT16BlindedCredential } from './blinded-credential';
+import { BBDT16BlindMac, BBDT16MacParams, BBDT16MacSecretKey } from '../bbdt16-mac';
 
 /**
  * Used by the signer to create a blinded credential. The signer will know only the unblinded attributes
@@ -134,9 +134,9 @@ export class BBSPlusBlindedCredentialBuilder extends BlindedCredentialBuilder {
   }
 }
 
-export class BDDT16BlindedCredentialBuilder extends BlindedCredentialBuilder {
+export class BBDT16BlindedCredentialBuilder extends BlindedCredentialBuilder {
   protected applyDefaultProofMetadataIfNeeded(s: object) {
-    BDDT16Credential.applyDefaultProofMetadataIfNeeded(s);
+    BBDT16Credential.applyDefaultProofMetadataIfNeeded(s);
   }
 
   /**
@@ -146,14 +146,14 @@ export class BDDT16BlindedCredentialBuilder extends BlindedCredentialBuilder {
    * @returns
    */
   sign(
-    secretKey: BDDT16MacSecretKey,
-    sigParams: Uint8Array | BDDT16MacParams = BDDT16_MAC_PARAMS_LABEL_BYTES
-  ): BDDT16BlindedCredential {
+    secretKey: BBDT16MacSecretKey,
+    sigParams: Uint8Array | BBDT16MacParams = BBDT16_MAC_PARAMS_LABEL_BYTES
+  ): BBDT16BlindedCredential {
     const [totalAttrs, encodedAttrs] = this.getTotalAttributesAndEncodedKnownAttributes();
-    const params = BDDT16MacParams.getMacParamsOfRequiredSize(totalAttrs, sigParams);
-    const sig = BDDT16BlindMac.generate(this.blindedCredReq.commitment, encodedAttrs, secretKey, params, false);
+    const params = BBDT16MacParams.getMacParamsOfRequiredSize(totalAttrs, sigParams);
+    const sig = BBDT16BlindMac.generate(this.blindedCredReq.commitment, encodedAttrs, secretKey, params, false);
     this.processUnBlindedAttributes();
-    return new BDDT16BlindedCredential(
+    return new BBDT16BlindedCredential(
       this.version,
       this.schema as CredentialSchema,
       // @ts-ignore

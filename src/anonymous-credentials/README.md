@@ -68,9 +68,9 @@ that does not require the usage of secret key and send the other part to the sig
 require the signer. This is useful when the signer wants to be aware of anytime its issued credential is used, eg. charging for it. 
 Note that the `KeyedProof` does not contain any revealed attributes or predicates or unique ids so the signer cannot  
 learn any identifying information from it. Not all kinds of credentials support this capability and currently only 
-[BDDT16Credential](./credential.ts) supports it. Note that it does not support the `verify` method which expects signer's 
-public key but instead supports `verifyUsingValidityProof` method which requires a [BDDT16MacProofOfValidity](../bddt16-mac/mac.ts) 
-that can be created by the signer. Unlike regular credentials, `BDDT16Credential` contain a [MAC](https://en.wikipedia.org/wiki/Message_authentication_code) 
+[BBDT16Credential](./credential.ts) supports it. Note that it does not support the `verify` method which expects signer's 
+public key but instead supports `verifyUsingValidityProof` method which requires a [BBDT16MacProofOfValidity](../bbdt16-mac/mac.ts) 
+that can be created by the signer. Unlike regular credentials, `BBDT16Credential` contain a [MAC](https://en.wikipedia.org/wiki/Message_authentication_code) 
 and not a signature which require the secret key for verification. 
 
 This principle also applies to credential revocation (`status` field) where the revocation status can only be checked by the issuer.

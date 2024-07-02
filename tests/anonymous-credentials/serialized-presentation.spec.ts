@@ -177,21 +177,23 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     expect(pres2Json).toEqual(pres2.toJSON());
   }
 
-  it('check version 0.6.0', () => {
+  const skipIfKvac = isKvac() ? it.skip : it;
+
+  skipIfKvac('check version 0.6.0', () => {
     // Legosnark keys changed due type of certain values changed from `u64` to `u32`
     check('0.4.0', '0.6.0', 'bound-check-legogroth16-vk2');
   });
 
-  it('check version 0.6.0 with circom predicates', async () => {
+  skipIfKvac('check version 0.6.0 with circom predicates', async () => {
     await checkCircom('0.6.0', 'circom-set_membership_5_public-2-vk');
   });
 
-  it('check version 0.7.0', () => {
+  skipIfKvac('check version 0.7.0', () => {
     // Legosnark keys changed due type of certain values changed from `u64` to `u32`
     check('0.5.0', '0.7.0', 'bound-check-legogroth16-vk2');
   });
 
-  it('check version 0.8.0', () => {
+  skipIfKvac('check version 0.8.0', () => {
     // Legosnark keys changed due type of certain values changed from `u64` to `u32`
     check('0.6.0', '0.8.0', 'bound-check-legogroth16-vk2');
   });

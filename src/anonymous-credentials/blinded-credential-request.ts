@@ -6,7 +6,7 @@ import { VerifyResult } from 'crypto-wasm-new';
 import {
   BBSBlindedCredentialBuilder,
   BBSPlusBlindedCredentialBuilder,
-  BDDT16BlindedCredentialBuilder
+  BBDT16BlindedCredentialBuilder
 } from './blinded-credential-builder';
 
 /**
@@ -117,7 +117,7 @@ export class BBSPlusBlindedCredentialRequest extends BlindedCredentialRequest {
   }
 }
 
-export class BDDT16BlindedCredentialRequest extends BlindedCredentialRequest {
+export class BBDT16BlindedCredentialRequest extends BlindedCredentialRequest {
   constructor(version: string, presentation: Presentation) {
     super(version, presentation);
   }
@@ -126,14 +126,14 @@ export class BDDT16BlindedCredentialRequest extends BlindedCredentialRequest {
    * Return the blinded credential builder which will be used to create the blinded credential
    * @returns
    */
-  generateBlindedCredentialBuilder(): BDDT16BlindedCredentialBuilder {
+  generateBlindedCredentialBuilder(): BBDT16BlindedCredentialBuilder {
     // @ts-ignore
-    return new BDDT16BlindedCredentialBuilder(this.presentation.spec.blindCredentialRequest);
+    return new BBDT16BlindedCredentialBuilder(this.presentation.spec.blindCredentialRequest);
   }
 
-  static fromJSON(j: object): BDDT16BlindedCredentialRequest {
+  static fromJSON(j: object): BBDT16BlindedCredentialRequest {
     // @ts-ignore
     const { version, presentation } = j;
-    return new BDDT16BlindedCredentialRequest(version, Presentation.fromJSON(presentation));
+    return new BBDT16BlindedCredentialRequest(version, Presentation.fromJSON(presentation));
   }
 }

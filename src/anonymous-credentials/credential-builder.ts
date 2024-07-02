@@ -4,9 +4,9 @@ import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BDDT16_MAC_PARAMS_LABEL_BYTES, CRYPTO_VERSION_STR, SUBJECT_STR, STATUS_STR
+  BBDT16_MAC_PARAMS_LABEL_BYTES, CRYPTO_VERSION_STR, SUBJECT_STR, STATUS_STR
 } from './types-and-consts';
-import { BBSCredential, BBSPlusCredential, BDDT16Credential, Credential, PSCredential } from './credential';
+import { BBSCredential, BBSPlusCredential, BBDT16Credential, Credential, PSCredential } from './credential';
 import { flatten } from 'flat';
 import { areArraysEqual } from '../util';
 import { BBSPublicKey, BBSSecretKey, BBSSignature, BBSSignatureParams } from '../bbs';
@@ -20,7 +20,7 @@ import {
 import { PSPublicKey, PSSecretKey, PSSignature, PSSignatureParams } from '../ps';
 import { SignedMessages } from '../types';
 import { CredentialBuilderCommon } from './credential-builder-common';
-import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
+import { BBDT16Mac, BBDT16MacParams, BBDT16MacSecretKey } from '../bbdt16-mac';
 
 export interface ISigningOpts {
   // Whether the credential should contain exactly the same fields (object keys, array items, literals) as the
@@ -267,19 +267,19 @@ export class PSCredentialBuilder extends CredentialBuilder<PSSecretKey, PSPublic
   }
 }
 
-export class BDDT16CredentialBuilder extends CredentialBuilder<
-  BDDT16MacSecretKey,
+export class BBDT16CredentialBuilder extends CredentialBuilder<
+  BBDT16MacSecretKey,
   undefined,
-  BDDT16Mac,
-  BDDT16MacParams
+  BBDT16Mac,
+  BBDT16MacParams
 > {
   protected signMessageObject(
     messages: Object,
-    secretKey: BDDT16MacSecretKey,
-    labelOrParams: Uint8Array | BDDT16MacParams = BDDT16_MAC_PARAMS_LABEL_BYTES,
+    secretKey: BBDT16MacSecretKey,
+    labelOrParams: Uint8Array | BBDT16MacParams = BBDT16_MAC_PARAMS_LABEL_BYTES,
     encoder: Encoder
-  ): SignedMessages<BDDT16Mac> {
-    return BDDT16Mac.signMessageObject(messages, secretKey, labelOrParams, encoder);
+  ): SignedMessages<BBDT16Mac> {
+    return BBDT16Mac.signMessageObject(messages, secretKey, labelOrParams, encoder);
   }
 
   protected newCredential(
@@ -287,13 +287,13 @@ export class BDDT16CredentialBuilder extends CredentialBuilder<
     schema: CredentialSchema,
     subject: object,
     topLevelFields: Map<string, unknown>,
-    sig: BDDT16Mac,
+    sig: BBDT16Mac,
     credStatus?: object
-  ): BDDT16Credential {
-    return new BDDT16Credential(version, schema, subject, topLevelFields, sig, credStatus);
+  ): BBDT16Credential {
+    return new BBDT16Credential(version, schema, subject, topLevelFields, sig, credStatus);
   }
 
   protected applyDefaultProofMetadataIfNeeded(s: object) {
-    BDDT16Credential.applyDefaultProofMetadataIfNeeded(s);
+    BBDT16Credential.applyDefaultProofMetadataIfNeeded(s);
   }
 }

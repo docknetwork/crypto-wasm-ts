@@ -8,7 +8,7 @@ import { AccumulatorPublicKey, AccumulatorSecretKey } from '../accumulator';
 import { KBUniversalAccumulatorValue } from '../accumulator/kb-universal-accumulator';
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
-import { BDDT16MacParams } from '../bddt16-mac';
+import { BBDT16MacParams } from '../bbdt16-mac';
 import {
   BoundCheckBppParams,
   BoundCheckBppParamsUncompressed,
@@ -27,7 +27,7 @@ import {
   WitnessEqualityMetaStatement
 } from '../composite-proof';
 import {
-  BDDT16KeyedProof,
+  BBDT16KeyedProof,
   KBUniAccumMembershipKeyedProof,
   KBUniAccumNonMembershipKeyedProof,
   VBAccumMembershipKeyedProof
@@ -58,7 +58,7 @@ import {
   AttributeCiphertexts,
   BBS_BLINDED_CRED_PROOF_TYPE,
   BBS_PLUS_BLINDED_CRED_PROOF_TYPE,
-  BDDT16_BLINDED_CRED_PROOF_TYPE,
+  BBDT16_BLINDED_CRED_PROOF_TYPE,
   BlindSignatureType,
   BoundCheckProtocol,
   CircomProtocol,
@@ -242,8 +242,8 @@ export class Presentation extends Versioned {
         case SignatureType.Ps:
           sigParamsClass = PSSignatureParams;
           break;
-        case SignatureType.Bddt16:
-          sigParamsClass = BDDT16MacParams;
+        case SignatureType.Bbdt16:
+          sigParamsClass = BBDT16MacParams;
           break;
         default:
           if (presentedCred.sigType !== undefined) {
@@ -607,8 +607,8 @@ export class Presentation extends Versioned {
       } else if (sigType === BBS_PLUS_BLINDED_CRED_PROOF_TYPE) {
         sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BBSPlusSignatureParamsG1, numAttribs);
         pedCommWitnessOffset = 1;
-      } else if (sigType === BDDT16_BLINDED_CRED_PROOF_TYPE) {
-        sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BDDT16MacParams, numAttribs);
+      } else if (sigType === BBDT16_BLINDED_CRED_PROOF_TYPE) {
+        sigParams = getSignatureParamsForMsgCount(sigParamsByScheme, BBDT16MacParams, numAttribs);
         pedCommWitnessOffset = 1;
       } else {
         throw new Error('Blind signing not yet implemented for PS');
@@ -746,12 +746,12 @@ export class Presentation extends Versioned {
       const presentedCred = this.spec.credentials[i];
       let credP: IKeyedCredentialProof | undefined, statusP: IKeyedCredentialStatusProof | undefined;
 
-      if (presentedCred.sigType === SignatureType.Bddt16) {
+      if (presentedCred.sigType === SignatureType.Bbdt16) {
         const proof = keyedProofs.get(i);
         if (proof === undefined) {
           throw new Error(`Could not find keyed credential proof for credential index ${i}`);
         }
-        if (!(proof instanceof BDDT16KeyedProof)) {
+        if (!(proof instanceof BBDT16KeyedProof)) {
           throw new Error(
             `Unexpected keyed credential proof type ${proof.constructor.name} for credential index ${i}`
           );

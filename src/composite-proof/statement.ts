@@ -99,7 +99,7 @@ import {
   BoundCheckSmcWithKVVerifierParamsUncompressed
 } from '../bound-check';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
-import { BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
+import { BBDT16MacParams, BBDT16MacSecretKey } from '../bbdt16-mac';
 
 /**
  * Relation which needs to be proven. Contains any public data that needs to be known to both prover and verifier
@@ -256,17 +256,17 @@ export class Statement {
     );
   }
 
-  static bddt16Mac(
-    macParams: BDDT16MacParams,
+  static bbdt16Mac(
+    macParams: BBDT16MacParams,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
     return generatePoKBDDT16MacStatement(macParams.value, revealedMessages, encodeMessages);
   }
 
-  static bddt16MacFullVerifier(
-    macParams: BDDT16MacParams,
-    secretKey: BDDT16MacSecretKey,
+  static bbdt16MacFullVerifier(
+    macParams: BBDT16MacParams,
+    secretKey: BBDT16MacSecretKey,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
@@ -278,7 +278,7 @@ export class Statement {
     );
   }
 
-  static bddt16MacFromSetupParamRefs(
+  static bbdt16MacFromSetupParamRefs(
     macParamsRef: number,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
@@ -286,9 +286,9 @@ export class Statement {
     return generatePoKBDDT16MacStatementFromParamRefs(macParamsRef, revealedMessages, encodeMessages);
   }
 
-  static bddt16MacFullVerifierFromSetupParamRefs(
+  static bbdt16MacFullVerifierFromSetupParamRefs(
     macParamsRef: number,
-    secretKey: BDDT16MacSecretKey,
+    secretKey: BBDT16MacSecretKey,
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {

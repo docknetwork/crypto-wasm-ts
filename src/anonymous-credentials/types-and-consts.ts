@@ -35,7 +35,7 @@ import {
   BoundCheckSmcWithKVVerifierParamsUncompressed
 } from '../bound-check';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
-import { BDDT16Mac, BDDT16MacParams, BDDT16MacSecretKey } from '../bddt16-mac';
+import { BBDT16Mac, BBDT16MacParams, BBDT16MacSecretKey } from '../bbdt16-mac';
 
 export type StringOrObject = string | object;
 // Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation and the
@@ -84,20 +84,20 @@ export type BoundType = number | DateType;
 export type FlattenedSchema = [string[], object[]];
 export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext | SaverCiphertext[] };
 
-export type SecretKey = BBSSecretKey | BBSPlusSecretKey | PSSecretKey | BDDT16MacSecretKey;
+export type SecretKey = BBSSecretKey | BBSPlusSecretKey | PSSecretKey | BBDT16MacSecretKey;
 export type PublicKey = BBSPublicKey | BBSPlusPublicKeyG2 | PSPublicKey;
-export type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature | BDDT16Mac;
-export type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG1 | PSSignatureParams | BDDT16MacParams;
+export type Signature = BBSSignature | BBSPlusSignatureG1 | PSSignature | BBDT16Mac;
+export type SignatureParams = BBSSignatureParams | BBSPlusSignatureParamsG1 | PSSignatureParams | BBDT16MacParams;
 export type SignatureParamsClass =
   | typeof BBSSignatureParams
   | typeof BBSPlusSignatureParamsG1
   | typeof PSSignatureParams
-  | typeof BDDT16MacParams;
+  | typeof BBDT16MacParams;
 
 // A parameter to verify the credential. This could be a public key or the secret key. Secret key is used to verify credentials
 // in situations where the issuer and verifier are the same entity (or share the secret key). Thus, such credentials are not
 // publicly verifiable
-export type CredentialVerificationParam = PublicKey | BDDT16MacSecretKey;
+export type CredentialVerificationParam = PublicKey | BBDT16MacSecretKey;
 // A parameter to verify the proof of accumulator (non)membership in zero-knowledge. This could be a public key or the secret key.
 // Secret key is used to verify the proof in situations where the revocation authority and verifier are the same entity (or share the secret key).
 // Thus, such proofs are not publicly verifiable
@@ -139,8 +139,8 @@ export const BBS_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBSSignatureDock2023'
 export const BBS_PLUS_CRED_PROOF_TYPE = 'Bls12381BBS+SignatureDock2022';
 export const BBS_PLUS_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBS+SignatureDock2023';
 export const PS_CRED_PROOF_TYPE = 'Bls12381PSSignatureDock2023';
-export const BDDT16_CRED_PROOF_TYPE = 'Bls12381BDDT16MACDock2024';
-export const BDDT16_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBDDT16MACDock2024';
+export const BBDT16_CRED_PROOF_TYPE = 'Bls12381BBDT16MACDock2024';
+export const BBDT16_BLINDED_CRED_PROOF_TYPE = 'Bls12381BlindedBBDT16MACDock2024';
 export const LEGOGROTH16 = 'LegoGroth16';
 export const SAVER = 'SAVER';
 
@@ -159,9 +159,9 @@ export const BBS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(BBS_SIGNATURE_PARAMS_L
 export const BBS_PLUS_SIGNATURE_PARAMS_LABEL = 'DockBBS+Signature2022';
 export const BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(BBS_PLUS_SIGNATURE_PARAMS_LABEL);
 
-// Label used for generating BDDT16 MAC parameters
-export const BDDT16_MAC_PARAMS_LABEL = 'DockBDDT16MAC';
-export const BDDT16_MAC_PARAMS_LABEL_BYTES = te.encode(BDDT16_MAC_PARAMS_LABEL);
+// Label used for generating BBDT16 MAC parameters
+export const BBDT16_MAC_PARAMS_LABEL = 'DockBBDT16MAC';
+export const BBDT16_MAC_PARAMS_LABEL_BYTES = te.encode(BBDT16_MAC_PARAMS_LABEL);
 
 // Label used for generating PS signature parameters
 export const PS_SIGNATURE_PARAMS_LABEL = 'DockPSSignature2023';
@@ -231,13 +231,13 @@ export enum SignatureType {
   Bbs = BBS_CRED_PROOF_TYPE,
   BbsPlus = BBS_PLUS_CRED_PROOF_TYPE,
   Ps = PS_CRED_PROOF_TYPE,
-  Bddt16 = BDDT16_CRED_PROOF_TYPE
+  Bbdt16 = BBDT16_CRED_PROOF_TYPE
 }
 
 export enum BlindSignatureType {
   Bbs = BBS_BLINDED_CRED_PROOF_TYPE,
   BbsPlus = BBS_PLUS_BLINDED_CRED_PROOF_TYPE,
-  Bddt16 = BDDT16_BLINDED_CRED_PROOF_TYPE
+  Bbdt16 = BBDT16_BLINDED_CRED_PROOF_TYPE
 }
 
 export enum RevocationStatusProtocol {

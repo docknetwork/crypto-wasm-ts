@@ -12,9 +12,9 @@ import {
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
 
 /**
- * BDDT16 MAC parameters.
+ * BBDT16 MAC parameters.
  */
-export class BDDT16MacParams implements ISignatureParams {
+export class BBDT16MacParams implements ISignatureParams {
   label?: Uint8Array;
   value: Bddt16MacParams;
 
@@ -51,13 +51,13 @@ export class BDDT16MacParams implements ISignatureParams {
     return p;
   }
 
-  static generate(numMessages: number, label?: Uint8Array): BDDT16MacParams {
+  static generate(numMessages: number, label?: Uint8Array): BBDT16MacParams {
     const params = bddt16GenerateMacParams(numMessages, label);
-    return new BDDT16MacParams(params, label);
+    return new BBDT16MacParams(params, label);
   }
 
   static generateAsBytes(numMessages: number, label?: Uint8Array): Uint8Array {
-    return BDDT16MacParams.generate(numMessages, label).toBytes();
+    return BBDT16MacParams.generate(numMessages, label).toBytes();
   }
 
   toBytes(): Uint8Array {
@@ -92,7 +92,7 @@ export class BDDT16MacParams implements ISignatureParams {
     } else {
       newParams = bddt16MacAdaptParamsForMsgCount(this.value, this.label, newMsgCount);
     }
-    return new (this.constructor as typeof BDDT16MacParams)(newParams, this.label) as this;
+    return new (this.constructor as typeof BBDT16MacParams)(newParams, this.label) as this;
   }
 
   /**
@@ -111,18 +111,18 @@ export class BDDT16MacParams implements ISignatureParams {
   }
 
   /**
-   * Gives `BDDT16MacParams` that can sign `msgCount` number of messages.
+   * Gives `BBDT16MacParams` that can sign `msgCount` number of messages.
    * @param msgCount
    * @param labelOrParams
    */
-  static getMacParamsOfRequiredSize(msgCount: number, labelOrParams: Uint8Array | BDDT16MacParams): BDDT16MacParams {
-    return getSigParamsOfRequiredSize(BDDT16MacParams, msgCount, labelOrParams);
+  static getMacParamsOfRequiredSize(msgCount: number, labelOrParams: Uint8Array | BBDT16MacParams): BBDT16MacParams {
+    return getSigParamsOfRequiredSize(BBDT16MacParams, msgCount, labelOrParams);
   }
 
   static getMacParamsForMsgStructure(
     msgStructure: MessageStructure,
-    labelOrParams: Uint8Array | BDDT16MacParams
-  ): BDDT16MacParams {
+    labelOrParams: Uint8Array | BBDT16MacParams
+  ): BBDT16MacParams {
     const msgCount = Object.keys(flattenMessageStructure(msgStructure)).length;
     return this.getMacParamsOfRequiredSize(msgCount, labelOrParams);
   }

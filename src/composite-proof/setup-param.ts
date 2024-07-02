@@ -58,7 +58,7 @@ import {
   BoundCheckSmcWithKVVerifierParamsUncompressed
 } from '../bound-check';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
-import { BDDT16MacParams } from '../bddt16-mac';
+import { BBDT16MacParams } from '../bbdt16-mac';
 
 /**
  * Represents (public) setup parameters of different protocols. Different setup parameters can be wrapped in this and
@@ -86,7 +86,7 @@ export class SetupParam extends BytearrayWrapper {
     return new SetupParam(generateSetupParamForPSPublicKey(publicKey.value));
   }
 
-  static bddt16MacParams(params: BDDT16MacParams): SetupParam {
+  static bbdt16MacParams(params: BBDT16MacParams): SetupParam {
     return new SetupParam(generateSetupParamForBDDT16MacParameters(params.value));
   }
 

@@ -2,7 +2,7 @@ import semver from 'semver/preload';
 import { KBUniversalMembershipWitness, KBUniversalNonMembershipWitness } from '../accumulator/kb-acccumulator-witness';
 import { KBUniversalAccumulatorValue } from '../accumulator/kb-universal-accumulator';
 import { Versioned } from './versioned';
-import { BBSCredential, BBSPlusCredential, BDDT16Credential, PSCredential } from './credential';
+import { BBSCredential, BBSPlusCredential, BBDT16Credential, PSCredential } from './credential';
 import {
   CompositeProof,
   MetaStatements,
@@ -94,7 +94,7 @@ import {
   BoundCheckSmcWithKVProverParamsUncompressed
 } from '../bound-check';
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
-import { BDDT16MacParams } from '../bddt16-mac';
+import { BBDT16MacParams } from '../bbdt16-mac';
 
 /**
  * Arguments required to generate the corresponding AttributeBoundPseudonym
@@ -115,7 +115,7 @@ export interface UnboundedPseudonym {
   secretKey: Uint8Array;
 }
 
-type Credential = BBSCredential | BBSPlusCredential | PSCredential | BDDT16Credential;
+type Credential = BBSCredential | BBSPlusCredential | PSCredential | BBDT16Credential;
 
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
@@ -1117,7 +1117,7 @@ export class PresentationBuilder extends Versioned {
       if (
         sigParams instanceof BBSSignatureParams ||
         sigParams instanceof BBSPlusSignatureParamsG1 ||
-        sigParams instanceof BDDT16MacParams
+        sigParams instanceof BBDT16MacParams
       ) {
         const commKey = sigParams.getParamsForIndices(blindedAttributeIndices);
         pedCommStId = statements.add(Statement.pedersenCommitmentG1(commKey, this.blindCredReq.req.commitment));
@@ -1128,7 +1128,7 @@ export class PresentationBuilder extends Versioned {
       if (sigParams instanceof BBSSignatureParams) {
         witnesses.add(Witness.pedersenCommitment(blindedAttributeValues));
         pedCommWitnessOffset = 0;
-      } else if (sigParams instanceof BBSPlusSignatureParamsG1 || sigParams instanceof BDDT16MacParams) {
+      } else if (sigParams instanceof BBSPlusSignatureParamsG1 || sigParams instanceof BBDT16MacParams) {
         witnesses.add(Witness.pedersenCommitment([this.blindCredReq.blinding as Uint8Array, ...blindedAttributeValues]));
         pedCommWitnessOffset = 1;
       } else {
