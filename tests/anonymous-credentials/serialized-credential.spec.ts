@@ -74,7 +74,7 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
     check('0.5.0', '0.3.0');
   })
 
-  skipIfKvac('check version 0.6.0', () => {
+  it('check version 0.6.0', () => {
     check('0.6.0', '0.4.0');
   })
 })

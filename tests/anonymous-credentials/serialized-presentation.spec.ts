@@ -193,7 +193,7 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     check('0.5.0', '0.7.0', 'bound-check-legogroth16-vk2');
   });
 
-  skipIfKvac('check version 0.8.0', () => {
+  it('check version 0.8.0', () => {
     // Legosnark keys changed due type of certain values changed from `u64` to `u32`
     check('0.6.0', '0.8.0', 'bound-check-legogroth16-vk2');
   });

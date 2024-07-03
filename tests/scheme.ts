@@ -43,12 +43,12 @@ import {
   getBBDT16StatementForBlindMacRequest,
   getBBDT16WitnessForBlindMacRequest, BBDT16CredentialBuilder, BBDT16Credential, BBDT16KeypairG1, BBDT16MacPublicKeyG1
 } from '../src';
-import { BBDT16BlindMac, BBDT16Mac, BBDT16MacParams, BBDT16MacSecretKey } from '../src/bbdt16-mac';
+import { BBDT16BlindMac, BBDT16Mac, BBDT16MacParams, BBDT16MacSecretKey } from '../src';
 
 export { Presentation } from '../src/anonymous-credentials/presentation';
 export { PresentationBuilder } from '../src/anonymous-credentials/presentation-builder';
 
-export let Scheme: string = process.env.TEST_SIGNATURE_SCHEME || 'BBDT16',
+export let Scheme: string = process.env.TEST_SIGNATURE_SCHEME || 'BBS',
   SignatureLabelBytes: Uint8Array,
   PublicKey,
   SecretKey,
