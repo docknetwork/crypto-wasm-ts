@@ -1,6 +1,5 @@
 import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
-  areUint8ArraysEqual,
   checkResult,
   getParamsAndKeys,
   getWasmBytes,
@@ -26,7 +25,7 @@ import {
   Statements,
   Witness,
   WitnessEqualityMetaStatement,
-  Witnesses
+  Witnesses, areUint8ArraysEqual
 } from '../../../../src';
 import { checkMapsEqual } from '../index';
 import { defaultEncoder } from '../data-and-encoder';

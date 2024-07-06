@@ -9,9 +9,9 @@ import {
   BoundCheckSmcWithKVProverParams,
   BoundCheckSmcWithKVProverParamsUncompressed,
   BoundCheckSmcWithKVVerifierParamsUncompressed,
-  BoundCheckSmcWithKVVerifierParams
+  BoundCheckSmcWithKVVerifierParams, areUint8ArraysEqual
 } from '../src';
-import { areUint8ArraysEqual, checkLegoProvingKey, stringToBytes } from './utils';
+import { checkLegoProvingKey, stringToBytes } from './utils';
 
 describe('Bound check snark setup', () => {
   beforeAll(async () => {

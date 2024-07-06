@@ -1,5 +1,6 @@
 import { generateFieldElementFromNumber } from 'crypto-wasm-new';
 import {
+  areUint8ArraysEqual,
   CircomInputs,
   CompositeProof,
   Encoder,
@@ -22,7 +23,6 @@ import {
 } from '../../../../src';
 import { buildWitness, PublicKey, Scheme, Signature } from '../../../scheme';
 import {
-  areUint8ArraysEqual,
   checkResult,
   getParamsAndKeys,
   getWasmBytes,

@@ -8,7 +8,7 @@ import {
   VBMembershipWitness,
   VBWitnessUpdateInfo,
   AccumulatorParams,
-  AccumulatorKeypair, KBUniversalNonMembershipWitnessUpdateInfo, KBUniversalAccumulatorValue
+  AccumulatorKeypair, KBUniversalNonMembershipWitnessUpdateInfo, KBUniversalAccumulatorValue, areUint8ArraysEqual
 } from '../src';
 import {
   InMemoryInitialElementsStore, InMemoryKBUniversalState,
@@ -21,7 +21,7 @@ import {
   KBUniversalMembershipWitnessUpdateInfo,
   KBUniversalWitnessUpdateInfo
 } from '../src/accumulator/witness-update-info';
-import { areUint8ArraysEqual, stringToBytes } from './utils';
+import { stringToBytes } from './utils';
 
 function getAccum(accumulator: any): PositiveAccumulator | UniversalAccumulator | KBUniversalAccumulator {
   const accumulated = accumulator.accumulated;

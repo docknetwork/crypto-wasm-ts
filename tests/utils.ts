@@ -1,7 +1,8 @@
-import * as r1csf from 'r1csfile';
+import { error } from 'console';
+import { VerifyResult } from 'crypto-wasm-new';
 import * as fs from 'fs';
 import * as path from 'path';
-import { error } from 'console';
+import * as r1csf from 'r1csfile';
 import {
   BoundCheckSnarkSetup,
   LegoProvingKey,
@@ -11,7 +12,6 @@ import {
   ParsedR1CSFile,
   PublicKeyBase
 } from '../src';
-import { VerifyResult } from 'crypto-wasm-new';
 import { Participant, Round1Msg, Share } from '../src/frost-dkg';
 import {
   buildProverStatement,
@@ -30,20 +30,6 @@ import {
  * @param string
  */
 export const stringToBytes = (string: string): Uint8Array => Uint8Array.from(Buffer.from(string, 'utf-8'));
-
-export function areUint8ArraysEqual(arr1: Uint8Array, arr2: Uint8Array): boolean {
-  if (arr1.length !== arr2.length) {
-    return false;
-  }
-
-  for (let i = 0; i < arr1.length; i++) {
-    if (arr1[i] !== arr2[i]) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 /**
  * Given messages and indices to reveal, returns 2 maps, one for revealed messages and one for unrevealed

@@ -19,10 +19,10 @@ import {
   Witness,
   WitnessEqualityMetaStatement,
   Witnesses,
-  randomFieldElement
+  randomFieldElement, areUint8ArraysEqual
 } from '../src';
 import { proverStmt, verifierStmt } from './composite-proofs/msg-js-obj/util';
-import { areUint8ArraysEqual, stringToBytes } from './utils';
+import { stringToBytes } from './utils';
 import {
   PublicKey,
   Signature,

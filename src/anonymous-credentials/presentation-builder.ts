@@ -84,7 +84,7 @@ import { AttributeBoundPseudonym, Pseudonym, PseudonymBases } from '../Pseudonym
 import { BBSSignatureParams } from '../bbs';
 import { BBSPlusSignatureParamsG1 } from '../bbs-plus';
 import { getR1CS, ParsedR1CSFile } from '../r1cs/file';
-import { convertDateToTimestamp } from '../util';
+import { areUint8ArraysEqual, convertDateToTimestamp, fromLeToBigInt } from '../util';
 import {
   BoundCheckBppParams,
   BoundCheckBppParamsUncompressed,
@@ -297,7 +297,7 @@ export class PresentationBuilder extends Versioned {
   }
 
   /**
-   * Enforce bounds on given attribute from given credential index
+   * Enforce bounds on given attribute from given credential index. The attribute value should lie in `[min, max)`
    * @param credIdx
    * @param attributeName - Nested attribute names use the "dot" separator
    * @param min
@@ -598,8 +598,8 @@ export class PresentationBuilder extends Versioned {
         ]);
       }
 
-      // Update the map of encoded attributes for current credential with the given attribute name
-      function updateEncodedAttrs(attrName: string, encodedAttrs: Map<number, Uint8Array>) {
+      // Update the map of encoded attributes for current credential with the given attribute name and return the encoded attribute value
+      function updateEncodedAttrs(attrName: string, encodedAttrs: Map<number, Uint8Array>): Uint8Array {
         const nameIdx = flattenedSchema[0].indexOf(attrName);
         if (nameIdx == -1) {
           throw new Error(`Attribute ${attrName} not found in schema`);
@@ -609,6 +609,20 @@ export class PresentationBuilder extends Versioned {
           throw new Error(`Attribute ${attrName} value not found in unrevealed encoded attributes`);
         }
         encodedAttrs.set(nameIdx, val);
+        return val
+      }
+
+      // This is just for better error reporting (to be used later) and can be removed in favour of efficiency
+      if (this.attributeEqualities.length > 0) {
+        const encodedAttrs = unrevealedMsgsEncoded.get(credIndex) || new Map<number, Uint8Array>();
+        for (const eql of this.attributeEqualities) {
+          for (const e of eql) {
+            if (e[0] === credIndex) {
+              updateEncodedAttrs(e[1], encodedAttrs);
+            }
+          }
+        }
+        unrevealedMsgsEncoded.set(credIndex, encodedAttrs);
       }
 
       // Get encoded attributes which are used in inequality check
@@ -948,7 +962,21 @@ export class PresentationBuilder extends Versioned {
 
     // Create meta-statements for enforcing attribute equalities
     for (const eql of this.attributeEqualities) {
-      metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
+      const [wq, attrIndices] = createWitEq(eql, flattenedSchemas);
+
+      // Check if attributes are actually equal. This is just for better error reporting and can be removed in favour of efficiency.
+      let attrValue: Uint8Array | undefined;
+      eql.forEach(([cId,], i) => {
+        if (attrValue === undefined) {
+          attrValue = unrevealedMsgsEncoded.get(cId)?.get(attrIndices[i]) as Uint8Array;
+        } else {
+          if (!areUint8ArraysEqual(attrValue, unrevealedMsgsEncoded.get(cId)?.get(attrIndices[i]) as Uint8Array)) {
+            throw new Error(`Attribute equality not satisfied: ${eql.map((e) => `(${e[0]},${e[1]})`).join(', ')}`);
+          }
+        }
+      })
+
+      metaStatements.addWitnessEquality(wq);
       this.spec.addAttributeEquality(eql);
     }
 
@@ -1426,22 +1454,25 @@ export class PresentationBuilder extends Versioned {
     metaStatements: MetaStatements,
     setupParamsTrk: SetupParamsTracker
   ) {
-    const dataSortedByNameIdx: [number, [IPresentedAttributeInequality, Uint8Array][]][] = [];
+    const dataSortedByNameIdx: [number, string, [IPresentedAttributeInequality, Uint8Array][]][] = [];
     for (const [name, b] of ineqs.entries()) {
       const nameIdx = witnessIndexGetter(name);
-      dataSortedByNameIdx.push([nameIdx, b]);
+      dataSortedByNameIdx.push([nameIdx, name, b]);
     }
     // Sort by attribute index so that both prover and verifier create statements and witnesses in the same order
     dataSortedByNameIdx.sort(function (a, b) {
       return a[0] - b[0];
     });
 
-    dataSortedByNameIdx.forEach(([nameIdx, ineqs]) => {
-      ineqs.forEach(([{ inEqualTo: _, paramId, protocol }, ineq]) => {
+    dataSortedByNameIdx.forEach(([nameIdx, name, ineqs]) => {
+      ineqs.forEach(([{ inEqualTo, paramId, protocol }, ineq]) => {
+        const encodedAttrVal = encodedAttrGetter(nameIdx);
+        // Check if attribute inequality can be satisfied. If not then throw error.
+        if (areUint8ArraysEqual(encodedAttrVal, ineq)) {
+          throw new Error(`Attribute inequality for ${name} with ${inEqualTo} not satisfied`);
+        }
         const param = paramId !== undefined ? this.predicateParams.get(paramId) : undefined;
         const statement = Presentation.publicInequalityStatement(ineq, setupParamsTrk, credIdx, paramId, param);
-
-        const encodedAttrVal = encodedAttrGetter(nameIdx);
         const witness = Witness.publicInequality(encodedAttrVal);
 
         const sIdx = statements.add(statement);
@@ -1480,6 +1511,16 @@ export class PresentationBuilder extends Versioned {
         const [transformedMin, transformedMax] = getTransformedMinMax(name, valTyp, min, max);
         let witness: Uint8Array, statement: Uint8Array;
         const encodedAttrVal = encodedAttrGetter(nameIdx);
+
+        // Following is just for better error handling
+        const decodedAttrVal = fromLeToBigInt(encodedAttrVal);
+        if (transformedMin > decodedAttrVal) {
+          throw new Error(`Value of attribute ${name} is ${decodedAttrVal} and is lesser than the minimum ${transformedMin}`);
+        }
+        if (transformedMax <= decodedAttrVal) {
+          throw new Error(`Value of attribute ${name} is ${decodedAttrVal} and is greater than or equal to the maximum ${transformedMax}`);
+        }
+
         if (paramId === undefined) {
           // paramId is undefined means no setup param was passed and thus the default setup of Bulletproofs++ can be used.
           if (protocol !== BoundCheckProtocol.Bpp) {

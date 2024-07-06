@@ -426,7 +426,8 @@ export class Presentation extends Versioned {
 
     if (this.spec.attributeEqualities !== undefined) {
       for (const eql of this.spec.attributeEqualities) {
-        metaStatements.addWitnessEquality(createWitEq(eql, flattenedSchemas));
+        const [wq, ] = createWitEq(eql, flattenedSchemas);
+        metaStatements.addWitnessEquality(wq);
       }
     }
 

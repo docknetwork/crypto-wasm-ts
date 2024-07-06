@@ -1,4 +1,5 @@
 import {
+  areUint8ArraysEqual,
   CompositeProof,
   Encoder,
   encodeRevealedMsgs,
@@ -17,7 +18,7 @@ import {
 } from '../../../src';
 import { PederCommKey } from '../../../src/ped-com';
 import { buildWitness, PublicKey, Scheme, SecretKey, Signature, SignatureParams } from '../../scheme';
-import { areUint8ArraysEqual, checkResult, getParamsAndKeys, stringToBytes } from '../../utils';
+import { checkResult, getParamsAndKeys, stringToBytes } from '../../utils';
 import { defaultEncoder } from './data-and-encoder';
 import { checkMapsEqual } from './index';
 import { adaptedSigParams, proverStmt, signAndVerify, verifierStmt } from './util';

@@ -1,7 +1,7 @@
 import { generateRandomFieldElement } from 'crypto-wasm-new';
 import {
   AccumulatorPublicKey,
-  AccumulatorSecretKey,
+  AccumulatorSecretKey, areUint8ArraysEqual,
   BoundCheckBppParams,
   BoundCheckBppParamsUncompressed,
   BoundCheckParamType,
@@ -49,7 +49,6 @@ import {
   SecretKey
 } from '../scheme';
 import {
-  areUint8ArraysEqual,
   checkResult,
   getBoundCheckSnarkKeys,
   readByteArrayFromFile,
@@ -66,6 +65,7 @@ import {
   setupPrefilledAccum,
   verifyCred,
 } from './utils';
+import exp = require('node:constants');
 
 // Setting it to false will make the test run the SNARK setups making tests quite slow
 const loadSnarkSetupFromFiles = true;
@@ -776,6 +776,13 @@ describe.each([true, false])(
     });
 
     it('from 2 credentials, `credential1` and `credential2`, and prove some attributes equal', () => {
+      const builder0 = new PresentationBuilder();
+      expect(builder0.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      expect(builder0.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
+      builder0.enforceAttributeEquality([0, 'credentialSubject.SSN'], [1, 'credentialSubject.location.city']);
+      builder0.enforceAttributeEquality([0, 'credentialSubject.city'], [1, 'credentialSubject.sensitive.SSN']);
+      expect(() => builder0.finalize()).toThrow('Attribute equality not satisfied');
+
       const builder4 = new PresentationBuilder();
       expect(builder4.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
       expect(builder4.addCredential(credential2, isPS() ? pk2 : undefined)).toEqual(1);
@@ -1032,6 +1039,12 @@ describe.each([true, false])(
     });
 
     it('from credential `credential1` and proving some attributes inequal to public values', () => {
+      // Check for error when the attribute is equal.
+      const builder0 = new PresentationBuilder();
+      expect(builder0.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      expect(credential1.subject.email).toEqual('john.smith@example.com');
+      builder0.enforceAttributeInequality(0, 'credentialSubject.email', 'john.smith@example.com');
+      expect(() => builder0.finalize()).toThrow('Attribute inequality for credentialSubject.email with john.smith@example.com not satisfied');
 
       const builder = new PresentationBuilder();
       expect(builder.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
@@ -1114,6 +1127,27 @@ describe.each([true, false])(
     });
 
     function checkBounds(protocol: BoundCheckProtocol, paramId?: string, provingParams?: BoundCheckParamType, verifyingParams?: BoundCheckParamType) {
+      // Check for error when the bounds are not satisfied.
+      const builder0 = new PresentationBuilder();
+      expect(builder0.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      const [minTime0, maxTime0] = [1662010850000, 1662010856123];
+      // @ts-ignore
+      expect(minTime0).not.toBeLessThan(credential1.subject['timeOfBirth']);
+      // @ts-ignore
+      expect(maxTime0).toBeGreaterThan(credential1.subject['timeOfBirth']);
+      builder0.enforceBounds(0, 'credentialSubject.timeOfBirth', minTime0, maxTime0, paramId, provingParams);
+      expect(() => builder0.finalize()).toThrow('Value of attribute credentialSubject.timeOfBirth is 1662010849619 and is lesser than the minimum 1662010850000');
+
+      const builder00 = new PresentationBuilder();
+      expect(builder00.addCredential(credential1, isPS() ? pk1 : undefined)).toEqual(0);
+      const [minTime00, maxTime00] = [1662010838000, 1662010849600];
+      // @ts-ignore
+      expect(minTime00).toBeLessThan(credential1.subject['timeOfBirth']);
+      // @ts-ignore
+      expect(maxTime00).not.toBeGreaterThan(credential1.subject['timeOfBirth']);
+      builder00.enforceBounds(0, 'credentialSubject.timeOfBirth', minTime00, maxTime00, paramId, provingParams);
+      expect(() => builder00.finalize()).toThrow('Value of attribute credentialSubject.timeOfBirth is 1662010849619 and is greater than or equal to the maximum 1662010849600');
+
       // ------------------- Presentation with 1 credential -----------------------------------------
       console.time(`Proof generation over 1 credential and 3 bound-check in total using ${protocol}`);
       const builder7 = new PresentationBuilder();
@@ -1322,6 +1356,23 @@ describe.each([true, false])(
     }
 
     function checkBoundsOnDates(protocol: BoundCheckProtocol, paramId?: string, provingParams?: BoundCheckParamType, verifyingParams?: BoundCheckParamType) {
+      // Check for error when the bounds are not satisfied.
+      const builder0 = new PresentationBuilder();
+      expect(builder0.addCredential(credential7, isPS() ? pk1 : undefined)).toEqual(0);
+      const [minDateTime0, maxDateTime0] = [new Date('2023-10-14T14:26:40.488Z'), new Date('2024-09-14T14:26:40.488Z')];
+      expect(minDateTime0.getTime()).not.toBeLessThan(new Date(credential7.subject['myDateTime']).getTime());
+      expect(maxDateTime0.getTime()).toBeGreaterThan(new Date(credential7.subject['myDateTime']).getTime());
+      builder0.enforceBounds(0, 'credentialSubject.myDateTime', minDateTime0, maxDateTime0, paramId, provingParams);
+      expect(() => builder0.finalize()).toThrow('is lesser than the minimum');
+
+      const builder00 = new PresentationBuilder();
+      expect(builder00.addCredential(credential7, isPS() ? pk1 : undefined)).toEqual(0);
+      const [minDateTime00, maxDateTime00] = [new Date('2022-09-14T14:26:40.488Z'), new Date('2023-05-14T14:26:40.488Z')];
+      expect(minDateTime00.getTime()).toBeLessThan(new Date(credential7.subject['myDateTime']).getTime());
+      expect(maxDateTime00.getTime()).not.toBeGreaterThan(new Date(credential7.subject['myDateTime']).getTime());
+      builder00.enforceBounds(0, 'credentialSubject.myDateTime', minDateTime00, maxDateTime00, paramId, provingParams);
+      expect(() => builder00.finalize()).toThrow('is greater than or equal to the maximum');
+
       console.time(`Proof generation over 1 credential and 2 bound-check in total using ${protocol}`);
       const builder7 = new PresentationBuilder();
       expect(builder7.addCredential(credential7, isPS() ? pk1 : undefined)).toEqual(0);

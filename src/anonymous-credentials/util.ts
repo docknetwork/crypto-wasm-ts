@@ -125,16 +125,18 @@ export function flattenPredicatesInSpec(obj: object): [string[], object[][]] {
   return [keys, values];
 }
 
-export function createWitEq(eql: AttributeEquality, flattenedSchemas: FlattenedSchema[]): WitnessEqualityMetaStatement {
+export function createWitEq(eql: AttributeEquality, flattenedSchemas: FlattenedSchema[]): [WitnessEqualityMetaStatement, number[]] {
   const witnessEq = new WitnessEqualityMetaStatement();
+  const attrIndices: number[] = [];
   for (const [cIdx, name] of eql) {
     const i = flattenedSchemas[cIdx][0].indexOf(name);
     if (i === -1) {
       throw new Error(`Attribute name ${name} was not found`);
     }
+    attrIndices.push(i);
     witnessEq.addWitnessRef(cIdx, i);
   }
-  return witnessEq;
+  return [witnessEq, attrIndices];
 }
 
 export function createWitEqForBlindedCred(

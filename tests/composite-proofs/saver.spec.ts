@@ -1,4 +1,5 @@
 import {
+  areUint8ArraysEqual,
   CompositeProof,
   dockSaverEncryptionGensUncompressed,
   initializeWasm,
@@ -23,7 +24,6 @@ import {
 } from '../../src';
 import { buildWitness, PublicKey, Scheme, SecretKey, Signature, SignatureParams } from '../scheme';
 import {
-  areUint8ArraysEqual,
   checkResult,
   getParamsAndKeys,
   getRevealedUnrevealed,
