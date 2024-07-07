@@ -8,7 +8,7 @@ import { BBSBlindSignatureRequest, BBSSignatureParams } from './bbs';
 import { PSBlindSignatureRequest, PSSignatureParams } from './ps';
 import { Witness } from './composite-proof/witness';
 import { ISignatureParams, MessageStructure } from './types';
-import { encodeMessageForSigning } from 'crypto-wasm-new';
+import { encodeMessageForSigningInConstantTime } from 'crypto-wasm-new';
 import { BBDT16BlindMacRequest, BBDT16MacParams } from './bbdt16-mac';
 
 export function flattenMessageStructure(msgStructure: MessageStructure): object {
@@ -39,7 +39,7 @@ export function encodeRevealedMessageObject(
   encoder: Encoder
 ): { encodedByName: { [key: string]: Uint8Array }; encodedByIndex: Map<number, Uint8Array>; total: number } {
   const flattenedAllNames = Object.keys(flattenMessageStructure(msgStructure)).sort();
-  const encodedByName = encoder.encodeMessageObjectAsObject(revealedMessages);
+  const encodedByName = encoder.encodeMessageObjectAsObjectConstantTime(revealedMessages);
 
   const encodedByIndex = new Map<number, Uint8Array>();
   flattenedAllNames.forEach((n, i) => {
@@ -69,6 +69,7 @@ export function encodeRevealedMessageObject(
 
 /**
  * Gives `SignatureParams` that can sign `msgCount` number of messages.
+ * @param SignatureParamsClass
  * @param msgCount
  * @param labelOrParams
  */
@@ -101,13 +102,15 @@ export function getSigParamsOfRequiredSize<S extends ISignatureParams>(
  * @param messages
  * @param revealedMsgNames
  * @param encoder
+ * @param useConstantTimeEncoding
  */
 export function getRevealedAndUnrevealed(
   messages: object,
   revealedMsgNames: Set<string>,
-  encoder: Encoder
+  encoder: Encoder,
+  useConstantTimeEncoding = true
 ): [Map<number, Uint8Array>, Map<number, Uint8Array>, object] {
-  const [names, encodedValues] = encoder.encodeMessageObject(messages);
+  const [names, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
   const revealedMsgs = new Map<number, Uint8Array>();
   const unrevealedMsgs = new Map<number, Uint8Array>();
   let found = 0;
@@ -155,7 +158,7 @@ export function encodeRevealedMsgs(
     if (i === -1) {
       throw new Error(`Message name ${n} was not found`);
     }
-    revealed.set(i, encoder.encodeMessage(n, v));
+    revealed.set(i, encoder.encodeMessageConstantTime(n, v));
   });
   return revealed;
 }
@@ -351,7 +354,7 @@ export function getBlindedIndicesAndRevealedMessages(
   if (revealedMessages) {
     encodedRevealedMessages = new Map();
     for (const [idx, msg] of revealedMessages) {
-      encodedRevealedMessages.set(idx, encodeMessages ? encodeMessageForSigning(msg) : msg);
+      encodedRevealedMessages.set(idx, encodeMessages ? encodeMessageForSigningInConstantTime(msg) : msg);
     }
   }
   blindedIndices.sort((a, b) => a - b);

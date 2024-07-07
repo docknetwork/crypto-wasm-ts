@@ -4,13 +4,13 @@
 import { BBSSignature } from './signature';
 import { BBSSignatureParams } from './params';
 import {
-  bbsInitializeProofOfKnowledgeOfSignature,
-  bbsGenProofOfKnowledgeOfSignature,
-  bbsChallengeContributionFromProtocol,
-  bbsChallengeContributionFromProof,
-  bbsVerifyProofOfKnowledgeOfSignature,
   BbsPoKSigProtocol,
-  VerifyResult
+  VerifyResult,
+  bbsInitializeProofOfKnowledgeOfSignatureNew,
+  bbsGenProofOfKnowledgeOfSignatureNew,
+  bbsChallengeContributionFromProtocolNew,
+  bbsVerifyProofOfKnowledgeOfSignatureNew,
+  bbsChallengeContributionFromProofNew
 } from 'crypto-wasm-new';
 import { BBSPublicKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
@@ -37,7 +37,7 @@ export class BBSPoKSignatureProtocol {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const protocol = bbsInitializeProofOfKnowledgeOfSignature(
+    const protocol = bbsInitializeProofOfKnowledgeOfSignatureNew(
       signature.value,
       params.value,
       messages,
@@ -49,7 +49,7 @@ export class BBSPoKSignatureProtocol {
   }
 
   generateProof(challenge: Uint8Array): BBSPoKSigProof {
-    return new BBSPoKSigProof(bbsGenProofOfKnowledgeOfSignature(this.value, challenge));
+    return new BBSPoKSigProof(bbsGenProofOfKnowledgeOfSignatureNew(this.value, challenge));
   }
 
   challengeContribution(
@@ -57,7 +57,7 @@ export class BBSPoKSignatureProtocol {
     encodeMessages: boolean,
     revealedMsgs: Map<number, Uint8Array> = new Map()
   ): Uint8Array {
-    return bbsChallengeContributionFromProtocol(this.value, revealedMsgs, params.value, encodeMessages);
+    return bbsChallengeContributionFromProtocolNew(this.value, revealedMsgs, params.value, encodeMessages);
   }
 }
 
@@ -69,7 +69,7 @@ export class BBSPoKSigProof extends BytearrayWrapper {
     encodeMessages: boolean,
     revealedMsgs: Map<number, Uint8Array> = new Map()
   ): VerifyResult {
-    return bbsVerifyProofOfKnowledgeOfSignature(
+    return bbsVerifyProofOfKnowledgeOfSignatureNew(
       this.value,
       revealedMsgs,
       challenge,
@@ -84,6 +84,6 @@ export class BBSPoKSigProof extends BytearrayWrapper {
     encodeMessages: boolean,
     revealedMsgs: Map<number, Uint8Array> = new Map()
   ): Uint8Array {
-    return bbsChallengeContributionFromProof(this.value, revealedMsgs, params.value, encodeMessages);
+    return bbsChallengeContributionFromProofNew(this.value, revealedMsgs, params.value, encodeMessages);
   }
 }

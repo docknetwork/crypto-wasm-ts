@@ -1,8 +1,12 @@
 import { BBSSignatureParams } from './params';
-import { bbsVerify, bbsSign, VerifyResult } from 'crypto-wasm-new';
+import {
+  VerifyResult,
+  bbsSignConstantTime,
+  bbsVerifyConstantTime,
+  bbsBlindSignConstantTime
+} from 'crypto-wasm-new';
 import { BBSPublicKey, BBSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
-import { bbsBlindSign } from 'crypto-wasm-new';
 import { Encoder, MessageEncoder } from '../encoder';
 import { encodeRevealedMessageObject, getBlindedIndicesAndRevealedMessages } from '../sign-verify-js-objs';
 import { MessageStructure, SignedMessages } from '../types';
@@ -31,7 +35,7 @@ export class BBSSignature extends MessageEncoder {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsSign(messages, secretKey.value, params.value, encodeMessages);
+    const sig = bbsSignConstantTime(messages, secretKey.value, params.value, encodeMessages);
     return new BBSSignature(sig);
   }
 
@@ -55,7 +59,7 @@ export class BBSSignature extends MessageEncoder {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    return bbsVerify(messages, this.value, publicKey.value, params.value, encodeMessages);
+    return bbsVerifyConstantTime(messages, this.value, publicKey.value, params.value, encodeMessages);
   }
 
   static signMessageObject(
@@ -64,7 +68,7 @@ export class BBSSignature extends MessageEncoder {
     labelOrParams: Uint8Array | BBSSignatureParams,
     encoder: Encoder
   ): SignedMessages<BBSSignature> {
-    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
+    const encodedMessages = encoder.encodeMessageObjectAsObjectConstantTime(messages);
     const encodedMessageList = Object.values(encodedMessages);
 
     const sigParams = BBSSignatureParams.getSigParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
@@ -83,14 +87,16 @@ export class BBSSignature extends MessageEncoder {
    * @param publicKey
    * @param labelOrParams
    * @param encoder
+   * @param useConstantTimeEncoding
    */
   verifyMessageObject(
     messages: object,
     publicKey: BBSPublicKey,
     labelOrParams: Uint8Array | BBSSignatureParams,
-    encoder: Encoder
+    encoder: Encoder,
+    useConstantTimeEncoding = true,
   ): VerifyResult {
-    const [_, encodedValues] = encoder.encodeMessageObject(messages);
+    const [_, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
     const sigParams = BBSSignatureParams.getSigParamsOfRequiredSize(msgCount, labelOrParams);
@@ -122,7 +128,7 @@ export class BBSBlindSignature extends BytearrayWrapper {
         } must be less than ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsBlindSign(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
+    const sig = bbsBlindSignConstantTime(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
     return new BBSBlindSignature(sig);
   }
 
@@ -146,7 +152,7 @@ export class BBSBlindSignature extends BytearrayWrapper {
         } is different from ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    return bbsVerify(messages, this.value, publicKey.value, params.value, encodeMessages);
+    return bbsVerifyConstantTime(messages, this.value, publicKey.value, params.value, encodeMessages);
   }
 
   /**
@@ -164,7 +170,7 @@ export class BBSBlindSignature extends BytearrayWrapper {
     encodeMessages: boolean,
     revealedMessages?: Map<number, Uint8Array>
   ): BBSBlindSignatureRequest {
-    const commitment = params.commitToMessages(messagesToBlind, encodeMessages);
+    const commitment = params.commitToMessagesConstantTime(messagesToBlind, encodeMessages);
     const [blindedIndices, encodedRevealedMessages] = getBlindedIndicesAndRevealedMessages(
       messagesToBlind,
       encodeMessages,

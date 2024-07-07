@@ -189,6 +189,7 @@ export function buildSignatureVerifierStatementFromParamsRef(
   messageCount: number,
   revealedMessages: Map<number, Uint8Array>,
   credVerParam?: CredentialVerificationParam,
+  useConstantTimeEncoding = true,
 ): Uint8Array {
   let setupSigP: SetupParam,
     setupPK: SetupParam | undefined,
@@ -216,12 +217,12 @@ export function buildSignatureVerifierStatementFromParamsRef(
     case BBSSignatureParams:
       setupSigP = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount) as BBSSignatureParams);
       setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(getPk());
-      buildStatement = Statement.bbsSignatureVerifierFromSetupParamRefs;
+      buildStatement = useConstantTimeEncoding ? Statement.bbsSignatureVerifierFromSetupParamRefsConstantTime : Statement.bbsSignatureVerifierFromSetupParamRefs;
       return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
     case BBSPlusSignatureParamsG1:
       setupPK = SetupParam.bbsPlusSignaturePublicKeyG2(getPk());
       setupSigP = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount) as BBSPlusSignatureParamsG1);
-      buildStatement = Statement.bbsPlusSignatureVerifierFromSetupParamRefs;
+      buildStatement = useConstantTimeEncoding ? Statement.bbsPlusSignatureVerifierFromSetupParamRefsConstantTime : Statement.bbsPlusSignatureVerifierFromSetupParamRefs;
       return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
     case PSSignatureParams:
       let psPK = getPk() as PSPublicKey;
@@ -235,19 +236,24 @@ export function buildSignatureVerifierStatementFromParamsRef(
       }
       setupPK = SetupParam.psSignaturePublicKey(psPK);
       setupSigP = SetupParam.psSignatureParams(sigParams.adapt(messageCount) as PSSignatureParams);
-      buildStatement = Statement.psSignatureFromSetupParamRefs;
+      buildStatement = useConstantTimeEncoding ? Statement.psSignatureFromSetupParamRefsConstantTime : Statement.psSignatureFromSetupParamRefs;
       return buildStatement(setupParamsTrk.add(setupSigP), setupParamsTrk.add(setupPK), revealedMessages, false);
     case BBDT16MacParams:
       setupSigP = SetupParam.bbdt16MacParams(sigParams.adapt(messageCount) as BBDT16MacParams);
       if (credVerParam instanceof BBDT16MacSecretKey) {
-        return Statement.bbdt16MacFullVerifierFromSetupParamRefs(
+        return useConstantTimeEncoding ? Statement.bbdt16MacFullVerifierFromSetupParamRefsConstantTime(
+          setupParamsTrk.add(setupSigP),
+          credVerParam,
+          revealedMessages,
+          false
+        ) : Statement.bbdt16MacFullVerifierFromSetupParamRefs(
           setupParamsTrk.add(setupSigP),
           credVerParam,
           revealedMessages,
           false
         );
       } else {
-        return Statement.bbdt16MacFromSetupParamRefs(setupParamsTrk.add(setupSigP), revealedMessages, false);
+        return useConstantTimeEncoding ? Statement.bbdt16MacFromSetupParamRefsConstantTime(setupParamsTrk.add(setupSigP), revealedMessages, false) : Statement.bbdt16MacFromSetupParamRefs(setupParamsTrk.add(setupSigP), revealedMessages, false);
       }
     default:
       throw new Error(`Signature params are invalid ${sigParams}`);
@@ -259,7 +265,8 @@ export function buildSignatureProverStatementFromParamsRef(
   sigParams: SignatureParams,
   messageCount: number,
   revealedMessages: Map<number, Uint8Array>,
-  pk?: PublicKey
+  pk?: PublicKey,
+  useConstantTimeEncoding = true,
 ): Uint8Array {
   if (pk !== undefined && paramsClassByPublicKey(pk) !== sigParams.constructor) {
     throw new Error(`Public key and params have different schemes: ${pk}, ${sigParams}`);
@@ -278,11 +285,11 @@ export function buildSignatureProverStatementFromParamsRef(
   switch (sigParams.constructor) {
     case BBSSignatureParams:
       setupParams = SetupParam.bbsSignatureParams(sigParams.adapt(messageCount) as BBSSignatureParams);
-      buildStatement = Statement.bbsSignatureProverFromSetupParamRefs;
+      buildStatement = useConstantTimeEncoding ? Statement.bbsSignatureProverFromSetupParamRefsConstantTime : Statement.bbsSignatureProverFromSetupParamRefs;
       break;
     case BBSPlusSignatureParamsG1:
       setupParams = SetupParam.bbsPlusSignatureParamsG1(sigParams.adapt(messageCount) as BBSPlusSignatureParamsG1);
-      buildStatement = Statement.bbsPlusSignatureProverFromSetupParamRefs;
+      buildStatement = useConstantTimeEncoding ? Statement.bbsPlusSignatureProverFromSetupParamRefsConstantTime : Statement.bbsPlusSignatureProverFromSetupParamRefs;
       break;
     case PSSignatureParams:
       if (pk === undefined) {
@@ -299,14 +306,14 @@ export function buildSignatureProverStatementFromParamsRef(
       }
       setupPK = SetupParam.psSignaturePublicKey(psPK);
       setupParams = SetupParam.psSignatureParams(sigParams.adapt(messageCount) as PSSignatureParams);
-      buildStatement = Statement.psSignatureFromSetupParamRefs;
+      buildStatement = useConstantTimeEncoding ? Statement.psSignatureFromSetupParamRefsConstantTime : Statement.psSignatureFromSetupParamRefs;
       break;
     case BBDT16MacParams:
       setupParams = SetupParam.bbdt16MacParams(sigParams.adapt(messageCount) as BBDT16MacParams);
-      buildStatement = Statement.bbdt16MacFromSetupParamRefs;
+      buildStatement = useConstantTimeEncoding ? Statement.bbdt16MacFromSetupParamRefsConstantTime : Statement.bbdt16MacFromSetupParamRefs;
       break;
     default:
-      throw new Error(`Signature params are invalid ${sigParams.constructor.name}`);
+      throw new Error(`${sigParams.constructor.name} signature params are invalid`);
   }
 
   return setupPK !== undefined
@@ -338,16 +345,16 @@ export function getDefaultLabelBytesForSignatureParams(signatureParamsClass: Sig
 
 export function buildWitness(signature: Signature, unrevealedMessages: Map<number, Uint8Array>): Uint8Array {
   if (signature instanceof BBSSignature) {
-    return Witness.bbsSignature(signature, unrevealedMessages, false);
+    return Witness.bbsSignatureConstantTime(signature, unrevealedMessages, false);
   } else if (signature instanceof BBSPlusSignatureG1) {
-    return Witness.bbsPlusSignature(signature, unrevealedMessages, false);
+    return Witness.bbsPlusSignatureConstantTime(signature, unrevealedMessages, false);
   } else if (signature instanceof PSSignature) {
-    return Witness.psSignature(signature, unrevealedMessages);
+    return Witness.psSignatureConstantTime(signature, unrevealedMessages);
   } else if (signature instanceof BBDT16Mac) {
-    return Witness.bbdt16Mac(signature, unrevealedMessages, false);
+    return Witness.bbdt16MacConstantTime(signature, unrevealedMessages, false);
   } else {
     // @ts-ignore
-    throw new Error(`Signature is invalid ${signature.constructor.name}`);
+    throw new Error(`${signature.constructor.name} signature is invalid`);
   }
 }
 

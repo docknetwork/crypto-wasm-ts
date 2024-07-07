@@ -604,7 +604,7 @@ export async function prefillAccumulator<T>(
   for (let i = 1; i <= totalMembers; i++) {
     // For this test, user id is of this form
     const userId = `${memberValPrefix}${i}`;
-    members.push(credSchema.encoder.encodeMessage(memberNameInSchema, userId));
+    members.push(credSchema.encoder.encodeMessageConstantTime(memberNameInSchema, userId));
   }
   // Adding a single batch as `totalMembers` is fairly small (100s) in this test but in practice choose a reasonable
   // batch size to not take up complete system's memory
@@ -640,7 +640,7 @@ export function checkCiphertext(
   cts.forEach((ciphertext) => {
     let decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, saverVerifyingKey, chunkBitSize);
     expect(decrypted.message).toEqual(
-      credential.schema?.encoder.encodeMessage(`${SUBJECT_STR}.${attrName}`, _.get(credential.subject, attrName))
+      credential.schema?.encoder.encodeMessageConstantTime(`${SUBJECT_STR}.${attrName}`, _.get(credential.subject, attrName))
     );
 
     // Decryptor shares the decryption result with verifier which the verifier can check for correctness.
@@ -831,7 +831,7 @@ export async function setupKBUniAccumulator(
   const domain: Uint8Array[] = [];
   for (let i = 1; i <= totalMembers; i++) {
     const userId = `${memberValPrefix}${i}`;
-    domain.push(schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, userId));
+    domain.push(schema.encoder.encodeMessageConstantTime(`${STATUS_STR}.${REV_ID_STR}`, userId));
   }
   const accumulator = await KBUniversalAccumulator.initialize(domain, dockAccumulatorParams(), sk, state);
   return [sk, pk, accumulator, domain, state]

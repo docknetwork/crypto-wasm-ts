@@ -52,8 +52,19 @@ See these [tests](../../tests/anonymous-credentials/presentation.spec.ts) for ex
 
 ## Blinded Credentials
 
-A user/holder can request a blinded credential from the signer/issuer where some of the attributes are not known to the signer. The blinded credential needs to be then unblinded, i.e. converted to a normal credential which can be verified by the signer's public key and used in presentations. The workflow to do this is as follows: user uses a [BlindedCredentialRequestBuilder](./blinded-credential-request-builder.ts) to create [BlindedCredentialRequest](./blinded-credential-request.ts) which is sent to the signer and subsequently verified by the signer. On successful verification, the signer uses `BlindedCredentialRequest` to create a [BlindedCredentialBuilder](./blinded-credential-builder.ts) to build a [BlindedCredential](./blinded-credential.ts). The `BlindedCredential` is sent to the user who then converts it to a normal credential. The `BlindedCredentialRequest` contains a `Presentation` inside which is verified by the signer.  
-The user while requesting such a credential might need to prove the possession of other credentials or prove that some of the blinded (hidden) attributes are same as the credentials in the presentation. The user can do this by calling methods on `BlindedCredentialRequestBuilder`, eg, calling `addCredentialToPresentation` will add a `Credential` already possessed by the user to the `Presentation` contained in the `BlindedCredentialRequest`, `enforceBoundsOnCredentialAttribute` will enforce bounds (min, max) on the credential attribute, etc. Any predicate supported in `Presentation`s can be proved over the credential added in `BlindedCredentialRequest`. Predicates can also be proven over the blinded attributes, eg, `markBlindedAttributesEqual` can be used to prove some blinded attribute equal to a credential attribute, `verifiablyEncryptBlindedAttribute` can be used to verifiably encrypt a blinded attribute, etc.
+A user/holder can request a blinded credential from the signer/issuer where some of the attributes are not known to the signer. The blinded 
+credential needs to be then unblinded, i.e. converted to a normal credential which can be verified by the signer's public key and used in presentations. 
+The workflow to do this is as follows: user uses a [BlindedCredentialRequestBuilder](./blinded-credential-request-builder.ts) to create [BlindedCredentialRequest](./blinded-credential-request.ts) which is sent 
+to the signer and subsequently verified by the signer. On successful verification, the signer uses `BlindedCredentialRequest` to create 
+a [BlindedCredentialBuilder](./blinded-credential-builder.ts) to build a [BlindedCredential](./blinded-credential.ts). The `BlindedCredential` is sent to the user who then converts it to a 
+normal credential. The `BlindedCredentialRequest` contains a `Presentation` inside which is verified by the signer.  
+The user while requesting such a credential might need to prove the possession of other credentials or prove that some of the 
+blinded (hidden) attributes are same as the credentials in the presentation. The user can do this by calling methods 
+on `BlindedCredentialRequestBuilder`, eg, calling `addCredentialToPresentation` will add a `Credential` already possessed by 
+the user to the `Presentation` contained in the `BlindedCredentialRequest`, `enforceBoundsOnCredentialAttribute` will enforce bounds (min, max) 
+on the credential attribute, etc. Any predicate supported in `Presentation`s can be proved over the credential added in `BlindedCredentialRequest`. 
+Predicates can also be proven over the blinded attributes, eg, `markBlindedAttributesEqual` can be used to prove some blinded attribute equal to a 
+credential attribute, `verifiablyEncryptBlindedAttribute` can be used to verifiably encrypt a blinded attribute, etc.
 
 See these [tests](../../tests/anonymous-credentials/blind-issuance.spec.ts) for examples of using these predicates.
 

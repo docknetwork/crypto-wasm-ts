@@ -8,7 +8,9 @@ import {
   generateMembershipProvingKey,
   generateNonMembershipProvingKey,
   isAccumulatorParamsValid,
-  isAccumulatorPublicKeyValid
+  isAccumulatorPublicKeyValid,
+  generateAccumulatorParamsForKeyedVerification,
+  generateAccumulatorPublicKeyForKeyedVerification
 } from 'crypto-wasm-new';
 
 export class AccumulatorParams extends BytearrayWrapper {
@@ -115,5 +117,22 @@ export class NonMembershipProvingKey extends BytearrayWrapper {
 
   deriveMembershipProvingKey(): MembershipProvingKey {
     return new MembershipProvingKey(accumulatorDeriveMembershipProvingKeyFromNonMembershipKey(this.value));
+  }
+}
+
+export class AccumulatorParamsForKeyedVerification extends BytearrayWrapper {
+  /**
+   *  Generate accumulator parameters for keyed-verification.
+   * @param label - Pass to generate parameters deterministically.
+   * @returns
+   */
+  static generate(label?: Uint8Array): AccumulatorParamsForKeyedVerification {
+    return new AccumulatorParamsForKeyedVerification(generateAccumulatorParamsForKeyedVerification(label));
+  }
+}
+
+export class AccumulatorPublicKeyForKeyedVerification extends BytearrayWrapper {
+  static generate(secretKey: AccumulatorSecretKey, params: AccumulatorParamsForKeyedVerification): AccumulatorPublicKeyForKeyedVerification {
+    return new AccumulatorPublicKeyForKeyedVerification(generateAccumulatorPublicKeyForKeyedVerification(secretKey.value, params.value));
   }
 }

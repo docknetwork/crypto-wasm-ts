@@ -11,7 +11,7 @@ import {
   bbsPlusAdaptSigParamsG2ForMsgCount,
   bbsPlusCommitMsgsInG1,
   generateRandomFieldElement,
-  BbsPlusSigParams
+  BbsPlusSigParams, bbsPlusCommitMsgsInG1ConstantTime
 } from 'crypto-wasm-new';
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
 import { ISignatureParams, MessageStructure } from '../types';
@@ -139,6 +139,21 @@ export class BBSPlusSignatureParamsG1 extends BBSPlusSignatureParams {
     blinding: Uint8Array = generateRandomFieldElement()
   ): [Uint8Array, Uint8Array] {
     const commitment = bbsPlusCommitMsgsInG1(messageToCommit, blinding, this.value, encodeMessages);
+    return [commitment, blinding];
+  }
+
+  /**
+   * Commit to given messages and return the pair [blinding, commitment]
+   * @param messageToCommit
+   * @param encodeMessages
+   * @param blinding - If not provided, a random blinding is generated
+   */
+  commitToMessagesConstantTime(
+    messageToCommit: Map<number, Uint8Array>,
+    encodeMessages: boolean,
+    blinding: Uint8Array = generateRandomFieldElement()
+  ): [Uint8Array, Uint8Array] {
+    const commitment = bbsPlusCommitMsgsInG1ConstantTime(messageToCommit, blinding, this.value, encodeMessages);
     return [commitment, blinding];
   }
 

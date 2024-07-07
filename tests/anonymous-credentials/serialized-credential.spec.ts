@@ -3,7 +3,13 @@ import semver from 'semver/preload';
 
 import { Credential, isKvac, PresentationBuilder, PublicKey, Scheme, SecretKey } from '../scheme';
 import { checkResult } from '../utils';
-import { AccumulatorPublicKey, initializeWasm, VBMembershipWitness } from '../../src';
+import {
+  AccumulatorPublicKey,
+  dockAccumulatorParams,
+  initializeWasm,
+  PositiveAccumulator,
+  VBMembershipWitness
+} from '../../src';
 import { checkPresentationJson } from './utils';
 
 describe(`${Scheme} Credential creation and verification from JSON`, () => {
@@ -34,21 +40,28 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
       expect(builder.addCredential(cred, pk)).toEqual(0);
       let accPk, accPk4;
       const acc = new Map();
+      const revEncFunc = semver.gte(credVersion, '0.7.0') ? cred.schema.encoder.encodeMessageConstantTime : cred.schema.encoder.encodeMessage;
       if (i === 3) {
         const accPkBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_pk.bin`);
-        const accWitBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness.bin`);
-        const accVal = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value.bin`);
+        const accWitBin = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness_const_time.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness.bin`);
+        const accVal = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value_const_time.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value.bin`);
         accPk = AccumulatorPublicKey.fromBytes(accPkBin);
         const accWit = new VBMembershipWitness(accWitBin);
+        const accum = new PositiveAccumulator({value: accVal, params: dockAccumulatorParams()});
+        const revid = revEncFunc.call(cred.schema.encoder, 'credentialStatus.revocationId', cred.credentialStatus.revocationId);
+        expect(accum.verifyMembershipWitness(revid, accWit, accPk)).toEqual(true);
         builder.addAccumInfoForCredStatus(0, accWit, accVal, accPk, {});
         acc.set(0, accPk);
       }
       if (i === 4) {
         const accPkBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_pk4.bin`);
-        const accWitBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness4.bin`);
-        const accVal = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value4.bin`);
+        const accWitBin = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness4_const_time.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness4.bin`);
+        const accVal = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value4_const_time.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value4.bin`);
         accPk4 = AccumulatorPublicKey.fromBytes(accPkBin);
         const accWit = new VBMembershipWitness(accWitBin);
+        const accum = new PositiveAccumulator({value: accVal, params: dockAccumulatorParams()});
+        const revid = revEncFunc.call(cred.schema.encoder, 'credentialStatus.revocationId', cred.credentialStatus.revocationId);
+        expect(accum.verifyMembershipWitness(revid, accWit, accPk4)).toEqual(true);
         builder.addAccumInfoForCredStatus(0, accWit, accVal, accPk4, {});
         acc.set(0, accPk4);
       }
@@ -76,5 +89,9 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
 
   it('check version 0.6.0', () => {
     check('0.6.0', '0.4.0');
+  })
+
+  it('check version 0.7.0', () => {
+    check('0.7.0', '0.5.0');
   })
 })

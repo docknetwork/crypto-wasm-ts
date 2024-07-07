@@ -66,7 +66,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 export abstract class BlindedCredentialRequestBuilder<SigParams> extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.4.0';
+  static VERSION = '0.5.0';
 
   // The schema of the whole (unblinded credential). This should include all attributes, i.e. blinded and unblinded
   _schema?: CredentialSchema;
@@ -500,7 +500,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
       attrs[k] = v;
     }
     // Encode the blinded attributes
-    for (const [name, value] of schema.encoder.encodeMessageObjectAsMap(attrs).entries()) {
+    for (const [name, value] of schema.encoder.encodeMessageObjectAsMapConstantTime(attrs).entries()) {
       const index = flattenedSchema[0].indexOf(name);
       encodedAttributes.set(index, value);
       attrNameToIndex.set(name, index);
@@ -511,7 +511,7 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     if (this._statusToBlind !== undefined) {
       const name = `${STATUS_STR}.${REV_ID_STR}`;
       const index = flattenedSchema[0].indexOf(name);
-      encodedAttributes.set(index, schema.encoder.encodeMessage(name, this._statusToBlind[REV_ID_STR]));
+      encodedAttributes.set(index, schema.encoder.encodeMessageConstantTime(name, this._statusToBlind[REV_ID_STR]));
       attrNameToIndex.set(name, index);
       attributesWithoutVals[name] = null;
       unBlindedAttributes = {
@@ -560,7 +560,7 @@ export class BBSBlindedCredentialRequestBuilder extends BlindedCredentialRequest
   ): Uint8Array {
     const sigParams = BBSSignatureParams.getSigParamsOfRequiredSize(totalAttributes, labelOrParams);
     this.sigParams = sigParams;
-    return sigParams.commitToMessages(encodedSubject, false);
+    return sigParams.commitToMessagesConstantTime(encodedSubject, false);
   }
 
   /**
@@ -618,7 +618,7 @@ export class BBSPlusBlindedCredentialRequestBuilder extends BlindedCredentialReq
   ): Uint8Array {
     const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(totalAttributes, labelOrParams);
     this.sigParams = sigParams;
-    const [commitment] = sigParams.commitToMessages(encodedSubject, false, this.blinding);
+    const [commitment] = sigParams.commitToMessagesConstantTime(encodedSubject, false, this.blinding);
     return commitment;
   }
 
@@ -660,7 +660,7 @@ export class BBDT16BlindedCredentialRequestBuilder extends BlindedCredentialRequ
   ): Uint8Array {
     const sigParams = BBDT16MacParams.getMacParamsOfRequiredSize(totalAttributes, labelOrParams);
     this.sigParams = sigParams;
-    const [commitment] = sigParams.commitToMessages(encodedSubject, false, this.blinding);
+    const [commitment] = sigParams.commitToMessagesConstantTime(encodedSubject, false, this.blinding);
     return commitment;
   }
 

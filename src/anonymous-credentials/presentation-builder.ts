@@ -120,7 +120,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential | BBDT16Crede
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.8.0';
+  static VERSION = '0.9.0';
 
   // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;
@@ -561,17 +561,20 @@ export class PresentationBuilder extends Versioned {
         revealedNames.add(`${STATUS_STR}.${REV_CHECK_STR}`);
       }
 
+      const useConstantTimeEncoding = semver.gte(cred.version, '0.6.0');
       const [revealedAttrsEncoded, unrevealedAttrsEncoded, revealedAtts] = getRevealedAndUnrevealed(
         cred.serializeForSigning(),
         revealedNames,
-        schema.encoder
+        schema.encoder,
+        useConstantTimeEncoding
       );
       const statement = buildSignatureProverStatementFromParamsRef(
         setupParamsTrk,
         sigParams,
         numAttribs,
         revealedAttrsEncoded,
-        this.credentials[credIndex][1]
+        this.credentials[credIndex][1],
+        useConstantTimeEncoding
       );
       const witness = buildWitness(cred.signature, unrevealedAttrsEncoded);
       statements.add(statement);
@@ -590,11 +593,12 @@ export class PresentationBuilder extends Versioned {
           accumulated: s[1],
           extra: s[3]
         };
+        const encodedRevId = useConstantTimeEncoding ? schema.encoder.encodeMessageConstantTime(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR]) : schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR]);
         credStatusAux.push([
           credIndex,
           cred.credentialStatus[TYPE_STR],
           cred.credentialStatus[REV_CHECK_STR],
-          schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR])
+          encodedRevId
         ]);
       }
 
@@ -637,7 +641,7 @@ export class PresentationBuilder extends Versioned {
             // @ts-ignore
             attributeIneqs[name].push(ineq_j[0]);
             // Encode the public value
-            ineq_j[1] = schema.encoder.encodeMessage(name, ineq_j[0].inEqualTo);
+            ineq_j[1] = schema.encoder.encodeMessageConstantTime(name, ineq_j[0].inEqualTo);
           });
           updateEncodedAttrs(name, encodedAttrs);
         }
@@ -1201,7 +1205,7 @@ export class PresentationBuilder extends Versioned {
           v.forEach((v_j) => {
             arr.push(v_j[0]);
             // @ts-ignore
-            v_j[1] = this.blindCredReq?.req?.schema.encoder.encodeMessage(k, v_j[0].inEqualTo);
+            v_j[1] = this.blindCredReq?.req?.schema.encoder?.encodeMessageConstantTime(k, v_j[0].inEqualTo);
           });
           m.set(k, arr);
         }

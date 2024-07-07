@@ -203,7 +203,7 @@ skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid pr
     // User unblinds the blind signature
     const unblindedSig = isPS()
       ? // @ts-ignore
-        blingSignature.signature.unblind(blindings, sigPk2)
+        blingSignature.signature.unblind(blindings, sigPk2, h)
       : isBBS()
       ? new BBSSignature(blingSignature.signature.value)
       : // @ts-ignore

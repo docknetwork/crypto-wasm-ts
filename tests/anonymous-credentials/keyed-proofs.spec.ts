@@ -19,7 +19,15 @@ import {
   RevocationStatusProtocol,
   SignatureType,
   TYPE_STR,
-  VBMembershipWitness
+  VBMembershipWitness,
+  BBDT16MacPublicKeyG1,
+  BBDT16MacParams,
+  BBDT16_MAC_PARAMS_LABEL_BYTES,
+  BBDT16KeyedProof,
+  VBAccumMembershipKeyedProof,
+  AccumulatorPublicKeyForKeyedVerification,
+  KBUniAccumMembershipKeyedProof,
+  KBUniAccumNonMembershipKeyedProof, dockAccumulatorParams
 } from '../../src';
 import {
   KBUniversalMembershipWitness,
@@ -40,6 +48,8 @@ import {
 describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, () => {
   let sk: SecretKey, pk: PublicKey;
   let skKvac: BBDT16MacSecretKey;
+  let pkKvac: BBDT16MacPublicKeyG1;
+  let paramsKvac: BBDT16MacParams;
 
   let credential1: Credential;
   let credential2: Credential;
@@ -57,11 +67,13 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
   // Accumulator where membership verification needs secret key
   let accumulator2: PositiveAccumulator;
   let accumulator2Sk: AccumulatorSecretKey;
+  let accumulator2Pk: AccumulatorPublicKeyForKeyedVerification;
   let accumulator2Witness: VBMembershipWitness;
 
   // Accumulator where membership and non-membership verification needs secret key
   let accumulator3: KBUniversalAccumulator;
   let accumulator3Sk: AccumulatorSecretKey;
+  let accumulator3Pk: AccumulatorPublicKeyForKeyedVerification;
   let accumulator3MemWitness: KBUniversalMembershipWitness;
   let accumulator3NonMemWitness: KBUniversalNonMembershipWitness;
 
@@ -69,7 +81,9 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
     await initializeWasm();
 
     [sk, pk] = getKeys('seed1');
+    paramsKvac = BBDT16MacParams.generate(1, BBDT16_MAC_PARAMS_LABEL_BYTES);
     skKvac = BBDT16MacSecretKey.generate();
+    pkKvac = skKvac.generatePublicKeyG1(paramsKvac);
 
     const schema = new CredentialSchema(getExampleSchema(5));
     const subject = {
@@ -157,10 +171,12 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
 
     // @ts-ignore
     [accumulator2Sk, , accumulator2, accumulator2Witness] = await setupPrefilledAccum(200, 123, 'user:A-', schema);
+    accumulator2Pk = AccumulatorPublicKeyForKeyedVerification.generate(accumulator2Sk, dockAccumulatorParams());
 
     let others;
     // @ts-ignore
     [accumulator3Sk, , accumulator3, ...others] = await setupKBUniAccumulator(100, 'user:A-', schema);
+    accumulator3Pk = AccumulatorPublicKeyForKeyedVerification.generate(accumulator3Sk, dockAccumulatorParams());
     const [domain, state] = others;
 
     const builder6 = new CredentialBuilder();
@@ -256,7 +272,7 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
         verifyFunc(recreated);
       }
 
-      function onlyCredProofAvailable(keyedCredProof?: KeyedProof) {
+      function credProofAvailable(keyedCredProof?: KeyedProof) {
         expect(keyedCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bbdt16
         });
@@ -279,7 +295,10 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
         expect(keyedCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bbdt16
         });
-        checkResult(keyedCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
+        const proof = keyedCredProof?.credential?.proof as BBDT16KeyedProof;
+        checkResult(proof.verify(skKvac) as VerifyResult);
+        const pv = proof.proofOfValidity(skKvac, pkKvac, paramsKvac);
+        checkResult(pv.verify(proof, pkKvac, paramsKvac));
         expect(keyedCredProof?.status).not.toBeDefined();
       }
 
@@ -293,7 +312,10 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
           [TYPE_STR]: RevocationStatusProtocol.Vb22,
           [REV_CHECK_STR]: MEM_CHECK_KV_STR
         });
-        checkResult(keyedCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
+        const proof = keyedCredProof?.status?.proof as VBAccumMembershipKeyedProof;
+        checkResult(proof.verify(accumulator2Sk) as VerifyResult);
+        const pv = proof.proofOfValidity(accumulator2Sk, accumulator2Pk, dockAccumulatorParams());
+        checkResult(pv.verify(proof, accumulator2Pk, dockAccumulatorParams()));
       }
 
       function check5(keyedCredProof?: KeyedProof) {
@@ -305,7 +327,10 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
           [TYPE_STR]: RevocationStatusProtocol.KbUni24,
           [REV_CHECK_STR]: MEM_CHECK_KV_STR
         });
-        checkResult(keyedCredProof?.status?.proof.verify(accumulator3Sk) as VerifyResult);
+        const proof = keyedCredProof?.status?.proof as KBUniAccumMembershipKeyedProof;
+        checkResult(proof.verify(accumulator3Sk) as VerifyResult);
+        const pv = proof.proofOfValidity(accumulator3Sk, accumulator3Pk, dockAccumulatorParams());
+        checkResult(pv.verify(proof, accumulator3Pk, dockAccumulatorParams()));
       }
 
       function check6(keyedCredProof?: KeyedProof) {
@@ -317,7 +342,10 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
           [TYPE_STR]: RevocationStatusProtocol.KbUni24,
           [REV_CHECK_STR]: NON_MEM_CHECK_KV_STR
         });
-        checkResult(keyedCredProof?.status?.proof.verify(accumulator3Sk) as VerifyResult);
+        const proof = keyedCredProof?.status?.proof as KBUniAccumNonMembershipKeyedProof;
+        checkResult(proof.verify(accumulator3Sk) as VerifyResult);
+        const pv = proof.proofOfValidity(accumulator3Sk, accumulator3Pk, dockAccumulatorParams());
+        checkResult(pv.verify(proof, accumulator3Pk, dockAccumulatorParams()));
       }
 
       const keyedProofs = presentation.getKeyedProofs();
@@ -326,8 +354,8 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
       if (isKvac()) {
         for (let i = 0; i < 3; i++) {
           const keyedCredProof = keyedProofs.get(i);
-          onlyCredProofAvailable(keyedCredProof);
-          checkSerialized(onlyCredProofAvailable, keyedCredProof);
+          credProofAvailable(keyedCredProof);
+          checkSerialized(credProofAvailable, keyedCredProof);
         }
       }
 

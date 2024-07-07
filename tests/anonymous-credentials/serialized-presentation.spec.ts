@@ -197,4 +197,9 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
     // Legosnark keys changed due type of certain values changed from `u64` to `u32`
     check('0.6.0', '0.8.0', 'bound-check-legogroth16-vk2');
   });
+
+  it('check version 0.9.0', () => {
+    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
+    check('0.7.0', '0.9.0', 'bound-check-legogroth16-vk2');
+  });
 });

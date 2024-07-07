@@ -1,4 +1,5 @@
 import { generateRandomFieldElement } from 'crypto-wasm-new';
+import fs from 'fs';
 import {
   AccumulatorPublicKey,
   AccumulatorSecretKey, areUint8ArraysEqual,
@@ -63,7 +64,7 @@ import {
   getExampleSchema,
   getKeys,
   setupPrefilledAccum,
-  verifyCred,
+  verifyCred, writeSerializedObject
 } from './utils';
 import exp = require('node:constants');
 

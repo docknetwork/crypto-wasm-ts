@@ -7,7 +7,7 @@ import {
   bddt16UnblindMac,
   bddt16MacProofOfValidity,
   bddt16MacVerifyProofOfValidity,
-  VerifyResult
+  VerifyResult, bddt16MacGenerateConstantTime, bddt16MacVerifyConstantTime, bddt16BlindMacGenerateConstantTime
 } from 'crypto-wasm-new';
 import { MessageStructure, SignedMessages } from '../types';
 import { BBDT16MacParams } from './params';
@@ -38,7 +38,7 @@ export class BBDT16Mac extends MessageEncoder {
         } is different from ${params.supportedMessageCount()} supported by the MAC params`
       );
     }
-    const mac = bddt16MacGenerate(messages, secretKey.value, params.value, encodeMessages);
+    const mac = bddt16MacGenerateConstantTime(messages, secretKey.value, params.value, encodeMessages);
     return new BBDT16Mac(mac);
   }
 
@@ -62,7 +62,7 @@ export class BBDT16Mac extends MessageEncoder {
         } is different from ${params.supportedMessageCount()} supported by the MAC params`
       );
     }
-    return bddt16MacVerify(messages, this.value, secretKey.value, params.value, encodeMessages);
+    return bddt16MacVerifyConstantTime(messages, this.value, secretKey.value, params.value, encodeMessages);
   }
 
   static signMessageObject(
@@ -71,7 +71,7 @@ export class BBDT16Mac extends MessageEncoder {
     labelOrParams: Uint8Array | BBDT16MacParams,
     encoder: Encoder
   ): SignedMessages<BBDT16Mac> {
-    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
+    const encodedMessages = encoder.encodeMessageObjectAsObjectConstantTime(messages);
     const encodedMessageList = Object.values(encodedMessages);
 
     const sigParams = BBDT16MacParams.getMacParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
@@ -90,7 +90,7 @@ export class BBDT16Mac extends MessageEncoder {
     labelOrParams: Uint8Array | BBDT16MacParams,
     encoder: Encoder
   ): [SignedMessages<BBDT16Mac>, BBDT16MacProofOfValidity] {
-    const encodedMessages = encoder.encodeMessageObjectAsObject(messages);
+    const encodedMessages = encoder.encodeMessageObjectAsObjectConstantTime(messages);
     const encodedMessageList = Object.values(encodedMessages);
 
     const sigParams = BBDT16MacParams.getMacParamsOfRequiredSize(encodedMessageList.length, labelOrParams);
@@ -112,14 +112,16 @@ export class BBDT16Mac extends MessageEncoder {
    * @param secretKey
    * @param labelOrParams
    * @param encoder
+   * @param useConstantTimeEncoding
    */
   verifyMessageObject(
     messages: object,
     secretKey: BBDT16MacSecretKey,
     labelOrParams: Uint8Array | BBDT16MacParams,
-    encoder: Encoder
+    encoder: Encoder,
+    useConstantTimeEncoding = true
   ): VerifyResult {
-    const [_, encodedValues] = encoder.encodeMessageObject(messages);
+    const [_, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
     const sigParams = BBDT16MacParams.getMacParamsOfRequiredSize(msgCount, labelOrParams);
@@ -151,7 +153,7 @@ export class BBDT16BlindMac extends MessageEncoder {
         } must be less than ${params.supportedMessageCount()} supported by the MAC params`
       );
     }
-    const sig = bddt16BlindMacGenerate(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
+    const sig = bddt16BlindMacGenerateConstantTime(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
     return new BBDT16BlindMac(sig);
   }
 
@@ -196,7 +198,7 @@ export class BBDT16BlindMac extends MessageEncoder {
     blinding?: Uint8Array,
     revealedMessages?: Map<number, Uint8Array>
   ): [Uint8Array, BBDT16BlindMacRequest] {
-    const [commitment, b] = params.commitToMessages(messagesToBlind, encodeMessages, blinding);
+    const [commitment, b] = params.commitToMessagesConstantTime(messagesToBlind, encodeMessages, blinding);
     const [blindedIndices, encodedRevealedMessages] = getBlindedIndicesAndRevealedMessages(
       messagesToBlind,
       encodeMessages,
@@ -300,7 +302,7 @@ export class BBDT16MacProofOfValidity extends BytearrayWrapper {
     labelOrParams: Uint8Array | BBDT16MacParams,
     encoder: Encoder
   ): VerifyResult {
-    const [_, encodedValues] = encoder.encodeMessageObject(messages);
+    const [_, encodedValues] = encoder.encodeMessageObjectConstantTime(messages);
     const msgCount = encodedValues.length;
 
     const params = BBDT16MacParams.getMacParamsOfRequiredSize(msgCount, labelOrParams);

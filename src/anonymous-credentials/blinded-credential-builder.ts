@@ -41,7 +41,7 @@ export abstract class BlindedCredentialBuilder extends CredentialBuilderCommon {
       knownAttributes = {...knownAttributes, ...this.blindedCredReq.unBlindedAttributes};
     }
     const encodedAttributes = new Map<number, Uint8Array>();
-    Object.entries(schema.encoder.encodeMessageObjectAsObject(knownAttributes)).forEach(([name, value]) => {
+    Object.entries(schema.encoder.encodeMessageObjectAsObjectConstantTime(knownAttributes)).forEach(([name, value]) => {
       encodedAttributes.set(flattenedSchema[0].indexOf(name), value);
     });
     return [flattenedSchema[0].length, encodedAttributes];

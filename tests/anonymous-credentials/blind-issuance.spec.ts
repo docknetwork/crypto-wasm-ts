@@ -1158,7 +1158,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
     const score = 50;
     const encodedScore = generateFieldElementFromNumber(score);
     const encodedGrades = requiredGrades.map((g: string) =>
-      schema.encoder.encodeMessage('credentialSubject.education.grade', g)
+      schema.encoder.encodeMessageConstantTime('credentialSubject.education.grade', g)
     );
 
     reqBuilder.enforceCircomPredicateOnBlindedAttribute(

@@ -214,7 +214,7 @@ export class Presentation extends Versioned {
     const setupParamsTrk = new SetupParamsTracker();
     const sigParamsByScheme = new Map();
 
-    const versionGt6 = semver.gt(this.version, '0.6.0');
+    const presVersionGt6 = semver.gt(this.version, '0.6.0');
 
     for (let credIndex = 0; credIndex < this.spec.credentials.length; credIndex++) {
       const presentedCred = this.spec.credentials[credIndex];
@@ -223,12 +223,14 @@ export class Presentation extends Versioned {
       const flattenedSchema = presentedCredSchema.flatten();
       const numAttribs = flattenedSchema[0].length;
 
+      const useConstantTimeEncoding = semver.gte(presentedCred.version, '0.6.0');
       const revealedEncoded = Presentation.encodeRevealed(
         credIndex,
         presentedCred,
         presentedCredSchema,
         flattenedSchema[0],
-        versionGt6
+        presVersionGt6,
+        useConstantTimeEncoding
       );
 
       let sigParamsClass;
@@ -268,6 +270,7 @@ export class Presentation extends Versioned {
         numAttribs,
         revealedEncoded,
         credVerifParams.get(credIndex),
+        semver.gt(this._version, '0.7.0')
       );
       statements.add(statement);
       flattenedSchemas.push(flattenedSchema);
@@ -289,7 +292,7 @@ export class Presentation extends Versioned {
           obj[names[j]] = ineqs[j].map((ineqs_j) => [
             ineqs_j,
             // @ts-ignore
-            presentedCredSchema.encoder.encodeMessage(names[j], ineqs_j.inEqualTo)
+            presentedCredSchema.encoder.encodeMessageConstantTime(names[j], ineqs_j.inEqualTo)
           ]);
         }
         ineqsAux.push([credIndex, obj]);
@@ -650,7 +653,7 @@ export class Presentation extends Versioned {
           obj[names[j]] = ineqs[j].map((ineqs_j) => [
             ineqs_j,
             // @ts-ignore
-            this.spec.blindCredentialRequest.schema.encoder.encodeMessage(names[j], ineqs_j.inEqualTo)
+            this.spec.blindCredentialRequest.schema.encoder.encodeMessageConstantTime(names[j], ineqs_j.inEqualTo)
           ]);
         }
         this.processAttributeInequalities(
@@ -830,14 +833,16 @@ export class Presentation extends Versioned {
    * @param presentedCred
    * @param presentedCredSchema
    * @param flattenedNames
-   * @param newVersion
+   * @param presVersionGt6
+   * @param useConstantTimeEncoding
    */
   private static encodeRevealed(
     credIdx: number,
     presentedCred: IPresentedCredential,
     presentedCredSchema: CredentialSchema,
     flattenedNames: string[],
-    newVersion: boolean
+    presVersionGt6: boolean,
+    useConstantTimeEncoding = true
   ): Map<number, Uint8Array> {
     const revealedRaw = _.cloneDeep(presentedCred.revealedAttributes) as object;
     revealedRaw[CRYPTO_VERSION_STR] = presentedCred.version;
@@ -861,7 +866,7 @@ export class Presentation extends Versioned {
         [ID_STR]: presentedCred.status[ID_STR],
         [REV_CHECK_STR]: presentedCred.status[REV_CHECK_STR]
       };
-      if (newVersion) {
+      if (presVersionGt6) {
         revealedRaw[STATUS_STR][TYPE_STR] = presentedCred.status[TYPE_STR];
       }
     }
@@ -876,7 +881,7 @@ export class Presentation extends Versioned {
           throw new Error(`Attribute name ${k} not found in schema`);
         }
       } else {
-        encoded.set(i, presentedCredSchema.encoder.encodeMessage(k, v));
+        encoded.set(i, useConstantTimeEncoding ? presentedCredSchema.encoder.encodeMessageConstantTime(k, v) : presentedCredSchema.encoder.encodeMessage(k, v));
       }
     });
     return encoded;

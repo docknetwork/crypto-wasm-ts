@@ -1509,10 +1509,10 @@ cross-spawn@^7.0.2, cross-spawn@^7.0.3:
     shebang-command "^2.0.0"
     which "^2.0.1"
 
-"crypto-wasm-new@npm:@docknetwork/crypto-wasm@0.30.0":
-  version "0.30.0"
-  resolved "https://registry.yarnpkg.com/@docknetwork/crypto-wasm/-/crypto-wasm-0.30.0.tgz#d54a56989cf98847e6e4ebe8119b6eb6012d8da4"
-  integrity sha512-xwDtakDBaiOf0Cm6H74JsJ2I610rc+d9tSrgjuACE7QBpmkTug6QX4Q4OzxXA12wp86K5QqRMHoCzc6geS1Z0g==
+"crypto-wasm-new@npm:@docknetwork/crypto-wasm@0.32.0":
+  version "0.32.0"
+  resolved "https://registry.yarnpkg.com/@docknetwork/crypto-wasm/-/crypto-wasm-0.32.0.tgz#636c67447179b59dbd82d46c93f3921186387dc6"
+  integrity sha512-Xdppk2zted+7GmeSgVYz5mTML5NHOSKlZLwYbbpekHaX32NJ5VjnJ12frilXyEGaPDgW0sdX9rxWU2hUBz27JA==
   dependencies:
     buffer "^6.0.3"
 
