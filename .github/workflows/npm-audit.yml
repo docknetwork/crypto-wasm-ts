@@ -33,7 +33,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          yarn install
+          yarn install --frozen-lockfile
 
       - name: Check licenses
         run: npx --yes license-checker --production --failOn "${{ env.AVOID_LICENSES }}" --excludePackages "${{ env.IGNORE_PACKAGES }}"
