@@ -605,6 +605,11 @@ export class CredentialSchema extends Versioned {
       encoders.set(SCHEMA_STR, defaultEncoder);
     }
 
+    // Overwrite encoder of status field to not break older credentials. This needs to be fixed at some point
+    if (encoders.has(`${STATUS_STR}.${REV_ID_STR}`)) {
+      encoders.set(`${STATUS_STR}.${REV_ID_STR}`, Encoder.defaultEncodeFunc())
+    }
+
     // Only supply default encoder if user requests to use defaults
     this.encoder = new Encoder(encoders, this.parsingOptions.useDefaults ? defaultEncoder : undefined);
   }

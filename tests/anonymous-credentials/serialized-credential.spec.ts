@@ -43,8 +43,8 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
       const revEncFunc = semver.gte(credVersion, '0.7.0') ? cred.schema.encoder.encodeMessageConstantTime : cred.schema.encoder.encodeMessage;
       if (i === 3) {
         const accPkBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_pk.bin`);
-        const accWitBin = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness_const_time.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness.bin`);
-        const accVal = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value_const_time.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value.bin`);
+        const accWitBin = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness.bin`);
+        const accVal = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value.bin`);
         accPk = AccumulatorPublicKey.fromBytes(accPkBin);
         const accWit = new VBMembershipWitness(accWitBin);
         const accum = new PositiveAccumulator({value: accVal, params: dockAccumulatorParams()});
@@ -55,8 +55,8 @@ describe(`${Scheme} Credential creation and verification from JSON`, () => {
       }
       if (i === 4) {
         const accPkBin = fs.readFileSync(`${__dirname}/serialized-objects/accumulator_pk4.bin`);
-        const accWitBin = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness4_const_time.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness4.bin`);
-        const accVal = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value4_const_time.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value4.bin`);
+        const accWitBin = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness4.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_witness4.bin`);
+        const accVal = semver.gte(credVersion, '0.7.0') ? fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value4.bin`) : fs.readFileSync(`${__dirname}/serialized-objects/accumulator_value4.bin`);
         accPk4 = AccumulatorPublicKey.fromBytes(accPkBin);
         const accWit = new VBMembershipWitness(accWitBin);
         const accum = new PositiveAccumulator({value: accVal, params: dockAccumulatorParams()});

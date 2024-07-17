@@ -511,7 +511,8 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
     if (this._statusToBlind !== undefined) {
       const name = `${STATUS_STR}.${REV_ID_STR}`;
       const index = flattenedSchema[0].indexOf(name);
-      encodedAttributes.set(index, schema.encoder.encodeMessageConstantTime(name, this._statusToBlind[REV_ID_STR]));
+      // Keeping the encoding non-constant time to not break older credentials. This needs to be fixed
+      encodedAttributes.set(index, schema.encoder.encodeMessage(name, this._statusToBlind[REV_ID_STR]));
       attrNameToIndex.set(name, index);
       attributesWithoutVals[name] = null;
       unBlindedAttributes = {

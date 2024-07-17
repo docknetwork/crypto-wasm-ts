@@ -593,7 +593,8 @@ export class PresentationBuilder extends Versioned {
           accumulated: s[1],
           extra: s[3]
         };
-        const encodedRevId = useConstantTimeEncoding ? schema.encoder.encodeMessageConstantTime(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR]) : schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR]);
+        // Keeping the encoding non-constant time to not break older credentials. This needs to be fixed
+        const encodedRevId = schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR]);
         credStatusAux.push([
           credIndex,
           cred.credentialStatus[TYPE_STR],

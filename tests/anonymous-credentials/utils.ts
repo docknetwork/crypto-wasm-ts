@@ -604,7 +604,7 @@ export async function prefillAccumulator<T>(
   for (let i = 1; i <= totalMembers; i++) {
     // For this test, user id is of this form
     const userId = `${memberValPrefix}${i}`;
-    members.push(credSchema.encoder.encodeMessageConstantTime(memberNameInSchema, userId));
+    members.push(credSchema.encoder.encodeMessage(memberNameInSchema, userId));
   }
   // Adding a single batch as `totalMembers` is fairly small (100s) in this test but in practice choose a reasonable
   // batch size to not take up complete system's memory
@@ -677,7 +677,7 @@ export function getDecodedBoundedPseudonym(
   const attributes: Uint8Array[] = [];
   for (let i = 0; i < attributesNames.length; i++) {
     attributes.push(
-      credentials[i].schema.encoder.encodeMessage(
+      credentials[i].schema.encoder.encodeMessageConstantTime(
         `${SUBJECT_STR}.${attributesNames[i]}`,
         _.get(credentials[i].subject, attributesNames[i])
       )
@@ -831,7 +831,7 @@ export async function setupKBUniAccumulator(
   const domain: Uint8Array[] = [];
   for (let i = 1; i <= totalMembers; i++) {
     const userId = `${memberValPrefix}${i}`;
-    domain.push(schema.encoder.encodeMessageConstantTime(`${STATUS_STR}.${REV_ID_STR}`, userId));
+    domain.push(schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, userId));
   }
   const accumulator = await KBUniversalAccumulator.initialize(domain, dockAccumulatorParams(), sk, state);
   return [sk, pk, accumulator, domain, state]
