@@ -114,7 +114,7 @@ export class Witness {
     return generatePoKBBSPlusSignatureWitnessConstantTime(signature.value, unrevealedMessages, encodeMessages);
   }
 
-  bbdt16Mac(mac: BBDT16Mac, unrevealedMessages: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
+  static bbdt16Mac(mac: BBDT16Mac, unrevealedMessages: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
     return generatePoKBDDT16MacWitness(mac.value, unrevealedMessages, encodeMessages);
   }
 

@@ -544,6 +544,8 @@ export class CredentialSchema extends Versioned {
     CredentialSchema.validate(schema);
 
     if (overrides !== undefined && overrides.version !== undefined) {
+      // Revisit: if overrides.version is older, should useConstantTimeEncoder be set to false. This would be overriding
+      // the caller's intent but looks correct.
       super(overrides.version);
     } else {
       super(CredentialSchema.VERSION);
@@ -917,7 +919,9 @@ export class CredentialSchema extends Versioned {
         }
       }
     }
-    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, fullJsonSchema);
+    // For older version, a variable time message encoder was mistakenly used
+    const useConstantTimeEncoder = semver.gte(version, '0.5.0');
+    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, fullJsonSchema, useConstantTimeEncoder);
   }
 
   /**
@@ -1294,15 +1298,18 @@ export class CredentialSchema extends Versioned {
     const newJsonSchema = _.cloneDeep(schema.getEmbeddedJsonSchema()) as IEmbeddedJsonSchema;
     const props = newJsonSchema.properties;
     CredentialSchema.generateFromCredential(cred, props, schema.version);
+    // For older version, a variable time message encoder was mistakenly used
+    const useConstantTimeEncoder = semver.gte(schema.version, '0.5.0');
     if (schema.hasEmbeddedJsonSchema()) {
-      return new CredentialSchema(newJsonSchema, schema.parsingOptions, false, { version: schema.version });
+      return new CredentialSchema(newJsonSchema, schema.parsingOptions, false, { version: schema.version }, undefined, useConstantTimeEncoder);
     } else {
       return new CredentialSchema(
         schema.jsonSchema,
         schema.parsingOptions,
         false,
         { version: schema.version },
-        newJsonSchema
+        newJsonSchema,
+        useConstantTimeEncoder
       );
     }
   }
