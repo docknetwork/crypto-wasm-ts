@@ -543,10 +543,13 @@ export class CredentialSchema extends Versioned {
     ) as ISchema;
     CredentialSchema.validate(schema);
 
+    let ct = useConstantTimeEncoder;
     if (overrides !== undefined && overrides.version !== undefined) {
-      // Revisit: if overrides.version is older, should useConstantTimeEncoder be set to false. This would be overriding
-      // the caller's intent but looks correct.
       super(overrides.version);
+      // For older version, a variable time message encoder was mistakenly used.
+      // This is overriding the caller's intent
+      ct = semver.gte(overrides.version, '0.5.0');
+
     } else {
       super(CredentialSchema.VERSION);
     }
@@ -556,7 +559,7 @@ export class CredentialSchema extends Versioned {
     this.jsonSchema = jsonSchema;
     this.parsingOptions = pOpts;
     this.fullJsonSchema = fullJsonSchema;
-    this.initEncoder(useConstantTimeEncoder);
+    this.initEncoder(ct);
   }
 
   /**
@@ -919,9 +922,7 @@ export class CredentialSchema extends Versioned {
         }
       }
     }
-    // For older version, a variable time message encoder was mistakenly used
-    const useConstantTimeEncoder = semver.gte(version, '0.5.0');
-    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, fullJsonSchema, useConstantTimeEncoder);
+    return new CredentialSchema(jsonSchema, parsingOptions, false, { version: version }, fullJsonSchema);
   }
 
   /**
