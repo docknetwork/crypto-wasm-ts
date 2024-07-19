@@ -735,7 +735,8 @@ export class Presentation extends Versioned {
 
     const ctx = buildContextForProof(this.version, this.spec, this.context);
     const proofSpec = new QuasiProofSpec(statements, metaStatements, setupParamsTrk.setupParams, ctx);
-    return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce);
+    const presVersionGt9 = semver.gt(this.version, '0.9.0');
+    return this.proof.verifyUsingQuasiProofSpec(proofSpec, this.nonce, presVersionGt9);
   }
 
   /**

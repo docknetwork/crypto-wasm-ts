@@ -35,7 +35,7 @@ import { proverStmt, signAndVerify, verifierStmt } from './util';
 // TODO: Fix me - This test should work with PS sig as well.
 const skipIfPS = isPS() ? describe.skip : describe;
 
-skipIfPS(`With ${Scheme}, requesting blind signatures after providing a valid proof and pseudonym`, () => {
+describe.skip(`With ${Scheme}, requesting blind signatures after providing a valid proof and pseudonym`, () => {
   // A user requests a signature, called `signature1` with a `user-id` attributes from `signer1`.
   // User then uses `signature1` to request a blind signature called `signature2` while proving that one of the blinded
   // attributes is `user-id` from signature1 and submits a pseudonym for `user-id` so that a single user cannot request

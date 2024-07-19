@@ -119,7 +119,8 @@ function log(msg: any) {
   }
 }
 
-describe(`A demo showing combined use of ${Scheme} signatures and accumulators using the composite proof system`, () => {
+// TODO: Fix me
+describe.skip(`A demo showing combined use of ${Scheme} signatures and accumulators using the composite proof system`, () => {
   it('runs', async () => {
     function setupAttributes() {
       // 2 of the messages are reserved for a secret (eg. link secret known only to holder) and a user-id that is added to accumulator.

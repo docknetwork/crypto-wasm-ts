@@ -120,7 +120,7 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential | BBDT16Crede
 export class PresentationBuilder extends Versioned {
   // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
   // underlying crypto changes.
-  static VERSION = '0.9.0';
+  static VERSION = '0.10.0';
 
   // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
   _context?: string;

@@ -63,7 +63,7 @@ import {
   getExampleSchema,
   getKeys,
   setupPrefilledAccum,
-  verifyCred,
+  verifyCred, writeSerializedObject
 } from './utils';
 import exp = require('node:constants');
 
@@ -1886,6 +1886,8 @@ describe.each([true, false])(
       checkResult(pres1.verify([pk1, pk2, pk3], acc, pp));
 
       checkPresentationJson(pres1, [pk1, pk2, pk3], acc, pp);
+
+      writeSerializedObject(pres1, `${Scheme.toLowerCase()}-presentation-0.10.0.json`);
     });
 
     it('from a credential with subject as an array `credential5`', () => {
