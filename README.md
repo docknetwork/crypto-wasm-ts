@@ -661,7 +661,7 @@ const sigParams = SignatureParamsG1.generate(5, label);
 
 // Signers keys
 const sigSk: BBSPlusSecretKey = ...;
-const sigPk: BBSPlusSecretKey = ...;
+const sigPk: BBSPlusPublicKeyG2 = ...;
 
 // Accumulator manager's params, keys and state
 const accumParams = PositiveAccumulator.generateParams(stringToBytes('Accumulator params'));
