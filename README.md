@@ -427,7 +427,7 @@ The code for accumulators lives [here](./src/accumulator).
 
 ##### Selective disclosure 
 
-A complete example is shown in this [test](tests/composite-proofs/single-bbs-signature.spec.ts).  
+A complete example is shown in this [test](tests/composite-proofs/single-signature.spec.ts).  
 
 Proving knowledge of 1 BBS+ signature over the attributes and only disclosing some attributes. Say there are 5 attributes in the 
 credential: SSN, first name, last name, email and city, and they are present in the attribute list in that order. The prover wants 
