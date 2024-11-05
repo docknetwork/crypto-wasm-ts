@@ -144,6 +144,7 @@ Before calling any function that calls the underlying WASM, use `initializeWasm`
 a promise which is resolved once the WASM module is successfully loaded.  
 
 ```ts
+import { initializeWasm } from '@docknetwork/crypto-wasm-ts'
 // Load the WASM module
 await initializeWasm();
 ```
@@ -182,18 +183,19 @@ Before messages can be signed, 2 things are needed:
   2 ways of generating signature parameters
 
   ```ts
+  import { BBSSignatureParams } from '@docknetwork/crypto-wasm-ts';
   const messageCount = 4;
-  
+
   // Randomly generated params
-  const paramsRandom = SignatureParamsG1.generate(messageCount);
-  
+  const paramsRandom = BBSSignatureParams.generate(messageCount);
+
   const label = stringToBytes("My sig params");
   // Deterministically generated params
-  const paramsDeterministc = SignatureParamsG1.generate(messageCount, label);
-  
+  const paramsDeterministc = BBSSignatureParams.generate(messageCount, label);
+
   // Deterministic params can be extended if messageCount changes, say to 5 or 3
-  const paramsNew = paramsDeterministc.adapt(5);
-  const paramsNeww = paramsDeterministc.adapt(3);
+  const paramsDeterministc5 = paramsDeterministc.adapt(5);
+  const paramsDeterministc3 = paramsDeterministc.adapt(3);
   ```
   
   Generating a keypair once signature parameters are created.
