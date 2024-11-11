@@ -233,7 +233,8 @@ the `encode` argument as true to encode it using your own encoding function.
   
   // As the messages are not encoded, pass true to the verification function to make it encode messages before verifying the signature.
   const result = sig.verify(messages, pk, params, true);
-  expect(result.verified).toEqual(true);
+  
+  result.verified // true
   ```
   
   Passing pre-encoded messages to signing function
@@ -249,7 +250,7 @@ the `encode` argument as true to encode it using your own encoding function.
 
   // As the messages are pre-encoded, pass false to the verification function to avoid encoding messages before verifying the signature.
   const result = sig.verify(encodedMessages, pk, params, false);
-  expect(result.verified).toEqual(true);
+  result.verified // true
   ```
 
 #### Proof of knowledge of signature
@@ -352,7 +353,7 @@ is the accumulator value when the witness was created, this value should be publ
   const verifAccumulator = PositiveAccumulator.fromAccumulated(accumulator.accumulated);
 
   // Note that only public values needed to verify the membership
-  expect(verifAccumulator.verifyMembershipWitness(e4, witness, pk, params)).toEqual(true);
+  verifAccumulator.verifyMembershipWitness(e4, witness, pk, params);  // true
   ```
 
 #### Updating witnesses
@@ -515,7 +516,7 @@ Verifier can now verify this proof. Note that the verifier does not and must not
 needs to generate on its own.
 
 ```ts
-expect(proof.verify(proofSpec, nonce).verified).toEqual(true);
+proof.verify(proofSpec, nonce).verified;  // true
 ```
 
 ##### BBS+ signature over varying number of messages 
@@ -639,7 +640,7 @@ const proof = CompositeProofG1.generate(proofSpec, witnesses);
 Verifier verifies the proof.
 
 ```ts
-expect(proof.verify(proofSpec).verified).toEqual(true);
+proof.verify(proofSpec).verified);  // true
 ```
 
 ##### BBS+ signature together with accumulator membership
@@ -815,7 +816,7 @@ hidden from him. If the proof is correct, signer creates a blind signature using
 and sends to the prover.
 
 ```ts
-expect(proof.verify(proofSpec).verified).toEqual(true);
+proof.verify(proofSpec).verified;  // true
 
 // Signer is convinced that user knows the opening to the commitment
 
@@ -844,7 +845,7 @@ for (const [i, m] of revealedMessages.entries()) {
 
 // Signature can be verified
 const result = sig.verify(messages, pk, params, true);
-expect(result.verified).toEqual(true);
+result.verified;  // true
 ```
 
 ##### Pseudonyms
