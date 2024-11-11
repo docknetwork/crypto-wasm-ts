@@ -10,11 +10,11 @@ the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
     - [Build](#build)
     - [Test](#test)
   - [Overview](#overview)
-    - [BBS+ Signature](#bbs-signature)
+    - [BBS Signature](#bbs-signature)
     - [Accumulator](#accumulator)
     - [Composite proof](#composite-proof)
   - [Usage](#usage)
-    - [BBS+ signatures](#bbs-signatures)
+    - [BBS signatures](#bbs-signatures)
       - [Setup](#setup)
       - [Signing and verification](#signing-and-verification)
       - [Proof of knowledge of signature](#proof-of-knowledge-of-signature)
@@ -28,9 +28,9 @@ the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
       - [Terminology](#terminology)
       - [Examples](#examples)
         - [Selective disclosure](#selective-disclosure)
-        - [BBS+ signature over varying number of messages](#bbs-signature-over-varying-number-of-messages)
-        - [Multiple BBS+ signatures](#multiple-bbs-signatures)
-        - [BBS+ signature together with accumulator membership](#bbs-signature-together-with-accumulator-membership)
+        - [BBS signature over varying number of messages](#bbs-signature-over-varying-number-of-messages)
+        - [Multiple BBS signatures](#multiple-bbs-signatures)
+        - [BBS signature together with accumulator membership](#bbs-signature-together-with-accumulator-membership)
         - [Getting a blind signature](#getting-a-blind-signature)
         - [Pseudonyms](#pseudonyms)
         - [Social KYC](#social-kyc)
@@ -76,20 +76,20 @@ yarn test
 ## Overview
 Following is a conceptual explanation of the primitives.
 
-### BBS+ Signature
-BBS+ signature allow for signing an ordered list of messages, producing a signature of constant size independent of the number
+### BBS Signature
+BBS signature allow for signing an ordered list of messages, producing a signature of constant size independent of the number
 of messages. The signer needs to have a public-private keypair and signature parameters which are public values whose size
 depends on the number of messages being signed. A verifier who needs to verify the signature needs to know the
 signature parameters used to sign the messages and the public key of the signer. In the context of anonymous credentials, 
 messages are called attributes.  
-BBS+ signature also allow a user to request a blind signature from a signer where the signer does not know 1 or more messages
+BBS signature also allows a user to request a blind signature from a signer where the signer does not know 1 or more messages
 from the list. The user can then unblind the blind signature to get a regular signature which can be verified by a verifier in
 the usual way. Such blind signatures can be used to hide a user specific secret like a private key or some unique identifier
 as a message in the message list and the signer does not become aware of the hidden message.     
 With a BBS signature, a user in possession of the signature and messages and create a [zero-knowledge proof of knowledge](https://en.wikipedia.org/wiki/Proof_of_knowledge)
 of the signature and the corresponding signed messages such that he can prove to a verifier that he knows a signature and the
 messages and optionally reveal one or more of the messages.  
-A typical use of BBS+ signatures looks like:
+A typical use of BBS signatures looks like:
 - Signature parameters of the required size are assumed to exist and published at a public location. The signer can create
   his own or reuse parameters created by another party.
 - Signer public-private keypair and publishes the public key. The keypair can be reused for signing other messages as well.
@@ -149,9 +149,12 @@ import { initializeWasm } from '@docknetwork/crypto-wasm-ts'
 await initializeWasm();
 ```
 
-### BBS+ signatures
+### Supported Signature Schemes
+The library has support for BBS, BBS, PS, and BBDT16 schemes.  
+Although they're similar in many aspects, specially for BBS and BBS, you're advised to consult the tests for changes
+### BBS signatures
 
-BBS+ signatures sign an ordered list of messages and thus it is important to serialize your signing payload in this format. 
+BBS signatures sign an ordered list of messages and thus it is important to serialize your signing payload in this format. 
 Eg, in case of a credential with attributes in JSON format where each attribute is a key, convert the JSON to a list of 
 attributes and this conversion should be deterministic, meaning attributes should always end up in the same order. Following 
 is a conversion of a JSON credential with 4 attributes to a list where the values are placed in the alphabetical order of the keys:
@@ -178,7 +181,7 @@ Now each of the above list must be converted to bytearrays, i.e. `Uint8Array` an
 Before messages can be signed, 2 things are needed:
 
 - **Signature parameters**: Public values, that can be created by anyone but must be known to the signer and verifier to sign and verify respectively. To create them, the number of messages (attributes) being signed must be known and the size of the parameters increases with the number. In the above example, number of attributes is 4. These parameters can be generated randomly or deterministically by using a publicly known label. It is advised to use the latter as it allows for extending/shrinking the same parameters when number of messages change.
-- **Keypair**: To create and verify BBS+ signature, the signer (issuer in case of a credential) needs to create a secret key to sign, public key to verify. 
+- **Keypair**: To create and verify BBS signature, the signer (issuer in case of a credential) needs to create a secret key to sign, public key to verify. 
 
   2 ways of generating signature parameters
 
@@ -257,18 +260,18 @@ the `encode` argument as true to encode it using your own encoding function.
 
 Proving and verifying knowledge of signature can be done with or without using the composite proof system but this doc will only describe using the composite proof system. For the other way, see tests [here](./tests/bbs-plus.spec.ts)
 
-The code for BBS+ signature lives [here](./src/bbs-plus). 
+The code for BBS signature lives [here](./src/bbs-plus). 
 
 ### Accumulators
 
 #### Setup
 
-Similar to BBS+ signatures, accumulators also have a setup phase where public parameters and keys are generated and these 
+Similar to BBS signatures, accumulators also have a setup phase where public parameters and keys are generated and these 
 public values need to be published. The accumulator manager's signing key is needed to update the accumulator or create 
 a witness and the public key is needed to verify the (non)membership. This document talks only about Positive accumulator, 
 for universal accumulator see the corresponding tests.
 
-  Similar to BBS+, parameters can be generated randomly or deterministically.
+  Similar to BBS, parameters can be generated randomly or deterministically.
   ```ts
   // Randomly generated params
   const paramsRandom = PositiveAccumulator.generateParams();
@@ -423,7 +426,7 @@ The code for accumulators lives [here](./src/accumulator).
 
 #### Terminology
 
-- **Statement** - The kind of proof that needs to be done and the public parameters needed to verify that proof. Eg. a BBS+ signature
+- **Statement** - The kind of proof that needs to be done and the public parameters needed to verify that proof. Eg. a BBS signature
   statement contains public key of the signer, signature params, any revealed messages, etc. Each statement in a proof has a unique index.
 - **Witness** - Private data that needs to be kept hidden from the verifier. This can be the messages/attributes that are not being disclosed, 
   the signature itself, the accumulator member, accumulator witness. Every witness corresponds to some `Statement`.
@@ -444,7 +447,7 @@ The code for accumulators lives [here](./src/accumulator).
 
 A complete example is shown in this [test](tests/composite-proofs/single-signature.spec.ts).  
 
-Proving knowledge of 1 BBS+ signature over the attributes and only disclosing some attributes. Say there are 5 attributes in the 
+Proving knowledge of 1 BBS signature over the attributes and only disclosing some attributes. Say there are 5 attributes in the 
 credential: SSN, first name, last name, email and city, and they are present in the attribute list in that order. The prover wants 
 to reveal his last name and city, but not any other attributes while proving that he possesses such a credential signed by the issuer.
 
@@ -476,11 +479,11 @@ unrevealedMsgs.set(i, messages[1]);
 unrevealedMsgs.set(i, messages[3]);
 ```
 
-Since there is only 1 kind of proof, i.e. the knowledge of BBS+ signature and the signed attributes, there would be only 1 `Statement`. 
+Since there is only 1 kind of proof, i.e. the knowledge of BBS signature and the signed attributes, there would be only 1 `Statement`. 
 
 ```ts
-// Create a BBS+ signature, true indicates that attributes/messages are arbitrary bytes and should be encoded first
 const statement1 = Statement.bbsPlusSignature(params, pk, revealedMsgs, true);
+// Create a BBS signature, true indicates that attributes/messages are arbitrary bytes and should be encoded first
 const statements = new Statements();
 statements.add(statement1);
 
@@ -519,7 +522,7 @@ needs to generate on its own.
 proof.verify(proofSpec, nonce).verified;  // true
 ```
 
-##### BBS+ signature over varying number of messages 
+##### BBS signature over varying number of messages 
 
 The examples shown here have assumed that the number of messages for given signature params is fixed but that might not be always true. 
 An example is where some of the messages in the signature are null (like N/A) in certain signatures. Eg, when the messages are attributes
@@ -528,12 +531,12 @@ have N/A for attributes like university name, major, etc. One way to deal with i
 attributes and disclose those attributes while creating a proof. Other is to have certain attribute in the credential specify which attribute 
 indices that are N/A and always reveal this attribute. A complete example of the latter is shown in this [test](tests/composite-proofs/variable-number-of-messages.spec.ts).
 
-##### Multiple BBS+ signatures
+##### Multiple BBS signatures
 
 A complete example is shown in this [test](tests/composite-proofs/many-bbs-signatures.spec.ts).
 
-Proving knowledge of 2 BBS+ signature over the attributes and only disclosing some attribute and proving equality of 1 attribute 
-without disclosing it. Say there are 2 credentials and hence 2 BBS+ signatures. One credential has 5 attributes: SSN, first name, 
+Proving knowledge of 2 BBS signature over the attributes and only disclosing some attribute and proving equality of 1 attribute 
+without disclosing it. Say there are 2 credentials and hence 2 BBS signatures. One credential has 5 attributes: SSN, first name, 
 last name, email and city and the other has 6 attributes name, email, city, employer, employee id and SSN and in that order. 
 The prover wants to prove that he has those 2 credentials, reveal his employer name and prove that SSN in both credentials is 
 the same without revealing the SSN.
@@ -559,7 +562,7 @@ const sig1: SignatureG1 = ...;
 const sig2: SignatureG1 = ...;
 ```
 
-Since the prover is proving possession of 2 BBS+ signatures, there will be 2 `Statement`s. Also, for the 2nd signature prover is 
+Since the prover is proving possession of 2 BBS signatures, there will be 2 `Statement`s. Also, for the 2nd signature prover is 
 revealing _employer_ attribute, which is at index 3.
 
 ```ts
@@ -643,7 +646,7 @@ Verifier verifies the proof.
 proof.verify(proofSpec).verified);  // true
 ```
 
-##### BBS+ signature together with accumulator membership
+##### BBS signature together with accumulator membership
 
 Say a prover has a credential where one of the attribute is added to an accumulator. The prover wants to prove that his attribute is a 
 member of the accumulator without revealing the attribute itself. Say the attributes are SSN, first name, last name, email and 
@@ -654,7 +657,7 @@ user-id and the prover wants to prove that the user-id is present in the accumul
 const messages: Uint8Array[] = [...];
 ```
 
-Because the attributes for accumulator and BBS+ signatures are encoded differently, attributes are pre-encoded.
+Because the attributes for accumulator and BBS signatures are encoded differently, attributes are pre-encoded.
 
 ```ts
 // Encode messages for signing as well as adding to the accumulator
@@ -704,7 +707,7 @@ proving keys when interacting with different verifiers. Its recommended generati
 const provingKey = Accumulator.generateMembershipProvingKey(stringToBytes('Our proving key'));
 ```
 
-The prover needs to prove 2 `Statement`s, knowledge of BBS+ signature and knowledge of accumulator member and corresponding witness.
+The prover needs to prove 2 `Statement`s, knowledge of BBS signature and knowledge of accumulator member and corresponding witness.
 
 ```ts
 const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
@@ -827,7 +830,7 @@ revealedMessages.set(4, stringToBytes('New York'));
 const blindSig = BlindSignatureG1.generate(request.commitment, revealedMessages, sk, params, true);
 ```
 
-The prover can now "unblind" the signature meaning he can convert a blind signature into a regular BBS+ signature 
+The prover can now "unblind" the signature meaning he can convert a blind signature into a regular BBS signature 
 which he can use in proof as shown in examples above
 
 ```ts
@@ -854,7 +857,7 @@ A pseudonym is meant to be used as a unique identifier. It can be considered as 
 pseudonym has the secret key, and it can prove the knowledge of this secret key. A pseudonym can also be bound to multiple 
 attributes from multiple credentials. This concept was introduced in [Attribute-based Credentials for Trust](https://link.springer.com/book/10.1007/978-3-319-14439-9). 
 
-**Motivation**: Proving knowledge of BBS+ signatures is unlinkable meaning the verifier cannot link to 2 proofs presented from the same
+**Motivation**: Proving knowledge of BBS signatures is unlinkable meaning the verifier cannot link to 2 proofs presented from the same
 credential (signature). But this might not always be desirable for the verifier and the prover might agree to being linked for any 
 proofs that he creates for that particular verifier without revealing any attribute of the credential.  
 A verifier wants to attach a unique identifier to a prover without either learning anything unintended (by prover)
@@ -886,7 +889,7 @@ else can impersonate the user.
 The [test](tests/composite-proofs/social-kyc.spec.ts) shows a complete example.
 
 The code for composite proof lives [here](./src/composite-proof). See the tests [here](./tests/composite-proofs) for various scenarios.
-For a more involved demo with multiple BBS+ signatures being used with accumulator and knowledge of signatures being proved 
+For a more involved demo with multiple BBS signatures being used with accumulator and knowledge of signatures being proved 
 before requesting blind signatures, see [here](./tests/demo.spec.ts). This test paints a picture where before getting any credential, 
 a user has to prove possession of a credential and membership in an accumulator (except the 1st credential).
 
@@ -923,7 +926,7 @@ verifier who can then encode the attributes before verifying the proof. One such
 and `Signature.reversibleDecodeStringForSigning` and you can see its use in the above-mentioned test. Theese conversions are abstracted in this [Encoders](./src/bbs-plus/encoder.ts) class and you can see the usage 
 in [these tests](tests/composite-proofs/msg-js-obj/saver.spec.ts) of the  `Encoder` initialized [here](tests/composite-proofs/msg-js-obj/data-and-encoder.ts). 
 
-For creating the proof of knowledge of the BBS+ signature and verifiably encrypting an attribute, the prover creates the following 2 statements.
+For creating the proof of knowledge of the BBS signature and verifiably encrypting an attribute, the prover creates the following 2 statements.
 
 ```ts
 // Signer's parameters
@@ -957,8 +960,8 @@ proverStatements.add(statement1);
 proverStatements.add(statement2);
 ```
 
-`statement1` is the for proving knowledge of BBS+ signature as seen in previous examples. `statement2` is for proving the encryption of message from a 
-BBS+ signature. Some things to note about this statement.
+`statement1` is the for proving knowledge of BBS signature as seen in previous examples. `statement2` is for proving the encryption of message from a 
+BBS signature. Some things to note about this statement.
 
 - The statement is created using `Statement.saverProver` because it is being created by a prover. A verifier would have
   used `Statement.saverVerifier` to create it and one of the arguments would be different (shown below).
@@ -966,9 +969,9 @@ BBS+ signature. Some things to note about this statement.
 - `saverEk` is the encryption key created by the decryptor during `setup` but is uncompressed.
 - `snarkProvingKey` is the proving key created by the decryptor during `setup` but is uncompressed.
 
-The prover then establishes the equality between the message in the BBS+ signature and the message being encrypted by using
+The prover then establishes the equality between the message in the BBS signature and the message being encrypted by using
 `WitnessEqualityMetaStatement` as below. `encMsgIdx` is the index of the message being encrypted in the array of signed 
-messages under BBS+, `messages`. For the second statement, there is only 1 witness, thus the index 0.
+messages under BBS, `messages`. For the second statement, there is only 1 witness, thus the index 0.
 
 ```ts
 const witnessEq = new WitnessEqualityMetaStatement();
@@ -1093,7 +1096,7 @@ for changing from exclusive to inclusive bounds or vice-versa, add or subtract 1
 const provingKey = BoundCheckSnarkSetup();
 ```
 
-For creating the proof of knowledge of the BBS+ signature and one of the signed message being in certain bounds, the prover creates the following 2 statements.
+For creating the proof of knowledge of the BBS signature and one of the signed message being in certain bounds, the prover creates the following 2 statements.
 
 ```ts
 // Signer's parameters
@@ -1113,15 +1116,15 @@ proverStatements.add(statement1);
 proverStatements.add(statement2);
 ```
 
-`statement1` is the for proving knowledge of BBS+ signature as seen in previous examples. `statement2` is for proving the bounds of message from a BBS+ signature. Some things to note about this statement.
+`statement1` is the for proving knowledge of BBS signature as seen in previous examples. `statement2` is for proving the bounds of message from a BBS signature. Some things to note about this statement.
 
 - The statement is created using `Statement.boundCheckLegoProver` because it is being created by a prover. A verifier would have
   used `Statement.boundCheckLegoVerifier` to create it and one of the arguments would be different (shown below).
 - The argument `snarkProvingKey` is the public parameter created by the verifier. However, before they are passed to `Statement.boundCheckLegoProver`, they are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.boundCheckProverFromCompressedParams`
 
-The prover then establishes the equality between the message in the BBS+ signature and the bounded message by using
+The prover then establishes the equality between the message in the BBS signature and the bounded message by using
 `WitnessEqualityMetaStatement` as below. `msgIdx` is the index of the bounded message in the array of signed messages 
-under BBS+, `messages`. For the second statement, there is only 1 witness, thus the index 0.
+under BBS, `messages`. For the second statement, there is only 1 witness, thus the index 0.
 
 ```ts
 const witnessEq = new WitnessEqualityMetaStatement();
