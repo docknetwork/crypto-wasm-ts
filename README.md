@@ -189,6 +189,10 @@ Before messages can be signed, 2 things are needed:
   // Randomly generated params
   const paramsRandom = BBSSignatureParams.generate(messageCount);
 
+  // the following function will be useful throughout the documentation
+  function stringToBytes(message: string): Uint8Array {
+    return Uint8Array.from(Buffer.from(message, 'utf-8'));
+  }
   const label = stringToBytes("My sig params");
   // Deterministically generated params
   const paramsDeterministc = BBSSignatureParams.generate(messageCount, label);
@@ -201,9 +205,17 @@ Before messages can be signed, 2 things are needed:
   Generating a keypair once signature parameters are created.
 
   ```ts
-  const keypair1 = BBSPlusKeypairG2.generate(paramsDeterministc);
+  import { BBSKeypair } from '@docknetwork/crypto-wasm-ts';
+  const keypair = BBSKeypair.generate(paramsDeterministc);
   const sk = keypair.secretKey;
   const pk = keypair.publicKey;
+  ```
+
+  #### ByteArray messages
+  Each one of the messages should be a Uint8Array 
+
+  ```ts
+  const messages: Uint8Array[] = ["NYC", "John", "Smith", "12345678"].map(element => stringToBytes(element));
   ```
 
 #### Signing and verification
