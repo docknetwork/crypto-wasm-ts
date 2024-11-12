@@ -228,28 +228,26 @@ the `encode` argument as true to encode it using your own encoding function.
   
   Letting the signing function encode  
   ```ts
-  // messages is a list of bytearrays and converted as mentioned above  
-  const messages: Uint8Array[] = [...];
+  import { BBSSignature } from '@docknetwork/crypto-wasm-ts';
   
   // The signing function will encode bytes to a field element as true is passed
-  const sig = SignatureG1.generate(messages, sk, params, true);
+  const sig = BBSSignature.generate(messages, sk, paramsDeterministc, true);
   
   // As the messages are not encoded, pass true to the verification function to make it encode messages before verifying the signature.
-  const result = sig.verify(messages, pk, params, true);
+  const result = sig.verify(messages, pk, paramsDeterministc, true);
   
   result.verified // true
   ```
   
   Passing pre-encoded messages to signing function
   ```ts
-  // messages is a list of bytearrays and converted as mentioned above  
-  const messages: Uint8Array[] = [...];
-  
+  const encodedMessages = [];
+
   for (let i = 0; i < messages.length; i++) {
     encodedMessages.push(generateFieldElementFromBytes(messages[i]));
   }
   // The signing function will not encode as false is passed
-  const sig = SignatureG1.generate(encodedMessages, sk, params, false);
+  const sig = BBSSignature.generate(encodedMessages, sk, params, false);
 
   // As the messages are pre-encoded, pass false to the verification function to avoid encoding messages before verifying the signature.
   const result = sig.verify(encodedMessages, pk, params, false);
@@ -258,9 +256,9 @@ the `encode` argument as true to encode it using your own encoding function.
 
 #### Proof of knowledge of signature
 
-Proving and verifying knowledge of signature can be done with or without using the composite proof system but this doc will only describe using the composite proof system. For the other way, see tests [here](./tests/bbs-plus.spec.ts)
+Proving and verifying knowledge of signature can be done with or without using the composite proof system but this doc will only describe using the composite proof system. For the other way, see tests [here](./tests/scheme.spec.ts)
 
-The code for BBS signature lives [here](./src/bbs-plus). 
+The code for BBS signature lives [here](./src/bbs/). 
 
 ### Accumulators
 
