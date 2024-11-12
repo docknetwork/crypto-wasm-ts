@@ -454,11 +454,11 @@ to reveal his last name and city, but not any other attributes while proving tha
 const messages: Uint8Array[] = [...];
 
 // Public values
-const parasm: SignatureParamsG1;
-const pk: BBSPlusPublicKeyG2;
+const params: BBSSignatureParams;
+const pk: BBSPublicKey;
 
 // The signature
-const sig: SignatureG1 = ...;
+const sig: BBSSignature = ...;
 
 // Prover prepares the attributes he wants to disclose, i.e. attribute index 2 and 4 (indexing is 0-based), and the ones he wants to hide. 
 const revealedMsgIndices: Set<number> = new Set();
@@ -467,21 +467,22 @@ revealedMsgIndices.add(4);
 
 // revealedMsgs are the attributes disclosed to the verifier
 const revealedMsgs: Map<number, Uint8Array> = new Map();
-revealedMsgs.set(i, messages[2]);
-revealedMsgs.set(i, messages[4]);
+revealedMsgs.set(2, messages[2]);
 
 // unrevealedMsgs are the attributes hidden from the verifier
 const unrevealedMsgs: Map<number, Uint8Array> = new Map();
-unrevealedMsgs.set(i, messages[0]);
-unrevealedMsgs.set(i, messages[1]);
-unrevealedMsgs.set(i, messages[3]);
+unrevealedMsgs.set(0, messages[0]);
+unrevealedMsgs.set(1, messages[1]);
+unrevealedMsgs.set(3, messages[3]);
 ```
 
 Since there is only 1 kind of proof, i.e. the knowledge of BBS signature and the signed attributes, there would be only 1 `Statement`. 
 
 ```ts
-const statement1 = Statement.bbsPlusSignature(params, pk, revealedMsgs, true);
+import { Statement, Statements } from '@docknetwork/crypto-wasm-ts'
+
 // Create a BBS signature, true indicates that attributes/messages are arbitrary bytes and should be encoded first
+const statement1 = Statement.bbsSignatureProverConstantTime(paramsDeterministc, revealedMsgs, true);
 const statements = new Statements();
 statements.add(statement1);
 
@@ -494,14 +495,18 @@ Both the prover and verifier should independently construct this `ProofSpec`. No
 other conditions on the witnesses and thus its empty 
 
 ```ts
+import { ProofSpec, MetaStatements } from '@docknetwork/crypto-wasm-ts';
+
 const ms = new MetaStatements();
-const proofSpec = new ProofSpecG1(statements, ms, [], context);
+const proofSpec = new ProofSpec(statements, ms, [], context);
 ```
 
 Prover creates `Witness` using the signature and hidden attributes 
 
 ```ts
-const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, true);
+import { Witness, Witnesses } from '@docknetwork/crypto-wasm-ts';
+
+const witness1 = Witness.bbsSignatureConstantTime(sig, unrevealedMsgs, true);
 const witnesses = new Witnesses();
 witnesses.add(witness1);
 ```
@@ -509,8 +514,10 @@ witnesses.add(witness1);
 Prover now uses the `ProofSpec` to create the proof. To ensure that the prover is not replaying, i.e. reusing a proof created by someone else, the verifier can request the prover to include its provided nonce in the proof.
 
 ```ts
+import { CompositeProof } from '@docknetwork/crypto-wasm-ts';
+
 const nonce = stringToBytes('a unique nonce given by verifier');
-const proof = CompositeProofG1.generate(proofSpec, witnesses, nonce);
+const proof = CompositeProof.generate(proofSpec, witnesses, nonce);
 ```
 
 Verifier can now verify this proof. Note that the verifier does not and must not receive `ProofSpec` from prover, it 
