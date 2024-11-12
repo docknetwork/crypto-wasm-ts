@@ -553,18 +553,18 @@ const messages1: Uint8Array[] = [...];
 const messages2: Uint8Array[] = [...];
 
 // Public values for 1st issuer
-const parasm1: SignatureParamsG1;
-const pk1: BBSPlusPublicKeyG2;
+const parasm1: BBSSignatureParams;
+const pk1: BBSPublicKey;
 
 // Public values for 2nd issuer
-const parasm2: SignatureParamsG1;
-const pk2: BBSPlusPublicKeyG2;
+const parasm2: BBSSignatureParams;
+const pk2: BBSPublicKey;
 
 // The signature from 1st credential
-const sig1: SignatureG1 = ...;
+const sig1: BBSSignature = ...;
 
 // The signature from 2nd credential
-const sig2: SignatureG1 = ...;
+const sig2: BBSSignature = ...;
 ```
 
 Since the prover is proving possession of 2 BBS signatures, there will be 2 `Statement`s. Also, for the 2nd signature prover is 
@@ -572,7 +572,7 @@ revealing _employer_ attribute, which is at index 3.
 
 ```ts
 // Statement for signature of 1st signer, not revealing any messages to the verifier
-const statement1 = Statement.bbsPlusSignature(params1, pk1, new Map(), true);
+const statement1 = Statement.bbsSignatureProverConstantTime(params1, new Map(), true);
 
 // Statement for signature of 2nd signer, revealing 1 message to the verifier
 const revealedMsgIndices: Set<number> = new Set();
@@ -586,7 +586,7 @@ for (let i = 0; i < messageCount2; i++) {
     unrevealedMsgs2.set(i, messages2[i]);
   }
 }
-const statement2 = Statement.bbsPlusSignature(params2, pk2, revealedMsgs, true);
+const statement2 = Statement.bbsSignatureProverConstantTime(params2, revealedMsgs, true);
 
 // Collect all the statements
 const statements = new Statements();
@@ -625,7 +625,7 @@ metaStatements.add(ms2);
 
 Similar to before, once it has been established what needs to be proven, `ProofSpec` needs to be created with all `Statements`s and `MetaStatement`s.
 ```ts
-const proofSpec = new ProofSpecG1(statements, metaStatements);
+const proofSpec = new ProofSpec(statements, metaStatements);
 ```
 
 The prover creates the witnesses with both signatures and messages that he is hiding from the verifier
@@ -633,16 +633,16 @@ The prover creates the witnesses with both signatures and messages that he is hi
 ```ts
 // Using the messages and signature from 1st signer
 const unrevealedMsgs1 = new Map(messages1.map((m, i) => [i, m]));
-const witness1 = Witness.bbsPlusSignature(sig1, unrevealedMsgs1, true);
+const witness1 = Witness.bbsSignatureConstantTime(sig1, unrevealedMsgs1, true);
 
 // Using the messages and signature from 2nd signer
-const witness2 = Witness.bbsPlusSignature(sig2, unrevealedMsgs2, true);
+const witness2 = Witness.bbsSignatureConstantTime(sig2, unrevealedMsgs2, true);
 
 const witnesses = new Witnesses();
 witnesses.add(witness1);
 witnesses.add(witness2);
 
-const proof = CompositeProofG1.generate(proofSpec, witnesses);
+const proof = CompositeProof.generate(proofSpec, witnesses);
 ```
 
 Verifier verifies the proof.
@@ -680,11 +680,11 @@ for (let i = 0; i < messageCount; i++) {
 Both signer and accumulator manager will have public params and their secret keys 
 
 ```ts
-const sigParams = SignatureParamsG1.generate(5, label);
+const sigParams = BBSSignatureParams.generate(5, label);
 
 // Signers keys
 const sigSk: BBSPlusSecretKey = ...;
-const sigPk: BBSPlusPublicKeyG2 = ...;
+const sigPk: BBSPublicKey = ...;
 
 // Accumulator manager's params, keys and state
 const accumParams = PositiveAccumulator.generateParams(stringToBytes('Accumulator params'));
@@ -696,7 +696,7 @@ const state = new InMemoryState();
 Signer signs the credential and accumulator manager adds the attribute to the credential and sends the witness to the prover
 ```ts
 // Signer signs the message
-const sig: SignatureG1 = ...;
+const sig: BBSSignature = ...;
 
 // user-id is at index 4 is the message list
 const userIdIdx = 4;
@@ -715,7 +715,7 @@ const provingKey = Accumulator.generateMembershipProvingKey(stringToBytes('Our p
 The prover needs to prove 2 `Statement`s, knowledge of BBS signature and knowledge of accumulator member and corresponding witness.
 
 ```ts
-const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
+const statement1 = Statement.bbsSignatureProverConstantTime(sigParams, revealedMsgs, false);
 const statement2 = Statement.accumulatorMembership(accumParams, accumKeypair.public_key, provingKey, accumulator.accumulated);
 const statements = new Statements();
 statements.add(statement1);
@@ -737,20 +737,20 @@ const ms = MetaStatement.witnessEquality(witnessEq);
 const metaStatements = new MetaStatements();
 metaStatements.add(ms);
 
-const proofSpec = new ProofSpecG1(statements, metaStatements);
+const proofSpec = new ProofSpec(statements, metaStatements);
 ```
 
 The prover creates `Witness`es for all statements and then creates the proof. The `Witness` for `Statement.accumulatorMembership` contains
 the member and the accumulator witness. 
 
 ```ts
-const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
+const witness1 = Witness.bbsSignatureConstantTime(sig, unrevealedMsgs, false);
 const witness2 = Witness.accumulatorMembership(encodedMessages[userIdIdx], accumWitness);
 const witnesses = new Witnesses();
 witnesses.add(witness1);
 witnesses.add(witness2);
 
-const proof = CompositeProofG1.generate(proofSpec, witnesses);
+const proof = CompositeProof.generate(proofSpec, witnesses);
 ```
 
 ##### Getting a blind signature
@@ -769,7 +769,7 @@ prove that he knows that the commitment contains those 2 attributes
 // Messages are secret1, name, secret2, email, city
 
 // Signature params for 5 attributes
-const sigParams = SignatureParamsG1.generate(5, label);
+const sigParams = BBSSignatureParams.generate(5, label);
 
 // Prepare messages that will be blinded (hidden) and known to signer
 const blindedMessages = new Map();
@@ -786,8 +786,10 @@ The signature requester, prover in this case, creates a blind signature request.
 randomness `blinding` that goes into the commitment. This randomness is later used
 
 ```ts
+import { BBSBlindSignature } from '@docknetwork/crypto-wasm-ts';
+
 // Blind signature request will contain a commitment, 
-const [blinding, request] = BlindSignatureG1.generateRequest(blindedMessages, params, true);
+const [blinding, request] = BBSBlindSignature.generateRequest(blindedMessages, params, true);
 ```
 
 The proof needs to be over only 1 `Statement`, the statement proving knowledge of the committed attributes in the commitment. 
@@ -801,7 +803,7 @@ const statement1 = Statement.pedersenCommitmentG1(bases, request.commitment);
 const statements = new Statements();
 statements.add(statement1);
 
-const proofSpec = new ProofSpecG1(statements, new MetaStatements());
+const proofSpec = new ProofSpec(statements, new MetaStatements());
 ```
 
 Now the prover creates witness for the commitment `Statement` using the randomness and the hidden attributes.
@@ -810,13 +812,13 @@ Now the prover creates witness for the commitment `Statement` using the randomne
 const committeds = [blinding];
 for (const i of blindedIndices) {
   // The messages are encoded before committing
-  committeds.push(Signature.encodeMessageForSigning(blindedMessages.get(i)));
+  committeds.push(BBSSignature.encodeMessageForSigning(blindedMessages.get(i)));
 }
 const witness1 = Witness.pedersenCommitment(committeds);
 const witnesses = new Witnesses();
 witnesses.add(witness1);
 
-const proof = CompositeProofG1.generate(proofSpec, witnesses);
+const proof = CompositeProof.generate(proofSpec, witnesses);
 ```
 
 Signer now verifies the proof. Note that the signer independently creates the `ProofSpec` as he knows which attributes are being 
@@ -832,7 +834,7 @@ proof.verify(proofSpec).verified;  // true
 revealedMessages.set(1, stringToBytes('John Smith'));
 revealedMessages.set(3, stringToBytes('john.smith@emample.com'));
 revealedMessages.set(4, stringToBytes('New York'));
-const blindSig = BlindSignatureG1.generate(request.commitment, revealedMessages, sk, params, true);
+const blindSig = BBSBlindSignature.generate(request.commitment, revealedMessages, sk, params, true);
 ```
 
 The prover can now "unblind" the signature meaning he can convert a blind signature into a regular BBS signature 
@@ -913,6 +915,8 @@ SNARK proving key and verification key, etc. The decryptor then publishes the pu
 `snarkPk`, `encryptionKey`, `decryptionKey` and `gens` are published.
 
 ```ts
+import { SaverEncryptionGens } from '@docknetwork/crypto-wasm-ts';
+
 const encGens = SaverEncryptionGens.generate();
 const [snarkPk, secretKey, encryptionKey, decryptionKey] = SaverDecryptor.setup(encGens);
 ```
@@ -934,8 +938,10 @@ in [these tests](tests/composite-proofs/msg-js-obj/saver.spec.ts) of the  `Encod
 For creating the proof of knowledge of the BBS signature and verifiably encrypting an attribute, the prover creates the following 2 statements.
 
 ```ts
+import { SaverChunkedCommitmentKey } from '@docknetwork/crypto-wasm-ts';
+
 // Signer's parameters
-let sigParams: BbsPlusSigParams, sigPk: BBSPlusPublicKeyG2, sig: SignatureG1;
+let sigParams: BBSSignatureParams, sigPk: BBSPublicKey, sig: BBSSignature;
 // Signed messages
 let messages: Uint8Array[];
 ...
@@ -957,7 +963,7 @@ const saverEk = encryptionKey.decompress();
 const snarkProvingKey = snarkPk.decompress();
 ...
 ...
-const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
+const statement1 = Statement.bbsSignatureProverConstantTime(sigParams, revealedMsgs, false);
 const statement2 = Statement.saverProver(saverEncGens, commKey, saverEk, snarkProvingKey, chunkBitSize);
 
 const proverStatements = new Statements();
@@ -987,24 +993,26 @@ metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 ```
 
 The prover then creates witness for both statements. The message `messages[encMsgIdx]` passed to `Witness.saver` is the
-message being encrypted. `unrevealedMsgs` passed to `Witness.bbsPlusSignature` is created from `messages` and consists of
+message being encrypted. `unrevealedMsgs` passed to `Witness.bbsSignatureConstantTime` is created from `messages` and consists of
 messages not being revealed to the verifier.
 
 ```ts
-const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
+const witness1 = Witness.bbsSignatureConstantTime(sig, unrevealedMsgs, false);
 const witness2 = Witness.saver(messages[encMsgIdx]);
 const witnesses = new Witnesses();
 witnesses.add(witness1);
 witnesses.add(witness2);
 ```
 
-The prover then creates a proof specification using `QuasiProofSpecG1`. This is different from `ProofSpecG1` object seen in 
+The prover then creates a proof specification using `QuasiProofSpec`. This is different from `ProofSpec` object seen in 
 previous examples as it does not call WASM to get a proof specification object and thus is more efficient.  
-Now prover creates the proof using `CompositeProofG1.generateUsingQuasiProofSpec`
+Now prover creates the proof using `CompositeProof.generateUsingQuasiProofSpec`
 
 ```ts
-const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
-const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
+import { QuasiProofSpec } from '@docknetwork/crypto-wasm-ts';
+
+const proverProofSpec = new QuasiProofSpec(proverStatements, metaStatements);
+const proof = CompositeProof.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 ```
 
 Similarly, the verifier also creates 2 statements and the same meta statement to verify the proof.  
@@ -1013,7 +1021,7 @@ Similarly, the verifier also creates 2 statements and the same meta statement to
 // Get the uncompressed verifying key from the compressed proving key.
 const snarkVerifyingKey = snarkPk.getVerifyingKeyUncompressed();
 
-const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
+const statement1 = Statement.bbsSignatureProverConstantTime(sigParams, revealedMsgs, false);
 const statement2 = Statement.saverVerifier(saverEncGens, commKey, saverEk, snarkVerifyingKey, chunkBitSize);
 const verifierStatements = new Statements();
 verifierStatements.add(statement1);
@@ -1034,7 +1042,7 @@ The above has a few differences from the prover's statements:
 The verifier now creates the proof specification and verifies the proof.
 
 ```ts
-const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
+const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStatements);
 // result.verified should be true for the proof to be valid.
 const result = proof.verifyUsingQuasiProofSpec(verifierProofSpec);
 ```
@@ -1098,23 +1106,27 @@ i.e. `min <= message < max`. Note than both bounds are positive integers and low
 for changing from exclusive to inclusive bounds or vice-versa, add or subtract 1 from bounds. The snippet shows LegoGroth16.
 
 ```ts
+import { BoundCheckSnarkSetup } from '@docknetwork/crypto-wasm-ts';
+
 const provingKey = BoundCheckSnarkSetup();
 ```
 
 For creating the proof of knowledge of the BBS signature and one of the signed message being in certain bounds, the prover creates the following 2 statements.
 
 ```ts
+
 // Signer's parameters
-let sigParams: BbsPlusSigParams, sigPk: BBSPlusPublicKeyG2, sig: SignatureG1;
-// Signed messages
+let sigParams: BBSSignature, pk: BBSPublicKey, sig: BBSSignature;
+// Signed messages - already encoded
 let messages: Uint8Array[];
 ...
-...
-let min: number, max: number;
+// define the min and max bounds
+let min: number = ...;
+let max: number = ...;
 ...
 // Decompress the proving key 
 const snarkProvingKey = provingKey.decompress();
-const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
+const statement1 = Statement.bbsSignatureProverConstantTime(sigParams, revealedMsgs, false);
 const statement2 = Statement.boundCheckLegoProver(min, max, snarkProvingKey);
 const proverStatements = new Statements();
 proverStatements.add(statement1);
@@ -1125,14 +1137,16 @@ proverStatements.add(statement2);
 
 - The statement is created using `Statement.boundCheckLegoProver` because it is being created by a prover. A verifier would have
   used `Statement.boundCheckLegoVerifier` to create it and one of the arguments would be different (shown below).
-- The argument `snarkProvingKey` is the public parameter created by the verifier. However, before they are passed to `Statement.boundCheckLegoProver`, they are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.boundCheckProverFromCompressedParams`
+- The argument `snarkProvingKey` is the public parameter created by the verifier. However, before they are passed to `Statement.boundCheckLegoProver`, they are uncompressed (ref. elliptic curve point compression) as shown in the above snippet. Uncompressing them doubles their size but makes them faster to work with. However, if you still want to use the compressed parameters use `Statement.boundCheckLegoProverFromCompressedParams`
 
 The prover then establishes the equality between the message in the BBS signature and the bounded message by using
 `WitnessEqualityMetaStatement` as below. `msgIdx` is the index of the bounded message in the array of signed messages 
 under BBS, `messages`. For the second statement, there is only 1 witness, thus the index 0.
 
 ```ts
+import { WitnessEqualityMetaStatement, MetaStatement, MetaStatements } from '@docknetwork/crypto-wasm-ts';
 const witnessEq = new WitnessEqualityMetaStatement();
+const msgIdx = 3;  // the index of the SSN number
 witnessEq.addWitnessRef(0, msgIdx);
 witnessEq.addWitnessRef(1, 0);
 const metaStatements = new MetaStatements();
@@ -1140,24 +1154,26 @@ metaStatements.add(MetaStatement.witnessEquality(witnessEq));
 ```
 
 The prover then creates witness for both statements. The message `messages[msgIdx]` passed to `Witness.boundCheckLegoGroth16` is the
-bounded message. `unrevealedMsgs` passed to `Witness.bbsPlusSignature` is created from `messages` and consists of
+bounded message. `unrevealedMsgs` passed to `Witness.bbsSignatureConstantTime` is created from `messages` and consists of
 messages not being revealed to the verifier.
 
 ```ts
-const witness1 = Witness.bbsPlusSignature(sig, unrevealedMsgs, false);
+const witness1 = Witness.bbsSignatureConstantTime(sig, unrevealedMsgs, false);
 const witness2 = Witness.boundCheckLegoGroth16(messages[msgIdx]);
 const witnesses = new Witnesses();
 witnesses.add(witness1);
 witnesses.add(witness2);
 ```
 
-The prover then creates a proof specification using `QuasiProofSpecG1`. This is different from `ProofSpecG1` object seen in
+The prover then creates a proof specification using `QuasiProofSpec`. This is different from `ProofSpec` object seen in
 previous examples as it does not call WASM to get a proof specification object and thus is more efficient.  
-Now prover creates the proof using `CompositeProofG1.generateUsingQuasiProofSpec`
+Now prover creates the proof using `CompositeProof.generateUsingQuasiProofSpec`
 
 ```ts
-const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements);
-const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
+import { QuasiProofSpec } from '@docknetwork/crypto-wasm-ts';
+
+const proverProofSpec = new QuasiProofSpec(proverStatements, metaStatements);
+const proof = CompositeProof.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 ```
 
 Similarly, the verifier also creates 2 statements and the same meta statement to verify the proof.
@@ -1166,8 +1182,8 @@ Similarly, the verifier also creates 2 statements and the same meta statement to
 // Get the uncompressed verifying key from the compressed proving key.
 const snarkVerifyingKey = provingKey.getVerifyingKeyUncompressed();
 
-const statement1 = Statement.bbsPlusSignature(sigParams, sigPk, revealedMsgs, false);
-const statement2 = Statement.boundCheckVerifier(min, max, snarkVerifyingKey);
+const statement1 = Statement.bbsSignatureVerifierConstantTime(sigParams, sigPk, revealedMsgs, false);
+const statement2 = Statement.boundCheckLegoVerifier(min, max, snarkVerifyingKey);
 const verifierStatements = new Statements();
 verifierStatements.add(statement1);
 verifierStatements.add(statement2);
@@ -1187,7 +1203,7 @@ The above has a few differences from the prover's statements:
 The verifier now creates the proof specification and verifies the proof.
 
 ```ts
-const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements);
+const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStatements);
 // result.verified should be true for the proof to be valid.
 const result = proof.verifyUsingQuasiProofSpec(verifierProofSpec);
 ```
@@ -1203,6 +1219,8 @@ and then a reference to them is passed as an argument in place of the parameter 
 below for creating 2 statements for verifiable encryption for the same setup parameters:
 
 ```ts
+import { SetupParam } from '@docknetwork/crypto-wasm-ts';
+
 // Prover creates an array of `SetupParam`s
 const proverSetupParams = [];
 proverSetupParams.push(SetupParam.saverEncryptionGensUncompressed(saverEncGens));
@@ -1232,8 +1250,8 @@ proverStatements.add(statement4);
 ...
 ...
 ...
-const proverProofSpec = new QuasiProofSpecG1(proverStatements, metaStatements, proverSetupParams);
-const proof = CompositeProofG1.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
+const proverProofSpec = new QuasiProofSpec(proverStatements, metaStatements, proverSetupParams);
+const proof = CompositeProof.generateUsingQuasiProofSpec(proverProofSpec, witnesses);
 ```
 
 Similarly, the verifier can create his own `SetupParam`s array for his proof specification and then proof
@@ -1254,7 +1272,7 @@ const verifierStatements = new Statements();
 verifierStatements.add(statement5);
 verifierStatements.add(statement6);
 
-const verifierProofSpec = new QuasiProofSpecG1(verifierStatements, metaStatements, verifierSetupParams);
+const verifierProofSpec = new QuasiProofSpec(verifierStatements, metaStatements, verifierSetupParams);
 const result = proof.verifyUsingQuasiProofSpec(verifierProofSpec);
 ```
 
@@ -1292,7 +1310,7 @@ The above interfaces have been found to be a bit difficult to work with when sig
 ```
 
 [Here](./src/sign-verify-js-objs.ts) are some utilities to make this task a bit easier. The idea is to flatten the JSON, sort the keys alphabetically 
-to have a list with deterministic order and then use the [encoder](./src/bbs-plus/encoder.ts) to encode each value as a field element (a number between 0 and another large number).  
+to have a list with deterministic order and then use the [encoder](./src/encoder.ts) to encode each value as a field element (a number between 0 and another large number).  
 The encoder can be configured to use different encoding functions for different keys to convert values from different types 
 like string, positive or negative integers or decimal numbers to field elements.  
 [The tests here](tests/composite-proofs/msg-js-obj) contain plenty of examples.
