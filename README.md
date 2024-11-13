@@ -76,13 +76,13 @@ yarn test
 ## Overview
 Following is a conceptual explanation of the primitives.
 
-### BBS Signature
-BBS signature allow for signing an ordered list of messages, producing a signature of constant size independent of the number
+### BBS Signatures
+The BBS signature Scheme (henceforth referred to as just BBS) allows for signing an ordered list of messages, producing a signature of constant size independent of the number
 of messages. The signer needs to have a public-private keypair and signature parameters which are public values whose size
 depends on the number of messages being signed. A verifier who needs to verify the signature needs to know the
 signature parameters used to sign the messages and the public key of the signer. In the context of anonymous credentials, 
 messages are called attributes.  
-BBS signature also allows a user to request a blind signature from a signer where the signer does not know 1 or more messages
+BBS also allows a user to request a blind signature from a signer where the signer does not know 1 or more messages
 from the list. The user can then unblind the blind signature to get a regular signature which can be verified by a verifier in
 the usual way. Such blind signatures can be used to hide a user specific secret like a private key or some unique identifier
 as a message in the message list and the signer does not become aware of the hidden message.     
@@ -92,26 +92,29 @@ messages and optionally reveal one or more of the messages.
 A typical use of BBS signatures looks like:
 - Signature parameters of the required size are assumed to exist and published at a public location. The signer can create
   his own or reuse parameters created by another party.
-- Signer public-private keypair and publishes the public key. The keypair can be reused for signing other messages as well.
+- Signer creates a public-private keypair and publishes the public key. 
+  The keypair can be reused for signing other messages as well.
 - User requests a signature from the signer.
 - Signer signs the message list using the signature parameters and his private key.
 - User verifies the signature on the  message list using the signature parameters and signer's public key
 - User creates a proof of knowledge of the signature and message list and optionally reveals 1 or more messages to the verifier.
-- The verifier uses the signature parameters and signer's public key to verify this proof. If successful, the verifier is
-  convinced that the user does have a signature from the signer and any messages revealed were part of the message list
-  signed by the signer.
+- The verifier uses the signature parameters and signer's public key to verify this proof.
+  If successful, the verifier is convinced that the user does have a signature from the
+  signer and any messages revealed were part of the message list signed by the signer.
 
 ### Accumulator
-An accumulator is a "set like" data-structure in which elements can be added or removed but the size of the accumulator remains
-constant. But an accumulator cannot be directly checked for presence of an element, an element needs to have accompanying data called
-the witness (its the manager's signature on the element), the element and the witness and these together can be used to check the presence
-or absence of the element. An accumulator can be considered similar to the root of the merkle tree where the inclusion proof is the witness
-of the element (non-membership proofs aren't possible with simple merkle trees). As with merkle trees, as elements are added or
-removed from the accumulator, the witness (inclusion proof) needs to be updated for the current accumulated value (root).  
-2 kinds of accumulators are provided, **positive** and **universal**. Positive support only membership witnesses while universal support both
-membership and non-membership witnesses. Creating non-membership witnesses is expensive however and the cost depends on the
-number of members present in the accumulator. Both accumulators are owned by an accumulator manager who has the private key to the accumulator
-and only the owner can add or remove elements or create witnesses using the accumulator.    
+An accumulator is a set-like data structure in which elements can be added or removed but the size of the accumulator remains constant.
+However, an accumulator cannot be directly checked for presence of an element, an element needs to have accompanying data called
+the witness (its the manager's signature on the element), the element and the witness and these together can be used to check the presence or absence of the element.
+An accumulator can be considered similar to the root of the merkle tree where the inclusion proof is the witness of the element 
+(non-membership proofs aren't possible with simple merkle trees). As with merkle trees, as elements are added or removed from the accumulator,
+the witness (inclusion proof) needs to be updated for the current accumulated value (root).
+
+2 kinds of accumulators are provided, **positive** and **universal**. 
+Positive support only membership witnesses while universal support both membership and non-membership witnesses. 
+Creating non-membership witnesses is expensive however, and the cost depends on the number of members present in the accumulator.
+Both accumulators are owned by an accumulator manager who has the private key to the accumulator
+and only the owner can add or remove elements or create witnesses using the accumulator.  
 Accumulator allows proving membership of the member (or non-member) and the corresponding witness in zero knowledge meaning
 a user in possession of an accumulator member (or non-member) and the witness can convince a verifier that he knows of an
 element present (or absent) in the accumulator without revealing the element or the witness. Note, the like merkle trees,
@@ -135,13 +138,14 @@ A typical use of accumulator looks like:
 
 ### Composite proof
 The above primitives can be combined using the composite proof system. An example is (in zero knowledge) proving knowledge of 2
-different signatures and the message lists. Another example is proving knowledge of the signature and messages and certain message's presence (absence)
-in an accumulator. Or the knowledge of 5 signatures and proving certain message is the same in the 5 message lists.
+different signatures and the message lists.
+Another example is proving knowledge of the signature and messages and certain message's presence (absence) in an accumulator.
+Or the knowledge of 5 signatures and proving certain message is the same in the 5 message lists.
 
 ## Usage
 
-Before calling any function that calls the underlying WASM, use `initializeWasm` to load the WASM module. This function returns 
-a promise which is resolved once the WASM module is successfully loaded.  
+Before calling any function that calls the underlying WASM, use `initializeWasm` to load the WASM module.
+This function returns a promise which is resolved once the WASM module is successfully loaded.  
 
 ```ts
 import { initializeWasm } from '@docknetwork/crypto-wasm-ts'
@@ -150,8 +154,13 @@ await initializeWasm();
 ```
 
 ### Supported Signature Schemes
-The library has support for BBS, BBS, PS, and BBDT16 schemes.  
+The library has support for BBS, BBS+, PS, and BBDT16 schemes.  
 Although they're similar in many aspects, specially for BBS and BBS, you're advised to consult the tests for changes
+between the different schemes. 
+However, you can make a good guess just by looking at the schema [here](./tests/scheme.ts#80).
+
+For all the following examples, BBS will be used, but the concepts should be transferable to other schemes.
+
 ### BBS signatures
 
 BBS signatures sign an ordered list of messages and thus it is important to serialize your signing payload in this format. 
@@ -174,14 +183,14 @@ Converted to list
 ["NYC", "John", "Smith", "12345678"]
 ```
 
-Now each of the above list must be converted to bytearrays, i.e. `Uint8Array` and the type of above list becomes `Uint8Array[]`
+Now each element of the above list must be converted to bytearrays, i.e. `Uint8Array` and the type of above list becomes `Uint8Array[]`.
 
 #### Setup
 
 Before messages can be signed, 2 things are needed:
 
 - **Signature parameters**: Public values, that can be created by anyone but must be known to the signer and verifier to sign and verify respectively. To create them, the number of messages (attributes) being signed must be known and the size of the parameters increases with the number. In the above example, number of attributes is 4. These parameters can be generated randomly or deterministically by using a publicly known label. It is advised to use the latter as it allows for extending/shrinking the same parameters when number of messages change.
-- **Keypair**: To create and verify BBS signature, the signer (issuer in case of a credential) needs to create a secret key to sign, public key to verify. 
+- **Keypair**: To create and verify BBS signatures, the signer (issuer in case of a credential) needs to create a secret key to sign, public key to verify. 
 
   2 ways of generating signature parameters
 
@@ -258,7 +267,7 @@ the `encode` argument as true to encode it using your own encoding function.
 
 Proving and verifying knowledge of signature can be done with or without using the composite proof system but this doc will only describe using the composite proof system. For the other way, see tests [here](./tests/scheme.spec.ts)
 
-The code for BBS signature lives [here](./src/bbs/). 
+The code for BBS lives [here](./src/bbs/). 
 
 ### Accumulators
 
@@ -428,16 +437,16 @@ The code for accumulators lives [here](./src/accumulator).
   statement contains public key of the signer, signature params, any revealed messages, etc. Each statement in a proof has a unique index.
 - **Witness** - Private data that needs to be kept hidden from the verifier. This can be the messages/attributes that are not being disclosed, 
   the signature itself, the accumulator member, accumulator witness. Every witness corresponds to some `Statement`.
-- **WitnessRef** - A witness might contain consist of several hidden data points, hidden attributes for example. To refer to each data 
+- **WitnessRef** - A witness might consist of several hidden data points, hidden attributes for example. To refer to each data 
   point uniquely, a pair of indices is used where the 1st item is the `Statement` index and 2nd item is index of that data point in the witness. 
 - **MetaStatement** - Describes a condition that must hold between witnesses of several statements or the same statement. Eg. to 
   express equality between attributes of 2 credentials, `MetaStatement` will refer to the `WitnessRef` of each attribute. This is
   public information as well.
-- **SetupParam** - Represents (public) setup parameters of different protocols. This is helpful when the same setup parameter needs to 
-  be passed to several `Statement`s
-- **ProofSpec** - This is the proof specification and its goal is to unambiguously define what **all** needs to be proven. This is created
-  from all `Statement`s, `MetaStatement`s and an optional context. Both prover and verifier should independently create this. The prover 
-  uses the `ProofSpec` and all `Witness`es to create the proof and the verifier uses the`ProofSpec` to verify the proof.  
+- **SetupParam** - Represents (public) setup parameters of different protocols.
+This is helpful when the same setup parameter needs to be passed to several `Statement`s
+- **ProofSpec** - This is the proof specification and its goal is to unambiguously define **all** what needs to be proven.
+This is created from all `Statement`s, `MetaStatement`s and an optional context. Both prover and verifier should independently create this.
+The prover uses the `ProofSpec` and all `Witness`es to create the proof and the verifier uses the`ProofSpec` to verify the proof.  
 
 #### Examples
 
@@ -447,7 +456,7 @@ A complete example is shown in this [test](tests/composite-proofs/single-signatu
 
 Proving knowledge of 1 BBS signature over the attributes and only disclosing some attributes. Say there are 5 attributes in the 
 credential: SSN, first name, last name, email and city, and they are present in the attribute list in that order. The prover wants 
-to reveal his last name and city, but not any other attributes while proving that he possesses such a credential signed by the issuer.
+to reveal his last name and city, but not any other attribute while proving that he possesses such a credential signed by the issuer.
 
 ```ts
 // The attributes, [SSN, first name, last name, email, city]
@@ -476,7 +485,7 @@ unrevealedMsgs.set(1, messages[1]);
 unrevealedMsgs.set(3, messages[3]);
 ```
 
-Since there is only 1 kind of proof, i.e. the knowledge of BBS signature and the signed attributes, there would be only 1 `Statement`. 
+Since there is only 1 kind of proof, i.e. the knowledge of a BBS signature and the signed attributes, there would be only 1 `Statement`. 
 
 ```ts
 import { Statement, Statements } from '@docknetwork/crypto-wasm-ts'
@@ -527,7 +536,7 @@ needs to generate on its own.
 proof.verify(proofSpec, nonce).verified;  // true
 ```
 
-##### BBS signature over varying number of messages 
+##### BBS signatures over varying number of messages 
 
 The examples shown here have assumed that the number of messages for given signature params is fixed but that might not be always true. 
 An example is where some of the messages in the signature are null (like N/A) in certain signatures. Eg, when the messages are attributes
@@ -540,7 +549,7 @@ indices that are N/A and always reveal this attribute. A complete example of the
 
 A complete example is shown in this [test](tests/composite-proofs/many-bbs-signatures.spec.ts).
 
-Proving knowledge of 2 BBS signature over the attributes and only disclosing some attribute and proving equality of 1 attribute 
+Proving knowledge of 2 BBS signatures over the attributes and only disclosing some attribute and proving equality of 1 attribute 
 without disclosing it. Say there are 2 credentials and hence 2 BBS signatures. One credential has 5 attributes: SSN, first name, 
 last name, email and city and the other has 6 attributes name, email, city, employer, employee id and SSN and in that order. 
 The prover wants to prove that he has those 2 credentials, reveal his employer name and prove that SSN in both credentials is 
@@ -971,7 +980,7 @@ proverStatements.add(statement1);
 proverStatements.add(statement2);
 ```
 
-`statement1` is the for proving knowledge of BBS signature as seen in previous examples. `statement2` is for proving the encryption of message from a 
+`statement1` is the for proving knowledge of a BBS signature as seen in previous examples. `statement2` is for proving the encryption of message from a 
 BBS signature. Some things to note about this statement.
 
 - The statement is created using `Statement.saverProver` because it is being created by a prover. A verifier would have
@@ -1077,7 +1086,7 @@ Note: This section assumes you have read some of the previous examples on compos
 
 A complete example as a test is [here](./tests/composite-proofs/bound-check.spec.ts)
 
-Allow a verifier to check that some attribute of the credential satisfies given bounds `min` and `max`, i.e. `min <= message < max` 
+Allows a verifier to check that some attribute of the credential satisfies given bounds `min` and `max`, i.e. `min <= message < max` 
 without learning the attribute itself. Both `min` and `max` are positive integers. This can be implemented using different protocols, 
 - LegoGroth16, a protocol described in the SNARK framework [Legosnark](https://eprint.iacr.org/2019/142) in appendix H.2. Requires a trusted setup, which in practice is done by the verifier. 
 - Bulletproofs++, a transparent (no trusted setup required) range proof protocol.
@@ -1099,11 +1108,11 @@ in [these tests](tests/composite-proofs/msg-js-obj/bound-check.spec.ts) of the  
 
 
 For this, the verifier needs to first create the setup parameters which he then shares with the prover. Note that the 
-verifier does not have to create them each time a proof needs to be verifier, it can create them once and publish somewhere 
-such that all provers interacting with it can use them.  
-In the following snippet, the verifier ask to prove that certain message satisfies the lower and upper bounds `min` and `max`,
-i.e. `min <= message < max`. Note than both bounds are positive integers and lower bound is inclusive but upper bound is not,
-for changing from exclusive to inclusive bounds or vice-versa, add or subtract 1 from bounds. The snippet shows LegoGroth16.
+verifier does not have to create them each time a proof needs to be verified, but only once and publish them somewhere 
+such that all provers interacting with the proof can use them.  
+In the following snippet, the verifier asks to prove that a certain message satisfies the lower and upper bounds `min` and `max`,
+i.e. `min <= message < max`. Note than both bounds are positive integers and lower bound is inclusive but upper bound is not.
+To change from exclusive to inclusive bounds and vice-versa, add or subtract 1 from bounds. The snippet shows LegoGroth16.
 
 ```ts
 import { BoundCheckSnarkSetup } from '@docknetwork/crypto-wasm-ts';
@@ -1133,7 +1142,9 @@ proverStatements.add(statement1);
 proverStatements.add(statement2);
 ```
 
-`statement1` is the for proving knowledge of BBS signature as seen in previous examples. `statement2` is for proving the bounds of message from a BBS signature. Some things to note about this statement.
+`statement1` is the for proving knowledge of a BBS signature as seen in previous examples. `statement2` is for proving the bounds of a message from the BBS signature. 
+
+Some things to note about this statement:
 
 - The statement is created using `Statement.boundCheckLegoProver` because it is being created by a prover. A verifier would have
   used `Statement.boundCheckLegoVerifier` to create it and one of the arguments would be different (shown below).
