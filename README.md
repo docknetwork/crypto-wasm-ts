@@ -764,8 +764,8 @@ witnesses.add(witness2);
 const proof = CompositeProof.generate(proofSpec, witnesses);
 ```
 
-##### Getting a blind signature
-
+##### Getting a blind signature (Example applies to BBS+)
+Disclaimer: With BBS, there is no blinding (the commitment is computationally hiding, though it can be made perfectly hiding by adding a dummy attribute). However, it can be easily achieved with BBS+.
 A complete example is shown in this [test](tests/composite-proofs/blind-signature.spec.ts).
 
 A signature is blind when the signer is not aware of the message (or a part of the message) that he is signing, thus the signer is blind.
@@ -780,7 +780,7 @@ prove that he knows that the commitment contains those 2 attributes
 // Messages are secret1, name, secret2, email, city
 
 // Signature params for 5 attributes
-const sigParams = BBSSignatureParams.generate(5, label);
+const sigParams = BBSPlusSignatureParamsG1.generate(5, label);
 
 // Prepare messages that will be blinded (hidden) and known to signer
 const blindedMessages = new Map();
@@ -797,10 +797,10 @@ The signature requester, prover in this case, creates a blind signature request.
 randomness `blinding` that goes into the commitment. This randomness is later used
 
 ```ts
-import { BBSBlindSignature } from '@docknetwork/crypto-wasm-ts';
+import { BBSPlusBlindSignatureG1 } from '@docknetwork/crypto-wasm-ts';
 
 // Blind signature request will contain a commitment, 
-const [blinding, request] = BBSBlindSignature.generateRequest(blindedMessages, params, true);
+const [blinding, request] = BBSPlusBlindSignatureG1.generateRequest(blindedMessages, params, true);
 ```
 
 The proof needs to be over only 1 `Statement`, the statement proving knowledge of the committed attributes in the commitment. 
@@ -819,13 +819,8 @@ const proofSpec = new ProofSpec(statements, new MetaStatements());
 
 Now the prover creates witness for the commitment `Statement` using the randomness and the hidden attributes.
 ```ts
-// The witness to the Pedersen commitment contains the blinding at index 0 by convention and then the hidden messages
-const committeds = [blinding];
-for (const i of blindedIndices) {
-  // The messages are encoded before committing
-  committeds.push(BBSSignature.encodeMessageForSigning(blindedMessages.get(i)));
-}
-const witness1 = Witness.pedersenCommitment(committeds);
+import { getBBSWitnessForBlindSigRequest } from '@docknetwork/crypto-wasm-ts';
+const witness1 = getBBSWitnessForBlindSigRequest(blindedMessages)
 const witnesses = new Witnesses();
 witnesses.add(witness1);
 
@@ -845,7 +840,7 @@ console.assert(proof.verify(proofSpec).verified);
 revealedMessages.set(1, stringToBytes('John Smith'));
 revealedMessages.set(3, stringToBytes('john.smith@emample.com'));
 revealedMessages.set(4, stringToBytes('New York'));
-const blindSig = BBSBlindSignature.generate(request.commitment, revealedMessages, sk, params, true);
+const blindSig = BBSPlusBlindSignatureG1.generate(request.commitment, revealedMessages, sk, params, true);
 ```
 
 The prover can now "unblind" the signature meaning he can convert a blind signature into a regular BBS signature 
