@@ -10,10 +10,10 @@ import {
 } from './blinded-credential-builder';
 
 /**
- * A request for getting a blinded credential. Sent by the user to the signer who will verify it and then sign a blinded credential
+ * A request for getting a blinded credential. Sent by the user to the signer who will verify it and then sign a blinded
+ * credential. It contains a presentation which proves predicates about the blinded attributes
  */
 export abstract class BlindedCredentialRequest extends Versioned {
-  // A blinded credential request will contain a presentation
   presentation: Presentation;
 
   protected constructor(version: string, presentation: Presentation) {

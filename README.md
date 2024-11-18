@@ -36,7 +36,7 @@ the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
         - [Social KYC](#social-kyc)
     - [Verifiable encryption using SAVER](#verifiable-encryption-using-saver)
       - [Encoding for verifiable encryption](#encoding-for-verifiable-encryption)
-    - [Bound check using LegoGroth16](#bound-check-using-legogroth16)
+    - [Bound check (range proof)](#bound-check-range-proof)
       - [Encoding for negative or decimal numbers](#encoding-for-negative-or-decimal-numbers)
     - [Optimization](#optimization)
     - [Working with messages as JS objects](#working-with-messages-as-js-objects)
@@ -1361,3 +1361,5 @@ The Circom programs and corresponding R1CS and WASM files for the tests are [her
 ### Anonymous credentials
 
 The composite proof system is used to implement anonymous credentials. See [here](src/anonymous-credentials/) for details.
+
+[Slides](https://www.slideshare.net/SSIMeetup/anonymous-credentials-with-range-proofs-verifiable-encryption-zksnarks-circom-support-and-blinded-issuance-lovesh-harchandani) and [video](https://www.youtube.com/watch?v=e_E_6Fx5dro) for a presentation given at SSI meetup. Mostl of the presentation goes over the code, mostly anonymous credentials from this library.  

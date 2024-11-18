@@ -19,3 +19,8 @@ export { getR1CS } from './r1cs/file';
 export { processParsedR1CSFile } from './r1cs/file';
 export { ParsedR1CSFile } from './r1cs/file';
 export * from './keyed-proofs';
+export * from './encoder';
+export * from './bytearray-wrapper';
+export * from './ICompressed';
+export * from './frost-dkg';
+export * from './threshold-sigs';

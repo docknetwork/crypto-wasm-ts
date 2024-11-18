@@ -378,8 +378,10 @@ export class PresentationBuilder extends Versioned {
    * Enforce a predicate written as a Circom program over a credential's attributes
    * @param credIdx - The credential index whose attributes are used as witness in the Circom program
    * @param circuitPrivateVars - Mapping of private variables from Circom program to attribute names. A variable can be a single value
-   * or an array and thus can correspond to a single attribute or array of attributes
-   * @param circuitPublicVars
+   * or an array and thus can correspond to a single attribute or array of attributes. Is an array of pairs where the first item of pair
+   * is the private variable name and the second item is the attribute name(s)
+   * @param circuitPublicVars - Mapping of public variables from Circom program to publicly known values. Is an array of pairs where the
+   * first item of pair is the public variable name and the second item is the value as a bytearray or array of bytearrays
    * @param circuitId
    * @param provingKeyId
    * @param r1cs

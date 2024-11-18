@@ -22,7 +22,7 @@ export type ToPositiveIntFunc = (value: unknown) => number;
  * A class extending `BytearrayWrapper` containing instruments for dealing with message encoding/decoding.
  */
 export abstract class MessageEncoder extends BytearrayWrapper {
-  // The field element size is 32 bytes so the maximum byte size of encoded message must be 32.
+  /** The field element size is 32 bytes so the maximum byte size of encoded message must be 32. */
   static readonly maxEncodedLength = 32;
   static readonly textEncoder = new TextEncoder();
   static readonly textDecoder = new TextDecoder();
@@ -304,17 +304,6 @@ export class Encoder {
   }
 
   encodeDefault(value: unknown, strict = false): Uint8Array {
-    // if (this.defaultEncoder !== undefined) {
-    //   return this.defaultEncoder(value);
-    // } else {
-    //   if (!strict && value instanceof Uint8Array) {
-    //     return MessageEncoder.encodeMessageForSigning(value);
-    //   } else {
-    //     throw new Error(
-    //       `Cannot encode value ${value} as neither was default encoder present nor it was an Uint8Array. Its type was ${typeof value}`
-    //     );
-    //   }
-    // }
     return this._encodeDefault(MessageEncoder.encodeMessageForSigning, value, strict)
   }
 

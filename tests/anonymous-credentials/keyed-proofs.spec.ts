@@ -32,8 +32,8 @@ import {
 import {
   KBUniversalMembershipWitness,
   KBUniversalNonMembershipWitness
-} from '../../src/accumulator/kb-acccumulator-witness';
-import { KBUniversalAccumulator } from '../../src/accumulator/kb-universal-accumulator';
+} from '../../src';
+import { KBUniversalAccumulator } from '../../src';
 import { Credential, CredentialBuilder, isKvac, isPS, PublicKey, Scheme, SecretKey } from '../scheme';
 import { checkResult } from '../utils';
 import {
@@ -156,7 +156,13 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
     builder4.setCredentialStatus('dock:accumulator:accumId123', MEM_CHECK_STR, 'user:A-123');
     // @ts-ignore
     credential4 = builder4.sign(skKvac);
+    // This is just for testing as only signer has secret key
     verifyCred(credential4, undefined, skKvac);
+
+    // Signer creates validity proof
+    const proof = credential4.proofOfValidity(skKvac, pkKvac);
+    // Holder checks using validity proof
+    checkResult(credential4.verifyUsingValidityProof(proof, pkKvac));
 
     const builder5 = new BBDT16CredentialBuilder();
     builder5.schema = schema;
@@ -164,7 +170,13 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
     builder5.setCredentialStatus('dock:accumulator:accumId124', MEM_CHECK_KV_STR, 'user:A-124');
     // @ts-ignore
     credential5 = builder5.sign(skKvac);
+    // This is just for testing as only signer has secret key
     verifyCred(credential5, undefined, skKvac);
+
+    // Signer creates validity proof
+    const proof1 = credential5.proofOfValidity(skKvac, pkKvac);
+    // Holder checks using validity proof
+    checkResult(credential5.verifyUsingValidityProof(proof1, pkKvac));
 
     // @ts-ignore
     [, accumulator1Pk, accumulator1, accumulator1Witness] = await setupPrefilledAccum(200, 122, 'user:A-', schema);
@@ -276,6 +288,7 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
         expect(keyedCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bbdt16
         });
+
         checkResult(keyedCredProof?.credential?.proof.verify(sk) as VerifyResult);
       }
 
@@ -289,12 +302,19 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
           [REV_CHECK_STR]: MEM_CHECK_KV_STR
         });
         checkResult(keyedCredProof?.status?.proof.verify(accumulator2Sk) as VerifyResult);
+
+        if (!isKvac()) {
+          checkResult(keyedCredProof?.verify(undefined, accumulator2Sk) as VerifyResult);
+        }
       }
 
       function check3(keyedCredProof?: KeyedProof) {
         expect(keyedCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bbdt16
         });
+
+        checkResult(keyedCredProof?.verify(skKvac) as VerifyResult);
+
         const proof = keyedCredProof?.credential?.proof as BBDT16KeyedProof;
         checkResult(proof.verify(skKvac) as VerifyResult);
         const pv = proof.proofOfValidity(skKvac, pkKvac, paramsKvac);
@@ -306,6 +326,8 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
         expect(keyedCredProof?.credential).toMatchObject({
           sigType: SignatureType.Bbdt16
         });
+        checkResult(keyedCredProof?.verify(skKvac, accumulator2Sk) as VerifyResult);
+
         checkResult(keyedCredProof?.credential?.proof.verify(skKvac) as VerifyResult);
         expect(keyedCredProof?.status).toMatchObject({
           [ID_STR]: 'dock:accumulator:accumId124',
@@ -331,6 +353,10 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
         checkResult(proof.verify(accumulator3Sk) as VerifyResult);
         const pv = proof.proofOfValidity(accumulator3Sk, accumulator3Pk, dockAccumulatorParams());
         checkResult(pv.verify(proof, accumulator3Pk, dockAccumulatorParams()));
+
+        if (!isKvac()) {
+          checkResult(keyedCredProof?.verify(undefined, accumulator3Sk) as VerifyResult);
+        }
       }
 
       function check6(keyedCredProof?: KeyedProof) {
@@ -346,6 +372,10 @@ describe(`Keyed proof verification with BBDT16 MAC and ${Scheme} signatures`, ()
         checkResult(proof.verify(accumulator3Sk) as VerifyResult);
         const pv = proof.proofOfValidity(accumulator3Sk, accumulator3Pk, dockAccumulatorParams());
         checkResult(pv.verify(proof, accumulator3Pk, dockAccumulatorParams()));
+
+        if (!isKvac()) {
+          checkResult(keyedCredProof?.verify(undefined, accumulator3Sk) as VerifyResult);
+        }
       }
 
       const keyedProofs = presentation.getKeyedProofs();

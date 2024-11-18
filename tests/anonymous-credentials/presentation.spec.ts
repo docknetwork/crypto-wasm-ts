@@ -818,6 +818,13 @@ describe.each([true, false])(
         }
       });
 
+      // Verifier checks that the desired attribute are proved equal
+      expect(pres4.spec.attributeEqualities).toEqual([
+        [[0, 'credentialSubject.SSN'], [1, 'credentialSubject.sensitive.SSN']],
+        [[0, 'credentialSubject.city'], [1, 'credentialSubject.location.city']],
+        [[0, 'credentialSubject.height'], [1, 'credentialSubject.physical.height']]
+      ]);
+
       if (!isKvac()) {
         // Public keys in wrong order
         expect(pres4.verify([pk2, pk1]).verified).toEqual(false);

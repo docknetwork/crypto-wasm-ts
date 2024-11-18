@@ -20,10 +20,10 @@ export class Responses extends BytearrayWrapper {}
 
 export class HashedKeys extends BytearrayWrapper {}
 
-export class Participant {
-  // Id of this participant
+export class BaseOTParticipant {
+  /** Id of this participant */
   readonly id: number;
-  // Ids of the other participants of the protocol.
+  /** Ids of the other participants of the protocol. */
   readonly others: Set<number>;
 
   senderPks?: Map<number, SenderPublicKey>;

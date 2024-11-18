@@ -56,7 +56,7 @@ export class BBDT16KeyedProof extends BytearrayWrapper {
 }
 
 /**
- * Proof of validity of keyed proof of BBDT16 MAC.
+ * Proof of validity of keyed proof of BBDT16 MAC. This is created by the signer to convince the verifier that the keyed-proof was indeed valid.
  */
 export class ProofOfValidityBDDT16KeyedProof extends BytearrayWrapper {
   verify(proof: BBDT16KeyedProof, publicKey: BBDT16MacPublicKeyG1, params: BBDT16MacParams): VerifyResult {
@@ -65,7 +65,7 @@ export class ProofOfValidityBDDT16KeyedProof extends BytearrayWrapper {
 }
 
 /**
- * Proof of invalidity of keyed proof of BBDT16 MAC.
+ * Proof of invalidity of keyed proof of BBDT16 MAC. This is created by the signer to convince the verifier that the keyed-proof was indeed invalid.
  */
 export class ProofOfInvalidityBDDT16KeyedProof extends BytearrayWrapper {
   verify(proof: BBDT16KeyedProof, publicKey: BBDT16MacPublicKeyG1, params: BBDT16MacParams): VerifyResult {

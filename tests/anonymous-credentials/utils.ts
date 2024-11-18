@@ -9,7 +9,7 @@ import {
   dockSaverEncryptionGensUncompressed, EMPTY_SCHEMA_ID,
   IAccumulatorState,
   IEmbeddedJsonSchema,
-  IJsonSchema, PositiveAccumulator,
+  IJsonSchema, MessageEncoder, PositiveAccumulator,
   PredicateParamType,
   PseudonymBases, REV_ID_STR,
   SaverCiphertext,
@@ -638,10 +638,11 @@ export function checkCiphertext(
     cts = [cts];
   }
   cts.forEach((ciphertext) => {
-    let decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, saverVerifyingKey, chunkBitSize);
+    const decrypted = SaverDecryptor.decryptCiphertext(ciphertext, saverSk, saverDk, saverVerifyingKey, chunkBitSize);
     expect(decrypted.message).toEqual(
       credential.schema?.encoder.encodeMessageConstantTime(`${SUBJECT_STR}.${attrName}`, _.get(credential.subject, attrName))
     );
+    expect(MessageEncoder.reversibleDecodeStringForSigning(decrypted.message)).toEqual(_.get(credential.subject, attrName));
 
     // Decryptor shares the decryption result with verifier which the verifier can check for correctness.
     expect(

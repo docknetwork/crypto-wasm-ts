@@ -20,7 +20,8 @@
     "test-bbs+": "TEST_SIGNATURE_SCHEME=BBS+ yarn jest",
     "test-ps": "TEST_SIGNATURE_SCHEME=PS yarn jest",
     "test-bbdt16": "TEST_SIGNATURE_SCHEME=BBDT16 yarn jest",
-    "test-all": "TEST_SIGNATURE_SCHEME=BBS yarn jest; TEST_SIGNATURE_SCHEME=BBS+ yarn jest; TEST_SIGNATURE_SCHEME=PS yarn jest; TEST_SIGNATURE_SCHEME=BBDT16 yarn jest"
+    "test-all": "TEST_SIGNATURE_SCHEME=BBS yarn jest; TEST_SIGNATURE_SCHEME=BBS+ yarn jest; TEST_SIGNATURE_SCHEME=PS yarn jest; TEST_SIGNATURE_SCHEME=BBDT16 yarn jest",
+    "typedoc": "typedoc src --plugin typedoc-github-theme --out __typedoc__"
   },
   "license": "Apache-2.0",
   "private": false,
@@ -40,7 +41,8 @@
     "json-stringify-deterministic": "^1.0.11",
     "lodash": "^4.17.21",
     "lzutf8": "0.6.3",
-    "semver": "^7.6.0"
+    "semver": "^7.6.0",
+    "typedoc-github-theme": "^0.1.2"
   },
   "devDependencies": {
     "@types/jest": "^29.1.0",
@@ -61,6 +63,7 @@
     "r1csfile": "^0.0.41",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
+    "typedoc": "^0.26.11",
     "typescript": "5.3.3"
   }
 }

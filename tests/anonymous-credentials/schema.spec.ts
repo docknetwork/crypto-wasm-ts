@@ -1038,15 +1038,10 @@ describe('Credential Schema', () => {
           cs = new CredentialSchema(schema);
         }
         const j = cs.toJSON();
-        // expect(CredentialSchema.convertToDataUri(cs.jsonSchema)).toEqual(j[ID_STR]);
-        // expect(CredentialSchema.convertFromDataUri(j[ID_STR])).toEqual(cs.jsonSchema);
         if (withSchemaRef) {
           expect(j[ID_STR]).toEqual(schemaRef);
           expect(cs.fullJsonSchema).toEqual(schema);
           expect(cs.jsonSchema).toEqual(nonEmbeddedSchema);
-          // @ts-ignore
-          // expect(CredentialSchema.convertToDataUri(cs.fullJsonSchema)).toEqual(j[FULL_SCHEMA_STR]);
-          // expect(CredentialSchema.convertFromDataUri(j[FULL_SCHEMA_STR])).toEqual(cs.fullJsonSchema);
         } else {
           expect(j[ID_STR]).toEqual(EMPTY_SCHEMA_ID);
           expect(cs.jsonSchema).toEqual(schema);

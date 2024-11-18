@@ -402,6 +402,7 @@ export interface IJsonSchema {
 }
 
 export interface ISchemaParsingOpts {
+  /** Whether to use the default values or throw error if required parameters are not passed */
   useDefaults: boolean;
   defaultMinimumInteger: number;
   defaultMinimumDate: number;
@@ -409,7 +410,7 @@ export interface ISchemaParsingOpts {
 }
 
 export const DefaultSchemaParsingOpts: ISchemaParsingOpts = {
-  useDefaults: false,
+   useDefaults: false,
   // Minimum value kept over a billion
   defaultMinimumInteger: -(Math.pow(2, 32) - 1),
   defaultMinimumDate: -(Math.pow(2, 44) - 1),
@@ -513,7 +514,7 @@ export class CredentialSchema extends Versioned {
    * when deserializing to get the exact object that was serialized which is necessary when verifying signatures
    * @param overrides - Override any properties of the schema
    * @param fullJsonSchema - When `jsonSchema` does not contain the properties, this object is expected to contain them.
-   * @param useConstantTimeEncoder
+   * @param useConstantTimeEncoder - Set to false when creating legacy schemas
    */
   constructor(
     jsonSchema: IEmbeddedJsonSchema | IJsonSchema,
@@ -735,6 +736,10 @@ export class CredentialSchema extends Versioned {
     }
   }
 
+  /**
+   * Essential properties of a non-embedded schema.
+   * @param withDefinitions - add custom definitions as well
+   */
   static essential(withDefinitions = true): IEmbeddedJsonSchema {
     const s = {
       // Currently only assuming support for draft-07 but other might work as well
@@ -1295,9 +1300,10 @@ export class CredentialSchema extends Versioned {
    */
   // @ts-ignore
   static generateAppropriateSchema(cred: object, schema: CredentialSchema): CredentialSchema {
-    // Make `newJsonSchema` a copy of `schema.jsonSchema`
+    // Make `newJsonSchema` a copy of `schema.jsonSchema` as `newJsonSchema` will be updated as per the content of `cred`
     const newJsonSchema = _.cloneDeep(schema.getEmbeddedJsonSchema()) as IEmbeddedJsonSchema;
     const props = newJsonSchema.properties;
+    // Update `props` and hence `newJsonSchema`
     CredentialSchema.generateFromCredential(cred, props, schema.version);
     // For older version, a variable time message encoder was mistakenly used
     const useConstantTimeEncoder = semver.gte(schema.version, '0.5.0');

@@ -30,9 +30,9 @@ import {
 
 /**
  * KB universal accumulator. Its composed of 2 accumulators, one for accumulating elements that are "members" and one
- * for "non-members". But this detail is largely abstracted away from. All possible "members" and "non-members" of this
- * accumulator are called its domain and during initialization, the domain needs to be decided passed. The domain can be
- * extended at any point.
+ * for "non-members". But this detail is largely abstracted away. All possible "members" and "non-members" of this
+ * accumulator are called its domain and during initialization, the domain needs to be known/passed. The domain can be
+ * extended at any point and any number of times.
  */
 export class KBUniversalAccumulator extends Accumulator<KBUniversalAccumulatorValue> {
   // @ts-ignore
