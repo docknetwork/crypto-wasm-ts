@@ -77,6 +77,8 @@ yarn test
 Following is a conceptual explanation of the primitives.
 
 ### BBS Signatures
+Disclaimer: There's multiple variations of the BBS scheme available out there, of which BBS+ was thought to be the version that is proven to be secure. However, in a recent [paper](https://eprint.iacr.org/2023/275), it was proven that in the initial BBS design was secure, with even a smaller signature size. This version is also the one used in the [IRTF standardization effort](https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html).
+
 The BBS signature Scheme (henceforth referred to as just BBS) allows for signing an ordered list of messages, producing a signature of constant size independent of the number
 of messages. The signer needs to have a public-private keypair and signature parameters which are public values whose size
 depends on the number of messages being signed. A verifier who needs to verify the signature needs to know the
