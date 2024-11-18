@@ -41,7 +41,12 @@ import {
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBDT16_MAC_PARAMS_LABEL_BYTES,
   getBBDT16StatementForBlindMacRequest,
-  getBBDT16WitnessForBlindMacRequest, BBDT16CredentialBuilder, BBDT16Credential, BBDT16KeypairG1, BBDT16MacPublicKeyG1
+  getBBDT16WitnessForBlindMacRequest,
+  BBDT16CredentialBuilder,
+  BBDT16Credential,
+  BBDT16KeypairG1,
+  BBDT16MacPublicKeyG1,
+  BBS_CRED_PROOF_TYPE, BBS_PLUS_CRED_PROOF_TYPE, PS_CRED_PROOF_TYPE, BBDT16_CRED_PROOF_TYPE
 } from '../src';
 import { BBDT16BlindMac, BBDT16Mac, BBDT16MacParams, BBDT16MacSecretKey } from '../src';
 
@@ -68,6 +73,7 @@ export let Scheme: string = process.env.TEST_SIGNATURE_SCHEME || 'BBS',
   buildVerifierStatementFromSetupParamsRef,
   CredentialBuilder,
   Credential,
+  CredentialProofType,
   encodeMessageForSigningIfPS: (msg: Uint8Array) => Uint8Array,
   encodeMessageForSigningIfNotPS: (msg: Uint8Array) => Uint8Array,
   isBBS = () => false,
@@ -97,6 +103,7 @@ switch (Scheme) {
     getWitnessForBlindSigRequest = getBBSWitnessForBlindSigRequest;
     CredentialBuilder = BBSCredentialBuilder;
     Credential = BBSCredential;
+    CredentialProofType = BBS_CRED_PROOF_TYPE;
     encodeMessageForSigningIfPS = (msg) => msg;
     encodeMessageForSigningIfNotPS = encodeMessageForSigningInConstantTime;
     SignatureLabelBytes = BBS_SIGNATURE_PARAMS_LABEL_BYTES;
@@ -121,6 +128,7 @@ switch (Scheme) {
     getWitnessForBlindSigRequest = getBBSPlusWitnessForBlindSigRequest;
     CredentialBuilder = BBSPlusCredentialBuilder;
     Credential = BBSPlusCredential;
+    CredentialProofType = BBS_PLUS_CRED_PROOF_TYPE;
     SignatureLabelBytes = BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES;
     encodeMessageForSigningIfPS = (msg) => msg;
     encodeMessageForSigningIfNotPS = encodeMessageForSigningInConstantTime;
@@ -145,6 +153,7 @@ switch (Scheme) {
     getWitnessForBlindSigRequest = getPSWitnessesForBlindSigRequest;
     CredentialBuilder = PSCredentialBuilder;
     Credential = PSCredential;
+    CredentialProofType = PS_CRED_PROOF_TYPE;
     SignatureLabelBytes = PS_SIGNATURE_PARAMS_LABEL_BYTES;
     encodeMessageForSigningIfPS = encodeMessageForSigningInConstantTime;
     encodeMessageForSigningIfNotPS = (msg) => msg;
@@ -170,6 +179,7 @@ switch (Scheme) {
     getWitnessForBlindSigRequest = getBBDT16WitnessForBlindMacRequest;
     CredentialBuilder = BBDT16CredentialBuilder;
     Credential = BBDT16Credential;
+    CredentialProofType = BBDT16_CRED_PROOF_TYPE;
     SignatureLabelBytes = BBDT16_MAC_PARAMS_LABEL_BYTES;
     encodeMessageForSigningIfPS = (msg) => msg;
     encodeMessageForSigningIfNotPS = encodeMessageForSigningInConstantTime;

@@ -12,7 +12,7 @@ import {
   ParsedR1CSFile,
   PublicKeyBase
 } from '../src';
-import { Participant, Round1Msg, Share } from '../src/frost-dkg';
+import { FrostDkgParticipant, Round1Msg, Share } from '../src/frost-dkg';
 import {
   buildProverStatement,
   buildVerifierStatement,
@@ -158,7 +158,7 @@ export function getBoundCheckSnarkKeys(
   return [snarkProvingKey, snarkVerifyingKey];
 }
 
-export function runFrostKeygen(participants: Participant[], pkBase: PublicKeyBase): [Uint8Array[], Uint8Array[], Uint8Array] {
+export function runFrostKeygen(participants: FrostDkgParticipant[], pkBase: PublicKeyBase): [Uint8Array[], Uint8Array[], Uint8Array] {
   const msgs = new Map<number, Round1Msg>();
   for (let i = 0; i < participants.length; i++) {
     expect(participants[i].hasStarted()).toEqual(false);

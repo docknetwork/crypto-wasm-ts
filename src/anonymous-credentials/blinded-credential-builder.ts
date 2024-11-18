@@ -17,9 +17,9 @@ import { BBDT16BlindMac, BBDT16MacParams, BBDT16MacSecretKey } from '../bbdt16-m
  * Used by the signer to create a blinded credential. The signer will know only the unblinded attributes
  */
 export abstract class BlindedCredentialBuilder extends CredentialBuilderCommon {
-  // NOTE: This should match `CredentialBuilder.VERSION` exactly else backward compatibility code won't always work.
-  // This is because `BlindedCredential.toCredential` outputs a `Credential` which should be same as the one output
-  // by `CredentialBuilder.sign`
+  /** NOTE: This should match `CredentialBuilder.VERSION` exactly else backward compatibility code won't always work.
+  This is because `BlindedCredential.toCredential` outputs a `Credential` which should be same as the one output
+  by `CredentialBuilder.sign` */
   static VERSION = CredentialBuilder.VERSION;
 
   blindedCredReq: IBlindCredentialRequest;

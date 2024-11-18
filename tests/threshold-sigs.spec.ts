@@ -8,7 +8,7 @@ import {
   BBSSignatureParams,
   initializeWasm
 } from '../src';
-import { ParticipantG2 } from '../src/frost-dkg';
+import { FrostDkgParticipantG2 } from '../src/frost-dkg';
 import {
   BaseOTOutput,
   Challenges,
@@ -18,7 +18,7 @@ import {
   HashedKeys,
   Message1,
   Message2,
-  Participant as BaseOTParticipant,
+  BaseOTParticipant as BaseOTParticipant,
   ReceiverPublicKey,
   Responses,
   SenderPublicKey,
@@ -57,18 +57,18 @@ describe('Threshold BBS+ and BBS', () => {
     paramsBbsPlus = BBSPlusSignatureParamsG1.generate(messageCount, label);
     paramsBbs = BBSSignatureParams.generate(messageCount, label);
 
-    const keygenBbsPlus: ParticipantG2[] = [];
-    const keygenBbs: ParticipantG2[] = [];
+    const keygenBbsPlus: FrostDkgParticipantG2[] = [];
+    const keygenBbs: FrostDkgParticipantG2[] = [];
     const protocolIdBbsPlus = stringToBytes('DKG for BBS+');
     const protocolIdBbs = stringToBytes('DKG for BBS');
     for (let i = 1; i <= total; i++) {
-      keygenBbsPlus.push(new ParticipantG2(i, threshold, total, protocolIdBbsPlus));
-      keygenBbs.push(new ParticipantG2(i, threshold, total, protocolIdBbs));
+      keygenBbsPlus.push(new FrostDkgParticipantG2(i, threshold, total, protocolIdBbsPlus));
+      keygenBbs.push(new FrostDkgParticipantG2(i, threshold, total, protocolIdBbs));
     }
 
     // The public key in both BBS+ and BBS uses the elliptic curve point from signature params
-    const pkBaseBbsPlus = ParticipantG2.generatePublicKeyBaseFromBbsPlusParams(paramsBbsPlus);
-    const pkBaseBbs = ParticipantG2.generatePublicKeyBaseFromBbsParams(paramsBbs);
+    const pkBaseBbsPlus = FrostDkgParticipantG2.generatePublicKeyBaseFromBbsPlusParams(paramsBbsPlus);
+    const pkBaseBbs = FrostDkgParticipantG2.generatePublicKeyBaseFromBbsParams(paramsBbs);
 
     // All participants generate their secret key, public key and the threshold key
     const [s1, p1, t1] = runFrostKeygen(keygenBbsPlus, pkBaseBbsPlus);

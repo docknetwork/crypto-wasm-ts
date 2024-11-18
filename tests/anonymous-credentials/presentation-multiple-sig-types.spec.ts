@@ -30,13 +30,12 @@ import {
   BBDT16Credential,
   BBDT16_MAC_PARAMS_LABEL_BYTES,
   BBDT16CredentialBuilder,
-  BBDT16MacProofOfValidity, BBDT16MacPublicKeyG1, BBDT16KeypairG1
+  BBDT16MacPublicKeyG1, BBDT16KeypairG1
 } from '../../src';
 import { checkResult, stringToBytes } from '../utils';
 import { checkPresentationJson, getExampleSchema } from './utils';
 import { PederCommKey } from '../../src/ped-com';
-import { BBDT16MacParams, BBDT16MacSecretKey } from '../../src/bbdt16-mac';
-import { isKvac } from '../scheme';
+import { BBDT16MacParams, BBDT16MacSecretKey } from '../../src';
 
 describe.each([true, false])(
   `Presentation creation and verification with withSchemaRef=%s involving credentials with different signature schemes`,
@@ -119,8 +118,8 @@ describe.each([true, false])(
           checkResult(credential.verifyUsingSecretKey(sk));
 
           // Check using validity proof as well
-          const proof = new BBDT16MacProofOfValidity(credential.signature, skBbdt16, pkBbdt16, paramsBbdt16);
-          checkResult(credential.verifyUsingValidityProof(proof, pkBbdt16, paramsBbdt16));
+          const proof = credential.proofOfValidity(skBbdt16, pkBbdt16);
+          checkResult(credential.verifyUsingValidityProof(proof, pkBbdt16));
           checkResult(credential.verifyUsingValidityProof(proof, pkBbdt16));
         }
         if (sk instanceof BBSSecretKey) {

@@ -100,7 +100,6 @@ export class PSSignatureParams implements ISignatureParams {
    * Produces a multi message commitment for the given message using supplied blinding.
    * @param messages
    * @param h (from params)
-   * @param g
    * @param blinding
    */
   multiMessageCommitment(messages: Uint8Array[], h: Uint8Array[], blinding: Uint8Array): Uint8Array {

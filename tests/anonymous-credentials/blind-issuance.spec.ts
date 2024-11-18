@@ -304,6 +304,10 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
   })
 
   it('should be able to request a credential when some attributes are blinded', async () => {
+    // In practice, an issuer won't just sign a credential without knowing these attributes but this is just to test
+    // that nested attributes can be blinded as well
+
+    // These are the attributes holder wants to hide from issuer
     const blindedSubject = {
       sensitive: {
         email: 'john.smith@example.com',
@@ -316,8 +320,11 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
         }
       }
     };
+
+    // Holder creates the request to get a blinded credential
     const reqBuilder = newReqBuilder(schema1, blindedSubject);
 
+    // Holder proves some predicates about the blinded attributes. These will be demanded by the issuer
     const inEqualEmail = 'alice@example.com';
     const inEqualEmail2 = 'bob@example.com';
     const inEqualSsn = '1234';
@@ -327,6 +334,7 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
 
     const [req, blinding] = finalize(reqBuilder);
 
+    // Issuer checks that the desired conditions have been enforced.
     expect(req.presentation.spec.blindCredentialRequest.attributeInequalities).toEqual({
       credentialSubject: {
         sensitive: {
@@ -339,13 +347,17 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
       }
     });
 
-    checkResult(req.verify([]));
+    // Issuer verifies the blinded credential request
+    checkResult(req.verify(new Map()));
 
-    checkReqJson(req, []);
+    checkReqJson(req, new Map());
 
+    // This isn't checked by the issuer. Just testing that request contains the intended blinded attributes
     checkBlindedAttributes(req, blindedSubject);
 
+    // Issuer start building the blinded credential
     const blindedCredBuilder = req.generateBlindedCredentialBuilder();
+    // Issuer knows these attributes. These are called unblinded attributes
     blindedCredBuilder.subject = {
       fname: 'John',
       lname: 'Smith',
@@ -599,6 +611,10 @@ skipIfPS.each([true, false])(`${Scheme} Blind issuance of credentials with withS
         education: { university: { name: 'Example University', registrationNumber: 'XYZ-123-789' } }
       }
     });
+    expect(req.presentation.spec.blindCredentialRequest.blindedAttributeEqualities).toEqual([
+      ['credentialSubject.SSN', [[0, 'credentialSubject.sensitive.SSN']]],
+      ['credentialSubject.email', [[0, 'credentialSubject.sensitive.email']]]
+    ]);
     expect(req.presentation.spec.getStatus(0)).toEqual({
       id: 'dock:accumulator:accumId124',
       [TYPE_STR]: VB_ACCUMULATOR_22,

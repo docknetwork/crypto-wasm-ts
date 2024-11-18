@@ -61,6 +61,14 @@ export abstract class CredentialBuilderCommon extends Versioned {
     return this._credStatus;
   }
 
+  /**
+   * Set the `credentialStatus` property of the credential
+   * @param registryId - This is id of the revocation registry, like the unique id of the accumulator
+   * @param revCheck - whether its a membership or non-membership check. this depends on how revocation is implemented, i.e. if
+   * @param memberValue - Value present/absent in the revocation registry (accumulator for now) which corresponds to a credential.
+   * This should be unique per credential per registry.
+   * @param revType - revocation protocol being used like if accumulator, which accumulator
+   */
   setCredentialStatus(registryId: string, revCheck: string, memberValue: unknown, revType?: RevocationStatusProtocol) {
     const rType = revType ? revType : RevocationStatusProtocol.Vb22;
     if (rType == RevocationStatusProtocol.Vb22) {
@@ -104,6 +112,9 @@ export abstract class CredentialBuilderCommon extends Versioned {
     return v;
   }
 
+  /**
+   * Serialize the credential making it ready for signing
+   */
   serializeForSigning(): object {
     // Schema should be part of the credential signature to prevent the credential holder from convincing a verifier of a manipulated schema
     const s = {

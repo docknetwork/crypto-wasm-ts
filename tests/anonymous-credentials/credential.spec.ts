@@ -26,6 +26,7 @@ import {
   Credential,
   CredentialBuilder,
   Scheme,
+  Signature, CredentialProofType
 } from '../scheme';
 
 describe(`${Scheme} Credential signing and verification`, () => {
@@ -43,6 +44,9 @@ describe(`${Scheme} Credential signing and verification`, () => {
     }
     // Check that the credential JSON contains the schema in JSON-schema format
     checkSchemaFromJson(credJson[SCHEMA_STR], cred.schema);
+
+    expect(credJson.cryptoVersion).toEqual(CredentialBuilder.VERSION);
+    expect(credJson.proof.type).toEqual(CredentialProofType);
 
     // The recreated credential should verify
     const recreatedCred = Credential.fromJSON(credJson);
@@ -99,14 +103,19 @@ describe(`${Scheme} Credential signing and verification`, () => {
     const builder = new CredentialBuilder();
     builder.schema = credSchema;
 
+    // Fails because attribute `lastName` not in schema
     builder.subject = { fname: 'John', lastName: 'Smith' };
     expect(() => builder.sign(sk)).toThrow();
 
     builder.subject = { fname: 'John', lname: 'Smith' };
     const cred = builder.sign(sk);
     verifyCred(cred, pk, sk);
-    
+    expect(cred.version).toEqual(CredentialBuilder.VERSION);
+    expect(cred instanceof Credential).toEqual(true);
+    expect(cred.signature instanceof Signature).toEqual(true);
+
     const recreatedCred = checkJsonConvForCred(cred, sk, pk);
+    expect(recreatedCred instanceof Credential).toEqual(true);
     expect(recreatedCred.subject).toEqual({ fname: 'John', lname: 'Smith' });
 
     // The credential JSON should be valid as per the JSON schema
@@ -1332,6 +1341,8 @@ describe(`${Scheme} Credential signing and verification`, () => {
     expect(ns.schema[SUBJECT_STR]['someInteger']).toEqual({ type: 'integer', minimum: -100 })
     expect(ns.jsonSchema[SCHEMA_PROPS_STR][SUBJECT_STR][SCHEMA_PROPS_STR]['someNumber']).toEqual({ type: 'number', minimum: 0.01, multipleOf: 0.01 });
     expect(ns.jsonSchema[SCHEMA_PROPS_STR][SUBJECT_STR][SCHEMA_PROPS_STR]['someInteger']).toEqual({ type: 'integer', minimum: -100});
+
+    checkSigningVerificationAndSerialization(builder, sk, pk);
 
     // Schema specifies the type as numeric but credential uses a decimal value
     schema.properties[SUBJECT_STR] = {

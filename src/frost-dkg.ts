@@ -19,8 +19,14 @@ import { BBSPlusSignatureParamsG1 } from './bbs-plus';
 import { BBSSignatureParams } from './bbs';
 import { ThresholdPublicKey } from './threshold-sigs';
 
+/**
+ * Message to be sent in round 1
+ */
 export class Round1Msg extends BytearrayWrapper {}
 
+/**
+ * Share to be sent in round 2
+ */
 export class Share extends BytearrayWrapper {}
 
 /**
@@ -28,29 +34,29 @@ export class Share extends BytearrayWrapper {}
  * Each participant has a unique integer id > 0 and ids form a contiguous set, i.e. no gaps. Protocol has 2 rounds and
  * in each round each participant sends message to others
  */
-export abstract class Participant {
-  // Id of this participant
+export abstract class FrostDkgParticipant {
+  /** Id of this participant */
   readonly id: number;
   readonly threshold: number;
   readonly total: number;
-  // Id of this execution of the DKG. Use different ids in different protocol executions.
+  /** Id of this execution of the DKG. Use different ids in different protocol executions. */
   readonly protocolId: Uint8Array;
 
-  // Message to be sent in round 1
+  /** Message to be sent in round 1 */
   round1Msg?: Round1Msg;
-  // Shares to be sent in round 2
+  /** Shares to be sent in round 2 */
   shares?: Share[];
 
-  // Count of messages received from others in round 1
+  /** Count of messages received from others in round 1 */
   receivedFromInRound1Count?: number;
-  // Sender ids who sent message in round 2
+  /** Sender ids who sent message in round 2 */
   receivedFromInRound2?: Set<number>;
 
-  // The secret key of the participant
+  /** The secret key of the participant */
   secretKey?: Uint8Array;
-  // The public key of the participant
+  /** The public key of the participant */
   publicKey?: Uint8Array;
-  // The threshold public key and all participants will have the same public key
+  /** The threshold public key and all participants will have the same public key */
   thresholdPublicKey?: Uint8Array;
 
   private round1State?: Uint8Array;
@@ -205,7 +211,10 @@ export abstract class Participant {
   ) => Uint8Array;
 }
 
-export class ParticipantG1 extends Participant {
+/**
+ * Participant when the public key is in group G1
+ */
+export class FrostDkgParticipantG1 extends FrostDkgParticipant {
   protected startRound1Func(): (
     participantId: number,
     threshold: number,
@@ -247,7 +256,10 @@ export class ParticipantG1 extends Participant {
   }
 }
 
-export class ParticipantG2 extends Participant {
+/**
+ * Participant when the public key is in group G2
+ */
+export class FrostDkgParticipantG2 extends FrostDkgParticipant {
   protected startRound1Func(): (
     participantId: number,
     threshold: number,
