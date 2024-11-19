@@ -1313,4 +1313,4 @@ The Circom programs and corresponding R1CS and WASM files for the tests are [her
 
 The composite proof system is used to implement anonymous credentials. See [here](src/anonymous-credentials/) for details.
 
-[Slides](https://www.slideshare.net/SSIMeetup/anonymous-credentials-with-range-proofs-verifiable-encryption-zksnarks-circom-support-and-blinded-issuance-lovesh-harchandani) and [video](https://www.youtube.com/watch?v=e_E_6Fx5dro) for a presentation given at SSI meetup. Mostl of the presentation goes over the code, mostly anonymous credentials from this library.  
+[Slides](https://www.slideshare.net/SSIMeetup/anonymous-credentials-with-range-proofs-verifiable-encryption-zksnarks-circom-support-and-blinded-issuance-lovesh-harchandani) and [video](https://www.youtube.com/watch?v=e_E_6Fx5dro) for a presentation given at SSI meetup. Most of the presentation goes over the code, mostly anonymous credentials from this library.  

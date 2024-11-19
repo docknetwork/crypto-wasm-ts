@@ -63,9 +63,8 @@ import {
   getExampleSchema,
   getKeys,
   setupPrefilledAccum,
-  verifyCred, writeSerializedObject
+  verifyCred
 } from './utils';
-import exp = require('node:constants');
 
 // Setting it to false will make the test run the SNARK setups making tests quite slow
 const loadSnarkSetupFromFiles = true;
@@ -1893,8 +1892,6 @@ describe.each([true, false])(
       checkResult(pres1.verify([pk1, pk2, pk3], acc, pp));
 
       checkPresentationJson(pres1, [pk1, pk2, pk3], acc, pp);
-
-      writeSerializedObject(pres1, `${Scheme.toLowerCase()}-presentation-0.10.0.json`);
     });
 
     it('from a credential with subject as an array `credential5`', () => {
