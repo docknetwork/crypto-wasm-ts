@@ -21,7 +21,7 @@
     "test-ps": "TEST_SIGNATURE_SCHEME=PS yarn jest",
     "test-bbdt16": "TEST_SIGNATURE_SCHEME=BBDT16 yarn jest",
     "test-all": "yarn test-bbs && yarn test-bbs+ && yarn test-ps && yarn test-bbdt16",
-    "typedoc": "typedoc src --plugin typedoc-github-theme --out __typedoc__"
+    "typedoc": "typedoc src --out __typedoc__"
   },
   "license": "Apache-2.0",
   "private": false,
