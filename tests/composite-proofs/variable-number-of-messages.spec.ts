@@ -3,12 +3,12 @@ import { buildWitness, encodeMessageForSigningIfPS, Scheme } from '../scheme';
 import { checkResult, getParamsAndKeys, proverStmt, signAndVerify, stringToBytes, verifierStmt } from '../utils';
 
 describe(`Proving knowledge of 1 ${Scheme} signature where some of the attributes are null, i.e. not applicable`, () => {
-  it('works', async () => {
+  it('encodes messages with null values in a meaningful way', async () => {
     // Load the WASM module
     await initializeWasm();
 
-    // Messages to sign; the messages are attributes of a user like SSN (Social Security Number), name, email, etc. The attributes
-    // N/A don't apply to this user
+    // Messages to sign; the messages are attributes of a user like SSN (Social Security Number), name, email, etc.
+    // The attributes N/A don't apply to this user.
     const messages: Uint8Array[] = [];
     // Comma separated indices of N/A messages. An efficient way, especially in large number of messages, could be to use a bitvector
     // where an unset bit would indicate N/A
@@ -35,15 +35,15 @@ describe(`Proving knowledge of 1 ${Scheme} signature where some of the attribute
     const messageCount = messages.length;
     const label = stringToBytes('My sig params in g1');
 
-    // Signers keys
+    // Signer's keys
     const [params, sk, pk] = getParamsAndKeys(messageCount, label);
 
     // Signer knows all the messages and signs
     const [sig, result] = signAndVerify(messages, params, sk, pk, true);
     checkResult(result);
 
-    // User reveals his name, high school year and city to verifier, i.e. indices 2, 4 and 8. He also needs to reveal first
-    // attribute (index 0) which indicates which attributes don't apply to him.
+    // User reveals his name, high school year, and city to verifier, i.e. indices 2, 4 and 8. 
+    // He also needs to reveal first attribute (index 0) which indicates which attributes don't apply to him.
     const revealedMsgIndices: Set<number> = new Set();
     revealedMsgIndices.add(0);
     revealedMsgIndices.add(2);
@@ -62,7 +62,7 @@ describe(`Proving knowledge of 1 ${Scheme} signature where some of the attribute
     const statement1 = proverStmt(params, revealedMsgs, pk, true);
     const statements = new Statements(statement1);
 
-    // Both the prover (user) and verifier should independently construct this `ProofSpec` but only for testing, i am reusing it.
+    // Prover constructing their ProofSpec
     const proverProofSpec = new ProofSpec(statements, new MetaStatements());
     expect(proverProofSpec.isValid()).toEqual(true);
 
@@ -73,6 +73,7 @@ describe(`Proving knowledge of 1 ${Scheme} signature where some of the attribute
 
     const statement2 = verifierStmt(params, revealedMsgs, pk, true);
     const verifierStatements = new Statements(statement2);
+    // Verifier constructing their own ProofSpec
     const verifierProofSpec = new ProofSpec(verifierStatements, new MetaStatements(), []);
     expect(verifierProofSpec.isValid()).toEqual(true);
     checkResult(proof.verify(verifierProofSpec));
