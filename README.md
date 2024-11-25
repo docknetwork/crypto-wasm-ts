@@ -471,7 +471,8 @@ const pk: BBSPublicKey;
 // The signature
 const sig: BBSSignature = ...;
 
-// Prover prepares the attributes he wants to disclose, i.e. attribute index 2 and 4 (indexing is 0-based), and the ones he wants to hide. 
+// Prover prepares the attributes he wants to disclose, 
+// i.e. attribute index 2 and 4 (indexing is 0-based), and the ones he wants to hide. 
 const revealedMsgIndices: Set<number> = new Set();
 revealedMsgIndices.add(2);
 revealedMsgIndices.add(3);
@@ -492,18 +493,18 @@ Since there is only 1 kind of proof, i.e. the knowledge of a BBS signature and t
 ```ts
 import { Statement, Statements } from '@docknetwork/crypto-wasm-ts'
 
-// Create a BBS signature, true indicates that attributes/messages are arbitrary bytes and should be encoded first
+// Create a BBS signature, true indicates that attributes/messages are arbitrary bytes and should be encoded first.
 const statement1 = Statement.bbsSignatureProverConstantTime(paramsDeterministc, revealedMsgs, true);
 const statements = new Statements();
 statements.add(statement1);
 
-// Optional context of the proof, this can specify the reason why the proof was created or date of the proof, or self-attested attributes (as JSON string), etc
+// Optional context of the proof, this can specify the reason why the proof was created or date of the proof, or self-attested attributes (as JSON string), etc.
 const context = stringToBytes('some context');
 ```
 
 Once it has been established what needs to be proven, `ProofSpec` needs to be created which represents all the requirements. 
 Both the prover and verifier should independently construct this `ProofSpec`. Note that there are no `MetaStatements` as there are no 
-other conditions on the witnesses and thus its empty 
+other conditions on the witnesses and thus its empty.
 
 ```ts
 import { ProofSpec, MetaStatements } from '@docknetwork/crypto-wasm-ts';
@@ -531,8 +532,8 @@ const nonce = stringToBytes('a unique nonce given by verifier');
 const proof = CompositeProof.generate(proofSpec, witnesses, nonce);
 ```
 
-Verifier can now verify this proof. Note that the verifier does not and must not receive `ProofSpec` from prover, it 
-needs to generate on its own.
+Verifier can now verify this proof. Note that the verifier does not and must not receive `ProofSpec` from prover,  
+it needs to generate on its own.  
 
 ```ts
 console.assert(proof.verify(proofSpec, nonce).verified);
