@@ -1,0 +1,289 @@
+<!DOCTYPE html><html class="default" lang="en"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>META_SCHEMA_STR | @docknetwork/crypto-wasm-ts</title><meta name="description" content="Documentation for @docknetwork/crypto-wasm-ts"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><link rel="stylesheet" href="../assets/typedoc-github-style.css"/></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search" data-base=".."><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">@docknetwork/crypto-wasm-ts</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">@docknetwork/crypto-wasm-ts</a></li><li><a href="META_SCHEMA_STR.html">META_SCHEMA_STR</a></li></ul><h1>Variable META_SCHEMA_STR<code class="tsd-tag">Const</code></h1></div><div class="tsd-signature"><span class="tsd-kind-variable">META_<wbr/>SCHEMA_<wbr/>STR</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;$schema&quot;</span><span class="tsd-signature-symbol"> = &#39;$schema&#39;</span></div><div class="tsd-comment tsd-typography"><p>Rules</p>
+<ol>
+<li>Schema must define a top level <code>credentialSubject</code> field for the subject, and it can be an object or array of object</li>
+<li>Credential status if defined must be present as <code>credentialStatus</code> field.</li>
+<li>Any top level keys in the schema JSON can be created
+Some example schemas</li>
+</ol>
+<p>{
+'$schema': '<a href="http://json-schema.org/draft-07/schema#" target="_blank" class="external">http://json-schema.org/draft-07/schema#</a>',
+type: 'object',
+properties: {
+credentialSubject: {
+type: 'object',
+properties: {
+fname: { type: 'string' },
+lname: { type: 'string' },
+email: { type: 'string' },
+SSN: { '$ref': '#/definitions/encryptableString' },
+userId: { '$ref': '#/definitions/encryptableCompString' },
+country: { type: 'string' },
+city: { type: 'string' },
+timeOfBirth: { type: 'integer', minimum: 0 },
+height: { type: 'number', minimum: 0, multipleOf: 0.1 },
+weight: { type: 'number', minimum: 0, multipleOf: 0.1 },
+BMI: { type: 'number', minimum: 0, multipleOf: 0.01 },
+score: { type: 'number', minimum: -100, multipleOf: 0.1 },
+secret: { type: 'string' }
+}
+}
+},
+definitions: {
+encryptableString: { type: 'string' },
+encryptableCompString: { type: 'string' }
+}
+}</p>
+<p>{
+'$schema': '<a href="http://json-schema.org/draft-07/schema#" target="_blank" class="external">http://json-schema.org/draft-07/schema#</a>',
+type: 'object',
+properties: {
+credentialSubject: {
+type: 'object',
+properties: {
+fname: { type: 'string' },
+lname: { type: 'string' },
+sensitive: {
+type: 'object',
+properties: {
+very: {
+type: 'object',
+properties: { secret: { type: 'string' } }
+},
+email: { type: 'string' },
+phone: { type: 'string' },
+SSN: { '$ref': '#/definitions/encryptableString' }
+}
+},
+lessSensitive: {
+type: 'object',
+properties: {
+location: {
+type: 'object',
+properties: { country: { type: 'string' }, city: { type: 'string' } }
+},
+department: {
+type: 'object',
+properties: {
+name: { type: 'string' },
+location: {
+type: 'object',
+properties: {
+name: { type: 'string' },
+geo: {
+type: 'object',
+properties: {
+lat: {
+type: 'number',
+minimum: -90,
+multipleOf: 0.001
+},
+long: {
+type: 'number',
+minimum: -180,
+multipleOf: 0.001
+}
+}
+}
+}
+}
+}
+}
+}
+},
+rank: { type: 'integer', minimum: 0 }
+}
+},
+credentialStatus: {
+type: 'object',
+properties: {
+id: { type: 'string' },
+type: { type: 'string' },
+revocationCheck: { type: 'string' },
+revocationId: { type: 'string' }
+}
+}
+},
+definitions: {
+encryptableString: { type: 'string' },
+encryptableCompString: { type: 'string' }
+}
+}</p>
+<p>{
+'$schema': '<a href="http://json-schema.org/draft-07/schema#" target="_blank" class="external">http://json-schema.org/draft-07/schema#</a>',
+type: 'object',
+properties: {
+credentialSubject: {
+type: 'array',
+items: [
+{
+type: 'object',
+properties: {
+name: { type: 'string' },
+location: {
+type: 'object',
+properties: {
+name: { type: 'string' },
+geo: {
+type: 'object',
+properties: {
+lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+long: {
+type: 'number',
+minimum: -180,
+multipleOf: 0.001
+}
+}
+}
+}
+}
+}
+},
+{
+type: 'object',
+properties: {
+name: { type: 'string' },
+location: {
+type: 'object',
+properties: {
+name: { type: 'string' },
+geo: {
+type: 'object',
+properties: {
+lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+long: {
+type: 'number',
+minimum: -180,
+multipleOf: 0.001
+}
+}
+}
+}
+}
+}
+},
+{
+type: 'object',
+properties: {
+name: { type: 'string' },
+location: {
+type: 'object',
+properties: {
+name: { type: 'string' },
+geo: {
+type: 'object',
+properties: {
+lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+long: {
+type: 'number',
+minimum: -180,
+multipleOf: 0.001
+}
+}
+}
+}
+}
+}
+}
+]
+}
+},
+definitions: {
+encryptableString: { type: 'string' },
+encryptableCompString: { type: 'string' }
+}
+}</p>
+<p>{
+'$schema': '<a href="http://json-schema.org/draft-07/schema#" target="_blank" class="external">http://json-schema.org/draft-07/schema#</a>',
+type: 'object',
+properties: {
+credentialSubject: {
+type: 'array',
+items: [
+{
+type: 'object',
+properties: {
+name: { type: 'string' },
+location: {
+type: 'object',
+properties: {
+name: { type: 'string' },
+geo: {
+type: 'object',
+properties: {
+lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+long: {
+type: 'number',
+minimum: -180,
+multipleOf: 0.001
+}
+}
+}
+}
+}
+}
+},
+{
+type: 'object',
+properties: {
+name: { type: 'string' },
+location: {
+type: 'object',
+properties: {
+name: { type: 'string' },
+geo: {
+type: 'object',
+properties: {
+lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+long: {
+type: 'number',
+minimum: -180,
+multipleOf: 0.001
+}
+}
+}
+}
+}
+}
+},
+{
+type: 'object',
+properties: {
+name: { type: 'string' },
+location: {
+type: 'object',
+properties: {
+name: { type: 'string' },
+geo: {
+type: 'object',
+properties: {
+lat: { type: 'number', minimum: -90, multipleOf: 0.001 },
+long: {
+type: 'number',
+minimum: -180,
+multipleOf: 0.001
+}
+}
+}
+}
+}
+}
+}
+]
+},
+issuer: {
+type: 'object',
+properties: {
+name: { type: 'string' },
+desc: { type: 'string' },
+logo: { type: 'string' }
+}
+},
+issuanceDate: { type: 'integer', minimum: 0 },
+expirationDate: { type: 'integer', minimum: 0 }
+},
+definitions: {
+encryptableString: { type: 'string' },
+encryptableCompString: { type: 'string' }
+}
+}</p>
+</div><div class="tsd-comment tsd-typography"></div><aside class="tsd-sources"><ul><li>Defined in <a href="https://github.com/docknetwork/crypto-wasm-ts/blob/347a382ab2004a8b0fe8267bc2ebf0587c7cf879/src/anonymous-credentials/schema.ts#L322">anonymous-credentials/schema.ts:322</a></li></ul></aside></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="../assets/icons.svg#icon-1"></use></svg><span>@docknetwork/crypto-wasm-ts</span></a><ul class="tsd-small-nested-navigation" id="tsd-nav-container" data-base=".."><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a> with <a href="https://github.com/KillerJulian/typedoc-github-theme" target="_blank">typedoc-github-theme</a></p></footer><div class="overlay"></div></body></html>
