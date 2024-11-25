@@ -194,7 +194,12 @@ export class Statement {
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSSignatureVerifierStatementConstantTime(sigParams.value, publicKey.value, revealedMessages, encodeMessages);
+    return generatePoKBBSSignatureVerifierStatementConstantTime(
+      sigParams.value,
+      publicKey.value,
+      revealedMessages,
+      encodeMessages
+    );
   }
 
   /**
@@ -332,7 +337,11 @@ export class Statement {
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSSignatureProverStatementFromParamRefsConstantTime(sigParamsRef, revealedMessages, encodeMessages);
+    return generatePoKBBSSignatureProverStatementFromParamRefsConstantTime(
+      sigParamsRef,
+      revealedMessages,
+      encodeMessages
+    );
   }
 
   /**
@@ -406,7 +415,11 @@ export class Statement {
     revealedMessages: Map<number, Uint8Array>,
     encodeMessages: boolean
   ): Uint8Array {
-    return generatePoKBBSPlusSignatureProverStatementFromParamRefsConstantTime(sigParamsRef, revealedMessages, encodeMessages);
+    return generatePoKBBSPlusSignatureProverStatementFromParamRefsConstantTime(
+      sigParamsRef,
+      revealedMessages,
+      encodeMessages
+    );
   }
 
   /**

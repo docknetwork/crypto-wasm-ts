@@ -110,7 +110,9 @@ export function getRevealedAndUnrevealed(
   encoder: Encoder,
   useConstantTimeEncoding = true
 ): [Map<number, Uint8Array>, Map<number, Uint8Array>, object] {
-  const [names, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
+  const [names, encodedValues] = useConstantTimeEncoding
+    ? encoder.encodeMessageObjectConstantTime(messages)
+    : encoder.encodeMessageObject(messages);
   const revealedMsgs = new Map<number, Uint8Array>();
   const unrevealedMsgs = new Map<number, Uint8Array>();
   let found = 0;

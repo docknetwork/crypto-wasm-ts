@@ -20,7 +20,7 @@ import { Versioned } from './versioned';
  * Common fields and methods of `CredentialBuilder` and `BlindedCredentialBuilder`
  */
 export abstract class CredentialBuilderCommon extends Versioned {
-  // Each credential references the schema which is included as an attribute
+  /** Each credential references the schema which is included as an attribute */
   _schema?: CredentialSchema;
   _subject?: object | object[];
   _credStatus?: object;

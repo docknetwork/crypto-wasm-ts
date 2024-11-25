@@ -260,12 +260,7 @@ export class KBUniversalAccumulator extends Accumulator<KBUniversalAccumulatorVa
   ): KBUniversalMembershipWitnessUpdateInfo {
     const sk = this.getSecretKey(secretKey);
     return new KBUniversalMembershipWitnessUpdateInfo(
-      publicInfoForKBUniversalMemWitnessUpdate(
-        this.value.asInternalType,
-        additions,
-        removals,
-        sk.value
-      )
+      publicInfoForKBUniversalMemWitnessUpdate(this.value.asInternalType, additions, removals, sk.value)
     );
   }
 
@@ -276,12 +271,7 @@ export class KBUniversalAccumulator extends Accumulator<KBUniversalAccumulatorVa
   ): KBUniversalNonMembershipWitnessUpdateInfo {
     const sk = this.getSecretKey(secretKey);
     return new KBUniversalNonMembershipWitnessUpdateInfo(
-      publicInfoForKBUniversalNonMemWitnessUpdate(
-        this.value.asInternalType,
-        additions,
-        removals,
-        sk.value
-      )
+      publicInfoForKBUniversalNonMemWitnessUpdate(this.value.asInternalType, additions, removals, sk.value)
     );
   }
 
@@ -291,11 +281,7 @@ export class KBUniversalAccumulator extends Accumulator<KBUniversalAccumulatorVa
   ): KBUniversalNonMembershipWitnessUpdateInfo {
     const sk = this.getSecretKey(secretKey);
     return new KBUniversalNonMembershipWitnessUpdateInfo(
-      publicInfoForKBUniversalNonMemWitnessUpdateOnDomainExtension(
-        this.value.asInternalType,
-        newElements,
-        sk.value
-      )
+      publicInfoForKBUniversalNonMemWitnessUpdateOnDomainExtension(this.value.asInternalType, newElements, sk.value)
     );
   }
 
@@ -306,7 +292,7 @@ export class KBUniversalAccumulator extends Accumulator<KBUniversalAccumulatorVa
   ): [KBUniversalMembershipWitnessUpdateInfo, KBUniversalNonMembershipWitnessUpdateInfo] {
     const sk = this.getSecretKey(secretKey);
     const [m, nm] = publicInfoForBothKBUniversalWitnessUpdate(this.value.asInternalType, additions, removals, sk.value);
-    return [new KBUniversalMembershipWitnessUpdateInfo(m), new KBUniversalNonMembershipWitnessUpdateInfo(nm)]
+    return [new KBUniversalMembershipWitnessUpdateInfo(m), new KBUniversalNonMembershipWitnessUpdateInfo(nm)];
   }
 
   protected async checkBeforeAdd(element: Uint8Array, state?: IKBUniversalAccumulatorState) {

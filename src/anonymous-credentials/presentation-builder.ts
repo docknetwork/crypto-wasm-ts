@@ -40,7 +40,8 @@ import {
   PublicKey,
   REV_CHECK_STR,
   REV_ID_STR,
-  RevocationStatusProtocol, SCHEMA_FIELDS,
+  RevocationStatusProtocol,
+  SCHEMA_FIELDS,
   SCHEMA_STR,
   SignatureParams,
   STATUS_STR,
@@ -118,61 +119,61 @@ export interface UnboundedPseudonym {
 type Credential = BBSCredential | BBSPlusCredential | PSCredential | BBDT16Credential;
 
 export class PresentationBuilder extends Versioned {
-  // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
-  // underlying crypto changes.
+  /** Follows semver and must be updated accordingly when the logic of this class changes or the
+   underlying crypto changes. */
   static VERSION = '0.10.0';
 
-  // This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc
+  /** This can specify the reason why the proof was created, or date of the proof, or self-attested attributes (as JSON string), etc */
   _context?: string;
-  // To prevent replay attack
+  /** To prevent replay attack */
   _nonce?: Uint8Array;
   proof?: CompositeProof;
-  // Just for debugging
+  /** Just for debugging */
   private _proofSpec?: QuasiProofSpec;
   spec: PresentationSpecification;
 
-  // Each credential is referenced by its index in this array
+  /** Each credential is referenced by its index in this array */
   credentials: [Credential, PublicKey?][];
 
-  // Attributes revealed from each credential, key of the map is the credential index
+  /** Attributes revealed from each credential, key of the map is the credential index */
   revealedAttributes: Map<number, Set<string>>;
 
-  // Arguments required to calculate the attribute bound pseudonyms to be presented
+  /** Arguments required to calculate the attribute bound pseudonyms to be presented */
   boundedPseudonyms: BoundedPseudonym[];
 
-  // Arguments required to calculate the pseudonyms to be presented
+  /** Arguments required to calculate the pseudonyms to be presented */
   unboundedPseudonyms: UnboundedPseudonym[];
 
-  // Attributes proved equal in zero knowledge
+  /** Attributes proved equal in zero knowledge */
   attributeEqualities: AttributeEquality[];
 
-  // Attributes proved inequal to a public value in zero knowledge. An attribute can be proven inequal to any number of values
-  // The 2nd item, i.e. Uint8Array in the pair is the encoded value of the public value with which inequality is proved
+  /** Attributes proved inequal to a public value in zero knowledge. An attribute can be proven inequal to any number of values
+  The 2nd item, i.e. Uint8Array in the pair is the encoded value of the public value with which inequality is proved */
   attributeInequalities: Map<number, Map<string, [IPresentedAttributeInequality, Uint8Array][]>>;
 
-  // Each credential has only one accumulator for status
+  /**  Each credential has only one accumulator for status */
   credStatuses: Map<number, [AccumulatorWitnessType, AccumulatorValueType, AccumulatorPublicKey | undefined, object]>;
 
-  // Bounds on attribute. The key of the map is the credential index and for the inner map is the attribute and value of map
-  // denotes min, max, an identifier of the setup parameters for the protocol and the protocol name.
-  // An attribute can have many bound checks.
+  /** Bounds on attribute. The key of the map is the credential index and for the inner map is the attribute and value of map
+  denotes min, max, an identifier of the setup parameters for the protocol and the protocol name.
+  An attribute can have many bound checks. */
   bounds: Map<number, Map<string, IPresentedAttributeBound[]>>;
 
-  // Verifiable encryption of attributes. The key of the map is the credential index and for the inner map is the attribute and value of map
-  // denotes the setup parameters for the protocol and the protocol name. An attribute can have many verifiable encryptions.
+  /** Verifiable encryption of attributes. The key of the map is the credential index and for the inner map is the attribute and value of map
+  denotes the setup parameters for the protocol and the protocol name. An attribute can have many verifiable encryptions. */
   verifEnc: Map<number, Map<string, IPresentedAttributeVE[]>>;
 
-  // Predicates expressed as Circom programs over attributes of a single credential. For each credential, store a public, private variables, circuit id (used to fetch R1CS, WASM bytes) and attributes used in circuit
+  /** Predicates expressed as Circom programs over attributes of a single credential. For each credential, store a public, private variables, circuit id (used to fetch R1CS, WASM bytes) and attributes used in circuit */
   circomPredicates: Map<number, IProverCircomPredicate[]>;
 
-  // Predicates expressed as Circom programs over attributes of multiple credentials.
+  /**  Predicates expressed as Circom programs over attributes of multiple credentials. */
   circomPredicatesMultiCred: IProverCircomPredicateMultiCred[];
 
-  // Parameters for predicates like snark proving key for bound check, verifiable encryption, Circom program
+  /** Parameters for predicates like snark proving key for bound check, verifiable encryption, Circom program */
   predicateParams: Map<string, PredicateParamType>;
 
-  // Blinded credential request. Stores `SignatureParams` as appropriately sized params are created by the request
-  // builder already so not creating it again
+  /**  Blinded credential request. Stores `SignatureParams` as appropriately sized params are created by the request
+  builder already so not creating it again */
   blindCredReq?: {
     req: IBlindCredentialRequest;
     sigParams: SignatureParams;
@@ -180,7 +181,7 @@ export class PresentationBuilder extends Versioned {
     attrNameToIndex: Map<string, number>;
     flattenedSchema: FlattenedSchema;
     blinding?: Uint8Array;
-    // The 2nd item, i.e. Uint8Array in the pair is the encoded value of the public value with which inequality is proved
+    /**  The 2nd item, i.e. Uint8Array in the pair is the encoded value of the public value with which inequality is proved */
     attributeInequalities: Map<string, [IPresentedAttributeInequality, Uint8Array][]>;
     bounds: Map<string, IPresentedAttributeBound[]>;
     verifEnc: Map<string, IPresentedAttributeVE[]>;
@@ -422,7 +423,7 @@ export class PresentationBuilder extends Versioned {
    * Enforce a predicate written as a Circom program over a many credentials' attributes
    * @param circuitPrivateVars - Mapping of private variables from Circom program to pairs where each pair corresponds to a credential attribute.
    * The 1st item of the pair is the credential index and 2nd item is the attribute name in that credential
-   * @param circuitPublicVars
+   * @param circuitPublicVars - Mapping of public variables from Circom program to its corresponding values
    * @param circuitId
    * @param provingKeyId
    * @param r1cs
@@ -430,9 +431,7 @@ export class PresentationBuilder extends Versioned {
    * @param provingKey
    */
   enforceCircomPredicateAcrossMultipleCredentials(
-    // For each circuit private variable name, give its corresponding credential index and attribute name
     circuitPrivateVars: [string, [number, string] | [number, string][]][],
-    // For each circuit public variable name, give its corresponding values
     circuitPublicVars: [string, Uint8Array | Uint8Array[]][],
     circuitId: string,
     provingKeyId: string,
@@ -596,7 +595,10 @@ export class PresentationBuilder extends Versioned {
           extra: s[3]
         };
         // Keeping the encoding non-constant time to not break older credentials. This needs to be fixed
-        const encodedRevId = schema.encoder.encodeMessage(`${STATUS_STR}.${REV_ID_STR}`, cred.credentialStatus[REV_ID_STR]);
+        const encodedRevId = schema.encoder.encodeMessage(
+          `${STATUS_STR}.${REV_ID_STR}`,
+          cred.credentialStatus[REV_ID_STR]
+        );
         credStatusAux.push([
           credIndex,
           cred.credentialStatus[TYPE_STR],
@@ -616,7 +618,7 @@ export class PresentationBuilder extends Versioned {
           throw new Error(`Attribute ${attrName} value not found in unrevealed encoded attributes`);
         }
         encodedAttrs.set(nameIdx, val);
-        return val
+        return val;
       }
 
       // This is just for better error reporting (to be used later) and can be removed in favour of efficiency
@@ -973,7 +975,7 @@ export class PresentationBuilder extends Versioned {
 
       // Check if attributes are actually equal. This is just for better error reporting and can be removed in favour of efficiency.
       let attrValue: Uint8Array | undefined;
-      eql.forEach(([cId,], i) => {
+      eql.forEach(([cId], i) => {
         if (attrValue === undefined) {
           attrValue = unrevealedMsgsEncoded.get(cId)?.get(attrIndices[i]) as Uint8Array;
         } else {
@@ -981,7 +983,7 @@ export class PresentationBuilder extends Versioned {
             throw new Error(`Attribute equality not satisfied: ${eql.map((e) => `(${e[0]},${e[1]})`).join(', ')}`);
           }
         }
-      })
+      });
 
       metaStatements.addWitnessEquality(wq);
       this.spec.addAttributeEquality(eql);
@@ -1164,7 +1166,9 @@ export class PresentationBuilder extends Versioned {
         witnesses.add(Witness.pedersenCommitment(blindedAttributeValues));
         pedCommWitnessOffset = 0;
       } else if (sigParams instanceof BBSPlusSignatureParamsG1 || sigParams instanceof BBDT16MacParams) {
-        witnesses.add(Witness.pedersenCommitment([this.blindCredReq.blinding as Uint8Array, ...blindedAttributeValues]));
+        witnesses.add(
+          Witness.pedersenCommitment([this.blindCredReq.blinding as Uint8Array, ...blindedAttributeValues])
+        );
         pedCommWitnessOffset = 1;
       } else {
         throw new Error('Blind signing not yet implemented for PS');
@@ -1522,10 +1526,14 @@ export class PresentationBuilder extends Versioned {
         // Following is just for better error handling
         const decodedAttrVal = fromLeToBigInt(encodedAttrVal);
         if (transformedMin > decodedAttrVal) {
-          throw new Error(`Value of attribute ${name} is ${decodedAttrVal} and is lesser than the minimum ${transformedMin}`);
+          throw new Error(
+            `Value of attribute ${name} is ${decodedAttrVal} and is lesser than the minimum ${transformedMin}`
+          );
         }
         if (transformedMax <= decodedAttrVal) {
-          throw new Error(`Value of attribute ${name} is ${decodedAttrVal} and is greater than or equal to the maximum ${transformedMax}`);
+          throw new Error(
+            `Value of attribute ${name} is ${decodedAttrVal} and is greater than or equal to the maximum ${transformedMax}`
+          );
         }
 
         if (paramId === undefined) {

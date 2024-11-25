@@ -1,9 +1,12 @@
 import { BBSPlusSignatureParamsG1 } from './params';
 import {
-  bbsPlusBlindSignG1, bbsPlusBlindSignG1ConstantTime,
-  bbsPlusSignG1, bbsPlusSignG1ConstantTime,
+  bbsPlusBlindSignG1,
+  bbsPlusBlindSignG1ConstantTime,
+  bbsPlusSignG1,
+  bbsPlusSignG1ConstantTime,
   bbsPlusUnblindSigG1,
-  bbsPlusVerifyG1, bbsPlusVerifyG1ConstantTime,
+  bbsPlusVerifyG1,
+  bbsPlusVerifyG1ConstantTime,
   generateRandomFieldElement,
   VerifyResult
 } from 'crypto-wasm-new';
@@ -93,9 +96,11 @@ export class BBSPlusSignatureG1 extends MessageEncoder {
     publicKey: BBSPlusPublicKeyG1,
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
     encoder: Encoder,
-    useConstantTimeEncoding = true,
-): VerifyResult {
-    const [_, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
+    useConstantTimeEncoding = true
+  ): VerifyResult {
+    const [_, encodedValues] = useConstantTimeEncoding
+      ? encoder.encodeMessageObjectConstantTime(messages)
+      : encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
     const sigParams = BBSPlusSignatureParamsG1.getSigParamsOfRequiredSize(msgCount, labelOrParams);
@@ -137,7 +142,13 @@ export class BBSPlusBlindSignatureG1 extends MessageEncoder {
         } must be less than ${params.supportedMessageCount()} supported by the signature params`
       );
     }
-    const sig = bbsPlusBlindSignG1ConstantTime(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
+    const sig = bbsPlusBlindSignG1ConstantTime(
+      commitment,
+      revealedMessages,
+      secretKey.value,
+      params.value,
+      encodeMessages
+    );
     return new BBSPlusBlindSignatureG1(sig);
   }
 
