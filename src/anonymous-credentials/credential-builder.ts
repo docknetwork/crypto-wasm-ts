@@ -4,7 +4,10 @@ import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
   BBS_SIGNATURE_PARAMS_LABEL_BYTES,
   PS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BBDT16_MAC_PARAMS_LABEL_BYTES, CRYPTO_VERSION_STR, SUBJECT_STR, STATUS_STR
+  BBDT16_MAC_PARAMS_LABEL_BYTES,
+  CRYPTO_VERSION_STR,
+  SUBJECT_STR,
+  STATUS_STR
 } from './types-and-consts';
 import { BBSCredential, BBSPlusCredential, BBDT16Credential, Credential, PSCredential } from './credential';
 import { flatten } from 'flat';
@@ -23,9 +26,9 @@ import { CredentialBuilderCommon } from './credential-builder-common';
 import { BBDT16Mac, BBDT16MacParams, BBDT16MacSecretKey } from '../bbdt16-mac';
 
 export interface ISigningOpts {
-  // Whether the credential should contain exactly the same fields (object keys, array items, literals) as the
-  // schema. Providing false for it will result in generation of a new schema to match the credential and that schema
-  // will be embedded in the signed credential.
+  /** Whether the credential should contain exactly the same fields (object keys, array items, literals) as the
+  schema. Providing false for it will result in generation of a new schema to match the credential and that schema
+  will be embedded in the signed credential. */
   requireSameFieldsAsSchema: boolean;
 }
 
@@ -42,8 +45,8 @@ export abstract class CredentialBuilder<
   Signature,
   SignatureParams
 > extends CredentialBuilderCommon {
-  // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
-  // underlying crypto changes.
+  /** Follows semver and must be updated accordingly when the logic of this class changes or the
+  underlying crypto changes. */
   static VERSION = '0.7.0';
 
   _encodedAttributes?: { [key: string]: Uint8Array };

@@ -234,7 +234,11 @@ export class BBDT16Credential extends Credential<undefined, BBDT16Mac, BBDT16Mac
    * @param publicKey
    * @param signatureParams
    */
-  proofOfValidity(secretKey: BBDT16MacSecretKey, publicKey: BBDT16MacPublicKeyG1, signatureParams?: BBDT16MacParams): BBDT16MacProofOfValidity {
+  proofOfValidity(
+    secretKey: BBDT16MacSecretKey,
+    publicKey: BBDT16MacPublicKeyG1,
+    signatureParams?: BBDT16MacParams
+  ): BBDT16MacProofOfValidity {
     const p = signatureParams ?? BBDT16MacParams.getMacParamsOfRequiredSize(1, BBDT16_MAC_PARAMS_LABEL_BYTES);
     return new BBDT16MacProofOfValidity(this.signature, secretKey, publicKey, p);
   }

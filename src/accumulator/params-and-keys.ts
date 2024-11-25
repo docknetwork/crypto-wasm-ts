@@ -132,7 +132,12 @@ export class AccumulatorParamsForKeyedVerification extends BytearrayWrapper {
 }
 
 export class AccumulatorPublicKeyForKeyedVerification extends BytearrayWrapper {
-  static generate(secretKey: AccumulatorSecretKey, params: AccumulatorParamsForKeyedVerification): AccumulatorPublicKeyForKeyedVerification {
-    return new AccumulatorPublicKeyForKeyedVerification(generateAccumulatorPublicKeyForKeyedVerification(secretKey.value, params.value));
+  static generate(
+    secretKey: AccumulatorSecretKey,
+    params: AccumulatorParamsForKeyedVerification
+  ): AccumulatorPublicKeyForKeyedVerification {
+    return new AccumulatorPublicKeyForKeyedVerification(
+      generateAccumulatorPublicKeyForKeyedVerification(secretKey.value, params.value)
+    );
   }
 }

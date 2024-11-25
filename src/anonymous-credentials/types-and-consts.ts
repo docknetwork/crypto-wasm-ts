@@ -1,5 +1,5 @@
-import { KBUniversalMembershipWitness, KBUniversalNonMembershipWitness } from '../accumulator/kb-acccumulator-witness';
-import { KBUniversalAccumulatorValue } from '../accumulator/kb-universal-accumulator';
+import { KBUniversalMembershipWitness, KBUniversalNonMembershipWitness } from '../accumulator';
+import { KBUniversalAccumulatorValue } from '../accumulator';
 import { BBSPublicKey, BBSSecretKey, BBSSignature, BBSSignatureParams } from '../bbs';
 import { LegoProvingKey, LegoProvingKeyUncompressed } from '../legosnark';
 import {
@@ -37,12 +37,19 @@ import {
 import { PederCommKey, PederCommKeyUncompressed } from '../ped-com';
 import { BBDT16Mac, BBDT16MacParams, BBDT16MacSecretKey } from '../bbdt16-mac';
 
-export type StringOrObject = string | object;
-// Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation and the
-// second item is the fully qualified attribute name.
+/**
+ * Reference to an attribute of a credential. The first item of the pair is the credential index in the presentation and the
+ * second item is the fully qualified attribute name.
+ */
 export type AttributeRef = [number, string];
-// Array of references to attributes that are equal
+/**
+ * Array of references to attributes that are equal
+ */
 export type AttributeEquality = AttributeRef[];
+
+/**
+ * All possible predicate parameter types
+ */
 export type PredicateParamType =
   | LegoProvingKey
   | LegoProvingKeyUncompressed
@@ -61,6 +68,9 @@ export type PredicateParamType =
   | BoundCheckSmcWithKVVerifierParams
   | BoundCheckSmcWithKVVerifierParamsUncompressed;
 
+/**
+ * All possible bound check parameter types
+ */
 export type BoundCheckParamType =
   | LegoProvingKey
   | LegoProvingKeyUncompressed
@@ -73,14 +83,18 @@ export type BoundCheckParamType =
   | BoundCheckSmcWithKVVerifierParams
   | BoundCheckSmcWithKVVerifierParamsUncompressed;
 
-// The first item is the fully qualified attribute name
+/**
+ * The first item is the fully qualified attribute name
+ */
 export type BlindedAttributeEquality = [string, AttributeRef[]];
 
 export type DateType = Date | string;
 export type BoundType = number | DateType;
 
-// The 1st element is an array of all attribute names as flattened and sorted and 2nd element is an array of types of those attributes
-// in the same order
+/**
+ * The 1st element is an array of all attribute names as flattened and sorted and 2nd element is an array of types of those attributes
+ * in the same order
+ */
 export type FlattenedSchema = [string[], object[]];
 export type AttributeCiphertexts = { [key: string]: object | SaverCiphertext | SaverCiphertext[] };
 
@@ -94,13 +108,18 @@ export type SignatureParamsClass =
   | typeof PSSignatureParams
   | typeof BBDT16MacParams;
 
-// A parameter to verify the credential. This could be a public key or the secret key. Secret key is used to verify credentials
-// in situations where the issuer and verifier are the same entity (or share the secret key). Thus, such credentials are not
-// publicly verifiable
+/**
+ * A parameter to verify the credential. This could be a public key or the secret key. Secret key is used to verify credentials
+ * in situations where the issuer and verifier are the same entity (or share the secret key). Thus, such credentials are not
+ * publicly verifiable
+ */
 export type CredentialVerificationParam = PublicKey | BBDT16MacSecretKey;
-// A parameter to verify the proof of accumulator (non)membership in zero-knowledge. This could be a public key or the secret key.
-// Secret key is used to verify the proof in situations where the revocation authority and verifier are the same entity (or share the secret key).
-// Thus, such proofs are not publicly verifiable
+
+/**
+ * A parameter to verify the proof of accumulator (non)membership in zero-knowledge. This could be a public key or the secret key.
+ * Secret key is used to verify the proof in situations where the revocation authority and verifier are the same entity (or share the secret key).
+ * Thus, such proofs are not publicly verifiable
+ */
 export type AccumulatorVerificationParam = AccumulatorPublicKey | AccumulatorSecretKey;
 
 export type AccumulatorWitnessType =
@@ -151,45 +170,52 @@ export const SMC_KV = 'Set-membership-check-with-keyed-verification';
 export const UPROVE = 'UProve';
 
 const te = new TextEncoder();
-// Label used for generating BBS+ signature parameters
+/** Label used for generating BBS+ signature parameters */
 export const BBS_SIGNATURE_PARAMS_LABEL = 'DockBBSSignature2023';
 export const BBS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(BBS_SIGNATURE_PARAMS_LABEL);
 
-// Label used for generating BBS+ signature parameters
+/** Label used for generating BBS+ signature parameters */
 export const BBS_PLUS_SIGNATURE_PARAMS_LABEL = 'DockBBS+Signature2022';
 export const BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(BBS_PLUS_SIGNATURE_PARAMS_LABEL);
 
-// Label used for generating BBDT16 MAC parameters
+/** Label used for generating BBDT16 MAC parameters */
 export const BBDT16_MAC_PARAMS_LABEL = 'DockBBDT16MAC';
 export const BBDT16_MAC_PARAMS_LABEL_BYTES = te.encode(BBDT16_MAC_PARAMS_LABEL);
 
-// Label used for generating PS signature parameters
+/** Label used for generating PS signature parameters */
 export const PS_SIGNATURE_PARAMS_LABEL = 'DockPSSignature2023';
 export const PS_SIGNATURE_PARAMS_LABEL_BYTES = te.encode(PS_SIGNATURE_PARAMS_LABEL);
 
-// Label used for generating accumulator parameters
+/** Label used for generating accumulator parameters */
 export const ACCUMULATOR_PARAMS_LABEL = 'DockVBAccumulator2022';
 export const ACCUMULATOR_PARAMS_LABEL_BYTES = te.encode(ACCUMULATOR_PARAMS_LABEL);
 
-// Label used for generating accumulator proving key
+/** Label used for generating accumulator proving key */
 export const ACCUMULATOR_PROVING_KEY_LABEL = 'DockVBAccumulatorProvingKey2022';
 export const ACCUMULATOR_PROVING_KEY_LABEL_BYTES = te.encode(ACCUMULATOR_PROVING_KEY_LABEL);
 
-// Label used for generating SAVER encryption generators
+/** Label used for generating SAVER encryption generators */
 export const SAVER_ENCRYPTION_GENS_LABEL = 'DockSAVEREncryptionGens2022';
 export const SAVER_ENCRYPTION_GENS_LABEL_BYTES = te.encode(SAVER_ENCRYPTION_GENS_LABEL);
 
-// Label used for generating Bulletproofs++ generators
+/** Label used for generating Bulletproofs++ generators */
 export const BPP_GENS_LABEL = 'DockBulletproofs++2023';
 export const BPP_GENS_LABEL_BYTES = te.encode(BPP_GENS_LABEL);
 
-// Label used for generating commitment key for proving inequality
+/** Label used for generating commitment key for proving inequality */
 export const INEQUALITY_COMM_KEY_LABEL = 'DockInequalityDiscreteLog2023';
 export const INEQUALITY_COMM_KEY_LABEL_BYTES = te.encode(INEQUALITY_COMM_KEY_LABEL);
 
+/** Schema id for an embedded schema and when no explicit id is provided */
 export const EMPTY_SCHEMA_ID = 'data:application/json;charset=utf-8,';
 
-export const SCHEMA_FIELDS = [`${SCHEMA_STR}.${SCHEMA_DETAILS_STR}`, `${SCHEMA_STR}.${ID_STR}`, `${SCHEMA_STR}.${TYPE_STR}`, `${SCHEMA_STR}.${VERSION_STR}`];
+/** Mandatory fields of a schema when serialized */
+export const SCHEMA_FIELDS = [
+  `${SCHEMA_STR}.${SCHEMA_DETAILS_STR}`,
+  `${SCHEMA_STR}.${ID_STR}`,
+  `${SCHEMA_STR}.${TYPE_STR}`,
+  `${SCHEMA_STR}.${VERSION_STR}`
+];
 
 export function dockAccumulatorParams(): AccumulatorParams {
   return Accumulator.generateParams(ACCUMULATOR_PARAMS_LABEL_BYTES);
@@ -227,6 +253,9 @@ export function dockInequalityCommKeyUncompressed(): PederCommKeyUncompressed {
   return new PederCommKey(INEQUALITY_COMM_KEY_LABEL_BYTES).decompress();
 }
 
+/**
+ * Possible signature types
+ */
 export enum SignatureType {
   Bbs = BBS_CRED_PROOF_TYPE,
   BbsPlus = BBS_PLUS_CRED_PROOF_TYPE,
@@ -234,17 +263,26 @@ export enum SignatureType {
   Bbdt16 = BBDT16_CRED_PROOF_TYPE
 }
 
+/**
+ * Possible blind-signature types
+ */
 export enum BlindSignatureType {
   Bbs = BBS_BLINDED_CRED_PROOF_TYPE,
   BbsPlus = BBS_PLUS_BLINDED_CRED_PROOF_TYPE,
   Bbdt16 = BBDT16_BLINDED_CRED_PROOF_TYPE
 }
 
+/**
+ * Possible revocation protocols
+ */
 export enum RevocationStatusProtocol {
   Vb22 = VB_ACCUMULATOR_22,
   KbUni24 = KB_UNI_ACCUMULATOR_24
 }
 
+/**
+ * Possible bound check protocols
+ */
 export enum BoundCheckProtocol {
   Legogroth16 = LEGOGROTH16,
   Bpp = BPP,
@@ -252,6 +290,9 @@ export enum BoundCheckProtocol {
   SmcKV = SMC_KV
 }
 
+/**
+ * Possible verifiable encryption protocols
+ */
 export enum VerifiableEncryptionProtocol {
   Saver = SAVER
 }

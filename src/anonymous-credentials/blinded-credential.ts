@@ -51,14 +51,19 @@ export abstract class BlindedCredential<BlindSig> extends CredentialCommon<Blind
   }
 
   protected getUpdatedStatus(blindedStatus?: object): object | undefined {
-    let credStatus = this.credentialStatus ? _.cloneDeep(this.credentialStatus) as object : undefined;
+    let credStatus = this.credentialStatus ? (_.cloneDeep(this.credentialStatus) as object) : undefined;
     if (blindedStatus && credStatus) {
       credStatus = _.merge(credStatus, blindedStatus);
     }
     return credStatus;
   }
 
-  protected getUpdatedAttributes(proofType: string, blindedSubject: object | object[], blindedStatus?: object, blindedTopLevelFields?: Map<string, unknown>): [object | object[], object | undefined, Map<string, unknown>] {
+  protected getUpdatedAttributes(
+    proofType: string,
+    blindedSubject: object | object[],
+    blindedStatus?: object,
+    blindedTopLevelFields?: Map<string, unknown>
+  ): [object | object[], object | undefined, Map<string, unknown>] {
     const updatedSubject = this.getUpdatedSubject(blindedSubject);
     const credStatus = this.getUpdatedStatus(blindedStatus);
     const topLevelFields = this.updateProofType(proofType);
@@ -68,7 +73,7 @@ export abstract class BlindedCredential<BlindSig> extends CredentialCommon<Blind
         topLevelFields.set(k, v);
       }
     }
-    return [updatedSubject, credStatus, topLevelFields]
+    return [updatedSubject, credStatus, topLevelFields];
   }
 
   protected static validateProofType(typ: string) {
@@ -106,8 +111,17 @@ export class BBSBlindedCredential extends BlindedCredential<BBSBlindSignature> {
    * @param blindedTopLevelFields - Any top level fields that are blinded. Ensure that these are not set by the issuer.
    * @returns
    */
-  toCredential(blindedSubject: object | object[], blindedStatus?: object, blindedTopLevelFields?: Map<string, unknown>): BBSCredential {
-    const [updatedSubject, credStatus, topLevelFields] = this.getUpdatedAttributes(BBS_CRED_PROOF_TYPE, blindedSubject, blindedStatus, blindedTopLevelFields);
+  toCredential(
+    blindedSubject: object | object[],
+    blindedStatus?: object,
+    blindedTopLevelFields?: Map<string, unknown>
+  ): BBSCredential {
+    const [updatedSubject, credStatus, topLevelFields] = this.getUpdatedAttributes(
+      BBS_CRED_PROOF_TYPE,
+      blindedSubject,
+      blindedStatus,
+      blindedTopLevelFields
+    );
     return new BBSCredential(
       this.version,
       this.schema,
@@ -152,17 +166,20 @@ export class BBSPlusBlindedCredential extends BlindedCredential<BBSPlusBlindSign
    * @param blindedTopLevelFields - Any top level fields that are blinded. Ensure that these are not set by the issuer.
    * @returns
    */
-  toCredential(blindedSubject: object | object[], blinding: BBSPlusBlinding, blindedStatus?: object, blindedTopLevelFields?: Map<string, unknown>): BBSPlusCredential {
-    const [updatedSubject, credStatus, topLevelFields] = this.getUpdatedAttributes(BBS_PLUS_CRED_PROOF_TYPE, blindedSubject, blindedStatus, blindedTopLevelFields);
-    const unblindedSig = this.signature.unblind(blinding.value);
-    return new BBSPlusCredential(
-      this.version,
-      this.schema,
-      updatedSubject,
-      topLevelFields,
-      unblindedSig,
-      credStatus
+  toCredential(
+    blindedSubject: object | object[],
+    blinding: BBSPlusBlinding,
+    blindedStatus?: object,
+    blindedTopLevelFields?: Map<string, unknown>
+  ): BBSPlusCredential {
+    const [updatedSubject, credStatus, topLevelFields] = this.getUpdatedAttributes(
+      BBS_PLUS_CRED_PROOF_TYPE,
+      blindedSubject,
+      blindedStatus,
+      blindedTopLevelFields
     );
+    const unblindedSig = this.signature.unblind(blinding.value);
+    return new BBSPlusCredential(this.version, this.schema, updatedSubject, topLevelFields, unblindedSig, credStatus);
   }
 
   static fromJSON(j: object, proofValue?: string): BBSPlusBlindedCredential {
@@ -199,17 +216,20 @@ export class BBDT16BlindedCredential extends BlindedCredential<BBDT16BlindMac> {
    * @param blindedTopLevelFields - Any top level fields that are blinded. Ensure that these are not set by the issuer.
    * @returns
    */
-  toCredential(blindedSubject: object | object[], blinding: BBDT16Blinding, blindedStatus?: object, blindedTopLevelFields?: Map<string, unknown>): BBDT16Credential {
-    const [updatedSubject, credStatus, topLevelFields] = this.getUpdatedAttributes(BBDT16_CRED_PROOF_TYPE, blindedSubject, blindedStatus, blindedTopLevelFields);
-    const unblindedSig = this.signature.unblind(blinding.value);
-    return new BBDT16Credential(
-      this.version,
-      this.schema,
-      updatedSubject,
-      topLevelFields,
-      unblindedSig,
-      credStatus
+  toCredential(
+    blindedSubject: object | object[],
+    blinding: BBDT16Blinding,
+    blindedStatus?: object,
+    blindedTopLevelFields?: Map<string, unknown>
+  ): BBDT16Credential {
+    const [updatedSubject, credStatus, topLevelFields] = this.getUpdatedAttributes(
+      BBDT16_CRED_PROOF_TYPE,
+      blindedSubject,
+      blindedStatus,
+      blindedTopLevelFields
     );
+    const unblindedSig = this.signature.unblind(blinding.value);
+    return new BBDT16Credential(this.version, this.schema, updatedSubject, topLevelFields, unblindedSig, credStatus);
   }
 
   static fromJSON(j: object, proofValue?: string): BBDT16BlindedCredential {

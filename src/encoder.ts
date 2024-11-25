@@ -140,7 +140,12 @@ export class Encoder {
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    * @param encodingFunc
    */
-  private _encodeMessage(name: string, value: unknown, strict = false, encodingFunc: (value: Uint8Array) => Uint8Array): Uint8Array {
+  private _encodeMessage(
+    name: string,
+    value: unknown,
+    strict = false,
+    encodingFunc: (value: Uint8Array) => Uint8Array
+  ): Uint8Array {
     const encoder = this.encoders?.get(name) || this.defaultEncoder;
     if (encoder !== undefined) {
       if (typeof value === undefined) {
@@ -166,7 +171,11 @@ export class Encoder {
    * @param messages
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
-  private _encodeMessageObject(encodingFunc: (name: string, value: unknown, strict: boolean) => Uint8Array, messages: object, strict = false): [string[], Uint8Array[]] {
+  private _encodeMessageObject(
+    encodingFunc: (name: string, value: unknown, strict: boolean) => Uint8Array,
+    messages: object,
+    strict = false
+  ): [string[], Uint8Array[]] {
     const [names, values] = flattenObjectToKeyValuesList(messages);
     const encoded: Uint8Array[] = [];
     for (let i = 0; i < names.length; i++) {
@@ -183,7 +192,11 @@ export class Encoder {
    * @param messages
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
-  private _encodeMessageObjectAsObject(encodingFunc: (messages: object, strict: boolean) => [string[], Uint8Array[]], messages: object, strict = false): { [name: string]: Uint8Array } {
+  private _encodeMessageObjectAsObject(
+    encodingFunc: (messages: object, strict: boolean) => [string[], Uint8Array[]],
+    messages: object,
+    strict = false
+  ): { [name: string]: Uint8Array } {
     const [names, values] = encodingFunc.call(this, messages, strict);
 
     return Object.fromEntries(names.map((name, idx) => [name, values[idx]]));
@@ -197,7 +210,11 @@ export class Encoder {
    * @param messages
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
-  private _encodeMessageObjectAsMap(encodingFunc: (messages: object, strict: boolean) => [string[], Uint8Array[]], messages: object, strict = false): Map<string, Uint8Array> {
+  private _encodeMessageObjectAsMap(
+    encodingFunc: (messages: object, strict: boolean) => [string[], Uint8Array[]],
+    messages: object,
+    strict = false
+  ): Map<string, Uint8Array> {
     const [names, values] = encodingFunc.call(this, messages, strict);
 
     return new Map(names.map((name, idx) => [name, values[idx]]));
@@ -267,7 +284,7 @@ export class Encoder {
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
   encodeMessageObjectAsObject(messages: object, strict = false): { [name: string]: Uint8Array } {
-    return this._encodeMessageObjectAsObject(this.encodeMessageObject, messages, strict)
+    return this._encodeMessageObjectAsObject(this.encodeMessageObject, messages, strict);
   }
 
   /**
@@ -278,7 +295,7 @@ export class Encoder {
    * @param strict - If set to false and no appropriate encoder is found but the value is a bytearray, it will encode it using the built-in mechanism
    */
   encodeMessageObjectAsObjectConstantTime(messages: object, strict = false): { [name: string]: Uint8Array } {
-    return this._encodeMessageObjectAsObject(this.encodeMessageObjectConstantTime, messages, strict)
+    return this._encodeMessageObjectAsObject(this.encodeMessageObjectConstantTime, messages, strict);
   }
 
   /**
@@ -304,11 +321,11 @@ export class Encoder {
   }
 
   encodeDefault(value: unknown, strict = false): Uint8Array {
-    return this._encodeDefault(MessageEncoder.encodeMessageForSigning, value, strict)
+    return this._encodeDefault(MessageEncoder.encodeMessageForSigning, value, strict);
   }
 
   encodeDefaultConstantTime(value: unknown, strict = false): Uint8Array {
-    return this._encodeDefault(MessageEncoder.encodeMessageForSigningConstantTime, value, strict)
+    return this._encodeDefault(MessageEncoder.encodeMessageForSigningConstantTime, value, strict);
   }
 
   /**

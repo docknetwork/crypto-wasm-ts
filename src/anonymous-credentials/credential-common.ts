@@ -9,7 +9,7 @@ import { isEmptyObject } from '../util';
  * Common fields and methods of Credential and BlindedCredential
  */
 export abstract class CredentialCommon<Sig> extends Versioned {
-  // Each credential references the schema which is included as an attribute
+  /** Each credential references the schema which is included as an attribute */
   readonly schema: CredentialSchema;
   readonly subject: object | object[];
   readonly credentialStatus?: object;

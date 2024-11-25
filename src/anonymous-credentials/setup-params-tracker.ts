@@ -15,10 +15,10 @@ import {
 export class SetupParamsTracker {
   setupParams: SetupParam[];
 
-  // Param id to setupParams index map as `SetupParam` is created only once for a param
+  /** Param id to setupParams index map as `SetupParam` is created only once for a param */
   paramIdToSetupParamIdx: Map<string, number>;
 
-  // Indices in `setupParams` array for various static parameters
+  /** Indices in `setupParams` array for various static parameters */
   _accumParamsIdx?: number;
   _memPrkIdx?: number;
   _nonMemPrkIdx?: number;

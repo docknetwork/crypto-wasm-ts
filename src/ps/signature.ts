@@ -120,9 +120,11 @@ export class PSSignature extends MessageEncoder {
     publicKey: PSPublicKey,
     labelOrParams: Uint8Array | PSSignatureParams,
     encoder: Encoder,
-    useConstantTimeEncoding = true,
+    useConstantTimeEncoding = true
   ): VerifyResult {
-    const [_, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
+    const [_, encodedValues] = useConstantTimeEncoding
+      ? encoder.encodeMessageObjectConstantTime(messages)
+      : encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
     const sigParams = PSSignatureParams.getSigParamsOfRequiredSize(msgCount, labelOrParams);

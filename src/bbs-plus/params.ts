@@ -11,7 +11,8 @@ import {
   bbsPlusAdaptSigParamsG2ForMsgCount,
   bbsPlusCommitMsgsInG1,
   generateRandomFieldElement,
-  BbsPlusSigParams, bbsPlusCommitMsgsInG1ConstantTime
+  BbsPlusSigParams,
+  bbsPlusCommitMsgsInG1ConstantTime
 } from 'crypto-wasm-new';
 import { flattenMessageStructure, getSigParamsOfRequiredSize } from '../sign-verify-js-objs';
 import { ISignatureParams, MessageStructure } from '../types';

@@ -3,7 +3,8 @@ import { CredentialBuilderCommon } from './credential-builder-common';
 import { IBlindCredentialRequest } from './presentation-specification';
 import {
   BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
-  BBS_SIGNATURE_PARAMS_LABEL_BYTES, STATUS_STR,
+  BBS_SIGNATURE_PARAMS_LABEL_BYTES,
+  STATUS_STR,
   BBDT16_MAC_PARAMS_LABEL_BYTES
 } from './types-and-consts';
 import { BBSCredential, BBSPlusCredential, BBDT16Credential } from './credential';
@@ -36,9 +37,11 @@ export abstract class BlindedCredentialBuilder extends CredentialBuilderCommon {
     let knownAttributes = this.serializeForSigning();
     if (this.blindedCredReq.unBlindedAttributes !== undefined) {
       if (typeof this.blindedCredReq.unBlindedAttributes !== 'object') {
-        throw new Error(`Unblinded attributes were supposed to an object but found ${this.blindedCredReq.unBlindedAttributes}`)
+        throw new Error(
+          `Unblinded attributes were supposed to an object but found ${this.blindedCredReq.unBlindedAttributes}`
+        );
       }
-      knownAttributes = {...knownAttributes, ...this.blindedCredReq.unBlindedAttributes};
+      knownAttributes = { ...knownAttributes, ...this.blindedCredReq.unBlindedAttributes };
     }
     const encodedAttributes = new Map<number, Uint8Array>();
     Object.entries(schema.encoder.encodeMessageObjectAsObjectConstantTime(knownAttributes)).forEach(([name, value]) => {
@@ -50,12 +53,14 @@ export abstract class BlindedCredentialBuilder extends CredentialBuilderCommon {
   protected processUnBlindedAttributes() {
     if (this.blindedCredReq.unBlindedAttributes !== undefined) {
       if (typeof this.blindedCredReq.unBlindedAttributes !== 'object') {
-        throw new Error(`Unblinded attributes were supposed to an object but found ${this.blindedCredReq.unBlindedAttributes}`)
+        throw new Error(
+          `Unblinded attributes were supposed to an object but found ${this.blindedCredReq.unBlindedAttributes}`
+        );
       }
       for (const [name, value] of Object.entries(this.blindedCredReq.unBlindedAttributes)) {
         if (name === STATUS_STR) {
           if (this.credStatus !== undefined) {
-            throw new Error('credStatus was set by the signer when it was provided in request as well')
+            throw new Error('credStatus was set by the signer when it was provided in request as well');
           }
           this.credStatus = value;
         } else {

@@ -1,10 +1,5 @@
 import { BBSSignatureParams } from './params';
-import {
-  VerifyResult,
-  bbsSignConstantTime,
-  bbsVerifyConstantTime,
-  bbsBlindSignConstantTime
-} from 'crypto-wasm-new';
+import { VerifyResult, bbsSignConstantTime, bbsVerifyConstantTime, bbsBlindSignConstantTime } from 'crypto-wasm-new';
 import { BBSPublicKey, BBSSecretKey } from './keys';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { Encoder, MessageEncoder } from '../encoder';
@@ -94,9 +89,11 @@ export class BBSSignature extends MessageEncoder {
     publicKey: BBSPublicKey,
     labelOrParams: Uint8Array | BBSSignatureParams,
     encoder: Encoder,
-    useConstantTimeEncoding = true,
+    useConstantTimeEncoding = true
   ): VerifyResult {
-    const [_, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
+    const [_, encodedValues] = useConstantTimeEncoding
+      ? encoder.encodeMessageObjectConstantTime(messages)
+      : encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
     const sigParams = BBSSignatureParams.getSigParamsOfRequiredSize(msgCount, labelOrParams);

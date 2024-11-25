@@ -118,7 +118,11 @@ export class Witness {
     return generatePoKBDDT16MacWitness(mac.value, unrevealedMessages, encodeMessages);
   }
 
-  static bbdt16MacConstantTime(mac: BBDT16Mac, unrevealedMessages: Map<number, Uint8Array>, encodeMessages: boolean): Uint8Array {
+  static bbdt16MacConstantTime(
+    mac: BBDT16Mac,
+    unrevealedMessages: Map<number, Uint8Array>,
+    encodeMessages: boolean
+  ): Uint8Array {
     return generatePoKBDDT16MacWitnessConstantTime(mac.value, unrevealedMessages, encodeMessages);
   }
 

@@ -1,7 +1,8 @@
 import {
   publicInfoForWitnessUpdate,
   publicInfoForKBUniversalMemWitnessUpdate,
-  publicInfoForKBUniversalNonMemWitnessUpdate, publicInfoForKBUniversalNonMemWitnessUpdateOnDomainExtension
+  publicInfoForKBUniversalNonMemWitnessUpdate,
+  publicInfoForKBUniversalNonMemWitnessUpdateOnDomainExtension
 } from 'crypto-wasm-new';
 import { BytearrayWrapper } from '../bytearray-wrapper';
 import { fromLeToBigInt, jsonObjToUint8Array } from '../util';
@@ -42,6 +43,9 @@ export class VBWitnessUpdateInfo extends WitnessUpdateInfo {
   }
 }
 
+/**
+ * Public info published by the KB universal accumulator manager used to update membership witnesses after several additions and removals.
+ */
 export class KBUniversalMembershipWitnessUpdateInfo extends WitnessUpdateInfo {
   fromJSON(json: string): KBUniversalMembershipWitnessUpdateInfo {
     return new KBUniversalMembershipWitnessUpdateInfo(jsonObjToUint8Array(json));
@@ -146,9 +150,11 @@ export class KBUniversalWitnessUpdateInfo {
   toBytes(): Uint8Array {
     const memLength = this.mem ? this.mem.value.length : 0;
     if (memLength > KBUniversalWitnessUpdateInfo.maxLength) {
-      throw new Error(`Cannot support sizes greater than ${KBUniversalWitnessUpdateInfo.maxLength}`)
+      throw new Error(`Cannot support sizes greater than ${KBUniversalWitnessUpdateInfo.maxLength}`);
     }
-    const buf = Buffer.allocUnsafe(KBUniversalWitnessUpdateInfo.maxByteSize + memLength + (this.nonMem ? this.nonMem.value.length : 0));
+    const buf = Buffer.allocUnsafe(
+      KBUniversalWitnessUpdateInfo.maxByteSize + memLength + (this.nonMem ? this.nonMem.value.length : 0)
+    );
     // Write the byte size of membership witness update info in the first `maxByteSize` bytes in little-endian format
     buf.writeUIntLE(memLength, 0, KBUniversalWitnessUpdateInfo.maxByteSize);
     const merged = new Uint8Array(buf);
@@ -168,10 +174,18 @@ export class KBUniversalWitnessUpdateInfo {
   static fromBytes(bytes: Uint8Array): KBUniversalWitnessUpdateInfo {
     const memLength = fromLeToBigInt(bytes, KBUniversalWitnessUpdateInfo.maxByteSize);
     if (memLength > KBUniversalWitnessUpdateInfo.maxLength) {
-      throw new Error(`Cannot support sizes greater than ${KBUniversalWitnessUpdateInfo.maxLength}`)
+      throw new Error(`Cannot support sizes greater than ${KBUniversalWitnessUpdateInfo.maxLength}`);
     }
     // Create the update info if non-zero byte size found
-    const mem = memLength > 0 ? new KBUniversalMembershipWitnessUpdateInfo(bytes.slice(KBUniversalWitnessUpdateInfo.maxByteSize, KBUniversalWitnessUpdateInfo.maxByteSize + Number(memLength))) : undefined;
+    const mem =
+      memLength > 0
+        ? new KBUniversalMembershipWitnessUpdateInfo(
+            bytes.slice(
+              KBUniversalWitnessUpdateInfo.maxByteSize,
+              KBUniversalWitnessUpdateInfo.maxByteSize + Number(memLength)
+            )
+          )
+        : undefined;
     const nonMemVal = bytes.slice(KBUniversalWitnessUpdateInfo.maxByteSize + Number(memLength));
     const nonMem = nonMemVal.length > 0 ? new KBUniversalNonMembershipWitnessUpdateInfo(nonMemVal) : undefined;
     return new KBUniversalWitnessUpdateInfo(mem, nonMem);

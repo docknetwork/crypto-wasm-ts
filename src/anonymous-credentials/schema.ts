@@ -5,18 +5,23 @@ import { Versioned } from './versioned';
 import { EncodeFunc, Encoder } from '../encoder';
 import { isPositiveInteger } from '../util';
 import {
-  CRYPTO_VERSION_STR, EMPTY_SCHEMA_ID,
+  CRYPTO_VERSION_STR,
+  EMPTY_SCHEMA_ID,
   FlattenedSchema,
   FULL_SCHEMA_STR,
-  ID_STR, JSON_SCHEMA_STR,
+  ID_STR,
+  JSON_SCHEMA_STR,
   REV_CHECK_STR,
-  REV_ID_STR, SCHEMA_DETAILS_STR, SCHEMA_FIELDS,
+  REV_ID_STR,
+  SCHEMA_DETAILS_STR,
+  SCHEMA_FIELDS,
   SCHEMA_PROPS_STR,
   SCHEMA_STR,
   SCHEMA_TYPE_STR,
   STATUS_STR,
   SUBJECT_STR,
-  TYPE_STR, VERSION_STR
+  TYPE_STR,
+  VERSION_STR
 } from './types-and-consts';
 import { flattenTill2ndLastKey, isValueDate, isValueDateTime } from './util';
 import semver from 'semver/preload';
@@ -410,8 +415,8 @@ export interface ISchemaParsingOpts {
 }
 
 export const DefaultSchemaParsingOpts: ISchemaParsingOpts = {
-   useDefaults: false,
-  // Minimum value kept over a billion
+  useDefaults: false,
+  /** Minimum value kept over a billion */
   defaultMinimumInteger: -(Math.pow(2, 32) - 1),
   defaultMinimumDate: -(Math.pow(2, 44) - 1),
   defaultDecimalPlaces: 0
@@ -424,8 +429,8 @@ export interface ISchemaOverrides {
 export type CredVal = string | number | object | CredVal[];
 
 export class CredentialSchema extends Versioned {
-  // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
-  // underlying crypto changes.
+  /** Follows semver and must be updated accordingly when the logic of this class changes or the
+   underlying crypto changes. */
   static VERSION = '0.5.0';
 
   private static readonly STR_TYPE = 'string';
@@ -437,20 +442,23 @@ export class CredentialSchema extends Versioned {
   private static readonly NUM_TYPE = 'decimalNumber';
   private static readonly DATETIME_TYPE = 'date-time';
 
-  // CredentialBuilder subject/claims cannot have any of these names
+  /** CredentialBuilder subject/claims cannot have any of these names */
   static RESERVED_NAMES = new Set([CRYPTO_VERSION_STR, SCHEMA_STR, SUBJECT_STR, STATUS_STR]);
 
-  // Implicit fields for schema version < 0.4.0
+  /** Implicit fields for schema version < 0.4.0 */
   static OLD_IMPLICIT_FIELDS = { [CRYPTO_VERSION_STR]: { type: 'string' }, [SCHEMA_STR]: { type: 'string' } };
-  // Implicit fields for schema version >= 0.4.0
-  static IMPLICIT_FIELDS = { [CRYPTO_VERSION_STR]: { type: 'string' }, [SCHEMA_STR]: {
+  /** Implicit fields for schema version >= 0.4.0 */
+  static IMPLICIT_FIELDS = {
+    [CRYPTO_VERSION_STR]: { type: 'string' },
+    [SCHEMA_STR]: {
       [ID_STR]: { type: 'string' },
       [TYPE_STR]: { type: 'string' },
       [VERSION_STR]: { type: 'string' },
-      [SCHEMA_DETAILS_STR]: { type: 'string' },
-    } };
+      [SCHEMA_DETAILS_STR]: { type: 'string' }
+    }
+  };
 
-  // Custom definitions for JSON schema syntax
+  /** Custom definitions for JSON schema syntax */
   static JSON_SCHEMA_CUSTOM_DEFS = {
     encryptableString: {
       type: 'string'
@@ -460,8 +468,8 @@ export class CredentialSchema extends Versioned {
     }
   };
 
-  // Custom override definitions for JSON schema syntax
-  // any refs in the jsonschema that reference these will be overwritten
+  /** Custom override definitions for JSON schema syntax.
+  Any refs in the jsonschema that reference these will be overwritten */
   static JSON_SCHEMA_OVERRIDE_DEFS = {
     '#/definitions/encryptableString': {
       type: CredentialSchema.STR_REV_TYPE,
@@ -473,7 +481,7 @@ export class CredentialSchema extends Versioned {
     }
   };
 
-  // Keys to ignore from generic validation as they are already validated
+  /** Keys to ignore from generic validation as they are already validated */
   static IGNORE_GENERIC_VALIDATION = new Set([
     CRYPTO_VERSION_STR,
     SCHEMA_STR,
@@ -550,7 +558,6 @@ export class CredentialSchema extends Versioned {
       // For older version, a variable time message encoder was mistakenly used.
       // This is overriding the caller's intent
       ct = semver.gte(overrides.version, '0.5.0');
-
     } else {
       super(CredentialSchema.VERSION);
     }
@@ -567,7 +574,9 @@ export class CredentialSchema extends Versioned {
    * Initialize the encoder as per the internal representation of schema, i.e. `ISchema`
    */
   initEncoder(useConstantTimeEncoder = true) {
-    const defaultEncoder = useConstantTimeEncoder ? Encoder.defaultEncodeFuncConstantTime() : Encoder.defaultEncodeFunc();
+    const defaultEncoder = useConstantTimeEncoder
+      ? Encoder.defaultEncodeFuncConstantTime()
+      : Encoder.defaultEncodeFunc();
     const encoders = new Map<string, EncodeFunc>();
     const [names, values] = this.flatten();
     for (let i = 0; i < names.length; i++) {
@@ -613,7 +622,7 @@ export class CredentialSchema extends Versioned {
 
     // Overwrite encoder of status field to not break older credentials. This needs to be fixed at some point
     if (encoders.has(`${STATUS_STR}.${REV_ID_STR}`)) {
-      encoders.set(`${STATUS_STR}.${REV_ID_STR}`, Encoder.defaultEncodeFunc())
+      encoders.set(`${STATUS_STR}.${REV_ID_STR}`, Encoder.defaultEncodeFunc());
     }
 
     // Only supply default encoder if user requests to use defaults
@@ -817,7 +826,7 @@ export class CredentialSchema extends Versioned {
     };
     const details = {
       parsingOptions: this.parsingOptions,
-      [JSON_SCHEMA_STR]: this.jsonSchema,
+      [JSON_SCHEMA_STR]: this.jsonSchema
     };
     if (!this.hasEmbeddedJsonSchema()) {
       details[FULL_SCHEMA_STR] = this.fullJsonSchema;
@@ -1288,7 +1297,9 @@ export class CredentialSchema extends Versioned {
   }
 
   static flattenSchemaObj(schema: object, versionGte040 = true): FlattenedSchema {
-    return versionGte040 ? flattenTill2ndLastKey({ ...this.IMPLICIT_FIELDS, ...schema }) : flattenTill2ndLastKey({ ...this.OLD_IMPLICIT_FIELDS, ...schema });
+    return versionGte040
+      ? flattenTill2ndLastKey({ ...this.IMPLICIT_FIELDS, ...schema })
+      : flattenTill2ndLastKey({ ...this.OLD_IMPLICIT_FIELDS, ...schema });
   }
 
   /**
@@ -1308,7 +1319,14 @@ export class CredentialSchema extends Versioned {
     // For older version, a variable time message encoder was mistakenly used
     const useConstantTimeEncoder = semver.gte(schema.version, '0.5.0');
     if (schema.hasEmbeddedJsonSchema()) {
-      return new CredentialSchema(newJsonSchema, schema.parsingOptions, false, { version: schema.version }, undefined, useConstantTimeEncoder);
+      return new CredentialSchema(
+        newJsonSchema,
+        schema.parsingOptions,
+        false,
+        { version: schema.version },
+        undefined,
+        useConstantTimeEncoder
+      );
     } else {
       return new CredentialSchema(
         schema.jsonSchema,

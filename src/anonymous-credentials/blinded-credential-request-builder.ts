@@ -44,8 +44,10 @@ import {
   BlindSignatureType,
   BoundCheckParamType,
   BoundType,
-  ID_STR, MEM_CHECK_KV_STR,
-  MEM_CHECK_STR, NON_MEM_CHECK_KV_STR,
+  ID_STR,
+  MEM_CHECK_KV_STR,
+  MEM_CHECK_STR,
+  NON_MEM_CHECK_KV_STR,
   NON_MEM_CHECK_STR,
   PublicKey,
   REV_CHECK_STR,
@@ -64,43 +66,67 @@ type Credential = BBSCredential | BBSPlusCredential | PSCredential;
  * Creates a request for a blinded credential, i.e. where some of the attributes are not known to the signer
  */
 export abstract class BlindedCredentialRequestBuilder<SigParams> extends Versioned {
-  // NOTE: Follows semver and must be updated accordingly when the logic of this class changes or the
-  // underlying crypto changes.
+  /**
+   * Follows semver and must be updated accordingly when the logic of this class changes or the
+   * underlying crypto changes.
+   */
   static VERSION = '0.5.0';
 
-  // The schema of the whole (unblinded credential). This should include all attributes, i.e. blinded and unblinded
+  /**
+   * The schema of the whole (unblinded credential). This should include all attributes, i.e. blinded and unblinded
+   */
   _schema?: CredentialSchema;
 
-  // The attributes of the credential subject that will be blinded (hidden from the issuer)
+  /**
+   * The attributes of the credential subject that will be blinded (hidden from the issuer)
+   */
   _subjectToBlind?: object | object[];
 
-  // The credential status if blinded
+  /**
+   * The credential status if blinded
+   */
   _statusToBlind?: object;
 
-  // Any top level attributes to blind
+  /**
+   * Any top level attributes to blind
+   */
   _topLevelAttributesToBlind: Map<string, unknown>;
 
   protected sigParams?: SignatureParams;
 
-  // A blinded credential request will contain a presentation that will prove predicates about the credential attributes and blinded attributes.
+  /**
+   * A blinded credential request will contain a presentation that will prove predicates about the credential attributes and blinded attributes.
+   */
   presentationBuilder: PresentationBuilder;
 
-  // Equalities between blinded and credential attributes
+  /**
+   * Equalities between blinded and credential attributes
+   */
   attributeEqualities: BlindedAttributeEquality[];
 
-  // Attributes proved inequal to a public value in zero knowledge. An attribute can be proven inequal to any number of values
+  /**
+   * Attributes proved inequal to a public value in zero knowledge. An attribute can be proven inequal to any number of values
+   */
   attributeInequalities: Map<string, [IPresentedAttributeInequality, Uint8Array][]>;
 
-  // Bounds on blinded attributes
+  /**
+   * Bounds on blinded attributes
+   */
   bounds: Map<string, IPresentedAttributeBound[]>;
 
-  // Encryption of blinded attributes
+  /**
+   * Encryption of blinded attributes
+   */
   verifEnc: Map<string, IPresentedAttributeVE[]>;
 
-  // Circom predicates on blinded attributes
+  /**
+   * Circom predicates on blinded attributes
+   */
   circomPredicates: IProverCircomPredicate[];
 
-  // Pseudonyms on blinded and credential attributes
+  /**
+   * Pseudonyms on blinded and credential attributes
+   */
   boundedPseudonyms: IProverBoundedPseudonymInBlindedCredReq[];
 
   constructor() {
@@ -140,10 +166,12 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
    * @param memberValue - Only this will be blinded.
    * @param revType
    */
-  statusToBlind(registryId: string, revCheck: string, memberValue: unknown, revType= RevocationStatusProtocol.Vb22) {
+  statusToBlind(registryId: string, revCheck: string, memberValue: unknown, revType = RevocationStatusProtocol.Vb22) {
     if (revType === RevocationStatusProtocol.Vb22) {
       if (revCheck !== MEM_CHECK_STR && revCheck !== NON_MEM_CHECK_STR && revCheck !== MEM_CHECK_KV_STR) {
-        throw new Error(`Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} or ${MEM_CHECK_KV_STR} but was ${revCheck}`);
+        throw new Error(
+          `Revocation check should be either ${MEM_CHECK_STR} or ${NON_MEM_CHECK_STR} or ${MEM_CHECK_KV_STR} but was ${revCheck}`
+        );
       }
     }
     if (revType == RevocationStatusProtocol.KbUni24) {
@@ -519,9 +547,9 @@ export abstract class BlindedCredentialRequestBuilder<SigParams> extends Version
         [STATUS_STR]: {
           [TYPE_STR]: this._statusToBlind[TYPE_STR],
           [ID_STR]: this._statusToBlind[ID_STR],
-          [REV_CHECK_STR]: this._statusToBlind[REV_CHECK_STR],
+          [REV_CHECK_STR]: this._statusToBlind[REV_CHECK_STR]
         }
-      }
+      };
     }
 
     const blindedAttributes = unflatten(attributesWithoutVals) as object;

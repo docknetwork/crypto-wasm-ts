@@ -127,21 +127,23 @@ export class CompositeProof extends BytearrayWrapper {
     presVersionGt9 = true
   ): VerifyResult {
     const params = (setupParams ?? new Array<SetupParam>()).map((s) => s.value);
-    return presVersionGt9 ? verifyCompositeProofG1WithDeconstructedProofSpec(
-      this.value,
-      statements.values,
-      metaStatements.values,
-      params,
-      context,
-      nonce
-    ) : verifyCompositeProofG1WithDeconstructedProofSpecOld(
-      this.value,
-      statements.values,
-      metaStatements.values,
-      params,
-      context,
-      nonce
-    );
+    return presVersionGt9
+      ? verifyCompositeProofG1WithDeconstructedProofSpec(
+          this.value,
+          statements.values,
+          metaStatements.values,
+          params,
+          context,
+          nonce
+        )
+      : verifyCompositeProofG1WithDeconstructedProofSpecOld(
+          this.value,
+          statements.values,
+          metaStatements.values,
+          params,
+          context,
+          nonce
+        );
   }
 
   /**
@@ -150,10 +152,7 @@ export class CompositeProof extends BytearrayWrapper {
    */
   getKeyedProofs(): Map<
     number,
-    | BBDT16KeyedProof
-    | VBAccumMembershipKeyedProof
-    | KBUniAccumMembershipKeyedProof
-    | KBUniAccumNonMembershipKeyedProof
+    BBDT16KeyedProof | VBAccumMembershipKeyedProof | KBUniAccumMembershipKeyedProof | KBUniAccumNonMembershipKeyedProof
   > {
     const r = new Map<
       number,

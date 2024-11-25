@@ -7,7 +7,10 @@ import {
   bddt16UnblindMac,
   bddt16MacProofOfValidity,
   bddt16MacVerifyProofOfValidity,
-  VerifyResult, bddt16MacGenerateConstantTime, bddt16MacVerifyConstantTime, bddt16BlindMacGenerateConstantTime
+  VerifyResult,
+  bddt16MacGenerateConstantTime,
+  bddt16MacVerifyConstantTime,
+  bddt16BlindMacGenerateConstantTime
 } from 'crypto-wasm-new';
 import { MessageStructure, SignedMessages } from '../types';
 import { BBDT16MacParams } from './params';
@@ -121,7 +124,9 @@ export class BBDT16Mac extends MessageEncoder {
     encoder: Encoder,
     useConstantTimeEncoding = true
   ): VerifyResult {
-    const [_, encodedValues] = useConstantTimeEncoding ? encoder.encodeMessageObjectConstantTime(messages) : encoder.encodeMessageObject(messages);
+    const [_, encodedValues] = useConstantTimeEncoding
+      ? encoder.encodeMessageObjectConstantTime(messages)
+      : encoder.encodeMessageObject(messages);
     const msgCount = encodedValues.length;
 
     const sigParams = BBDT16MacParams.getMacParamsOfRequiredSize(msgCount, labelOrParams);
@@ -153,7 +158,13 @@ export class BBDT16BlindMac extends MessageEncoder {
         } must be less than ${params.supportedMessageCount()} supported by the MAC params`
       );
     }
-    const sig = bddt16BlindMacGenerateConstantTime(commitment, revealedMessages, secretKey.value, params.value, encodeMessages);
+    const sig = bddt16BlindMacGenerateConstantTime(
+      commitment,
+      revealedMessages,
+      secretKey.value,
+      params.value,
+      encodeMessages
+    );
     return new BBDT16BlindMac(sig);
   }
 

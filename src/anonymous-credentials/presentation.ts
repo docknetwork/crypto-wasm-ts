@@ -76,7 +76,8 @@ import {
   REV_CHECK_STR,
   REV_ID_STR,
   RevocationStatusProtocol,
-  SCHEMA_STR, SignatureParams,
+  SCHEMA_STR,
+  SignatureParams,
   SignatureType,
   STATUS_STR,
   TYPE_STR,
@@ -219,7 +220,9 @@ export class Presentation extends Versioned {
     for (let credIndex = 0; credIndex < this.spec.credentials.length; credIndex++) {
       const presentedCred = this.spec.credentials[credIndex];
       const credVersionGte6 = semver.gte(presentedCred.version, '0.6.0');
-      const presentedCredSchema = credVersionGte6 ? CredentialSchema.fromJSON(presentedCred.schema as object) : CredentialSchema.fromJSON(JSON.parse(presentedCred.schema as string));
+      const presentedCredSchema = credVersionGte6
+        ? CredentialSchema.fromJSON(presentedCred.schema as object)
+        : CredentialSchema.fromJSON(JSON.parse(presentedCred.schema as string));
       const flattenedSchema = presentedCredSchema.flatten();
       const numAttribs = flattenedSchema[0].length;
 
@@ -429,7 +432,7 @@ export class Presentation extends Versioned {
 
     if (this.spec.attributeEqualities !== undefined) {
       for (const eql of this.spec.attributeEqualities) {
-        const [wq, ] = createWitEq(eql, flattenedSchemas);
+        const [wq] = createWitEq(eql, flattenedSchemas);
         metaStatements.addWitnessEquality(wq);
       }
     }
@@ -757,9 +760,7 @@ export class Presentation extends Versioned {
           throw new Error(`Could not find keyed credential proof for credential index ${i}`);
         }
         if (!(proof instanceof BBDT16KeyedProof)) {
-          throw new Error(
-            `Unexpected keyed credential proof type ${proof.constructor.name} for credential index ${i}`
-          );
+          throw new Error(`Unexpected keyed credential proof type ${proof.constructor.name} for credential index ${i}`);
         }
         credP = {
           sigType: presentedCred.sigType,
@@ -877,12 +878,17 @@ export class Presentation extends Versioned {
     Object.entries(flatten(revealedRaw) as object).forEach(([k, v]) => {
       const i = flattenedNames.indexOf(k);
       if (i === -1) {
-        if (k.match(re) !== null && (v !== null && v !== undefined)) {
+        if (k.match(re) !== null && v !== null && v !== undefined) {
           // Was an array item that was not revealed
           throw new Error(`Attribute name ${k} not found in schema`);
         }
       } else {
-        encoded.set(i, useConstantTimeEncoding ? presentedCredSchema.encoder.encodeMessageConstantTime(k, v) : presentedCredSchema.encoder.encodeMessage(k, v));
+        encoded.set(
+          i,
+          useConstantTimeEncoding
+            ? presentedCredSchema.encoder.encodeMessageConstantTime(k, v)
+            : presentedCredSchema.encoder.encodeMessage(k, v)
+        );
       }
     });
     return encoded;
