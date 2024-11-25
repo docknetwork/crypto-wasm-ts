@@ -28,7 +28,7 @@ the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
       - [Terminology](#terminology)
       - [Examples](#examples)
         - [Selective disclosure](#selective-disclosure)
-        - [BBS signature over varying number of messages](#bbs-signature-over-varying-number-of-messages)
+        - [BBS signature over null-valued messages](#bbs-signatures-over-null-valued-messages)
         - [Multiple BBS signatures](#multiple-bbs-signatures)
         - [BBS signature together with accumulator membership](#bbs-signature-together-with-accumulator-membership)
         - [Getting a blind signature](#getting-a-blind-signature)
@@ -548,14 +548,18 @@ const verifierProofSpec = new ProofSpec(statements, ms, [], context);
 console.assert(proof.verify(verifierProofSpec, nonce).verified);
 ```
 
-##### BBS signatures over varying number of messages 
+##### BBS signatures over null-valued messages 
 
-The examples shown here have assumed that the number of messages for given signature params is fixed but that might not be always true. 
-An example is where some of the messages in the signature are null (like N/A) in certain signatures. Eg, when the messages are attributes
-in a credential that specifies the educational qualifications and institutes of a person, someone with a high school level education will 
-have N/A for attributes like university name, major, etc. One way to deal with it is to decide some sentinel value like 0 for all the N/A
-attributes and disclose those attributes while creating a proof. Other is to have certain attribute in the credential specify which attribute 
-indices that are N/A and always reveal this attribute. A complete example of the latter is shown in this [test](tests/composite-proofs/variable-number-of-messages.spec.ts).
+The examples above assumed all messages have values in them. However, in some cases, one or more attributes will be null within the credential.  
+An example in which some of the messages correspond to attributes with null values (e.g. N/A) is a education qualification credential of a person. Someone with a highschool-level education will 
+have N/A for attributes like university name, major, etc.
+
+One way to deal with this is to decide on some sentinel value like 0 or 'N/A' for all the null attributes
+and disclose those values to the verifier.  
+Another is to have a certain attribute (e.g. first message) in the credential specify which attribute 
+indices are null and always reveal this attribute.  
+A complete example of the latter is shown in this
+[test](tests/composite-proofs/variable-number-of-messages.spec.ts).
 
 ##### Multiple BBS signatures
 
