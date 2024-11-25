@@ -534,9 +534,18 @@ const proof = CompositeProof.generate(proofSpec, witnesses, nonce);
 
 Verifier can now verify this proof. Note that the verifier does not and must not receive `ProofSpec` from prover,  
 it needs to generate on its own.  
+Also, note the usage of `bbsSignatureVerifierConstantTime` instead.
 
 ```ts
-console.assert(proof.verify(proofSpec, nonce).verified);
+const statement1 = Statement.bbsSignatureVerifierConstantTime(sigParams, keyPair.publicKey, revealedMsgs, true);
+const statements = new Statements();
+statements.add(statement1);
+const context = stringToBytes('some context');
+
+const ms = new MetaStatements();
+const verifierProofSpec = new ProofSpec(statements, ms, [], context);
+
+console.assert(proof.verify(verifierProofSpec, nonce).verified);
 ```
 
 ##### BBS signatures over varying number of messages 
