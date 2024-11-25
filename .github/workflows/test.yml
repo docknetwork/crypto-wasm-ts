@@ -15,8 +15,8 @@ jobs:
         node-version: [18.x, 20.x]
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - run: yarn install --frozen-lockfile
@@ -31,8 +31,8 @@ jobs:
         node-version: [18.x, 20.x]
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - run: yarn install --frozen-lockfile
@@ -47,8 +47,8 @@ jobs:
         node-version: [18.x, 20.x]
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - run: yarn install --frozen-lockfile
@@ -63,8 +63,8 @@ jobs:
         node-version: [18.x, 20.x]
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - run: yarn install --frozen-lockfile
@@ -79,8 +79,8 @@ jobs:
         node-version: [18.x, 20.x ]
         os: [ ubuntu-latest ]
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - run: yarn install --frozen-lockfile
