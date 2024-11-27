@@ -462,7 +462,9 @@ to reveal his last name and city, but not any other attribute while proving that
 
 ```ts
 // The attributes, [SSN, first name, last name, email, city]
-const messages: Uint8Array[] = [...];
+const messages: Uint8Array[] = [
+  "230-95-4628", "Harry", "Potter", "harry@potter.com", "Little Whinging"
+].map(element => stringToBytes(element));
 
 // Public values
 const params: BBSSignatureParams;
@@ -475,17 +477,18 @@ const sig: BBSSignature = ...;
 // i.e. attribute index 2 and 4 (indexing is 0-based), and the ones he wants to hide. 
 const revealedMsgIndices: Set<number> = new Set();
 revealedMsgIndices.add(2);
-revealedMsgIndices.add(3);
+revealedMsgIndices.add(4);
 
 // revealedMsgs are the attributes disclosed to the verifier
 const revealedMsgs: Map<number, Uint8Array> = new Map();
 revealedMsgs.set(2, messages[2]);
-revealedMsgs.set(3, messages[3]);
+revealedMsgs.set(4, messages[4]);
 
 // unrevealedMsgs are the attributes hidden from the verifier
 const unrevealedMsgs: Map<number, Uint8Array> = new Map();
 unrevealedMsgs.set(0, messages[0]);
 unrevealedMsgs.set(1, messages[1]);
+unrevealedMsgs.set(1, messages[3]);
 ```
 
 Since there is only 1 kind of proof, i.e. the knowledge of a BBS signature and the signed attributes, there would be only 1 `Statement`. 
