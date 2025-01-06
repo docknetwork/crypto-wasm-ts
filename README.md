@@ -1,6 +1,6 @@
 # crypto-wasm-ts
 
-This repository is a Typescript interface to [Dock's Rust crypto library](https://github.com/docknetwork/crypto). It uses 
+This repository is a Typescript interface to [Dock Labs' Rust crypto library](https://github.com/docknetwork/crypto). It uses 
 the [WASM wrapper](https://github.com/docknetwork/crypto-wasm).
 
 ## Contents
