@@ -1246,7 +1246,7 @@ describe('Credential Schema', () => {
     const ctx9 = cs9.getJsonLdContext();
     expect(ctx9['@context'][0]).toEqual({ '@version': 1.1 });
     expect(ctx9['@context'][1]).toEqual({
-      dk: 'https://ld.dock.io/credentials#',
+      dk: 'https://ld.truvera.io/credentials#',
       credentialSchema: 'dk:credentialSchema',
       details: 'dk:details',
       id: 'dk:id',
@@ -1275,7 +1275,7 @@ describe('Credential Schema', () => {
     const ctx5 = cs5.getJsonLdContext();
     expect(ctx5['@context'][0]).toEqual({ '@version': 1.1 });
     expect(ctx5['@context'][1]).toEqual({
-      dk: 'https://ld.dock.io/credentials#',
+      dk: 'https://ld.truvera.io/credentials#',
       credentialSchema: 'dk:credentialSchema',
       cryptoVersion: 'dk:cryptoVersion',
       details: 'dk:details',
@@ -1315,7 +1315,7 @@ describe('Credential Schema', () => {
       '0': 'dk:0',
       '1': 'dk:1',
       '2': 'dk:2',
-      dk: 'https://ld.dock.io/credentials#',
+      dk: 'https://ld.truvera.io/credentials#',
       credentialSchema: 'dk:credentialSchema',
       details: 'dk:details',
       id: 'dk:id',

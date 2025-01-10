@@ -1100,7 +1100,7 @@ export class CredentialSchema extends Versioned {
     terms.add(CRYPTO_VERSION_STR);
 
     const ctx = {
-      dk: 'https://ld.dock.io/credentials#'
+      dk: 'https://ld.truvera.io/credentials#'
     };
 
     if (this.hasStatus()) {
