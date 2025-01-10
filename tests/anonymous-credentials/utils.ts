@@ -392,7 +392,7 @@ export function getExampleBuilder(num: number, nonEmbeddedSchemas?: IJsonSchema[
 
   const schema2 = {
     $schema: 'http://json-schema.org/draft-07/schema#',
-    $id: 'https://ld.dock.io/examples/resident-card-schema.json',
+    $id: 'https://ld.truvera.io/examples/resident-card-schema.json',
     title: 'Resident Card Example',
     type: 'object',
     properties: {
@@ -531,7 +531,7 @@ export function getExampleBuilder(num: number, nonEmbeddedSchemas?: IJsonSchema[
         '@context': [
           'https://www.w3.org/2018/credentials/v1',
           'https://w3id.org/citizenship/v1',
-          'https://ld.dock.io/security/bbs/v1'
+          'https://ld.truvera.io/security/bbs/v1'
         ],
         id: 'https://issuer.oidp.uscis.gov/credentials/83627465',
         type: ['VerifiableCredential', 'PermanentResidentCard'],

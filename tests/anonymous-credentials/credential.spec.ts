@@ -1194,7 +1194,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
 
       const fullJsonSchema9 = {
         $schema: 'http://json-schema.org/draft-07/schema#',
-        $id: 'https://ld.dock.io/examples/resident-card-schema.json',
+        $id: 'https://ld.truvera.io/examples/resident-card-schema.json',
         title: 'Resident Card Example',
         type: 'object',
         properties: {
