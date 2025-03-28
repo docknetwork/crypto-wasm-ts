@@ -117,7 +117,7 @@ Positive support only membership witnesses while universal support both membersh
 Creating non-membership witnesses is expensive however, and the cost depends on the number of members present in the accumulator.
 Both accumulators are owned by an accumulator manager who has the private key to the accumulator
 and only the owner can add or remove elements or create witnesses using the accumulator.  
-Accumulator allows proving membership of the member (or non-member) and the corresponding witness in zero knowledge meaning
+An accumulator allows proving membership of a member (or non-member) and the corresponding witness in zero knowledge, meaning
 a user in possession of an accumulator member (or non-member) and the witness can convince a verifier that he knows of an
 element present (or absent) in the accumulator without revealing the element or the witness. Note, the like merkle trees,
 witnesses (inclusion proof) are tied to the accumulated value (root) and need to be updated as accumulator changes.  
@@ -128,8 +128,8 @@ A typical use of accumulator looks like:
   reuse existing ones.
 - Accumulator manager creates a keypair and publishes the public key.
 - Accumulator manager initializes the accumulator and publishes the accumulator.
-- User requests an element to be added to the accumulator and the membership witness from the manager. The user could have
-  also requested a non-membership witness for an absent element.
+- User requests an element to be added to the accumulator, then requests the membership witness from the manager.
+  The user could have also requested a non-membership witness for an absent element.
 - Signer checks whether requested element is not already present (in his database) and adds the element to the
   accumulator if not already present. He publishes the new accumulator and creates a (non)membership witness and sends to the user.
 - User verifies the (non)membership using the element, the witness, the new accumulated value and the accumulator params and signer's public key.
@@ -309,25 +309,27 @@ implements `IAccumulatorState` interface.
 
 #### Updating the accumulator
 
-Elements can be added/removed one by one or in a batch. Before adding an element, it must be encoded to a field element. 
+Elements can be added/removed individually or in a batch. Before adding an element, it must be encoded to a field element. 
 Encoding a positive integer can be done using `encodePositiveNumberAsAccumulatorMember`, arbitrary bytes can be encoded as 
 `encodeBytesAsAccumulatorMember`.
 
   Adding 2 elements in the accumulator
   ```ts
+  import { InMemoryState } from '@docknetwork/crypto-wasm-ts';
+  
   const state = new InMemoryState();
   
   const e1 = Accumulator.encodePositiveNumberAsAccumulatorMember(101);
-  const bytes: Uint8Array = [...];
+  const bytes: Uint8Array = stringToBytes("Some ID");
   const e2 = Accumulator.encodeBytesAsAccumulatorMember(bytes);
   
-  await accumulator.add(e1, sk, state);
-  await accumulator.add(e2, sk, state);
+  await accumulator.add(e1, keypair.secretKey, state);
+  await accumulator.add(e2, keypair.secretKey, state);
   ```
   
   Removing an existing element
   ```ts
-  await accumulator.remove(e2, sk, state);
+  await accumulator.remove(e2, keypair.secretKey, state);
   ```
 
   Adding multiple elements in a batch
@@ -335,28 +337,28 @@ Encoding a positive integer can be done using `encodePositiveNumberAsAccumulator
   const e3 = Accumulator.encodePositiveNumberAsAccumulatorMember(103);
   const e4 = Accumulator.encodePositiveNumberAsAccumulatorMember(104);
   
-  await accumulator.addBatch([e3, e4], sk, state);
+  await accumulator.addBatch([e3, e4], keypair.secretKey, state);
   ```
 
   Adding and removing multiple elements in a batch
   ```ts
   // Elements to add
-  const additions: Uint8Array[] = [...];
+  const additions: Uint8Array[] = [e1, e2];
   // Elements to remove
-  const removals: Uint8Array[] = [...];
+  const removals: Uint8Array[] = [e3, e4];
   
-  await accumulator.addRemoveBatches(additions, removals, sk, state);
+  await accumulator.addRemoveBatches(additions, removals, keypair.secretKey, state);
   ```
 
 #### Generating witnesses
 
-Once an element is added to the accumulator by the manager, a witness is required to verify the membership. Also required 
-is the accumulator value when the witness was created, this value should be publicly available. 
+Once an element is added to the accumulator by the manager, a witness is required to verify the membership.
+Also required is the accumulator value when the witness was created, this value should be publicly available. 
 
   Generating a membership witness
   ```ts
   // Note that the secret key is needed to create the witness
-  const witness = await accumulator.membershipWitness(e4, sk, state)
+  const witness = await accumulator.membershipWitness(e4, keypair.secretKey, state)
   ```
 
   Verify the membership
@@ -380,10 +382,10 @@ help if the updates (additions, removals) are known.
   ```
 
   Update witness after a removal
-    ```ts
-    // Say element e1 was removed after the witness of e4 was created
-    witness.updatePostRemove(e1, e4, accumulator.accumulated);
-    ```
+  ```ts
+  // Say element e1 was removed after the witness of e4 was created
+  witness.updatePostRemove(e1, e4, accumulator.accumulated);
+  ```
 
 The above method of updating the witness by going over each update is slow. The manager can make this process more efficient 
 for all members by publishing a `WitnessUpdatePublicInfo` built using the updates to the older accumulator. All members can then 
@@ -399,10 +401,10 @@ use this public information to update their witnesses.
   const removals: Uint8Array[] = [...];
   
   // This will be published along with `additions` and `removals`
-  const witnessUpdInfo = WitnessUpdatePublicInfo.new(accumulator.accumulated, additions, removals, sk);
+  const witnessUpdateInfo = WitnessUpdatePublicInfo.new(accumulator.accumulated, additions, removals, keypair.secretKey);
   
   // Update the accumulator now
-  await accumulator.addRemoveBatches(additions, removals, sk, state);
+  await accumulator.addRemoveBatches(additions, removals, keypair.secretKey, state);
   ```
 
   The member can now fetch the update information and update as
