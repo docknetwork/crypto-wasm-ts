@@ -20,7 +20,8 @@ import {
   generateSetupParamForFieldElemVec,
   generateSetupParamForBppParams,
   generateSetupParamForSmcParams,
-  generateSetupParamForSmcParamsAndSk,
+  generateSetupParamForSmcParamsKV,
+  generateSetupParamForSmcParamsKVAndSk,
   generateSetupParamForBDDT16MacParameters
 } from 'crypto-wasm-new';
 import { BBSPlusPublicKeyG2, BBSPlusSignatureParamsG1 } from '../bbs-plus';
@@ -202,12 +203,20 @@ export class SetupParam extends BytearrayWrapper {
     return new SetupParam(generateSetupParamForSmcParams(params.value, true));
   }
 
-  static smcSetupParamsWithSk(params: BoundCheckSmcWithKVVerifierParams): SetupParam {
-    return new SetupParam(generateSetupParamForSmcParamsAndSk(params.value, false));
+  static smcSetupParamsKV(params: BoundCheckSmcParamsUncompressed): SetupParam {
+    return new SetupParam(generateSetupParamForSmcParamsKV(params.value, false));
   }
 
-  static smcSetupParamsWithSkUncompressed(params: BoundCheckSmcWithKVVerifierParamsUncompressed): SetupParam {
-    return new SetupParam(generateSetupParamForSmcParamsAndSk(params.value, true));
+  static smcSetupParamsKVUncompressed(params: BoundCheckSmcParamsUncompressed): SetupParam {
+    return new SetupParam(generateSetupParamForSmcParamsKV(params.value, true));
+  }
+
+  static smcSetupParamsKVWithSk(params: BoundCheckSmcWithKVVerifierParams): SetupParam {
+    return new SetupParam(generateSetupParamForSmcParamsKVAndSk(params.value, false));
+  }
+
+  static smcSetupParamsKVWithSkUncompressed(params: BoundCheckSmcWithKVVerifierParamsUncompressed): SetupParam {
+    return new SetupParam(generateSetupParamForSmcParamsKVAndSk(params.value, true));
   }
 
   static pedCommKeyG1(commKey: PederCommKey): SetupParam {

@@ -719,8 +719,8 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
 
   it('prove knowledge of 2 bounded messages from both signatures with different bounds for each message - using set membership check with keyed verification', () => {
     proveAndVerifyMultiple(
-      SetupParam.smcSetupParamsUncompressed,
-      SetupParam.smcSetupParamsWithSkUncompressed,
+      SetupParam.smcSetupParamsKVUncompressed,
+      SetupParam.smcSetupParamsKVWithSkUncompressed,
       Statement.boundCheckSmcWithKVProverFromSetupParamRefs,
       Witness.boundCheckSmcWithKV,
       Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs,
@@ -767,8 +767,8 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
 
   it('use bound check for proving earlier than or later than with timestamps - using set membership check with keyed verification', () => {
     boundsOnTimestamps(
-      SetupParam.smcSetupParamsUncompressed,
-      SetupParam.smcSetupParamsWithSkUncompressed,
+      SetupParam.smcSetupParamsKVUncompressed,
+      SetupParam.smcSetupParamsKVWithSkUncompressed,
       Statement.boundCheckSmcWithKVProverFromSetupParamRefs,
       Witness.boundCheckSmcWithKV,
       Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs,
@@ -815,8 +815,8 @@ describe(`Bound check of ${Scheme} signed messages`, () => {
 
   it('use bound check for negative or decimal bounds - using set membership check with keyed verification', () => {
     boundsOnNegativeAndDecimal(
-      SetupParam.smcSetupParamsUncompressed,
-      SetupParam.smcSetupParamsWithSkUncompressed,
+      SetupParam.smcSetupParamsKVUncompressed,
+      SetupParam.smcSetupParamsKVWithSkUncompressed,
       Statement.boundCheckSmcWithKVProverFromSetupParamRefs,
       Witness.boundCheckSmcWithKV,
       Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs,
