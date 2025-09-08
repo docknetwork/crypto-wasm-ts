@@ -4,8 +4,9 @@ import {
   boundCheckSmcSetup,
   decompressBppParams,
   decompressSmcParams,
+  decompressSmcParamsKV,
   boundCheckSmcWithKVSetup,
-  decompressSmcParamsAndSk
+  decompressSmcParamsKVAndSk
 } from 'crypto-wasm-new';
 import { LegoProvingKey } from '../legosnark';
 import { BytearrayWrapper } from '../bytearray-wrapper';
@@ -41,7 +42,7 @@ export function BoundCheckSmcWithKVSetup(
 /**
  * Uncompressed version of `BoundCheckBppParams`
  */
-export class BoundCheckBppParamsUncompressed extends BytearrayWrapper implements IUncompressed {}
+export class BoundCheckBppParamsUncompressed extends BytearrayWrapper implements IUncompressed { }
 
 /**
  * Setup params for verifying bounds of a message, i.e. range proof using Bulletproofs++
@@ -70,7 +71,7 @@ export class BoundCheckBppParams extends BytearrayWrapper implements ICompressed
 /**
  * Uncompressed version of `BoundCheckSmcParams`
  */
-export class BoundCheckSmcParamsUncompressed extends BytearrayWrapper implements IUncompressed {}
+export class BoundCheckSmcParamsUncompressed extends BytearrayWrapper implements IUncompressed { }
 
 /**
  * Setup params for verifying bounds of a message, i.e. range proof using set-membership check
@@ -98,24 +99,23 @@ export class BoundCheckSmcParams extends BytearrayWrapper implements ICompressed
 /**
  * Uncompressed version of `BoundCheckSmcWithKVVerifierParams`
  */
-export class BoundCheckSmcWithKVProverParamsUncompressed extends BytearrayWrapper implements IUncompressed {}
+export class BoundCheckSmcWithKVProverParamsUncompressed extends BytearrayWrapper implements IUncompressed { }
 
 /**
  * Params used by the prover for set-membership check based range proof with keyed verification
  */
 export class BoundCheckSmcWithKVProverParams
   extends BytearrayWrapper
-  implements ICompressed<BoundCheckSmcWithKVProverParamsUncompressed>
-{
+  implements ICompressed<BoundCheckSmcWithKVProverParamsUncompressed> {
   decompress(): BoundCheckSmcWithKVProverParamsUncompressed {
-    return new BoundCheckSmcWithKVProverParamsUncompressed(decompressSmcParams(this.value));
+    return new BoundCheckSmcWithKVProverParamsUncompressed(decompressSmcParamsKV(this.value));
   }
 }
 
 /**
  * Uncompressed version of `BoundCheckSmcWithKVVerifierParams`
  */
-export class BoundCheckSmcWithKVVerifierParamsUncompressed extends BytearrayWrapper implements IUncompressed {}
+export class BoundCheckSmcWithKVVerifierParamsUncompressed extends BytearrayWrapper implements IUncompressed { }
 
 /**
  * Params used by the verifier for set-membership check based range proof with keyed verification. The verifier should not share these
@@ -123,9 +123,8 @@ export class BoundCheckSmcWithKVVerifierParamsUncompressed extends BytearrayWrap
  */
 export class BoundCheckSmcWithKVVerifierParams
   extends BytearrayWrapper
-  implements ICompressed<BoundCheckSmcWithKVVerifierParamsUncompressed>
-{
+  implements ICompressed<BoundCheckSmcWithKVVerifierParamsUncompressed> {
   decompress(): BoundCheckSmcWithKVVerifierParamsUncompressed {
-    return new BoundCheckSmcWithKVVerifierParamsUncompressed(decompressSmcParamsAndSk(this.value));
+    return new BoundCheckSmcWithKVVerifierParamsUncompressed(decompressSmcParamsKVAndSk(this.value));
   }
 }

@@ -1434,11 +1434,11 @@ export class Presentation extends Versioned {
   ) {
     if (param instanceof BoundCheckSmcWithKVVerifierParams) {
       if (!setupParamsTrk.isTrackingParam(paramId)) {
-        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsWithSk(param));
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsKVWithSk(param));
       }
     } else if (param instanceof BoundCheckSmcWithKVVerifierParamsUncompressed) {
       if (!setupParamsTrk.isTrackingParam(paramId)) {
-        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsWithSkUncompressed(param));
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsKVWithSkUncompressed(param));
       }
     } else {
       throw new Error(

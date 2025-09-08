@@ -508,8 +508,8 @@ describe(`${Scheme} Range proof using LegoGroth16`, () => {
 
   it('signing and proof of knowledge of signatures and range proofs - using set membership check with keyed verification', () => {
     check(
-      SetupParam.smcSetupParamsUncompressed,
-      SetupParam.smcSetupParamsWithSkUncompressed,
+      SetupParam.smcSetupParamsKVUncompressed,
+      SetupParam.smcSetupParamsKVWithSkUncompressed,
       Statement.boundCheckSmcWithKVProverFromSetupParamRefs,
       Witness.boundCheckSmcWithKV,
       Statement.boundCheckSmcWithKVVerifierFromSetupParamRefs,

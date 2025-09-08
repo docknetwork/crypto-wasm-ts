@@ -1442,11 +1442,11 @@ export class PresentationBuilder extends Versioned {
   ) {
     if (param instanceof BoundCheckSmcWithKVProverParams) {
       if (!setupParamsTrk.isTrackingParam(paramId)) {
-        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParams(param));
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsKV(param));
       }
     } else if (param instanceof BoundCheckSmcWithKVProverParamsUncompressed) {
       if (!setupParamsTrk.isTrackingParam(paramId)) {
-        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsUncompressed(param));
+        setupParamsTrk.addForParamId(paramId, SetupParam.smcSetupParamsKVUncompressed(param));
       }
     } else {
       throw new Error(
