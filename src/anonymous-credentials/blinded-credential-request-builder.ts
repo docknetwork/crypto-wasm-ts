@@ -59,6 +59,7 @@ import {
   TYPE_STR
 } from './types-and-consts';
 import { Versioned } from './versioned';
+import { ISignatureParams } from '../types'
 
 type Credential = BBSCredential | BBSPlusCredential | PSCredential;
 
@@ -698,8 +699,8 @@ export class BBDT16BlindedCredentialRequestBuilder extends BlindedCredentialRequ
   }
 }
 
-export class BBSPlusBlinding extends BytearrayWrapper {}
+export class BBSPlusBlinding extends BytearrayWrapper { }
 
-export class BBDT16Blinding extends BytearrayWrapper {}
+export class BBDT16Blinding extends BytearrayWrapper { }
 
 // TODO: Add for PS as well

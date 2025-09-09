@@ -59,6 +59,7 @@ import {
   isBBS,
   isPS, isKvac, CredentialBuilder
 } from '../scheme';
+import { ISignatureParams } from '../../src/types';
 
 import {
   checkCiphertext,
@@ -97,7 +98,7 @@ function finalize(reqBuilder) {
 function newReqBuilder(
   schema: CredentialSchema,
   subjectToBlind: object
-): BlindedCredentialRequestBuilder<SignatureParams> {
+): BlindedCredentialRequestBuilder<ISignatureParams> {
   const reqBuilder = isKvac() ? new BBDT16BlindedCredentialRequestBuilder() : isBBS() ? new BBSBlindedCredentialRequestBuilder() : new BBSPlusBlindedCredentialRequestBuilder();
   reqBuilder.schema = schema;
   reqBuilder.subjectToBlind = subjectToBlind;
@@ -139,7 +140,7 @@ function checkBlindedCredJson(blindedCred: BlindedCredential<any>, sk: SecretKey
   // @ts-ignore
   const cred = isBBS()
     ? // @ts-ignore
-      recreatedCred.toCredential(blindedSubject, blindedStatus, blindedTopLevelFields)
+    recreatedCred.toCredential(blindedSubject, blindedStatus, blindedTopLevelFields)
     // @ts-ignore
     : recreatedCred.toCredential(blindedSubject, blinding, blindedStatus, blindedTopLevelFields);
   verifyCred(cred, pk, sk);
