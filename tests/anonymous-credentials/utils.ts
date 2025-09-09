@@ -362,7 +362,7 @@ export function getExampleSchema(num): IEmbeddedJsonSchema {
       schema.properties['validUntil'] = { type: 'integer', minimum: 0 };
       break;
     default:
-      throw Error(`Cannot find example schema number ${num}`);
+      throw new Error(`Cannot find example schema number ${num}`);
   }
   return schema;
 }
