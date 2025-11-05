@@ -24,7 +24,6 @@
     "typedoc": "typedoc src --out __typedoc__"
   },
   "license": "Apache-2.0",
-  "private": false,
   "files": [
     "lib/*"
   ],
@@ -35,7 +34,7 @@
     "@types/flat": "^5.0.2",
     "@types/lodash": "^4.14.195",
     "bs58": "5.0.0",
-    "crypto-wasm-new": "npm:@docknetwork/crypto-wasm@0.34.0",
+    "crypto-wasm-new": "portal:../crypto-wasm",
     "flat": "^5.0.2",
     "json-pointer": "^0.6.2",
     "json-stringify-deterministic": "^1.0.11",
@@ -65,5 +64,6 @@
     "ts-node": "^10.9.1",
     "typedoc": "^0.26.11",
     "typescript": "5.3.3"
-  }
+  },
+  "packageManager": "yarn@4.10.3"
 }
