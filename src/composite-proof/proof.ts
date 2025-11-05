@@ -6,7 +6,6 @@ import {
   saverGetCiphertextsFromProof,
   verifyCompositeProofG1,
   verifyCompositeProofG1WithDeconstructedProofSpec,
-  verifyCompositeProofG1WithDeconstructedProofSpecOld,
   VerifyResult
 } from 'crypto-wasm-new';
 import {
@@ -72,14 +71,13 @@ export class CompositeProof extends BytearrayWrapper {
    * @param proofSpec
    * @param nonce
    */
-  verifyUsingQuasiProofSpec(proofSpec: QuasiProofSpec, nonce?: Uint8Array, presVersionGt9 = true): VerifyResult {
+  verifyUsingQuasiProofSpec(proofSpec: QuasiProofSpec, nonce?: Uint8Array): VerifyResult {
     return this.verifyWithDeconstructedProofSpec(
       proofSpec.statements,
       proofSpec.metaStatements,
       proofSpec.setupParams,
       proofSpec.context,
       nonce,
-      presVersionGt9
     );
   }
 
@@ -124,26 +122,16 @@ export class CompositeProof extends BytearrayWrapper {
     setupParams?: SetupParam[],
     context?: Uint8Array,
     nonce?: Uint8Array,
-    presVersionGt9 = true
   ): VerifyResult {
     const params = (setupParams ?? new Array<SetupParam>()).map((s) => s.value);
-    return presVersionGt9
-      ? verifyCompositeProofG1WithDeconstructedProofSpec(
-          this.value,
-          statements.values,
-          metaStatements.values,
-          params,
-          context,
-          nonce
-        )
-      : verifyCompositeProofG1WithDeconstructedProofSpecOld(
-          this.value,
-          statements.values,
-          metaStatements.values,
-          params,
-          context,
-          nonce
-        );
+    return verifyCompositeProofG1WithDeconstructedProofSpec(
+      this.value,
+      statements.values,
+      metaStatements.values,
+      params,
+      context,
+      nonce
+    );
   }
 
   /**

@@ -1,11 +1,9 @@
 import * as fs from 'fs';
-import { generateFieldElementFromNumber } from 'crypto-wasm-new';
-import { Credential, isKvac, Presentation, PresentationBuilder, PublicKey, Scheme, SecretKey } from '../scheme';
-import { checkResult, getWasmBytes, parseR1CSFile, stringToBytes } from '../utils';
+import { Credential, isKvac, Presentation, PublicKey, Scheme, SecretKey } from '../scheme';
+import { checkResult, stringToBytes } from '../utils';
 import { checkCiphertext } from './utils';
 import {
   AccumulatorPublicKey,
-  getR1CS,
   initializeWasm,
   LegoVerifyingKeyUncompressed,
   SaverChunkedCommitmentKey,
@@ -129,79 +127,6 @@ describe(`${Scheme} Presentation creation and verification from JSON`, () => {
       )
     ).toEqual(1);
   }
-
-  async function checkCircom(presVersion: string, circomVkName: string) {
-    const r1csGrade = await parseR1CSFile('set_membership_5_public.r1cs');
-    const wasmGrade = getWasmBytes('set_membership_5_public.wasm');
-
-    const pk1Bin = isKvac() ? undefined : fs.readFileSync(`${__dirname}/serialized-objects/${fileNamePrefix}_pk1.bin`);
-    const circomVkBin = fs.readFileSync(`${__dirname}/serialized-objects/${circomVkName}.bin`);
-    let pres1Json = fs.readFileSync(
-      `${__dirname}/serialized-objects/${fileNamePrefix}-circom-presentation1-${presVersion}.json`,
-      'utf8'
-    );
-    let pres2Json = fs.readFileSync(
-      `${__dirname}/serialized-objects/${fileNamePrefix}-circom-presentation2-${presVersion}.json`,
-      'utf8'
-    );
-
-    const pk1 = isKvac() ? undefined : PublicKey.fromBytes(pk1Bin);
-    const circomVk = LegoVerifyingKeyUncompressed.fromBytes(circomVkBin);
-    pres1Json = JSON.parse(pres1Json);
-    // @ts-ignore
-    const pres1 = Presentation.fromJSON(pres1Json);
-    pres2Json = JSON.parse(pres2Json);
-    // @ts-ignore
-    const pres2 = Presentation.fromJSON(pres2Json);
-
-    const pkId = 'random1';
-    const circuitId = 'random2';
-
-    const pp = new Map();
-    pp.set(pkId, circomVk);
-    pp.set(PresentationBuilder.r1csParamId(circuitId), getR1CS(r1csGrade));
-    pp.set(PresentationBuilder.wasmParamId(circuitId), wasmGrade);
-    const circomOutputs = new Map();
-    circomOutputs.set(0, [[generateFieldElementFromNumber(1)]]);
-    checkResult(pres1.verify([pk1], undefined, pp, circomOutputs));
-    expect(pres1Json).toEqual(pres1.toJSON());
-
-    const pp1 = new Map();
-    pp1.set(pkId, circomVk);
-    pp1.set(PresentationBuilder.r1csParamId(circuitId), getR1CS(r1csGrade));
-    pp1.set(PresentationBuilder.wasmParamId(circuitId), wasmGrade);
-
-    const circomOutputs1 = new Map();
-    circomOutputs1.set(0, [[generateFieldElementFromNumber(0)]]);
-    checkResult(pres2.verify([pk1], undefined, pp1, circomOutputs1));
-    expect(pres2Json).toEqual(pres2.toJSON());
-  }
-
-  const skipIfKvac = isKvac() ? it.skip : it;
-
-  skipIfKvac('check version 0.6.0', () => {
-    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
-    check('0.4.0', '0.6.0', 'bound-check-legogroth16-vk2');
-  });
-
-  skipIfKvac('check version 0.6.0 with circom predicates', async () => {
-    await checkCircom('0.6.0', 'circom-set_membership_5_public-2-vk');
-  });
-
-  skipIfKvac('check version 0.7.0', () => {
-    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
-    check('0.5.0', '0.7.0', 'bound-check-legogroth16-vk2');
-  });
-
-  it('check version 0.8.0', () => {
-    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
-    check('0.6.0', '0.8.0', 'bound-check-legogroth16-vk2');
-  });
-
-  it('check version 0.9.0', () => {
-    // Legosnark keys changed due type of certain values changed from `u64` to `u32`
-    check('0.7.0', '0.9.0', 'bound-check-legogroth16-vk2');
-  });
 
   it('check version 0.10.0', () => {
     // Legosnark keys changed due type of certain values changed from `u64` to `u32`
