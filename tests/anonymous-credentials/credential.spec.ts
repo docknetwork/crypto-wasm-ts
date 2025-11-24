@@ -51,7 +51,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
     // The recreated credential should verify
     const recreatedCred = Credential.fromJSON(credJson);
     verifyCred(recreatedCred, pk, sk);
-    
+
     // The JSON representation of original and recreated credential should be same
     expect(credJson).toEqual(recreatedCred.toJSON());
     expect(recreatedCred.schema.version).toEqual(cred.schema.version);
@@ -66,7 +66,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
 
     const cred = builder.sign(sk, undefined, { requireSameFieldsAsSchema: false });
     verifyCred(cred, pk, sk);
-    
+
     const recreatedCred = checkJsonConvForCred(cred, sk, pk);
     expect(recreatedCred.subject).toEqual(builder.subject);
     verifyCred(recreatedCred, pk, sk);
@@ -1285,7 +1285,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
                 properties: { university: { type: 'string' } }
               },
               someNumber: { type: 'number', minimum: 0.01, multipleOf: 0.01 },
-              someInteger: { type: 'integer', minimum: -100}
+              someInteger: { type: 'integer', minimum: -100 }
             }
           },
           cryptoVersion: { type: 'string' },
@@ -1321,7 +1321,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
         fname: { type: 'string' },
         lname: { type: 'string' },
         someNumber: { type: 'number', minimum: 0.01, multipleOf: 0.01 },
-        someInteger: { type: 'integer', minimum: -100}
+        someInteger: { type: 'integer', minimum: -100 }
       }
     };
     let builder = new CredentialBuilder();
@@ -1340,7 +1340,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
     expect(ns.schema[SUBJECT_STR]['someNumber']).toEqual({ type: 'positiveDecimalNumber', decimalPlaces: 2 })
     expect(ns.schema[SUBJECT_STR]['someInteger']).toEqual({ type: 'integer', minimum: -100 })
     expect(ns.jsonSchema[SCHEMA_PROPS_STR][SUBJECT_STR][SCHEMA_PROPS_STR]['someNumber']).toEqual({ type: 'number', minimum: 0.01, multipleOf: 0.01 });
-    expect(ns.jsonSchema[SCHEMA_PROPS_STR][SUBJECT_STR][SCHEMA_PROPS_STR]['someInteger']).toEqual({ type: 'integer', minimum: -100});
+    expect(ns.jsonSchema[SCHEMA_PROPS_STR][SUBJECT_STR][SCHEMA_PROPS_STR]['someInteger']).toEqual({ type: 'integer', minimum: -100 });
 
     checkSigningVerificationAndSerialization(builder, sk, pk);
 
@@ -1350,7 +1350,7 @@ describe(`${Scheme} Credential signing and verification`, () => {
       properties: {
         fname: { type: 'string' },
         lname: { type: 'string' },
-        someInteger: { type: 'integer', minimum: -100}
+        someInteger: { type: 'integer', minimum: -100 }
       }
     };
     builder = new CredentialBuilder();

@@ -156,7 +156,7 @@ export abstract class CredentialBuilder<
   }
 
   protected abstract signMessageObject(
-    messages: Object,
+    messages: object,
     secretKey: SecretKey,
     labelOrParams: Uint8Array | SignatureParams | undefined,
     encoder: Encoder
@@ -182,7 +182,7 @@ export class BBSCredentialBuilder extends CredentialBuilder<
   BBSSignatureParams
 > {
   protected signMessageObject(
-    messages: Object,
+    messages: object,
     secretKey: BBSSecretKey,
     labelOrParams: Uint8Array | BBSSignatureParams = BBS_SIGNATURE_PARAMS_LABEL_BYTES,
     encoder: Encoder
@@ -216,7 +216,7 @@ export class BBSPlusCredentialBuilder extends CredentialBuilder<
   BBSPlusSignatureParamsG1
 > {
   protected signMessageObject(
-    messages: Object,
+    messages: object,
     secretKey: BBSPlusSecretKey,
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1 = BBS_PLUS_SIGNATURE_PARAMS_LABEL_BYTES,
     encoder: Encoder
@@ -246,7 +246,7 @@ export class BBSPlusCredentialBuilder extends CredentialBuilder<
 
 export class PSCredentialBuilder extends CredentialBuilder<PSSecretKey, PSPublicKey, PSSignature, PSSignatureParams> {
   protected signMessageObject(
-    messages: Object,
+    messages: object,
     secretKey: PSSecretKey,
     labelOrParams: Uint8Array | PSSignatureParams = PS_SIGNATURE_PARAMS_LABEL_BYTES,
     encoder: Encoder
@@ -277,7 +277,7 @@ export class BBDT16CredentialBuilder extends CredentialBuilder<
   BBDT16MacParams
 > {
   protected signMessageObject(
-    messages: Object,
+    messages: object,
     secretKey: BBDT16MacSecretKey,
     labelOrParams: Uint8Array | BBDT16MacParams = BBDT16_MAC_PARAMS_LABEL_BYTES,
     encoder: Encoder

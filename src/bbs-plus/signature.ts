@@ -65,7 +65,7 @@ export class BBSPlusSignatureG1 extends MessageEncoder {
   }
 
   static signMessageObject(
-    messages: Object,
+    messages: object,
     secretKey: BBSPlusSecretKey,
     labelOrParams: Uint8Array | BBSPlusSignatureParamsG1,
     encoder: Encoder

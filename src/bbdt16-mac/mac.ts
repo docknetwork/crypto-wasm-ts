@@ -69,7 +69,7 @@ export class BBDT16Mac extends MessageEncoder {
   }
 
   static signMessageObject(
-    messages: Object,
+    messages: object,
     secretKey: BBDT16MacSecretKey,
     labelOrParams: Uint8Array | BBDT16MacParams,
     encoder: Encoder
@@ -87,7 +87,7 @@ export class BBDT16Mac extends MessageEncoder {
   }
 
   static getSignedMessageObjectWithProof(
-    messages: Object,
+    messages: object,
     secretKey: BBDT16MacSecretKey,
     publicKey: BBDT16MacPublicKeyG1,
     labelOrParams: Uint8Array | BBDT16MacParams,

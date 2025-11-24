@@ -58,7 +58,7 @@ export class BBSSignature extends MessageEncoder {
   }
 
   static signMessageObject(
-    messages: Object,
+    messages: object,
     secretKey: BBSSecretKey,
     labelOrParams: Uint8Array | BBSSignatureParams,
     encoder: Encoder
