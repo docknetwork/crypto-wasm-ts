@@ -82,7 +82,7 @@ export class PSSignature extends MessageEncoder {
   }
 
   static signMessageObject(
-    messages: Object,
+    messages: object,
     secretKey: PSSecretKey,
     labelOrParams: Uint8Array | PSSignatureParams,
     encoder: Encoder

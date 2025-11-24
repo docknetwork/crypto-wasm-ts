@@ -77,7 +77,7 @@ export class CompositeProof extends BytearrayWrapper {
       proofSpec.metaStatements,
       proofSpec.setupParams,
       proofSpec.context,
-      nonce,
+      nonce
     );
   }
 
@@ -121,7 +121,7 @@ export class CompositeProof extends BytearrayWrapper {
     metaStatements: MetaStatements,
     setupParams?: SetupParam[],
     context?: Uint8Array,
-    nonce?: Uint8Array,
+    nonce?: Uint8Array
   ): VerifyResult {
     const params = (setupParams ?? new Array<SetupParam>()).map((s) => s.value);
     return verifyCompositeProofG1WithDeconstructedProofSpec(
