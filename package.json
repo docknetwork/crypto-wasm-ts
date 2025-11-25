@@ -34,7 +34,7 @@
     "@types/flat": "^5.0.2",
     "@types/lodash": "^4.14.195",
     "bs58": "5.0.0",
-    "crypto-wasm-new": "npm:@docknetwork/crypto-wasm@0.34.0",
+    "crypto-wasm-new": "npm:@docknetwork/crypto-wasm@0.35.0",
     "flat": "^5.0.2",
     "json-pointer": "^0.6.2",
     "json-stringify-deterministic": "^1.0.11",

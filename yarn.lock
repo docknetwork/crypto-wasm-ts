@@ -414,7 +414,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^5.59.9"
     bs58: "npm:5.0.0"
     commander: "npm:^10.0.1"
-    crypto-wasm-new: "npm:@docknetwork/crypto-wasm@0.34.0"
+    crypto-wasm-new: "npm:@docknetwork/crypto-wasm@0.35.0"
     eslint: "npm:^8.42.0"
     eslint-config-prettier: "npm:^8.8.0"
     eslint-plugin-import: "npm:^2.27.5"
@@ -2059,10 +2059,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"crypto-wasm-new@npm:@docknetwork/crypto-wasm@0.34.0":
-  version: 0.34.0
-  resolution: "@docknetwork/crypto-wasm@npm:0.34.0"
-  checksum: 10c0/58e80b2420007612394ddc6925928008e802f4575ff6d685bcf71b82e7b4725abaab3da4eb17ce0ef1f74970552b9fcac7f5323d356e0c9560987bdb8564f1a3
+"crypto-wasm-new@npm:@docknetwork/crypto-wasm@0.35.0":
+  version: 0.35.0
+  resolution: "@docknetwork/crypto-wasm@npm:0.35.0"
+  checksum: 10c0/74c23b0182b45ee4be182f04e510fc9053e4023bf3d2ace9f072909d05f1ce02292f5844de579c4df009a0c9d7daa4d1ff64f120dd67354058e950d233c93964
   languageName: node
   linkType: hard
 
