@@ -9,83 +9,57 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ${{ matrix.os }}
+    runs-on: [ubuntu-latest, macos-latest]
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
-        os: [ubuntu-latest, macos-latest]
+        node-version: [20.x, 22.x]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'yarn'
       - run: corepack enable
       - run: yarn install --immutable
       - run: yarn build
-  test_bbs:
-    name: Test BBS
-    runs-on: ${{matrix.os}}
-    env:
-      TEST_SIGNATURE_SCHEME: 'BBS'
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
-      - run: corepack enable
-      - run: yarn install --immutable
-      - run: yarn test
-  test_bbs_plus:
-    name: Test BBS+
-    runs-on: ${{matrix.os}}
-    env:
-      TEST_SIGNATURE_SCHEME: 'BBS+'
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
-      - run: corepack enable
-      - run: yarn install --immutable
-      - run: yarn test
-  test_ps:
-    name: Test PS
-    runs-on: ${{matrix.os}}
-    env:
-      TEST_SIGNATURE_SCHEME: 'PS'
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-        os: [ubuntu-latest]
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
-      - run: corepack enable
-      - run: yarn install --immutable
-      - run: yarn test
-  test_bbdt16:
-    name: Test BBDT16
-    runs-on: ${{matrix.os}}
-    env:
-      TEST_SIGNATURE_SCHEME: 'BBDT16'
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x ]
-        os: [ ubuntu-latest ]
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
-      - run: corepack enable
-      - run: yarn install --immutable
-      - run: yarn test
 
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: latest
+          cache: 'yarn'
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn build
+      - name: Check TypeScript
+        run: yarn tsc --noEmit
+      - name: Run ESLint
+        run: yarn eslint src --ext .ts || true
+
+  test:
+    name: Test ${{ matrix.scheme }}
+    runs-on: ${{ matrix.os }}
+    needs: build
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node-version: [22.x, 24.x, 25.x]
+        scheme: ['BBS', 'BBS+', 'PS', 'BBDT16']
+    env:
+      TEST_SIGNATURE_SCHEME: ${{ matrix.scheme }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'yarn'
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn build
+      - name: Run tests
+        run: yarn test
