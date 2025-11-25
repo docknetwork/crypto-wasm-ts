@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ${{matrix.os}}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         node-version: [18.x, 20.x]
@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: corepack enable
-      - run: yarn install --frozen-lockfile
+      - run: yarn install --immutable
       - run: yarn build
   test_bbs:
     name: Test BBS
@@ -30,14 +30,13 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x, 20.x]
-        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
       - run: corepack enable
-      - run: yarn install --frozen-lockfile
+      - run: yarn install --immutable
       - run: yarn test
   test_bbs_plus:
     name: Test BBS+
@@ -47,14 +46,13 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x, 20.x]
-        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
       - run: corepack enable
-      - run: yarn install --frozen-lockfile
+      - run: yarn install --immutable
       - run: yarn test
   test_ps:
     name: Test PS
@@ -71,7 +69,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: corepack enable
-      - run: yarn install --frozen-lockfile
+      - run: yarn install --immutable
       - run: yarn test
   test_bbdt16:
     name: Test BBDT16
@@ -88,6 +86,6 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: corepack enable
-      - run: yarn install --frozen-lockfile
+      - run: yarn install --immutable
       - run: yarn test
-  
+

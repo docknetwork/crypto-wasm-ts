@@ -23,17 +23,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Enable Corepack and prepare Yarn
+        run: corepack enable
       - name: Install dependencies
-        run: |
-          yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Check licenses
         run: npx --yes license-checker --production --failOn "${{ env.AVOID_LICENSES }}" --excludePackages "${{ env.IGNORE_PACKAGES }}"
